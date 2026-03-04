@@ -17,7 +17,9 @@ def test_power_periodic_pruning_regression_issue43():
 
     # Fully periodic orthorhombic domain [0, L) in all axes.
     L = 8.0
-    domain = OrthorhombicCell(((0.0, L), (0.0, L), (0.0, L)), periodic=(True, True, True))
+    domain = OrthorhombicCell(
+        ((0.0, L), (0.0, L), (0.0, L)), periodic=(True, True, True)
+    )
 
     # Input points and radii (power diagram / radical Voronoi).
     #
