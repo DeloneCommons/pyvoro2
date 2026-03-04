@@ -12,5 +12,4 @@ pyvoro2 is licensed under the MIT License (see `LICENSE`). The included Voro++ c
 
 Local modifications:
 
-- The vendored Voro++ snapshot includes a small numeric robustness patch for power/Laguerre diagrams
-  (inflating the stored global `max_radius` by 1 ULP via `nextafter`).
+- None. The vendored Voro++ snapshot is kept unmodified (aside from being vendored into this repository).

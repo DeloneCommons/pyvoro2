@@ -62,9 +62,8 @@ Notes:
 
 Robustness note:
 
-- pyvoro2 vendors a small Voro++ patch that makes fully periodic **power/Laguerre**
-  tessellations more robust across platforms (it inflates the stored global `max_radius`
-  by 1 ULP via `nextafter`, making radical pruning slightly less aggressive).
+- pyvoro2 vendors a Voro++ snapshot that includes the upstream numeric robustness fix for fully
+  periodic **power/Laguerre** tessellations (radical pruning).
 - If `return_face_shifts=True` fails with a `ValueError`, it is typically due to a
   genuine geometric degeneracy (for example, nearly co-spherical sites) rather than
   a platform-specific issue.

@@ -21,8 +21,8 @@ Voro++ is a widely used C++ library for computing Voronoi cells efficiently in 3
 It implements robust algorithms and is commonly used in computational physics and materials science.
 
 pyvoro2 vendors a snapshot of upstream Voro++ and builds its Python extension against it.
-For *power/Laguerre* diagrams, it also applies a small numeric robustness patch (inflate the stored global `max_radius`
-by 1 ULP via `nextafter`) to avoid rare cross-platform pruning edge cases.
+The vendored snapshot includes the upstream numeric robustness fix for *power/Laguerre* (radical) pruning,
+which avoids rare cross-platform edge cases in fully periodic power tessellations.
 
 ## When should you use pyvoro2?
 

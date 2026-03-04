@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 The format is based on *Keep a Changelog*, and this project follows *Semantic Versioning*.
 
+## [0.4.2] - 2026-03-04
+
+### Changed
+
+- Vendored Voro++: updated the vendored snapshot to include the upstream numeric robustness fix for
+  power/Laguerre (radical) pruning (fixes rare cross-platform edge cases in fully periodic power
+  tessellations).
+- Removed the previously vendored local `nextafter`-based `max_radius` inflation patch (no longer needed).
+
 ## [0.4.1] - 2026-02-16
 
 ### Fixed
