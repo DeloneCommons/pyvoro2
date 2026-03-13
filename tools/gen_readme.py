@@ -35,7 +35,7 @@ except ModuleNotFoundError:  # pragma: no cover
 from urllib.parse import quote
 
 
-DEFAULT_GITHUB_REPO = 'IvanChernyshov/pyvoro2'
+DEFAULT_GITHUB_REPO = 'DeloneCommons/pyvoro2'
 DEFAULT_REPO_REF = 'main'
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

@@ -1,8 +1,8 @@
 # pyvoro2
 
-[![CI](https://github.com/IvanChernyshov/pyvoro2/actions/workflows/ci.yml/badge.svg)](https://github.com/IvanChernyshov/pyvoro2/actions/workflows/ci.yml) [![Docs](https://github.com/IvanChernyshov/pyvoro2/actions/workflows/docs.yml/badge.svg)](https://github.com/IvanChernyshov/pyvoro2/actions/workflows/docs.yml) [![PyPI](https://img.shields.io/pypi/v/pyvoro2.svg)](https://pypi.org/project/pyvoro2/) [![Python Versions](https://img.shields.io/pypi/pyversions/pyvoro2.svg)](https://pypi.org/project/pyvoro2/) [![License](https://img.shields.io/pypi/l/pyvoro2.svg)](https://github.com/IvanChernyshov/pyvoro2/blob/main/LICENSE)
+[![CI](https://github.com/DeloneCommons/pyvoro2/actions/workflows/ci.yml/badge.svg)](https://github.com/DeloneCommons/pyvoro2/actions/workflows/ci.yml) [![Docs](https://github.com/DeloneCommons/pyvoro2/actions/workflows/docs.yml/badge.svg)](https://github.com/DeloneCommons/pyvoro2/actions/workflows/docs.yml) [![PyPI](https://img.shields.io/pypi/v/pyvoro2.svg)](https://pypi.org/project/pyvoro2/) [![Python Versions](https://img.shields.io/pypi/pyversions/pyvoro2.svg)](https://pypi.org/project/pyvoro2/) [![License](https://img.shields.io/pypi/l/pyvoro2.svg)](https://github.com/DeloneCommons/pyvoro2/blob/main/LICENSE)
 
-**Documentation:** https://IvanChernyshov.github.io/pyvoro2/
+**Documentation:** https://delonecommons.github.io/pyvoro2/
 
 
 ---
@@ -44,7 +44,7 @@ view_tessellation(
 )
 ```
 
-<img src="https://raw.githubusercontent.com/IvanChernyshov/pyvoro2/main/docs/assets/quickstart_box.png" width="50%" alt="Voronoi tessellation in a box" />
+<img src="https://raw.githubusercontent.com/DeloneCommons/pyvoro2/main/docs/assets/quickstart_box.png" width="50%" alt="Voronoi tessellation in a box" />
 
 ### 2) Power/Laguerre tessellation (weighted Voronoi)
 
@@ -128,14 +128,14 @@ implementation-oriented details.
 
 | Section | What it contains |
 |---|---|
-| [Concepts](https://IvanChernyshov.github.io/pyvoro2/guide/concepts/) | What Voronoi and power/Laguerre tessellations are, and what you can expect from them. |
-| [Domains](https://IvanChernyshov.github.io/pyvoro2/guide/domains/) | Which containers exist (`Box`, `OrthorhombicCell`, `PeriodicCell`) and how to choose between them. |
-| [Operations](https://IvanChernyshov.github.io/pyvoro2/guide/operations/) | How to compute tessellations, assign query points, and compute probe (ghost) cells. |
-| [Topology and graphs](https://IvanChernyshov.github.io/pyvoro2/guide/topology/) | How to build a neighbor graph that respects periodic images, and how normalization helps. |
-| [Inverse fitting](https://IvanChernyshov.github.io/pyvoro2/guide/inverse/) | Fit power/Laguerre radii from desired pairwise plane positions (with optional constraints/penalties). |
-| [Visualization](https://IvanChernyshov.github.io/pyvoro2/guide/visualization/) | Optional py3Dmol helpers for debugging and exploratory analysis. |
-| [Examples (notebooks)](https://IvanChernyshov.github.io/pyvoro2/notebooks/01_basic_compute/) | End-to-end examples that combine the pieces above. |
-| [API reference](https://IvanChernyshov.github.io/pyvoro2/reference/api/) | The full reference (docstrings). |
+| [Concepts](https://delonecommons.github.io/pyvoro2/guide/concepts/) | What Voronoi and power/Laguerre tessellations are, and what you can expect from them. |
+| [Domains](https://delonecommons.github.io/pyvoro2/guide/domains/) | Which containers exist (`Box`, `OrthorhombicCell`, `PeriodicCell`) and how to choose between them. |
+| [Operations](https://delonecommons.github.io/pyvoro2/guide/operations/) | How to compute tessellations, assign query points, and compute probe (ghost) cells. |
+| [Topology and graphs](https://delonecommons.github.io/pyvoro2/guide/topology/) | How to build a neighbor graph that respects periodic images, and how normalization helps. |
+| [Inverse fitting](https://delonecommons.github.io/pyvoro2/guide/inverse/) | Fit power/Laguerre radii from desired pairwise plane positions (with optional constraints/penalties). |
+| [Visualization](https://delonecommons.github.io/pyvoro2/guide/visualization/) | Optional py3Dmol helpers for debugging and exploratory analysis. |
+| [Examples (notebooks)](https://delonecommons.github.io/pyvoro2/notebooks/01_basic_compute/) | End-to-end examples that combine the pieces above. |
+| [API reference](https://delonecommons.github.io/pyvoro2/reference/api/) | The full reference (docstrings). |
 
 ## Installation
 
@@ -198,7 +198,7 @@ Some parts of the implementation, tests, and documentation were developed with
 AI assistance (OpenAI ChatGPT). The maintainer reviews and integrates changes,
 and remains responsible for the resulting code and scientific claims.
 
-Details are documented in the [AI usage](https://IvanChernyshov.github.io/pyvoro2/project/ai/) page.
+Details are documented in the [AI usage](https://delonecommons.github.io/pyvoro2/project/ai/) page.
 
 ## License
 
