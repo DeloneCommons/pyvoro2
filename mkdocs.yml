@@ -1,8 +1,8 @@
 site_name: pyvoro2
 site_description: Python bindings for Voro++ (3D Voronoi and power/Laguerre tessellations) with periodic and topology utilities.
-site_url: https://IvanChernyshov.github.io/pyvoro2/
-repo_url: https://github.com/IvanChernyshov/pyvoro2
-repo_name: IvanChernyshov/pyvoro2
+site_url: https://delonecommons.github.io/pyvoro2/
+repo_url: https://github.com/DeloneCommons/pyvoro2
+repo_name: DeloneCommons/pyvoro2
 edit_uri: edit/main/docs/
 
 theme:
