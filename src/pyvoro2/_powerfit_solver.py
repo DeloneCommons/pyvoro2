@@ -47,7 +47,51 @@ class PowerWeightFitResult:
     n_iter: int
     converged: bool
     infeasible_constraints: tuple[int, ...] | None
+    conflict: 'HardConstraintConflict | None'
     warnings: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class HardConstraintConflictTerm:
+    """One bound relation participating in an infeasibility witness.
+
+    Each term refers back to one input constraint row and states which bound on
+    ``w_i - w_j`` participates in the contradiction cycle.
+    """
+
+    constraint_index: int
+    site_i: int
+    site_j: int
+    relation: Literal['<=', '>=']
+    bound_value: float
+
+
+@dataclass(frozen=True, slots=True)
+class HardConstraintConflict:
+    """Compact witness for inconsistent hard separator restrictions."""
+
+    component_nodes: tuple[int, ...]
+    cycle_nodes: tuple[int, ...]
+    terms: tuple[HardConstraintConflictTerm, ...]
+    message: str
+
+    @property
+    def constraint_indices(self) -> tuple[int, ...]:
+        """Sorted unique input rows participating in the conflict."""
+
+        return tuple(sorted({int(term.constraint_index) for term in self.terms}))
+
+
+@dataclass(frozen=True, slots=True)
+class _DifferenceEdge:
+    source: int
+    target: int
+    weight: float
+    constraint_index: int
+    site_i: int
+    site_j: int
+    relation: Literal['<=', '>=']
+    bound_value: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,7 +238,7 @@ def _fit_power_weights_resolved(
     z_hi = hard[1] if hard is not None else None
 
     if hard is not None:
-        feasible, infeasible_idx = _check_hard_feasibility(
+        feasible, conflict = _check_hard_feasibility(
             n,
             constraints.i,
             constraints.j,
@@ -202,7 +246,10 @@ def _fit_power_weights_resolved(
             z_hi,
         )
         if not feasible:
+            infeasible_idx = None if conflict is None else conflict.constraint_indices
             warnings_list.append('hard feasibility check failed before optimization')
+            if conflict is not None:
+                warnings_list.append(conflict.message)
             return PowerWeightFitResult(
                 status='infeasible_hard_constraints',
                 hard_feasible=False,
@@ -222,10 +269,13 @@ def _fit_power_weights_resolved(
                 n_iter=0,
                 converged=False,
                 infeasible_constraints=infeasible_idx,
+                conflict=conflict,
                 warnings=tuple(warnings_list),
             )
+        infeasible_idx = None
     else:
         infeasible_idx = None
+        conflict = None
 
     if m == 0:
         weights = np.zeros(n, dtype=np.float64)
@@ -253,6 +303,7 @@ def _fit_power_weights_resolved(
             n_iter=0,
             converged=True,
             infeasible_constraints=infeasible_idx,
+            conflict=conflict,
             warnings=tuple(warnings_list),
         )
 
@@ -362,6 +413,7 @@ def _fit_power_weights_resolved(
         n_iter=int(n_iter_max),
         converged=bool(converged_all),
         infeasible_constraints=infeasible_idx,
+        conflict=conflict,
         warnings=tuple(warnings_list),
     )
 
@@ -482,35 +534,57 @@ def _check_hard_feasibility(
     j_idx: np.ndarray,
     z_lo: np.ndarray,
     z_hi: np.ndarray,
-) -> tuple[bool, tuple[int, ...] | None]:
+) -> tuple[bool, HardConstraintConflict | None]:
     """Check feasibility of difference constraints via Bellman-Ford."""
 
-    edges: list[tuple[int, int, float, int]] = []
+    edges: list[_DifferenceEdge] = []
     for k, (i, j, lo, hi) in enumerate(
         zip(i_idx.tolist(), j_idx.tolist(), z_lo.tolist(), z_hi.tolist())
     ):
         # w_i - w_j <= hi  ->  w_i <= w_j + hi : edge j -> i with weight hi
-        edges.append((j, i, float(hi), k))
+        edges.append(
+            _DifferenceEdge(
+                source=int(j),
+                target=int(i),
+                weight=float(hi),
+                constraint_index=int(k),
+                site_i=int(i),
+                site_j=int(j),
+                relation='<=',
+                bound_value=float(hi),
+            )
+        )
         # w_i - w_j >= lo  ->  w_j - w_i <= -lo: edge i -> j with weight -lo
-        edges.append((i, j, float(-lo), k))
+        edges.append(
+            _DifferenceEdge(
+                source=int(i),
+                target=int(j),
+                weight=float(-lo),
+                constraint_index=int(k),
+                site_i=int(i),
+                site_j=int(j),
+                relation='>=',
+                bound_value=float(lo),
+            )
+        )
 
     dist = np.zeros(n, dtype=np.float64)
     pred_node = np.full(n, -1, dtype=np.int64)
-    pred_constraint = np.full(n, -1, dtype=np.int64)
+    pred_edge = np.full(n, -1, dtype=np.int64)
     last_updated = -1
     tol = 1e-12
 
     for it in range(n):
         updated = False
         last_updated = -1
-        for u, v, w, k in edges:
-            cand = dist[u] + w
-            if cand < dist[v] - tol:
-                dist[v] = cand
-                pred_node[v] = u
-                pred_constraint[v] = k
+        for edge_index, edge in enumerate(edges):
+            cand = dist[edge.source] + edge.weight
+            if cand < dist[edge.target] - tol:
+                dist[edge.target] = cand
+                pred_node[edge.target] = edge.source
+                pred_edge[edge.target] = edge_index
                 updated = True
-                last_updated = v
+                last_updated = edge.target
         if not updated:
             return True, None
 
@@ -523,16 +597,60 @@ def _check_hard_feasibility(
         if y < 0:
             return False, None
 
-    cycle_constraints: list[int] = []
+    cycle_edges_rev: list[_DifferenceEdge] = []
     cur = y
-    seen: set[int] = set()
-    while cur not in seen and cur >= 0:
-        seen.add(cur)
-        ck = int(pred_constraint[cur])
-        if ck >= 0:
-            cycle_constraints.append(ck)
-        cur = int(pred_node[cur])
-    return False, tuple(sorted(set(cycle_constraints))) or None
+    while True:
+        edge_index = int(pred_edge[cur])
+        if edge_index < 0:
+            return False, None
+        edge = edges[edge_index]
+        cycle_edges_rev.append(edge)
+        cur = edge.source
+        if cur == y:
+            break
+
+    cycle_edges = tuple(reversed(cycle_edges_rev))
+    cycle_nodes_list: list[int] = []
+    if cycle_edges:
+        cycle_nodes_list.append(cycle_edges[0].source)
+        cycle_nodes_list.extend(edge.target for edge in cycle_edges)
+        if len(cycle_nodes_list) >= 2 and cycle_nodes_list[0] == cycle_nodes_list[-1]:
+            cycle_nodes_list.pop()
+
+    cycle_node_set = set(cycle_nodes_list)
+    component_nodes: tuple[int, ...] = ()
+    for comp in _connected_components(n, i_idx, j_idx):
+        if any(node in cycle_node_set for node in comp):
+            component_nodes = tuple(int(node) for node in comp)
+            break
+
+    terms = tuple(
+        HardConstraintConflictTerm(
+            constraint_index=edge.constraint_index,
+            site_i=edge.site_i,
+            site_j=edge.site_j,
+            relation=edge.relation,
+            bound_value=edge.bound_value,
+        )
+        for edge in cycle_edges
+    )
+    unique_constraints = tuple(sorted({term.constraint_index for term in terms}))
+    component_label = (
+        '[' + ', '.join(str(v) for v in component_nodes) + ']'
+        if component_nodes
+        else '[]'
+    )
+    cycle_label = '[' + ', '.join(str(v) for v in unique_constraints) + ']'
+    conflict = HardConstraintConflict(
+        component_nodes=component_nodes,
+        cycle_nodes=tuple(int(v) for v in cycle_nodes_list),
+        terms=terms,
+        message=(
+            'inconsistent hard separator restrictions on connected component '
+            f'{component_label}; contradiction cycle uses constraint rows {cycle_label}'
+        ),
+    )
+    return False, conflict
 
 
 

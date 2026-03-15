@@ -22,7 +22,14 @@ from ._powerfit_active import (
     solve_self_consistent_power_weights,
 )
 from ._powerfit_realize import RealizedPairDiagnostics, match_realized_pairs
-from ._powerfit_solver import PowerWeightFitResult, fit_power_weights, radii_to_weights, weights_to_radii
+from ._powerfit_solver import (
+    HardConstraintConflict,
+    HardConstraintConflictTerm,
+    PowerWeightFitResult,
+    fit_power_weights,
+    radii_to_weights,
+    weights_to_radii,
+)
 
 __all__ = [
     'PairBisectorConstraints',
@@ -36,6 +43,8 @@ __all__ = [
     'ReciprocalBoundaryPenalty',
     'L2Regularization',
     'FitModel',
+    'HardConstraintConflictTerm',
+    'HardConstraintConflict',
     'PowerWeightFitResult',
     'RealizedPairDiagnostics',
     'ActiveSetOptions',
