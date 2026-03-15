@@ -18,7 +18,6 @@ def test_powerfit_rejects_nonfinite_points_values_and_confidence():
         resolve_pair_bisector_constraints(pts, [(0, 1, 0.5)], confidence=[np.inf])
 
 
-
 def test_powerfit_constraint_ids_must_match_points_and_be_unique():
     from pyvoro2 import resolve_pair_bisector_constraints
 
@@ -44,7 +43,6 @@ def test_powerfit_constraint_ids_must_match_points_and_be_unique():
         )
 
 
-
 def test_zero_confidence_constraints_do_not_crash_quadratic_fit():
     from pyvoro2 import fit_power_weights
 
@@ -60,7 +58,6 @@ def test_zero_confidence_constraints_do_not_crash_quadratic_fit():
     assert np.allclose(res.weights, np.array([0.0, 0.0]))
     assert np.allclose(res.predicted_fraction, np.array([0.5]))
     assert any('zero-confidence' in msg for msg in res.warnings)
-
 
 
 def test_zero_confidence_rows_do_not_join_effective_components():
@@ -80,7 +77,6 @@ def test_zero_confidence_rows_do_not_join_effective_components():
     assert res.status == 'optimal'
     assert np.allclose(res.weights[0] - res.weights[1], -2.0, atol=1e-10)
     assert np.allclose(res.weights[2], 0.0, atol=1e-12)
-
 
 
 def test_empty_resolved_constraints_use_regularization_only_solution():
@@ -108,7 +104,6 @@ def test_empty_resolved_constraints_use_regularization_only_solution():
     assert any('regularization-only' in msg for msg in res.warnings)
 
 
-
 def test_weight_radius_conversions_reject_nonfinite_values():
     from pyvoro2 import radii_to_weights, weights_to_radii
 
@@ -116,7 +111,6 @@ def test_weight_radius_conversions_reject_nonfinite_values():
         radii_to_weights(np.array([1.0, np.nan]))
     with pytest.raises(ValueError, match='finite'):
         weights_to_radii(np.array([0.0, np.inf]))
-
 
 
 def test_fit_power_weights_returns_numerical_failure_on_internal_solver_error(
@@ -147,7 +141,6 @@ def test_fit_power_weights_returns_numerical_failure_on_internal_solver_error(
     assert any('numerical solver failure' in msg for msg in res.warnings)
 
 
-
 def test_active_set_propagates_numerical_failure(monkeypatch):
     import pyvoro2.powerfit.active as active_mod
     from pyvoro2 import Box
@@ -157,7 +150,6 @@ def test_active_set_propagates_numerical_failure(monkeypatch):
     domain = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
 
     def fake_fit_power_weights(points, constraints, **kwargs):
-        m = constraints.n_constraints
         return PowerWeightFitResult(
             status='numerical_failure',
             hard_feasible=True,
@@ -196,7 +188,6 @@ def test_active_set_propagates_numerical_failure(monkeypatch):
     assert any('synthetic fit failure' in msg for msg in res.warnings)
 
 
-
 def test_fit_power_weights_accepts_pre_resolved_lower_dim_constraints():
     from pyvoro2 import PairBisectorConstraints, fit_power_weights
 
@@ -225,3 +216,96 @@ def test_fit_power_weights_accepts_pre_resolved_lower_dim_constraints():
     assert res.status == 'optimal'
     assert np.allclose(res.weights[1] - res.weights[0], 2.0)
     assert np.allclose(res.predicted_fraction, np.array([0.25]))
+
+
+def test_pre_resolved_constraints_expose_dimension_property():
+    from pyvoro2 import PairBisectorConstraints
+
+    constraints = PairBisectorConstraints(
+        n_points=2,
+        i=np.array([0], dtype=np.int64),
+        j=np.array([1], dtype=np.int64),
+        shifts=np.zeros((1, 2), dtype=np.int64),
+        target=np.array([0.25], dtype=np.float64),
+        confidence=np.array([1.0], dtype=np.float64),
+        measurement='fraction',
+        distance=np.array([2.0], dtype=np.float64),
+        distance2=np.array([4.0], dtype=np.float64),
+        delta=np.array([[2.0, 0.0]], dtype=np.float64),
+        target_fraction=np.array([0.25], dtype=np.float64),
+        target_position=np.array([0.5], dtype=np.float64),
+        input_index=np.array([0], dtype=np.int64),
+        explicit_shift=np.array([False], dtype=bool),
+        ids=None,
+        warnings=tuple(),
+    )
+
+    assert constraints.dim == 2
+
+
+def test_match_realized_pairs_rejects_pre_resolved_lower_dim_constraints():
+    from pyvoro2 import Box, PairBisectorConstraints, match_realized_pairs
+
+    pts = np.array([[0.0, 0.0], [2.0, 0.0]], dtype=float)
+    constraints = PairBisectorConstraints(
+        n_points=2,
+        i=np.array([0], dtype=np.int64),
+        j=np.array([1], dtype=np.int64),
+        shifts=np.zeros((1, 2), dtype=np.int64),
+        target=np.array([0.25], dtype=np.float64),
+        confidence=np.array([1.0], dtype=np.float64),
+        measurement='fraction',
+        distance=np.array([2.0], dtype=np.float64),
+        distance2=np.array([4.0], dtype=np.float64),
+        delta=np.array([[2.0, 0.0]], dtype=np.float64),
+        target_fraction=np.array([0.25], dtype=np.float64),
+        target_position=np.array([0.5], dtype=np.float64),
+        input_index=np.array([0], dtype=np.int64),
+        explicit_shift=np.array([False], dtype=bool),
+        ids=None,
+        warnings=tuple(),
+    )
+
+    with pytest.raises(ValueError, match='currently requires 3D resolved constraints'):
+        match_realized_pairs(
+            pts,
+            domain=Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0))),
+            radii=np.array([0.0, 0.0]),
+            constraints=constraints,
+        )
+
+
+def test_active_set_rejects_pre_resolved_lower_dim_constraints():
+    from pyvoro2 import (
+        Box,
+        PairBisectorConstraints,
+        solve_self_consistent_power_weights,
+    )
+
+    pts = np.array([[0.0, 0.0], [2.0, 0.0]], dtype=float)
+    constraints = PairBisectorConstraints(
+        n_points=2,
+        i=np.array([0], dtype=np.int64),
+        j=np.array([1], dtype=np.int64),
+        shifts=np.zeros((1, 2), dtype=np.int64),
+        target=np.array([0.25], dtype=np.float64),
+        confidence=np.array([1.0], dtype=np.float64),
+        measurement='fraction',
+        distance=np.array([2.0], dtype=np.float64),
+        distance2=np.array([4.0], dtype=np.float64),
+        delta=np.array([[2.0, 0.0]], dtype=np.float64),
+        target_fraction=np.array([0.25], dtype=np.float64),
+        target_position=np.array([0.5], dtype=np.float64),
+        input_index=np.array([0], dtype=np.int64),
+        explicit_shift=np.array([False], dtype=bool),
+        ids=None,
+        warnings=tuple(),
+    )
+
+    with pytest.raises(ValueError, match='currently requires 3D resolved constraints'):
+        solve_self_consistent_power_weights(
+            pts,
+            constraints,
+            measurement='fraction',
+            domain=Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0))),
+        )

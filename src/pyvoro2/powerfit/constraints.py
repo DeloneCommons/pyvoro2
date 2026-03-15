@@ -10,9 +10,8 @@ import numpy as np
 from ..domains import Box, OrthorhombicCell, PeriodicCell
 from .._domain_geometry import geometry3d
 
-ConstraintInput = Sequence[
-    tuple[int, int, float] | tuple[int, int, float, tuple[int, int, int]]
-]
+ConstraintRow = tuple[int, int, float] | tuple[int, int, float, Sequence[int]]
+ConstraintInput = Sequence[ConstraintRow]
 
 
 def _plain_value(value: object) -> object:
@@ -125,6 +124,10 @@ class PairBisectorConstraints:
     def n_constraints(self) -> int:
         return int(self.i.shape[0])
 
+    @property
+    def dim(self) -> int:
+        return int(self.shifts.shape[1])
+
     def pair_labels(self, *, use_ids: bool = False) -> tuple[np.ndarray, np.ndarray]:
         """Return the left/right pair labels as indices or external ids."""
 
@@ -208,7 +211,9 @@ def resolve_pair_bisector_constraints(
     """Parse and resolve pairwise separator constraints.
 
     Args:
-        points: Site coordinates with shape ``(n, 3)``.
+        points: Site coordinates with shape ``(n, 3)``. The low-level
+            resolved-constraint object stores the working dimension generically,
+            but raw parsing still targets the current 3D public API.
         constraints: Raw constraint tuples ``(i, j, value[, shift])``.
         measurement: Whether ``value`` is interpreted as a normalized fraction
             in ``[0, 1]`` or as an absolute position along the connector.
@@ -394,7 +399,10 @@ def _parse_constraints(
 
         if len(c) == 4:
             sh = c[3]
-            if not (isinstance(sh, tuple) or isinstance(sh, list)) or len(sh) != shift_dim:
+            if (
+                not (isinstance(sh, tuple) or isinstance(sh, list))
+                or len(sh) != shift_dim
+            ):
                 raise ValueError(
                     f'constraint {k} shift must be a length-{shift_dim} tuple'
                 )
@@ -477,7 +485,6 @@ def _resolve_constraint_shifts(
 
     geom.validate_shifts(shifts2)
     return shifts2, tuple(warnings)
-
 
 
 def shift_to_cart(

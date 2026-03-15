@@ -64,7 +64,6 @@ def test_resolved_constraints_export_records_and_ids():
     assert rows_id[0]['measurement'] == 'fraction'
 
 
-
 def test_resolve_pair_bisector_constraints_warns_on_triclinic_search_boundary():
     from pyvoro2 import PeriodicCell, resolve_pair_bisector_constraints
 

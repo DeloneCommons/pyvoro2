@@ -8,10 +8,14 @@ from typing import Any, Literal
 import numpy as np
 
 from .constraints import PairBisectorConstraints
+from .._domain_geometry import geometry3d
 from ..api import compute
 from ..diagnostics import TessellationDiagnostics
 from ..domains import Box, OrthorhombicCell, PeriodicCell
 from ..face_properties import annotate_face_properties
+
+ShiftTuple = tuple[int, ...]
+MeasureKey = tuple[int, int, ShiftTuple]
 
 
 def _plain_value(value: object) -> object:
@@ -24,6 +28,15 @@ def _boundary_value(values: np.ndarray | None, index: int) -> float | None:
     return float(values[index])
 
 
+def _require_realization_dim_3(constraints: PairBisectorConstraints) -> None:
+    if constraints.dim != 3:
+        raise ValueError(
+            'match_realized_pairs currently requires 3D resolved constraints; '
+            'lower-dimensional resolved constraints are supported only by '
+            'fit_power_weights for now'
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class RealizedPairDiagnostics:
     """Diagnostics for matching candidate constraints to realized faces."""
@@ -32,7 +45,7 @@ class RealizedPairDiagnostics:
     unrealized: tuple[int, ...]
     realized_same_shift: np.ndarray
     realized_other_shift: np.ndarray
-    realized_shifts: tuple[tuple[tuple[int, int, int], ...], ...]
+    realized_shifts: tuple[tuple[ShiftTuple, ...], ...]
     endpoint_i_empty: np.ndarray
     endpoint_j_empty: np.ndarray
     boundary_measure: np.ndarray | None
@@ -74,10 +87,7 @@ class RealizedPairDiagnostics:
                     'realized_shifts': realized_shifts,
                     'endpoint_i_empty': bool(self.endpoint_i_empty[k]),
                     'endpoint_j_empty': bool(self.endpoint_j_empty[k]),
-                    'boundary_measure': _boundary_value(
-                        self.boundary_measure,
-                        k,
-                    ),
+                    'boundary_measure': _boundary_value(self.boundary_measure, k),
                 }
             )
         return tuple(rows)
@@ -114,14 +124,15 @@ def match_realized_pairs(
     """
 
     pts = np.asarray(points, dtype=float)
-    if pts.ndim != 2 or pts.shape[1] != 3:
-        raise ValueError('points must have shape (n, 3)')
+    if pts.ndim != 2 or pts.shape[1] <= 0:
+        raise ValueError('points must have shape (n, d) with d >= 1')
     if pts.shape[0] != constraints.n_points:
         raise ValueError('points do not match the resolved constraint set')
+    if constraints.dim != pts.shape[1]:
+        raise ValueError('points do not match the resolved constraint dimension')
+    _require_realization_dim_3(constraints)
 
-    periodic = isinstance(domain, PeriodicCell) or (
-        isinstance(domain, OrthorhombicCell) and any(domain.periodic)
-    )
+    periodic = geometry3d(domain).has_any_periodic_axis
 
     compute_result = compute(
         pts,
@@ -146,8 +157,8 @@ def match_realized_pairs(
         annotate_face_properties(cells, domain)
 
     empty_by_id: dict[int, bool] = {}
-    shifts_by_pair: dict[tuple[int, int], set[tuple[int, int, int]]] = {}
-    measure_by_pair_shift: dict[tuple[int, int, int, int, int], float] = {}
+    shifts_by_pair: dict[tuple[int, int], set[ShiftTuple]] = {}
+    measure_by_pair_shift: dict[MeasureKey, float] = {}
 
     for cell in cells:
         ci = int(cell['id'])
@@ -158,12 +169,10 @@ def match_realized_pairs(
             cj = int(face.get('adjacent_cell', -1))
             if cj < 0:
                 continue
-            sh = face.get('adjacent_shift', (0, 0, 0))
-            shift = (int(sh[0]), int(sh[1]), int(sh[2]))
+            shift = tuple(int(v) for v in face.get('adjacent_shift', (0, 0, 0)))
             shifts_by_pair.setdefault((ci, cj), set()).add(shift)
             if return_boundary_measure:
-                measure = float(face.get('area', 0.0))
-                measure_by_pair_shift[(ci, cj, shift[0], shift[1], shift[2])] = measure
+                measure_by_pair_shift[(ci, cj, shift)] = float(face.get('area', 0.0))
 
     m = constraints.n_constraints
     realized = np.zeros(m, dtype=bool)
@@ -171,7 +180,7 @@ def match_realized_pairs(
     realized_other_shift = np.zeros(m, dtype=bool)
     endpoint_i_empty = np.zeros(m, dtype=bool)
     endpoint_j_empty = np.zeros(m, dtype=bool)
-    realized_shifts_rows: list[tuple[tuple[int, int, int], ...]] = []
+    realized_shifts_rows: list[tuple[ShiftTuple, ...]] = []
     boundary_measure = (
         np.full(m, np.nan, dtype=np.float64) if return_boundary_measure else None
     )
@@ -180,18 +189,14 @@ def match_realized_pairs(
     for k in range(m):
         i = int(constraints.i[k])
         j = int(constraints.j[k])
-        target_shift = (
-            int(constraints.shifts[k, 0]),
-            int(constraints.shifts[k, 1]),
-            int(constraints.shifts[k, 2]),
-        )
+        target_shift = tuple(int(v) for v in constraints.shifts[k])
         endpoint_i_empty[k] = bool(empty_by_id.get(i, False))
         endpoint_j_empty[k] = bool(empty_by_id.get(j, False))
 
         forward = shifts_by_pair.get((i, j), set())
         reverse = {
-            (-sx, -sy, -sz)
-            for (sx, sy, sz) in shifts_by_pair.get((j, i), set())
+            tuple(-int(v) for v in shift)
+            for shift in shifts_by_pair.get((j, i), set())
         }
         realized_set = tuple(sorted(forward | reverse))
         realized_shifts_rows.append(realized_set)
@@ -206,16 +211,16 @@ def match_realized_pairs(
 
         if boundary_measure is not None and any_realized:
             if same:
-                key_f = (i, j, target_shift[0], target_shift[1], target_shift[2])
-                key_r = (j, i, -target_shift[0], -target_shift[1], -target_shift[2])
+                key_f = (i, j, target_shift)
+                key_r = (j, i, tuple(-int(v) for v in target_shift))
                 if key_f in measure_by_pair_shift:
                     boundary_measure[k] = measure_by_pair_shift[key_f]
                 elif key_r in measure_by_pair_shift:
                     boundary_measure[k] = measure_by_pair_shift[key_r]
             else:
                 chosen = realized_set[0]
-                key_f = (i, j, chosen[0], chosen[1], chosen[2])
-                key_r = (j, i, -chosen[0], -chosen[1], -chosen[2])
+                key_f = (i, j, chosen)
+                key_r = (j, i, tuple(-int(v) for v in chosen))
                 if key_f in measure_by_pair_shift:
                     boundary_measure[k] = measure_by_pair_shift[key_f]
                 elif key_r in measure_by_pair_shift:

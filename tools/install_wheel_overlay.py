@@ -37,7 +37,6 @@ import textwrap
 import zipfile
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_NAME = 'pyvoro2'
 PACKAGE_SRC = PROJECT_ROOT / 'src' / PACKAGE_NAME
@@ -45,7 +44,6 @@ PACKAGE_SRC = PROJECT_ROOT / 'src' / PACKAGE_NAME
 
 class OverlayError(RuntimeError):
     """Raised when the dev overlay cannot be installed."""
-
 
 
 def _candidate_site_packages() -> list[Path]:
@@ -61,7 +59,6 @@ def _candidate_site_packages() -> list[Path]:
     return out
 
 
-
 def _installed_core_path() -> Path | None:
     for site_dir in _candidate_site_packages():
         pkg_dir = site_dir / PACKAGE_NAME
@@ -71,7 +68,6 @@ def _installed_core_path() -> Path | None:
         if cores:
             return cores[0]
     return None
-
 
 
 def _copy_or_symlink(src: Path, dst: Path, *, mode: str) -> None:
@@ -84,7 +80,6 @@ def _copy_or_symlink(src: Path, dst: Path, *, mode: str) -> None:
         shutil.copy2(src, dst)
     else:  # pragma: no cover - argparse guards this
         raise OverlayError(f'unsupported mode: {mode!r}')
-
 
 
 def _extract_core_from_wheel(wheel_path: Path, target_dir: Path) -> Path:
@@ -107,7 +102,6 @@ def _extract_core_from_wheel(wheel_path: Path, target_dir: Path) -> Path:
     return target
 
 
-
 def _write_pth(repo_src: Path, *, pth_name: str) -> Path:
     site_dirs = _candidate_site_packages()
     if not site_dirs:
@@ -122,10 +116,9 @@ def _write_pth(repo_src: Path, *, pth_name: str) -> Path:
     return pth_path
 
 
-
 def _verify_overlay(repo_src: Path) -> tuple[str, str]:
     code = textwrap.dedent(
-        f'''
+        '''
         import pyvoro2
         import pyvoro2.api as api
         print(pyvoro2.__file__)
@@ -154,7 +147,6 @@ def _verify_overlay(repo_src: Path) -> tuple[str, str]:
             f'repository package directory ({core_file})'
         )
     return py_file, core_file
-
 
 
 def main() -> int:
@@ -214,7 +206,7 @@ def main() -> int:
     print(f'  package:    {py_file}')
     print(f'  core:       {core_file}')
     print(f'  .pth file:  {pth_path}')
-    print(f'  core source:{core_source_note}')
+    print(f'  core source: {core_source_note}')
     print('To remove the overlay later, delete the .pth file shown above.')
     return 0
 

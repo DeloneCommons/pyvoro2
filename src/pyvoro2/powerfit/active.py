@@ -20,6 +20,8 @@ from .solver import (
 from ..diagnostics import TessellationDiagnostics
 from ..domains import Box, OrthorhombicCell, PeriodicCell
 
+ShiftTuple = tuple[int, ...]
+
 
 def _label_value(
     values: np.ndarray,
@@ -36,6 +38,15 @@ def _boundary_value(values: np.ndarray | None, index: int) -> float | None:
     if values is None or np.isnan(values[index]):
         return None
     return float(values[index])
+
+
+def _require_self_consistent_dim_3(constraints: PairBisectorConstraints) -> None:
+    if constraints.dim != 3:
+        raise ValueError(
+            'solve_self_consistent_power_weights currently requires 3D '
+            'resolved constraints because realized-face matching still uses '
+            'the 3D tessellation backend'
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,7 +100,7 @@ class PairConstraintDiagnostics:
     realized: np.ndarray
     realized_same_shift: np.ndarray
     realized_other_shift: np.ndarray
-    realized_shifts: tuple[tuple[tuple[int, int, int], ...], ...]
+    realized_shifts: tuple[tuple[ShiftTuple, ...], ...]
     endpoint_i_empty: np.ndarray
     endpoint_j_empty: np.ndarray
     boundary_measure: np.ndarray | None
@@ -209,8 +220,8 @@ def solve_self_consistent_power_weights(
     """Iteratively refine an active pair set against realized power-diagram faces."""
 
     pts = np.asarray(points, dtype=float)
-    if pts.ndim != 2 or pts.shape[1] != 3:
-        raise ValueError('points must have shape (n, 3)')
+    if pts.ndim != 2 or pts.shape[1] <= 0:
+        raise ValueError('points must have shape (n, d) with d >= 1')
 
     if model is None:
         model = FitModel()
@@ -221,7 +232,16 @@ def solve_self_consistent_power_weights(
         resolved = constraints
         if resolved.n_points != pts.shape[0]:
             raise ValueError('resolved constraints do not match the number of points')
+        if resolved.dim != pts.shape[1]:
+            raise ValueError('resolved constraints do not match the point dimension')
+        _require_self_consistent_dim_3(resolved)
     else:
+        if pts.shape[1] != 3:
+            raise ValueError(
+                'solve_self_consistent_power_weights currently requires 3D '
+                'points; lower-dimensional resolved constraints are supported '
+                'only by fit_power_weights for now'
+            )
         resolved = resolve_pair_bisector_constraints(
             pts,
             constraints,

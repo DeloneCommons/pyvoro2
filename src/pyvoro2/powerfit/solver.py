@@ -285,7 +285,7 @@ def fit_power_weights(
         resolved = constraints
         if resolved.n_points != pts.shape[0]:
             raise ValueError('resolved constraints do not match the number of points')
-        if resolved.delta.shape[1] != pts.shape[1]:
+        if resolved.dim != pts.shape[1]:
             raise ValueError(
                 'resolved constraints do not match the point dimension'
             )
@@ -531,7 +531,9 @@ def _fit_power_weights_resolved(
         pred_fraction, pred_position, pred = _predict_measurements(weights, constraints)
         residuals = pred - geom.target
         if not np.all(np.isfinite(residuals)):
-            raise _NumericalFailure('predicted measurements or residuals are non-finite')
+            raise _NumericalFailure(
+                'predicted measurements or residuals are non-finite'
+            )
         rms = float(np.sqrt(np.mean(residuals * residuals))) if residuals.size else 0.0
         mx = float(np.max(np.abs(residuals))) if residuals.size else 0.0
     except (np.linalg.LinAlgError, FloatingPointError, _NumericalFailure) as exc:
@@ -841,7 +843,9 @@ def _solve_component_analytic(
         rhs += lam * w0
 
     if n_c == 1:
-        return w0.astype(np.float64, copy=True) if lam > 0 else np.zeros(1, dtype=np.float64)
+        if lam > 0:
+            return w0.astype(np.float64, copy=True)
+        return np.zeros(1, dtype=np.float64)
 
     if lam > 0:
         return np.linalg.solve(L, rhs).astype(np.float64)
@@ -896,7 +900,11 @@ def _solve_component_admm(
     if free.size and not np.all(np.isfinite(Mf)):
         raise _NumericalFailure('ADMM system matrix contains non-finite values')
     try:
-        chol = np.linalg.cholesky(Mf) if free.size else np.zeros((0, 0), dtype=np.float64)
+        chol = (
+            np.linalg.cholesky(Mf)
+            if free.size
+            else np.zeros((0, 0), dtype=np.float64)
+        )
     except np.linalg.LinAlgError:
         Mf2 = Mf + 1e-12 * np.eye(Mf.shape[0])
         try:
@@ -1012,7 +1020,9 @@ def _prox_edge_objective(
         g = fp_y * alpha + rho * (z - v)
         gp = fpp_y * (alpha**2) + rho
         if not np.all(np.isfinite(gp)) or np.any(np.abs(gp) < 1e-18):
-            raise _NumericalFailure('prox Newton derivative became singular or non-finite')
+            raise _NumericalFailure(
+                'prox Newton derivative became singular or non-finite'
+            )
         step = g / gp
         if not np.all(np.isfinite(step)):
             raise _NumericalFailure('prox Newton step became non-finite')

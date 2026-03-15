@@ -148,7 +148,6 @@ def test_duplicate_check_argument_warns(monkeypatch) -> None:
         )
 
 
-
 def test_compute_rejects_invalid_block_specification() -> None:
     dom = _box()
     pts = np.array([[0.1, 0.2, 0.3], [0.7, 0.6, 0.5]], dtype=float)
@@ -217,7 +216,6 @@ def test_public_wrappers_reject_invalid_duplicate_check(func, kwargs) -> None:
         else:
             queries = kwargs.pop('queries')
             func(pts, queries, domain=dom, duplicate_check='bad', **kwargs)
-
 
 
 def test_power_mode_rejects_nonfinite_radii_and_ghost_radius() -> None:

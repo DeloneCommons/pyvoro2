@@ -7,6 +7,7 @@ logic behind a small adapter makes the eventual 2D addition much less invasive.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 
 import numpy as np
 
@@ -25,6 +26,10 @@ class DomainGeometry3D:
     """
 
     domain: Domain3D | None
+
+    @property
+    def dim(self) -> int:
+        return 3
 
     @property
     def kind(self) -> str:
@@ -70,12 +75,29 @@ class DomainGeometry3D:
             return self.domain.to_internal_params()
         return None
 
+    @property
+    def lattice_vectors_cart(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return the 3D lattice/edge vectors in Cartesian coordinates."""
+
+        if self.domain is None:
+            raise ValueError('a domain is required to determine lattice vectors')
+        if isinstance(self.domain, PeriodicCell):
+            a, b, c = (
+                np.asarray(vec, dtype=np.float64).reshape(3)
+                for vec in self.domain.vectors
+            )
+            return a, b, c
+
+        (xmin, xmax), (ymin, ymax), (zmin, zmax) = self.domain.bounds
+        a = np.array([xmax - xmin, 0.0, 0.0], dtype=np.float64)
+        b = np.array([0.0, ymax - ymin, 0.0], dtype=np.float64)
+        c = np.array([0.0, 0.0, zmax - zmin], dtype=np.float64)
+        return a, b, c
+
     def remap_cart(self, points: np.ndarray) -> np.ndarray:
         pts = np.asarray(points, dtype=float)
         if self.domain is None or isinstance(self.domain, Box):
             return pts
-        if isinstance(self.domain, OrthorhombicCell):
-            return self.domain.remap_cart(pts, return_shifts=False)
         return self.domain.remap_cart(pts, return_shifts=False)
 
     def shift_to_cart(self, shifts: np.ndarray) -> np.ndarray:
@@ -84,15 +106,20 @@ class DomainGeometry3D:
             raise ValueError('shifts must have shape (m,3)')
         if self.domain is None or isinstance(self.domain, Box):
             return np.zeros((sh.shape[0], 3), dtype=np.float64)
-        if isinstance(self.domain, OrthorhombicCell):
-            a, b, c = self.domain.lattice_vectors
-        else:
-            a, b, c = (np.asarray(v, dtype=float) for v in self.domain.vectors)
+        a, b, c = self.lattice_vectors_cart
         return (
             sh[:, 0:1] * a[None, :]
             + sh[:, 1:2] * b[None, :]
             + sh[:, 2:3] * c[None, :]
         )
+
+    def shift_vector(self, shift: Sequence[int] | np.ndarray) -> np.ndarray:
+        """Return the Cartesian translation vector for one integer lattice shift."""
+
+        sh = np.asarray(shift, dtype=np.int64)
+        if sh.shape != (3,):
+            raise ValueError('shift must have shape (3,)')
+        return self.shift_to_cart(sh.reshape(1, 3)).reshape(3)
 
     def validate_shifts(self, shifts: np.ndarray) -> None:
         sh = np.asarray(shifts, dtype=np.int64)
@@ -185,9 +212,10 @@ def geometry3d(domain: Domain3D | None) -> DomainGeometry3D:
     return DomainGeometry3D(domain)
 
 
-
 def _nearest_image_shifts_orthorhombic(
-    pi: np.ndarray, pj: np.ndarray, cell: OrthorhombicCell
+    pi: np.ndarray,
+    pj: np.ndarray,
+    cell: OrthorhombicCell,
 ) -> np.ndarray:
     (xmin, xmax), (ymin, ymax), (zmin, zmax) = cell.bounds
     lengths = np.array([xmax - xmin, ymax - ymin, zmax - zmin], dtype=float)
@@ -199,7 +227,6 @@ def _nearest_image_shifts_orthorhombic(
             continue
         shifts[:, ax] = (-np.round(delta[:, ax] / lengths[ax])).astype(np.int64)
     return shifts
-
 
 
 def _nearest_image_shifts_triclinic(
