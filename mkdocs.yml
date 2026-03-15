@@ -72,13 +72,13 @@ nav:
       - Domains: guide/domains.md
       - Operations: guide/operations.md
       - Topology and graphs: guide/topology.md
-      - Power fitting: guide/inverse.md
+      - Power fitting: guide/powerfit.md
       - Visualization: guide/visualization.md
   - Examples:
       - notebooks/01_basic_compute.ipynb
       - notebooks/02_periodic_graph.ipynb
       - notebooks/03_locate_and_ghost.ipynb
-      - notebooks/04_inverse_fit.ipynb
+      - notebooks/04_powerfit.ipynb
       - notebooks/05_visualization.ipynb
   - API reference:
       - Domains: reference/domains.md
@@ -88,7 +88,7 @@ nav:
       - Duplicate check: reference/duplicates.md
       - Normalization: reference/normalize.md
       - Face properties: reference/face_properties.md
-      - Power fitting: reference/inverse.md
+      - Power fitting: reference/powerfit.md
       - Visualization: reference/viz3d.md
   - Project:
       - About: project/about.md

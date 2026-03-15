@@ -126,7 +126,7 @@ implementation-oriented details.
 | [Domains](guide/domains.md) | Which containers exist (`Box`, `OrthorhombicCell`, `PeriodicCell`) and how to choose between them. |
 | [Operations](guide/operations.md) | How to compute tessellations, assign query points, and compute probe (ghost) cells. |
 | [Topology and graphs](guide/topology.md) | How to build a neighbor graph that respects periodic images, and how normalization helps. |
-| [Power fitting](guide/inverse.md) | Fit power weights from pairwise bisector constraints, realized-face matching, and self-consistent active sets. |
+| [Power fitting](guide/powerfit.md) | Fit power weights from pairwise bisector constraints, realized-face matching, and self-consistent active sets. |
 | [Visualization](guide/visualization.md) | Optional py3Dmol helpers for debugging and exploratory analysis. |
 | [Examples (notebooks)](notebooks/01_basic_compute.ipynb) | End-to-end examples that combine the pieces above. |
 | [API reference](reference/api.md) | The full reference (docstrings). |

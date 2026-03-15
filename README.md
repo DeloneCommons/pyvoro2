@@ -133,7 +133,7 @@ implementation-oriented details.
 | [Domains](https://delonecommons.github.io/pyvoro2/guide/domains/) | Which containers exist (`Box`, `OrthorhombicCell`, `PeriodicCell`) and how to choose between them. |
 | [Operations](https://delonecommons.github.io/pyvoro2/guide/operations/) | How to compute tessellations, assign query points, and compute probe (ghost) cells. |
 | [Topology and graphs](https://delonecommons.github.io/pyvoro2/guide/topology/) | How to build a neighbor graph that respects periodic images, and how normalization helps. |
-| [Power fitting](https://delonecommons.github.io/pyvoro2/guide/inverse/) | Fit power weights from pairwise bisector constraints, realized-face matching, and self-consistent active sets. |
+| [Power fitting](https://delonecommons.github.io/pyvoro2/guide/powerfit/) | Fit power weights from pairwise bisector constraints, realized-face matching, and self-consistent active sets. |
 | [Visualization](https://delonecommons.github.io/pyvoro2/guide/visualization/) | Optional py3Dmol helpers for debugging and exploratory analysis. |
 | [Examples (notebooks)](https://delonecommons.github.io/pyvoro2/notebooks/01_basic_compute/) | End-to-end examples that combine the pieces above. |
 | [API reference](https://delonecommons.github.io/pyvoro2/reference/api/) | The full reference (docstrings). |
