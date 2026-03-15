@@ -72,6 +72,7 @@ class PairConstraintDiagnostics:
     realized: np.ndarray
     realized_same_shift: np.ndarray
     realized_other_shift: np.ndarray
+    realized_shifts: tuple[tuple[tuple[int, int, int], ...], ...]
     endpoint_i_empty: np.ndarray
     endpoint_j_empty: np.ndarray
     boundary_measure: np.ndarray | None
@@ -220,6 +221,7 @@ def solve_self_consistent_power_weights(
                 realized=final_realized.realized.copy(),
                 realized_same_shift=final_realized.realized_same_shift.copy(),
                 realized_other_shift=final_realized.realized_other_shift.copy(),
+                realized_shifts=final_realized.realized_shifts,
                 endpoint_i_empty=final_realized.endpoint_i_empty.copy(),
                 endpoint_j_empty=final_realized.endpoint_j_empty.copy(),
                 boundary_measure=(
@@ -432,6 +434,7 @@ def solve_self_consistent_power_weights(
         realized=final_realized.realized.copy(),
         realized_same_shift=final_realized.realized_same_shift.copy(),
         realized_other_shift=final_realized.realized_other_shift.copy(),
+        realized_shifts=final_realized.realized_shifts,
         endpoint_i_empty=final_realized.endpoint_i_empty.copy(),
         endpoint_j_empty=final_realized.endpoint_j_empty.copy(),
         boundary_measure=(
