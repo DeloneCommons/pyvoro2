@@ -80,6 +80,8 @@ nav:
       - notebooks/03_locate_and_ghost.ipynb
       - notebooks/04_powerfit.ipynb
       - notebooks/05_visualization.ipynb
+      - notebooks/06_powerfit_reports.ipynb
+      - notebooks/07_powerfit_infeasibility.ipynb
   - API reference:
       - Domains: reference/domains.md
       - API: reference/api.md

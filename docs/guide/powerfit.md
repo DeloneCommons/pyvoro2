@@ -284,3 +284,37 @@ The current implementation is 3D because it builds on the existing Voro++-based
 power tessellation core. The **API vocabulary** is already dimension-safe:
 constraint fitting is phrased in terms of pairwise separators and boundary
 measure rather than chemistry-specific or 3D-only semantics.
+
+### Objective-model scope for 0.5.x
+
+The 0.5.x series intentionally keeps the built-in objective family compact:
+
+- mismatch terms: `SquaredLoss`, `HuberLoss`
+- hard feasibility: `Interval`, `FixedValue`
+- soft penalties: `SoftIntervalPenalty`, `ExponentialBoundaryPenalty`,
+  `ReciprocalBoundaryPenalty`
+- regularization: `L2Regularization`
+
+That set is broad enough for the current generic inverse workflow while keeping
+hard-feasibility checks, residual diagnostics, and solver behavior easy to
+reason about.
+
+Additional mismatch or penalty families should wait until downstream packages
+validate a concrete need for them. In particular, 0.5.x does **not** try to
+freeze an open-ended callback API for arbitrary user-defined objectives.
+
+## Worked example notebooks
+
+Two focused notebooks complement the guide:
+
+- [`06_powerfit_reports.ipynb`](../notebooks/06_powerfit_reports.ipynb)
+  shows how to export low-level fits, realized-pair diagnostics, and
+  self-consistent active-set results as rows or JSON-friendly reports.
+- [`07_powerfit_infeasibility.ipynb`](../notebooks/07_powerfit_infeasibility.ipynb)
+  shows how contradictory hard restrictions are reported through
+  `status`, `is_infeasible`, `conflict`, and report bundles.
+
+These examples are aimed at downstream packages that want to keep the solver
+API numerical while still producing human-readable logs, cached payloads, or UI
+views.
+

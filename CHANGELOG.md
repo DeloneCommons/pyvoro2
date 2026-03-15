@@ -21,6 +21,7 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 - The inverse-fitting surface is now math-oriented and chemistry-agnostic.
 - Documentation and examples now describe the unified power-fitting workflow.
+- The 0.5.x objective-model scope is explicitly documented around the current built-in convex model family.
 
 ## [0.4.2] - 2026-03-04
 

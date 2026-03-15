@@ -90,6 +90,7 @@ def test_active_set_report_collects_nested_diagnostics_and_history():
     assert report['tessellation_diagnostics'] is not None
     assert report_via_method == report
 
+
 def test_report_json_helpers_roundtrip_plain_report(tmp_path):
     from pyvoro2 import (
         Box,
@@ -133,4 +134,3 @@ def test_report_json_helpers_roundtrip_plain_report(tmp_path):
     out_path = tmp_path / 'fit_report.json'
     write_report_json(report, out_path, sort_keys=True)
     assert json.loads(out_path.read_text(encoding='utf-8')) == loaded
-

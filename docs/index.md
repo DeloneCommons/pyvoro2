@@ -128,7 +128,7 @@ implementation-oriented details.
 | [Topology and graphs](guide/topology.md) | How to build a neighbor graph that respects periodic images, and how normalization helps. |
 | [Power fitting](guide/powerfit.md) | Fit power weights from pairwise bisector constraints, realized-face matching, and self-consistent active sets. |
 | [Visualization](guide/visualization.md) | Optional py3Dmol helpers for debugging and exploratory analysis. |
-| [Examples (notebooks)](notebooks/01_basic_compute.ipynb) | End-to-end examples that combine the pieces above. |
+| [Examples (notebooks)](notebooks/01_basic_compute.ipynb) | End-to-end examples, including focused power-fitting notebooks for reports and infeasibility witnesses. |
 | [API reference](reference/api.md) | The full reference (docstrings). |
 
 ## Installation

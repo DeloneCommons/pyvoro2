@@ -9,17 +9,18 @@ This page lists intended future improvements. It is not a guarantee of timelines
 Voro++ ships a dedicated 2D implementation. pyvoro2 plans to expose it as a **separate extension
 module** (e.g. `_core2d`) so that 2D and 3D code do not collide at link time.
 
-### Inverse-fitting iteration helpers
+### Powerfit objective-model expansion
 
-The inverse fitter can report constraints that do not become active faces (“inactive constraints”).
-A future iteration could provide helper routines to:
+The self-consistent active-set solver is now part of the package, so the next
+powerfit design question is not iteration support but **objective-model scope**.
 
-1) fit weights
-2) compute the diagram
-3) keep only active neighbor constraints
-4) refit
+For the 0.5.x series, the built-in family is intentionally compact: quadratic
+and Huber mismatch terms, interval and fixed-value hard feasibility,
+outside-interval penalties, near-boundary penalties, and L2 regularization.
 
-This would make it easier to use the inverse workflow as an iterative model-fitting loop.
+Additional mismatch or penalty families should be added only after downstream
+packages validate a concrete need for them. The goal is to expand from real
+workflows rather than to freeze a broad callback surface too early.
 
 ## Potential
 
