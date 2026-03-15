@@ -41,3 +41,26 @@ def test_resolve_pair_bisector_constraints_rejects_shifts_on_nonperiodic_axes():
             domain=domain,
             image='given_only',
         )
+
+
+def test_resolved_constraints_export_records_and_ids():
+    from pyvoro2 import Box, resolve_pair_bisector_constraints
+
+    pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
+    domain = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
+    resolved = resolve_pair_bisector_constraints(
+        pts,
+        [(10, 20, 0.25)],
+        ids=[10, 20],
+        index_mode='id',
+        measurement='fraction',
+        domain=domain,
+    )
+
+    rows_idx = resolved.to_records()
+    rows_id = resolved.to_records(use_ids=True)
+    assert rows_idx[0]['site_i'] == 0
+    assert rows_idx[0]['site_j'] == 1
+    assert rows_id[0]['site_i'] == 10
+    assert rows_id[0]['site_j'] == 20
+    assert rows_id[0]['measurement'] == 'fraction'

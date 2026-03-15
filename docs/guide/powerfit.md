@@ -132,8 +132,14 @@ simultaneously, the fit returns:
 - `status == 'infeasible_hard_constraints'`
 - `hard_feasible == False`
 - `weights is None`
+- `conflict` with a compact contradiction witness
+- `conflicting_constraint_indices` for the participating rows
 
 instead of pretending the issue is merely slow convergence.
+
+Both low-level fits and active-set results also provide `to_records(...)` helpers
+that turn per-constraint diagnostics into plain Python rows for downstream
+packages, table exporters, or custom reporting.
 
 ## Step 4: check which pairs are actually realized
 
@@ -226,6 +232,22 @@ Status labels are intentionally generic, for example:
 - `realized_other_shift`
 - `active_unrealized`
 - `cycle_member`
+
+## Exporting diagnostics as plain records
+
+Downstream packages often want rows rather than structured NumPy-heavy result
+objects. The power-fitting package now exposes lightweight record exporters:
+
+```python
+rows = result.to_records(use_ids=True)
+fit_rows = result.fit.to_records(result.constraints, use_ids=True)
+realized_rows = result.realized.to_records(result.constraints, use_ids=True)
+conflict_rows = result.fit.conflict.to_records(ids=result.constraints.ids)
+```
+
+These helpers keep the core API numerical while making it straightforward to
+feed results into custom logs, JSON encoders, or dataframe construction in a
+downstream package.
 
 ## Current scope
 

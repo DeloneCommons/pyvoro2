@@ -29,6 +29,38 @@ class RealizedPairDiagnostics:
     cells: list[dict[str, Any]] | None
     tessellation_diagnostics: TessellationDiagnostics | None
 
+    def to_records(
+        self,
+        constraints: PairBisectorConstraints,
+        *,
+        use_ids: bool = False,
+    ) -> tuple[dict[str, object], ...]:
+        """Return one plain-Python record per candidate pair."""
+
+        if constraints.n_constraints != int(self.realized.shape[0]):
+            raise ValueError('constraints do not match the realized diagnostics length')
+        left, right = constraints.pair_labels(use_ids=use_ids)
+        rows: list[dict[str, object]] = []
+        left_is_int = np.issubdtype(np.asarray(left).dtype, np.integer)
+        right_is_int = np.issubdtype(np.asarray(right).dtype, np.integer)
+        for k in range(constraints.n_constraints):
+            rows.append(
+                {
+                    'constraint_index': int(k),
+                    'site_i': int(left[k]) if left_is_int else left[k].item() if hasattr(left[k], 'item') else left[k],
+                    'site_j': int(right[k]) if right_is_int else right[k].item() if hasattr(right[k], 'item') else right[k],
+                    'shift': tuple(int(v) for v in constraints.shifts[k]),
+                    'realized': bool(self.realized[k]),
+                    'realized_same_shift': bool(self.realized_same_shift[k]),
+                    'realized_other_shift': bool(self.realized_other_shift[k]),
+                    'realized_shifts': tuple(tuple(int(v) for v in sh) for sh in self.realized_shifts[k]),
+                    'endpoint_i_empty': bool(self.endpoint_i_empty[k]),
+                    'endpoint_j_empty': bool(self.endpoint_j_empty[k]),
+                    'boundary_measure': (None if self.boundary_measure is None or np.isnan(self.boundary_measure[k]) else float(self.boundary_measure[k])),
+                }
+            )
+        return tuple(rows)
+
 
 
 def match_realized_pairs(

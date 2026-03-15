@@ -46,9 +46,59 @@ class PowerWeightFitResult:
     solver: str
     n_iter: int
     converged: bool
-    infeasible_constraints: tuple[int, ...] | None
     conflict: 'HardConstraintConflict | None'
     warnings: tuple[str, ...]
+
+    @property
+    def is_optimal(self) -> bool:
+        """Whether the fit terminated with a final solution."""
+
+        return self.status == 'optimal'
+
+    @property
+    def is_infeasible(self) -> bool:
+        """Whether hard feasibility failed before optimization."""
+
+        return self.status == 'infeasible_hard_constraints'
+
+    @property
+    def conflicting_constraint_indices(self) -> tuple[int, ...]:
+        """Constraint rows participating in the infeasibility witness."""
+
+        if self.conflict is None:
+            return tuple()
+        return self.conflict.constraint_indices
+
+    def to_records(
+        self,
+        constraints: PairBisectorConstraints,
+        *,
+        use_ids: bool = False,
+    ) -> tuple[dict[str, object], ...]:
+        """Return one plain-Python record per fitted constraint row."""
+
+        if constraints.n_constraints != int(self.target.shape[0]):
+            raise ValueError('constraints do not match the fit result length')
+        left, right = constraints.pair_labels(use_ids=use_ids)
+        rows: list[dict[str, object]] = []
+        left_is_int = np.issubdtype(np.asarray(left).dtype, np.integer)
+        right_is_int = np.issubdtype(np.asarray(right).dtype, np.integer)
+        for k in range(constraints.n_constraints):
+            rows.append(
+                {
+                    'constraint_index': int(k),
+                    'site_i': int(left[k]) if left_is_int else left[k].item() if hasattr(left[k], 'item') else left[k],
+                    'site_j': int(right[k]) if right_is_int else right[k].item() if hasattr(right[k], 'item') else right[k],
+                    'shift': tuple(int(v) for v in constraints.shifts[k]),
+                    'measurement': self.measurement,
+                    'target': float(self.target[k]),
+                    'predicted': None if self.predicted is None else float(self.predicted[k]),
+                    'predicted_fraction': (None if self.predicted_fraction is None else float(self.predicted_fraction[k])),
+                    'predicted_position': (None if self.predicted_position is None else float(self.predicted_position[k])),
+                    'residual': None if self.residuals is None else float(self.residuals[k]),
+                }
+            )
+        return tuple(rows)
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +115,19 @@ class HardConstraintConflictTerm:
     relation: Literal['<=', '>=']
     bound_value: float
 
+    def to_record(self, *, ids: np.ndarray | None = None) -> dict[str, object]:
+        """Return a plain-Python record for this conflict term."""
+
+        site_i = int(self.site_i) if ids is None else ids[self.site_i].item()
+        site_j = int(self.site_j) if ids is None else ids[self.site_j].item()
+        return {
+            'constraint_index': int(self.constraint_index),
+            'site_i': site_i,
+            'site_j': site_j,
+            'relation': self.relation,
+            'bound_value': float(self.bound_value),
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class HardConstraintConflict:
@@ -80,6 +143,11 @@ class HardConstraintConflict:
         """Sorted unique input rows participating in the conflict."""
 
         return tuple(sorted({int(term.constraint_index) for term in self.terms}))
+
+    def to_records(self, *, ids: np.ndarray | None = None) -> tuple[dict[str, object], ...]:
+        """Return plain-Python records for the witness terms."""
+
+        return tuple(term.to_record(ids=ids) for term in self.terms)
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,7 +314,6 @@ def _fit_power_weights_resolved(
             z_hi,
         )
         if not feasible:
-            infeasible_idx = None if conflict is None else conflict.constraint_indices
             warnings_list.append('hard feasibility check failed before optimization')
             if conflict is not None:
                 warnings_list.append(conflict.message)
@@ -268,13 +335,10 @@ def _fit_power_weights_resolved(
                 solver='none',
                 n_iter=0,
                 converged=False,
-                infeasible_constraints=infeasible_idx,
                 conflict=conflict,
                 warnings=tuple(warnings_list),
             )
-        infeasible_idx = None
     else:
-        infeasible_idx = None
         conflict = None
 
     if m == 0:
@@ -302,7 +366,6 @@ def _fit_power_weights_resolved(
             solver='analytic',
             n_iter=0,
             converged=True,
-            infeasible_constraints=infeasible_idx,
             conflict=conflict,
             warnings=tuple(warnings_list),
         )
@@ -412,7 +475,6 @@ def _fit_power_weights_resolved(
         solver=solver_eff,
         n_iter=int(n_iter_max),
         converged=bool(converged_all),
-        infeasible_constraints=infeasible_idx,
         conflict=conflict,
         warnings=tuple(warnings_list),
     )

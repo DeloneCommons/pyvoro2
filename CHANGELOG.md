@@ -9,6 +9,8 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 ### Added
 
 - New `pyvoro2.powerfit` API for inverse power fitting from generic pairwise bisector constraints.
+- Power-fitting results now export plain-Python record rows for downstream reporting and diagnostics.
+- Hard infeasibility reporting is simplified around explicit contradiction witnesses.
 - `resolve_pair_bisector_constraints(...)` as a reusable low-level constraint-resolution primitive.
 - `fit_power_weights(...)` with configurable mismatch, hard feasibility, soft penalties, and explicit infeasibility reporting.
 - `match_realized_pairs(...)` for purely geometric realized-face matching with optional tessellation diagnostics.

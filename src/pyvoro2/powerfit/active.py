@@ -83,6 +83,43 @@ class PairConstraintDiagnostics:
     marginal: np.ndarray
     status: tuple[str, ...]
 
+    def to_records(self, *, ids: np.ndarray | None = None) -> tuple[dict[str, object], ...]:
+        """Return one plain-Python record per candidate pair."""
+
+        rows: list[dict[str, object]] = []
+        for k in range(int(self.site_i.shape[0])):
+            site_i = int(self.site_i[k]) if ids is None else ids[int(self.site_i[k])].item()
+            site_j = int(self.site_j[k]) if ids is None else ids[int(self.site_j[k])].item()
+            rows.append(
+                {
+                    'constraint_index': int(k),
+                    'site_i': site_i,
+                    'site_j': site_j,
+                    'shift': tuple(int(v) for v in self.shift[k]),
+                    'target': float(self.target[k]),
+                    'confidence': float(self.confidence[k]),
+                    'predicted': float(self.predicted[k]),
+                    'predicted_fraction': float(self.predicted_fraction[k]),
+                    'predicted_position': float(self.predicted_position[k]),
+                    'residual': float(self.residuals[k]),
+                    'active': bool(self.active[k]),
+                    'realized': bool(self.realized[k]),
+                    'realized_same_shift': bool(self.realized_same_shift[k]),
+                    'realized_other_shift': bool(self.realized_other_shift[k]),
+                    'realized_shifts': tuple(tuple(int(v) for v in sh) for sh in self.realized_shifts[k]),
+                    'endpoint_i_empty': bool(self.endpoint_i_empty[k]),
+                    'endpoint_j_empty': bool(self.endpoint_j_empty[k]),
+                    'boundary_measure': (None if self.boundary_measure is None or np.isnan(self.boundary_measure[k]) else float(self.boundary_measure[k])),
+                    'toggle_count': int(self.toggle_count[k]),
+                    'realized_toggle_count': int(self.realized_toggle_count[k]),
+                    'first_realized_iter': int(self.first_realized_iter[k]),
+                    'last_realized_iter': int(self.last_realized_iter[k]),
+                    'marginal': bool(self.marginal[k]),
+                    'status': self.status[k],
+                }
+            )
+        return tuple(rows)
+
 
 @dataclass(frozen=True, slots=True)
 class SelfConsistentPowerFitResult:
@@ -103,6 +140,12 @@ class SelfConsistentPowerFitResult:
     tessellation_diagnostics: TessellationDiagnostics | None
     history: tuple[ActiveSetIteration, ...] | None
     warnings: tuple[str, ...]
+
+    def to_records(self, *, use_ids: bool = False) -> tuple[dict[str, object], ...]:
+        """Return one plain-Python record per candidate pair."""
+
+        ids = self.constraints.ids if use_ids else None
+        return self.diagnostics.to_records(ids=ids)
 
 
 

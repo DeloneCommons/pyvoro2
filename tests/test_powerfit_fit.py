@@ -139,7 +139,8 @@ def test_infeasible_hard_constraints_are_reported():
     assert res.status == 'infeasible_hard_constraints'
     assert res.hard_feasible is False
     assert res.weights is None
-    assert res.infeasible_constraints is not None
+    assert res.is_infeasible is True
+    assert res.conflicting_constraint_indices == (0, 1, 2)
 
 
 def test_huber_loss_is_available_as_an_alternative_mismatch():

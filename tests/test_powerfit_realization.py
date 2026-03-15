@@ -125,3 +125,22 @@ def test_match_realized_pairs_reports_other_shift_when_same_pair_is_realized_per
     assert bool(diag.realized_other_shift[0]) is True
     assert (-1, 0, 0) in diag.realized_shifts[0]
     assert (1, 0, 0) not in diag.realized_shifts[0]
+
+
+def test_realized_pair_diagnostics_export_records():
+    from pyvoro2 import Box, match_realized_pairs, resolve_pair_bisector_constraints
+
+    pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
+    box = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
+    constraints = resolve_pair_bisector_constraints(
+        pts, [(11, 22, 0.5)], ids=[11, 22], index_mode='id', measurement='fraction', domain=box
+    )
+
+    realized = match_realized_pairs(
+        pts, domain=box, radii=np.array([1.0, 1.0]), constraints=constraints
+    )
+    rows = realized.to_records(constraints, use_ids=True)
+    assert len(rows) == 1
+    assert rows[0]['site_i'] == 11
+    assert rows[0]['site_j'] == 22
+    assert rows[0]['realized'] is True

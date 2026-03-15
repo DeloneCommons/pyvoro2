@@ -68,6 +68,41 @@ class PairBisectorConstraints:
     def n_constraints(self) -> int:
         return int(self.i.shape[0])
 
+    def pair_labels(self, *, use_ids: bool = False) -> tuple[np.ndarray, np.ndarray]:
+        """Return the left/right pair labels as indices or external ids."""
+
+        if use_ids:
+            if self.ids is None:
+                raise ValueError('use_ids=True requires ids on the resolved constraint set')
+            return self.ids[self.i].copy(), self.ids[self.j].copy()
+        return self.i.copy(), self.j.copy()
+
+    def to_records(self, *, use_ids: bool = False) -> tuple[dict[str, object], ...]:
+        """Return one plain-Python record per constraint row."""
+
+        left, right = self.pair_labels(use_ids=use_ids)
+        rows: list[dict[str, object]] = []
+        left_is_int = np.issubdtype(np.asarray(left).dtype, np.integer)
+        right_is_int = np.issubdtype(np.asarray(right).dtype, np.integer)
+        for k in range(self.n_constraints):
+            rows.append(
+                {
+                    'constraint_index': int(k),
+                    'site_i': int(left[k]) if left_is_int else left[k].item() if hasattr(left[k], 'item') else left[k],
+                    'site_j': int(right[k]) if right_is_int else right[k].item() if hasattr(right[k], 'item') else right[k],
+                    'shift': tuple(int(v) for v in self.shifts[k]),
+                    'target': float(self.target[k]),
+                    'confidence': float(self.confidence[k]),
+                    'measurement': self.measurement,
+                    'distance': float(self.distance[k]),
+                    'target_fraction': float(self.target_fraction[k]),
+                    'target_position': float(self.target_position[k]),
+                    'input_index': int(self.input_index[k]),
+                    'explicit_shift': bool(self.explicit_shift[k]),
+                }
+            )
+        return tuple(rows)
+
     def subset(self, mask: np.ndarray) -> PairBisectorConstraints:
         """Return a subset with row order preserved."""
 

@@ -189,3 +189,32 @@ def test_self_consistent_solver_detects_active_mask_cycle(monkeypatch):
     assert res.cycle_length == 2
     assert set(res.marginal_constraints) == {0, 1}
     assert res.diagnostics.status == ('cycle_member', 'cycle_member')
+
+
+def test_self_consistent_result_exports_records_with_ids():
+    from pyvoro2 import (
+        ActiveSetOptions,
+        Box,
+        FitModel,
+        Interval,
+        solve_self_consistent_power_weights,
+    )
+
+    pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
+    box = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
+    res = solve_self_consistent_power_weights(
+        pts,
+        [(101, 202, 0.5)],
+        ids=[101, 202],
+        index_mode='id',
+        measurement='fraction',
+        domain=box,
+        model=FitModel(feasible=Interval(0.0, 1.0)),
+        options=ActiveSetOptions(add_after=1, drop_after=1, max_iter=3),
+    )
+
+    rows = res.to_records(use_ids=True)
+    assert len(rows) == 1
+    assert rows[0]['site_i'] == 101
+    assert rows[0]['site_j'] == 202
+    assert rows[0]['status'] in {'stable_active', 'stable_inactive', 'active_unrealized'}
