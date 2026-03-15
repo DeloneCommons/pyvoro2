@@ -179,7 +179,7 @@ Tip: you can combine markers, e.g. `pytest -m "fuzz and pyvoro" --fuzz-n 100`.
 
 ## Project status
 
-pyvoro2 is currently in **alpha**.
+pyvoro2 is currently in **beta**.
 
 The core tessellation modes (standard and power/Laguerre) are stable, and a large
 part of the work in this repository focuses on tests and documentation.

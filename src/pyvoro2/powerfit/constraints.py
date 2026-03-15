@@ -8,6 +8,7 @@ from typing import Literal, Sequence
 import numpy as np
 
 from ..domains import Box, OrthorhombicCell, PeriodicCell
+from .._domain_geometry import geometry3d
 
 ConstraintInput = Sequence[
     tuple[int, int, float] | tuple[int, int, float, tuple[int, int, int]]
@@ -66,8 +67,10 @@ class PairBisectorConstraints:
         m = int(self.i.shape[0])
         if self.i.shape != (m,) or self.j.shape != (m,):
             raise ValueError('PairBisectorConstraints.i/j must have shape (m,)')
-        if self.shifts.shape != (m, 3):
-            raise ValueError('PairBisectorConstraints.shifts must have shape (m, 3)')
+        if self.shifts.ndim != 2 or self.shifts.shape[0] != m:
+            raise ValueError(
+                'PairBisectorConstraints.shifts must have shape (m, d)'
+            )
         for name in (
             'target',
             'confidence',
@@ -81,8 +84,12 @@ class PairBisectorConstraints:
             arr = getattr(self, name)
             if arr.shape != (m,):
                 raise ValueError(f'PairBisectorConstraints.{name} must have shape (m,)')
-        if self.delta.shape != (m, 3):
-            raise ValueError('PairBisectorConstraints.delta must have shape (m, 3)')
+        if self.delta.ndim != 2 or self.delta.shape[0] != m:
+            raise ValueError('PairBisectorConstraints.delta must have shape (m, d)')
+        if self.delta.shape[1] != self.shifts.shape[1]:
+            raise ValueError(
+                'PairBisectorConstraints.delta and shifts must use the same dimension'
+            )
         if self.measurement not in ('fraction', 'position'):
             raise ValueError('measurement must be "fraction" or "position"')
         for name in (
@@ -232,6 +239,7 @@ def resolve_pair_bisector_constraints(
         ids=ids_arr,
         index_mode=index_mode,
         allow_empty=allow_empty,
+        shift_dim=pts.shape[1],
     )
 
     target_arr = np.asarray(target, dtype=np.float64)
@@ -266,7 +274,7 @@ def resolve_pair_bisector_constraints(
     if m == 0:
         zeros_i = np.zeros(0, dtype=np.int64)
         zeros_f = np.zeros(0, dtype=np.float64)
-        zeros_s = np.zeros((0, 3), dtype=np.int64)
+        zeros_s = np.zeros((0, pts.shape[1]), dtype=np.int64)
         zeros_b = np.zeros(0, dtype=bool)
         return PairBisectorConstraints(
             n_points=int(pts.shape[0]),
@@ -278,7 +286,7 @@ def resolve_pair_bisector_constraints(
             measurement=measurement,
             distance=zeros_f,
             distance2=zeros_f,
-            delta=np.zeros((0, 3), dtype=np.float64),
+            delta=np.zeros((0, pts.shape[1]), dtype=np.float64),
             target_fraction=zeros_f,
             target_position=zeros_f,
             input_index=zeros_i,
@@ -333,6 +341,7 @@ def _parse_constraints(
     ids: Sequence[int] | None,
     index_mode: Literal['index', 'id'],
     allow_empty: bool,
+    shift_dim: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, tuple[str, ...]]:
     """Parse raw tuple/list constraints.
 
@@ -357,7 +366,7 @@ def _parse_constraints(
     i_idx = np.empty(m, dtype=np.int64)
     j_idx = np.empty(m, dtype=np.int64)
     val = np.empty(m, dtype=np.float64)
-    shifts = np.zeros((m, 3), dtype=np.int64)
+    shifts = np.zeros((m, shift_dim), dtype=np.int64)
     shift_given = np.zeros(m, dtype=bool)
     warnings: list[str] = []
 
@@ -385,9 +394,11 @@ def _parse_constraints(
 
         if len(c) == 4:
             sh = c[3]
-            if not (isinstance(sh, tuple) or isinstance(sh, list)) or len(sh) != 3:
-                raise ValueError(f'constraint {k} shift must be a length-3 tuple')
-            shifts[k] = (int(sh[0]), int(sh[1]), int(sh[2]))
+            if not (isinstance(sh, tuple) or isinstance(sh, list)) or len(sh) != shift_dim:
+                raise ValueError(
+                    f'constraint {k} shift must be a length-{shift_dim} tuple'
+                )
+            shifts[k] = tuple(int(v) for v in sh)
             shift_given[k] = True
 
     return i_idx, j_idx, val, shifts, shift_given, tuple(warnings)
@@ -402,13 +413,7 @@ def maybe_remap_points(
 def _maybe_remap_points(
     points: np.ndarray, domain: Box | OrthorhombicCell | PeriodicCell | None
 ) -> np.ndarray:
-    if domain is None:
-        return np.asarray(points, dtype=float)
-    if isinstance(domain, PeriodicCell):
-        return domain.remap_cart(points, return_shifts=False)
-    if isinstance(domain, OrthorhombicCell):
-        return domain.remap_cart(points, return_shifts=False)
-    return np.asarray(points, dtype=float)
+    return geometry3d(domain).remap_cart(points)
 
 
 def _resolve_constraint_shifts(
@@ -426,6 +431,7 @@ def _resolve_constraint_shifts(
 
     m = i_idx.shape[0]
     warnings: list[str] = []
+    geom = geometry3d(domain)
 
     shifts = np.asarray(shifts, dtype=np.int64)
     if shifts.shape != (m, 3):
@@ -434,14 +440,8 @@ def _resolve_constraint_shifts(
     if shift_given.shape != (m,):
         raise ValueError('shift_given must have shape (m,)')
 
-    if domain is None:
-        if np.any(shifts[shift_given] != 0):
-            raise ValueError('constraint shifts require a periodic domain')
-        return np.zeros((m, 3), dtype=np.int64), tuple(warnings)
-
-    if isinstance(domain, Box):
-        if np.any(shifts[shift_given] != 0):
-            raise ValueError('Box domain does not support periodic shifts')
+    if geom.kind in ('none', 'box'):
+        geom.validate_shifts(shifts[shift_given])
         return np.zeros((m, 3), dtype=np.int64), tuple(warnings)
 
     shifts2 = shifts.copy()
@@ -450,7 +450,7 @@ def _resolve_constraint_shifts(
     if image == 'given_only':
         if np.any(~provided_mask):
             raise ValueError('some constraints are missing shifts (image="given_only")')
-        _validate_shifts_against_domain(shifts2, domain)
+        geom.validate_shifts(shifts2)
         return shifts2, tuple(warnings)
 
     if image != 'nearest':
@@ -460,96 +460,27 @@ def _resolve_constraint_shifts(
 
     missing = ~provided_mask
     if np.any(missing):
-        if isinstance(domain, OrthorhombicCell):
-            shifts2[missing] = _nearest_image_shifts_orthorhombic(
-                points[i_idx[missing]],
-                points[j_idx[missing]],
-                domain,
-            )
-        elif isinstance(domain, PeriodicCell):
-            shifts2[missing] = _nearest_image_shifts_triclinic(
-                points[i_idx[missing]],
-                points[j_idx[missing]],
-                domain,
-                search=image_search,
-            )
-        else:
-            raise ValueError('unsupported domain type')
+        resolved, boundary_hits = geom.nearest_image_shifts(
+            points[i_idx[missing]],
+            points[j_idx[missing]],
+            search=image_search,
+        )
+        shifts2[missing] = resolved
         warnings.append(
             'some constraints did not specify shifts; using nearest-image shifts'
         )
+        if geom.is_triclinic and np.any(boundary_hits):
+            warnings.append(
+                'some nearest-image shifts touch the image_search boundary; '
+                'increase image_search for extra safety in skewed triclinic cells'
+            )
 
-    _validate_shifts_against_domain(shifts2, domain)
+    geom.validate_shifts(shifts2)
     return shifts2, tuple(warnings)
 
-
-def _validate_shifts_against_domain(
-    shifts: np.ndarray, domain: Box | OrthorhombicCell | PeriodicCell
-) -> None:
-    if isinstance(domain, OrthorhombicCell):
-        per = domain.periodic
-        for ax in range(3):
-            if not per[ax] and np.any(shifts[:, ax] != 0):
-                raise ValueError(
-                    'shifts on non-periodic axes must be 0 for OrthorhombicCell'
-                )
-
-
-def _nearest_image_shifts_orthorhombic(
-    pi: np.ndarray, pj: np.ndarray, cell: OrthorhombicCell
-) -> np.ndarray:
-    (xmin, xmax), (ymin, ymax), (zmin, zmax) = cell.bounds
-    L = np.array([xmax - xmin, ymax - ymin, zmax - zmin], dtype=float)
-    per = np.array(cell.periodic, dtype=bool)
-    delta = pj - pi
-    s = np.zeros_like(delta, dtype=np.int64)
-    for ax in range(3):
-        if not per[ax]:
-            continue
-        s[:, ax] = (-np.round(delta[:, ax] / L[ax])).astype(np.int64)
-    return s
-
-
-def _nearest_image_shifts_triclinic(
-    pi: np.ndarray, pj: np.ndarray, cell: PeriodicCell, *, search: int = 1
-) -> np.ndarray:
-    a, b, c = (np.asarray(v, dtype=float) for v in cell.vectors)
-    rng = np.arange(-search, search + 1, dtype=np.int64)
-    cand = np.array(np.meshgrid(rng, rng, rng, indexing='ij')).reshape(3, -1).T
-    base = pj - pi
-    trans = (
-        cand[:, 0:1] * a[None, :]
-        + cand[:, 1:2] * b[None, :]
-        + cand[:, 2:3] * c[None, :]
-    )
-    diff = base[:, None, :] + trans[None, :, :]
-    d2 = np.einsum('mki,mki->mk', diff, diff)
-    best = np.argmin(d2, axis=1)
-    return cand[best].astype(np.int64)
 
 
 def shift_to_cart(
     shifts: np.ndarray, domain: Box | OrthorhombicCell | PeriodicCell | None
 ) -> np.ndarray:
-    sh = np.asarray(shifts, dtype=np.int64)
-    if sh.ndim != 2 or sh.shape[1] != 3:
-        raise ValueError('shifts must have shape (m,3)')
-    if domain is None:
-        return np.zeros((sh.shape[0], 3), dtype=np.float64)
-    if isinstance(domain, Box):
-        return np.zeros((sh.shape[0], 3), dtype=np.float64)
-    if isinstance(domain, OrthorhombicCell):
-        a, b, c = domain.lattice_vectors
-        return (
-            sh[:, 0:1] * a[None, :]
-            + sh[:, 1:2] * b[None, :]
-            + sh[:, 2:3] * c[None, :]
-        )
-    if isinstance(domain, PeriodicCell):
-        a, b, c = (np.asarray(v, dtype=float) for v in domain.vectors)
-        return (
-            sh[:, 0:1] * a[None, :]
-            + sh[:, 1:2] * b[None, :]
-            + sh[:, 2:3] * c[None, :]
-        )
-    raise ValueError('unsupported domain')
+    return geometry3d(domain).shift_to_cart(shifts)

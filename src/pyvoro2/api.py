@@ -10,6 +10,14 @@ import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._util import domain_length_scale
+from ._inputs import (
+    coerce_id_array,
+    coerce_nonnegative_scalar_or_vector,
+    coerce_nonnegative_vector,
+    coerce_point_array,
+    validate_duplicate_check_mode,
+)
+from ._domain_geometry import geometry3d
 from .duplicates import duplicate_check as _duplicate_check
 from .diagnostics import (
     TessellationDiagnostics,
@@ -259,11 +267,7 @@ def compute(
     Raises:
         ValueError: If inputs are inconsistent or an unknown mode is provided.
     """
-    pts = np.asarray(points, dtype=np.float64)
-    if pts.ndim != 2 or pts.shape[1] != 3:
-        raise ValueError('points must have shape (n, 3)')
-    if not np.all(np.isfinite(pts)):
-        raise ValueError('points must contain only finite values')
+    pts = coerce_point_array(points, name='points', dim=3)
     _warn_if_scale_suspicious(pts=pts, domain=domain)
     n = int(pts.shape[0])
 
@@ -271,24 +275,10 @@ def compute(
     ids_internal = np.arange(n, dtype=np.int32)
 
     core = _require_core()
-
-    ids_user: np.ndarray | None
-    if ids is None:
-        ids_user = None
-    else:
-        if len(ids) != n:
-            raise ValueError('ids must have length n')
-        ids_user = np.asarray(ids, dtype=np.int64)
-        if ids_user.shape != (n,):
-            raise ValueError('ids must be a 1D sequence of length n')
-        if np.any(ids_user < 0):
-            raise ValueError('ids must be non-negative')
-        if np.unique(ids_user).size != n:
-            raise ValueError('ids must be unique')
+    ids_user = coerce_id_array(ids, n=n)
 
     # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
-    if duplicate_check not in ('off', 'warn', 'raise'):
-        raise ValueError('duplicate_check must be one of: \'off\', \'warn\', \'raise\'')
+    validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
         _duplicate_check(
             pts,
@@ -299,32 +289,12 @@ def compute(
             max_pairs=int(duplicate_max_pairs),
         )
 
-    # Determine blocks
-    if blocks is not None:
-        nx, ny, nz = blocks
-    else:
-        if block_size is None:
-            # Simple heuristic: 2.5 * mean spacing inferred from density.
-            if isinstance(domain, (Box, OrthorhombicCell)):
-                (xmin, xmax), (ymin, ymax), (zmin, zmax) = domain.bounds
-                vol = (xmax - xmin) * (ymax - ymin) * (zmax - zmin)
-                spacing = (vol / max(n, 1)) ** (1.0 / 3.0)
-            else:
-                bx, _bxy, by, _bxz, _byz, bz = domain.to_internal_params()
-                vol = bx * by * bz
-                spacing = (vol / max(n, 1)) ** (1.0 / 3.0)
-            block_size = max(1e-6, 2.5 * spacing)
-
-        if isinstance(domain, (Box, OrthorhombicCell)):
-            (xmin, xmax), (ymin, ymax), (zmin, zmax) = domain.bounds
-            nx = max(1, int((xmax - xmin) / block_size))
-            ny = max(1, int((ymax - ymin) / block_size))
-            nz = max(1, int((zmax - zmin) / block_size))
-        else:
-            bx, _bxy, by, _bxz, _byz, bz = domain.to_internal_params()
-            nx = max(1, int(bx / block_size))
-            ny = max(1, int(by / block_size))
-            nz = max(1, int(bz / block_size))
+    geom = geometry3d(domain)
+    nx, ny, nz = geom.resolve_block_counts(
+        n_sites=n,
+        blocks=blocks,
+        block_size=block_size,
+    )
 
     opts = (bool(return_vertices), bool(return_adjacency), bool(return_faces))
 
@@ -335,13 +305,9 @@ def compute(
 
     # --- Rectangular containers (Box / OrthorhombicCell) ---
     if isinstance(domain, (Box, OrthorhombicCell)):
-        bounds = domain.bounds
-        periodic_flags = (
-            (False, False, False)
-            if isinstance(domain, Box)
-            else tuple(bool(x) for x in domain.periodic)
-        )
-        is_periodic = isinstance(domain, OrthorhombicCell) and any(periodic_flags)
+        bounds = geom.bounds
+        periodic_flags = geom.periodic_axes
+        is_periodic = geom.has_any_periodic_axis
         if return_face_shifts:
             if not is_periodic:
                 raise ValueError(
@@ -369,13 +335,7 @@ def compute(
         elif mode == 'power':
             if radii is None:
                 raise ValueError('radii is required for mode="power"')
-            rr = np.asarray(radii, dtype=np.float64)
-            if rr.shape != (n,):
-                raise ValueError('radii must have shape (n,)')
-            if not np.all(np.isfinite(rr)):
-                raise ValueError('radii must contain only finite values')
-            if np.any(rr < 0):
-                raise ValueError('radii must be non-negative')
+            rr = coerce_nonnegative_vector(radii, name='radii', n=n)
             cells = core.compute_box_power(
                 pts,
                 ids_internal,
@@ -659,40 +619,18 @@ def locate(
         image of the primary domain. This is useful when you need a consistent
         nearest-image geometry for a given query.
     """
-    pts = np.asarray(points, dtype=np.float64)
-    if pts.ndim != 2 or pts.shape[1] != 3:
-        raise ValueError('points must have shape (n, 3)')
-    if not np.all(np.isfinite(pts)):
-        raise ValueError('points must contain only finite values')
+    pts = coerce_point_array(points, name='points', dim=3)
     _warn_if_scale_suspicious(pts=pts, domain=domain)
-    q = np.asarray(queries, dtype=np.float64)
-    if q.ndim != 2 or q.shape[1] != 3:
-        raise ValueError('queries must have shape (m, 3)')
-    if not np.all(np.isfinite(q)):
-        raise ValueError('queries must contain only finite values')
+    q = coerce_point_array(queries, name='queries', dim=3)
 
     n = int(pts.shape[0])
     ids_internal = np.arange(n, dtype=np.int32)
 
     core = _require_core()
-
-    ids_user: np.ndarray | None
-    if ids is None:
-        ids_user = None
-    else:
-        if len(ids) != n:
-            raise ValueError('ids must have length n')
-        ids_user = np.asarray(ids, dtype=np.int64)
-        if ids_user.shape != (n,):
-            raise ValueError('ids must be a 1D sequence of length n')
-        if np.any(ids_user < 0):
-            raise ValueError('ids must be non-negative')
-        if np.unique(ids_user).size != n:
-            raise ValueError('ids must be unique')
+    ids_user = coerce_id_array(ids, n=n)
 
     # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
-    if duplicate_check not in ('off', 'warn', 'raise'):
-        raise ValueError('duplicate_check must be one of: \'off\', \'warn\', \'raise\'')
+    validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
         _duplicate_check(
             pts,
@@ -703,40 +641,17 @@ def locate(
             max_pairs=int(duplicate_max_pairs),
         )
 
-    # Determine blocks (same heuristic as compute)
-    if blocks is not None:
-        nx, ny, nz = blocks
-    else:
-        if block_size is None:
-            if isinstance(domain, (Box, OrthorhombicCell)):
-                (xmin, xmax), (ymin, ymax), (zmin, zmax) = domain.bounds
-                vol = (xmax - xmin) * (ymax - ymin) * (zmax - zmin)
-                spacing = (vol / max(n, 1)) ** (1.0 / 3.0)
-            else:
-                bx, _bxy, by, _bxz, _byz, bz = domain.to_internal_params()
-                vol = bx * by * bz
-                spacing = (vol / max(n, 1)) ** (1.0 / 3.0)
-            block_size = max(1e-6, 2.5 * spacing)
-
-        if isinstance(domain, (Box, OrthorhombicCell)):
-            (xmin, xmax), (ymin, ymax), (zmin, zmax) = domain.bounds
-            nx = max(1, int((xmax - xmin) / block_size))
-            ny = max(1, int((ymax - ymin) / block_size))
-            nz = max(1, int((zmax - zmin) / block_size))
-        else:
-            bx, _bxy, by, _bxz, _byz, bz = domain.to_internal_params()
-            nx = max(1, int(bx / block_size))
-            ny = max(1, int(by / block_size))
-            nz = max(1, int(bz / block_size))
+    geom = geometry3d(domain)
+    nx, ny, nz = geom.resolve_block_counts(
+        n_sites=n,
+        blocks=blocks,
+        block_size=block_size,
+    )
 
     # --- Rectangular containers (Box / OrthorhombicCell) ---
     if isinstance(domain, (Box, OrthorhombicCell)):
-        bounds = domain.bounds
-        periodic_flags = (
-            (False, False, False)
-            if isinstance(domain, Box)
-            else tuple(bool(x) for x in domain.periodic)
-        )
+        bounds = geom.bounds
+        periodic_flags = geom.periodic_axes
 
         if mode == 'standard':
             found, owner_id, owner_pos = core.locate_box_standard(
@@ -745,13 +660,7 @@ def locate(
         elif mode == 'power':
             if radii is None:
                 raise ValueError('radii is required for mode="power"')
-            rr = np.asarray(radii, dtype=np.float64)
-            if rr.shape != (n,):
-                raise ValueError('radii must have shape (n,)')
-            if not np.all(np.isfinite(rr)):
-                raise ValueError('radii must contain only finite values')
-            if np.any(rr < 0):
-                raise ValueError('radii must be non-negative')
+            rr = coerce_nonnegative_vector(radii, name='radii', n=n)
             found, owner_id, owner_pos = core.locate_box_power(
                 pts, ids_internal, rr, bounds, (nx, ny, nz), periodic_flags, init_mem, q
             )
@@ -761,7 +670,7 @@ def locate(
     # --- PeriodicCell (triclinic) ---
     else:
         cell = domain
-        bx, bxy, by, bxz, byz, bz = cell.to_internal_params()
+        bx, bxy, by, bxz, byz, bz = geom.internal_params
         pts_i = cell.cart_to_internal(pts)
         q_i = cell.cart_to_internal(q)
 
@@ -777,13 +686,7 @@ def locate(
         elif mode == 'power':
             if radii is None:
                 raise ValueError('radii is required for mode="power"')
-            rr = np.asarray(radii, dtype=np.float64)
-            if rr.shape != (n,):
-                raise ValueError('radii must have shape (n,)')
-            if not np.all(np.isfinite(rr)):
-                raise ValueError('radii must contain only finite values')
-            if np.any(rr < 0):
-                raise ValueError('radii must be non-negative')
+            rr = coerce_nonnegative_vector(radii, name='radii', n=n)
             found, owner_id, owner_pos = core.locate_periodic_power(
                 pts_i,
                 ids_internal,
@@ -902,17 +805,9 @@ def ghost_cells(
     Raises:
         ValueError: if inputs are inconsistent.
     """
-    pts = np.asarray(points, dtype=np.float64)
-    if pts.ndim != 2 or pts.shape[1] != 3:
-        raise ValueError('points must have shape (n, 3)')
-    if not np.all(np.isfinite(pts)):
-        raise ValueError('points must contain only finite values')
+    pts = coerce_point_array(points, name='points', dim=3)
     _warn_if_scale_suspicious(pts=pts, domain=domain)
-    q = np.asarray(queries, dtype=np.float64)
-    if q.ndim != 2 or q.shape[1] != 3:
-        raise ValueError('queries must have shape (m, 3)')
-    if not np.all(np.isfinite(q)):
-        raise ValueError('queries must contain only finite values')
+    q = coerce_point_array(queries, name='queries', dim=3)
 
     n = int(pts.shape[0])
     m = int(q.shape[0])
@@ -920,24 +815,10 @@ def ghost_cells(
     ids_internal = np.arange(n, dtype=np.int32)
 
     core = _require_core()
-
-    ids_user: np.ndarray | None
-    if ids is None:
-        ids_user = None
-    else:
-        if len(ids) != n:
-            raise ValueError('ids must have length n')
-        ids_user = np.asarray(ids, dtype=np.int64)
-        if ids_user.shape != (n,):
-            raise ValueError('ids must be a 1D sequence of length n')
-        if np.any(ids_user < 0):
-            raise ValueError('ids must be non-negative')
-        if np.unique(ids_user).size != n:
-            raise ValueError('ids must be unique')
+    ids_user = coerce_id_array(ids, n=n)
 
     # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
-    if duplicate_check not in ('off', 'warn', 'raise'):
-        raise ValueError('duplicate_check must be one of: \'off\', \'warn\', \'raise\'')
+    validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
         _duplicate_check(
             pts,
@@ -948,42 +829,19 @@ def ghost_cells(
             max_pairs=int(duplicate_max_pairs),
         )
 
-    # Determine blocks (same heuristic as compute/locate)
-    if blocks is not None:
-        nx, ny, nz = blocks
-    else:
-        if block_size is None:
-            if isinstance(domain, (Box, OrthorhombicCell)):
-                (xmin, xmax), (ymin, ymax), (zmin, zmax) = domain.bounds
-                vol = (xmax - xmin) * (ymax - ymin) * (zmax - zmin)
-                spacing = (vol / max(n, 1)) ** (1.0 / 3.0)
-            else:
-                bx, _bxy, by, _bxz, _byz, bz = domain.to_internal_params()
-                vol = bx * by * bz
-                spacing = (vol / max(n, 1)) ** (1.0 / 3.0)
-            block_size = max(1e-6, 2.5 * spacing)
-
-        if isinstance(domain, (Box, OrthorhombicCell)):
-            (xmin, xmax), (ymin, ymax), (zmin, zmax) = domain.bounds
-            nx = max(1, int((xmax - xmin) / block_size))
-            ny = max(1, int((ymax - ymin) / block_size))
-            nz = max(1, int((zmax - zmin) / block_size))
-        else:
-            bx, _bxy, by, _bxz, _byz, bz = domain.to_internal_params()
-            nx = max(1, int(bx / block_size))
-            ny = max(1, int(by / block_size))
-            nz = max(1, int(bz / block_size))
+    geom = geometry3d(domain)
+    nx, ny, nz = geom.resolve_block_counts(
+        n_sites=n,
+        blocks=blocks,
+        block_size=block_size,
+    )
 
     opts = (bool(return_vertices), bool(return_adjacency), bool(return_faces))
 
     # --- Rectangular containers (Box / OrthorhombicCell) ---
     if isinstance(domain, (Box, OrthorhombicCell)):
-        bounds = domain.bounds
-        periodic_flags = (
-            (False, False, False)
-            if isinstance(domain, Box)
-            else tuple(bool(x) for x in domain.periodic)
-        )
+        bounds = geom.bounds
+        periodic_flags = geom.periodic_axes
 
         # Pre-wrap query points for periodic axes so the returned vertices are
         # anchored at the same site that Voro++ uses internally.
@@ -1006,21 +864,16 @@ def ghost_cells(
         elif mode == 'power':
             if radii is None:
                 raise ValueError('radii is required for mode="power"')
-            rr = np.asarray(radii, dtype=np.float64)
-            if rr.shape != (n,):
-                raise ValueError('radii must have shape (n,)')
+            rr = coerce_nonnegative_vector(radii, name='radii', n=n)
 
             if ghost_radius is None:
                 raise ValueError('ghost_radius is required for mode="power"')
-            gr = np.asarray(ghost_radius, dtype=np.float64)
-            if gr.ndim == 0:
-                gr = np.full((m,), float(gr), dtype=np.float64)
-            if gr.shape != (m,):
-                raise ValueError('ghost_radius must be a scalar or have shape (m,)')
-            if not np.all(np.isfinite(gr)):
-                raise ValueError('ghost_radius must contain only finite values')
-            if np.any(gr < 0):
-                raise ValueError('ghost_radius must be non-negative')
+            gr = coerce_nonnegative_scalar_or_vector(
+                ghost_radius,
+                name='ghost_radius',
+                n=m,
+                length_name='m',
+            )
 
             cells = core.ghost_box_power(
                 pts,
@@ -1041,7 +894,7 @@ def ghost_cells(
     # --- PeriodicCell (triclinic) ---
     else:
         cell = domain
-        bx, bxy, by, bxz, byz, bz = cell.to_internal_params()
+        bx, bxy, by, bxz, byz, bz = geom.internal_params
 
         pts_i = cell.cart_to_internal(pts)
         q_i = cell.cart_to_internal(q)
@@ -1064,25 +917,16 @@ def ghost_cells(
         elif mode == 'power':
             if radii is None:
                 raise ValueError('radii is required for mode="power"')
-            rr = np.asarray(radii, dtype=np.float64)
-            if rr.shape != (n,):
-                raise ValueError('radii must have shape (n,)')
-            if not np.all(np.isfinite(rr)):
-                raise ValueError('radii must contain only finite values')
-            if np.any(rr < 0):
-                raise ValueError('radii must be non-negative')
+            rr = coerce_nonnegative_vector(radii, name='radii', n=n)
 
             if ghost_radius is None:
                 raise ValueError('ghost_radius is required for mode="power"')
-            gr = np.asarray(ghost_radius, dtype=np.float64)
-            if gr.ndim == 0:
-                gr = np.full((m,), float(gr), dtype=np.float64)
-            if gr.shape != (m,):
-                raise ValueError('ghost_radius must be a scalar or have shape (m,)')
-            if not np.all(np.isfinite(gr)):
-                raise ValueError('ghost_radius must contain only finite values')
-            if np.any(gr < 0):
-                raise ValueError('ghost_radius must be non-negative')
+            gr = coerce_nonnegative_scalar_or_vector(
+                ghost_radius,
+                name='ghost_radius',
+                n=m,
+                length_name='m',
+            )
 
             cells = core.ghost_periodic_power(
                 pts_i,

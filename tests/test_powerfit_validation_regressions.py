@@ -116,3 +116,112 @@ def test_weight_radius_conversions_reject_nonfinite_values():
         radii_to_weights(np.array([1.0, np.nan]))
     with pytest.raises(ValueError, match='finite'):
         weights_to_radii(np.array([0.0, np.inf]))
+
+
+
+def test_fit_power_weights_returns_numerical_failure_on_internal_solver_error(
+    monkeypatch,
+):
+    import pyvoro2.powerfit.solver as solver_mod
+    from pyvoro2 import fit_power_weights
+
+    pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
+
+    def boom(*args, **kwargs):
+        raise np.linalg.LinAlgError('synthetic failure')
+
+    monkeypatch.setattr(solver_mod, '_solve_component_analytic', boom)
+
+    res = fit_power_weights(
+        pts,
+        [(0, 1, 0.25)],
+        measurement='fraction',
+        solver='analytic',
+    )
+
+    assert res.status == 'numerical_failure'
+    assert res.converged is False
+    assert res.weights is None
+    assert res.radii is None
+    assert res.predicted is None
+    assert any('numerical solver failure' in msg for msg in res.warnings)
+
+
+
+def test_active_set_propagates_numerical_failure(monkeypatch):
+    import pyvoro2.powerfit.active as active_mod
+    from pyvoro2 import Box
+    from pyvoro2.powerfit.solver import PowerWeightFitResult
+
+    pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
+    domain = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
+
+    def fake_fit_power_weights(points, constraints, **kwargs):
+        m = constraints.n_constraints
+        return PowerWeightFitResult(
+            status='numerical_failure',
+            hard_feasible=True,
+            weights=None,
+            radii=None,
+            weight_shift=None,
+            measurement=constraints.measurement,
+            target=constraints.target.copy(),
+            predicted=None,
+            predicted_fraction=None,
+            predicted_position=None,
+            residuals=None,
+            rms_residual=None,
+            max_residual=None,
+            used_shifts=constraints.shifts.copy(),
+            solver='analytic',
+            n_iter=0,
+            converged=False,
+            conflict=None,
+            warnings=('synthetic fit failure',),
+        )
+
+    monkeypatch.setattr(active_mod, 'fit_power_weights', fake_fit_power_weights)
+
+    res = active_mod.solve_self_consistent_power_weights(
+        pts,
+        [(0, 1, 0.5)],
+        measurement='fraction',
+        domain=domain,
+    )
+
+    assert res.termination == 'numerical_failure'
+    assert res.converged is False
+    assert res.fit.status == 'numerical_failure'
+    assert res.diagnostics.status == ('numerical_failure',)
+    assert any('synthetic fit failure' in msg for msg in res.warnings)
+
+
+
+def test_fit_power_weights_accepts_pre_resolved_lower_dim_constraints():
+    from pyvoro2 import PairBisectorConstraints, fit_power_weights
+
+    pts = np.array([[0.0, 0.0], [2.0, 0.0]], dtype=float)
+    constraints = PairBisectorConstraints(
+        n_points=2,
+        i=np.array([0], dtype=np.int64),
+        j=np.array([1], dtype=np.int64),
+        shifts=np.zeros((1, 2), dtype=np.int64),
+        target=np.array([0.25], dtype=np.float64),
+        confidence=np.array([1.0], dtype=np.float64),
+        measurement='fraction',
+        distance=np.array([2.0], dtype=np.float64),
+        distance2=np.array([4.0], dtype=np.float64),
+        delta=np.array([[2.0, 0.0]], dtype=np.float64),
+        target_fraction=np.array([0.25], dtype=np.float64),
+        target_position=np.array([0.5], dtype=np.float64),
+        input_index=np.array([0], dtype=np.int64),
+        explicit_shift=np.array([False], dtype=bool),
+        ids=None,
+        warnings=tuple(),
+    )
+
+    res = fit_power_weights(pts, constraints, measurement='fraction')
+
+    assert res.status == 'optimal'
+    assert np.allclose(res.weights[1] - res.weights[0], 2.0)
+    assert np.allclose(res.predicted_fraction, np.array([0.25]))

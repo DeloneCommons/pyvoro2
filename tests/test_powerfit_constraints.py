@@ -62,3 +62,23 @@ def test_resolved_constraints_export_records_and_ids():
     assert rows_id[0]['site_i'] == 10
     assert rows_id[0]['site_j'] == 20
     assert rows_id[0]['measurement'] == 'fraction'
+
+
+
+def test_resolve_pair_bisector_constraints_warns_on_triclinic_search_boundary():
+    from pyvoro2 import PeriodicCell, resolve_pair_bisector_constraints
+
+    cell = PeriodicCell(vectors=((1.0, 0.0, 0.0), (0.2, 1.0, 0.0), (0.0, 0.0, 1.0)))
+    pts = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
+
+    constraints = resolve_pair_bisector_constraints(
+        pts,
+        [(0, 1, 0.5)],
+        measurement='fraction',
+        domain=cell,
+        image='nearest',
+        image_search=1,
+    )
+
+    assert tuple(int(v) for v in constraints.shifts[0]) == (-1, 0, 0)
+    assert any('image_search boundary' in msg for msg in constraints.warnings)

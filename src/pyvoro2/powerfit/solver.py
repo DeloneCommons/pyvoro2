@@ -207,6 +207,10 @@ class _MeasurementGeometry:
     target_position: np.ndarray
 
 
+class _NumericalFailure(RuntimeError):
+    """Raised when the numerical backend fails before producing a result."""
+
+
 def radii_to_weights(radii: np.ndarray) -> np.ndarray:
     """Convert radii to power weights (``w = r^2``)."""
 
@@ -269,8 +273,10 @@ def fit_power_weights(
     """
 
     pts = np.asarray(points, dtype=float)
-    if pts.ndim != 2 or pts.shape[1] != 3:
-        raise ValueError('points must have shape (n, 3)')
+    if pts.ndim != 2 or pts.shape[1] <= 0:
+        raise ValueError('points must have shape (n, d) with d >= 1')
+    if not np.all(np.isfinite(pts)):
+        raise ValueError('points must contain only finite values')
 
     if model is None:
         model = FitModel()
@@ -279,6 +285,10 @@ def fit_power_weights(
         resolved = constraints
         if resolved.n_points != pts.shape[0]:
             raise ValueError('resolved constraints do not match the number of points')
+        if resolved.delta.shape[1] != pts.shape[1]:
+            raise ValueError(
+                'resolved constraints do not match the point dimension'
+            )
         if resolved.measurement != measurement:
             measurement = resolved.measurement
     else:
@@ -450,70 +460,103 @@ def _fit_power_weights_resolved(
     converged_all = True
     n_iter_max = 0
 
-    for nodes in comps:
-        if len(nodes) <= 1:
-            if lam > 0 and len(nodes) == 1:
-                weights[nodes[0]] = w0[nodes[0]]
-            continue
+    try:
+        for nodes in comps:
+            if len(nodes) <= 1:
+                if lam > 0 and len(nodes) == 1:
+                    weights[nodes[0]] = w0[nodes[0]]
+                continue
 
-        node_set = set(nodes)
-        mask = np.array(
-            [
-                (int(i) in node_set) and (int(j) in node_set)
-                for i, j in zip(constraints.i, constraints.j)
-            ],
-            dtype=bool,
-        )
-        local_index = {int(node): k for k, node in enumerate(nodes)}
-        ii = np.array(
-            [local_index[int(i)] for i in constraints.i[mask]],
-            dtype=np.int64,
-        )
-        jj = np.array(
-            [local_index[int(j)] for j in constraints.j[mask]],
-            dtype=np.int64,
-        )
-        a_c = a[mask]
-        b_c = z_target[mask]
-        alpha_c = geom.alpha[mask]
-        beta_c = geom.beta[mask]
-        target_c = geom.target[mask]
-        conf_c = constraints.confidence[mask]
-        w0_c = w0[np.array(nodes, dtype=np.int64)]
-        z_lo_c = None if z_lo is None else z_lo[mask]
-        z_hi_c = None if z_hi is None else z_hi[mask]
-
-        if solver_eff == 'analytic':
-            w_c = _solve_component_analytic(ii, jj, a_c, b_c, w0_c, lam)
-            iters = 1
-            conv = True
-        else:
-            w_c, iters, conv = _solve_component_admm(
-                ii,
-                jj,
-                alpha_c,
-                beta_c,
-                target_c,
-                conf_c,
-                w0_c,
-                model=model,
-                lambda_regularize=lam,
-                rho=rho,
-                max_iter=max_iter,
-                tol_abs=tol_abs,
-                tol_rel=tol_rel,
-                z_lo=z_lo_c,
-                z_hi=z_hi_c,
+            node_set = set(nodes)
+            mask = np.array(
+                [
+                    (int(i) in node_set) and (int(j) in node_set)
+                    for i, j in zip(constraints.i, constraints.j)
+                ],
+                dtype=bool,
             )
-        weights[np.array(nodes, dtype=np.int64)] = w_c
-        converged_all = converged_all and conv
-        n_iter_max = max(n_iter_max, iters)
+            local_index = {int(node): k for k, node in enumerate(nodes)}
+            ii = np.array(
+                [local_index[int(i)] for i in constraints.i[mask]],
+                dtype=np.int64,
+            )
+            jj = np.array(
+                [local_index[int(j)] for j in constraints.j[mask]],
+                dtype=np.int64,
+            )
+            a_c = a[mask]
+            b_c = z_target[mask]
+            alpha_c = geom.alpha[mask]
+            beta_c = geom.beta[mask]
+            target_c = geom.target[mask]
+            conf_c = constraints.confidence[mask]
+            w0_c = w0[np.array(nodes, dtype=np.int64)]
+            z_lo_c = None if z_lo is None else z_lo[mask]
+            z_hi_c = None if z_hi is None else z_hi[mask]
 
-    radii, shift = weights_to_radii(weights, r_min=r_min)
-    pred_fraction, pred_position, pred = _predict_measurements(weights, constraints)
-    residuals = pred - geom.target
-    rms = float(np.sqrt(np.mean(residuals * residuals))) if residuals.size else 0.0
-    mx = float(np.max(np.abs(residuals))) if residuals.size else 0.0
+            if solver_eff == 'analytic':
+                w_c = _solve_component_analytic(ii, jj, a_c, b_c, w0_c, lam)
+                iters = 1
+                conv = True
+            else:
+                w_c, iters, conv = _solve_component_admm(
+                    ii,
+                    jj,
+                    alpha_c,
+                    beta_c,
+                    target_c,
+                    conf_c,
+                    w0_c,
+                    model=model,
+                    lambda_regularize=lam,
+                    rho=rho,
+                    max_iter=max_iter,
+                    tol_abs=tol_abs,
+                    tol_rel=tol_rel,
+                    z_lo=z_lo_c,
+                    z_hi=z_hi_c,
+                )
+            if not np.all(np.isfinite(w_c)):
+                raise _NumericalFailure('component solver returned non-finite weights')
+            weights[np.array(nodes, dtype=np.int64)] = w_c
+            converged_all = converged_all and conv
+            n_iter_max = max(n_iter_max, iters)
+
+        if not np.all(np.isfinite(weights)):
+            raise _NumericalFailure('assembled weight vector is non-finite')
+        try:
+            radii, shift = weights_to_radii(weights, r_min=r_min)
+        except ValueError as exc:
+            raise _NumericalFailure(str(exc)) from exc
+        pred_fraction, pred_position, pred = _predict_measurements(weights, constraints)
+        residuals = pred - geom.target
+        if not np.all(np.isfinite(residuals)):
+            raise _NumericalFailure('predicted measurements or residuals are non-finite')
+        rms = float(np.sqrt(np.mean(residuals * residuals))) if residuals.size else 0.0
+        mx = float(np.max(np.abs(residuals))) if residuals.size else 0.0
+    except (np.linalg.LinAlgError, FloatingPointError, _NumericalFailure) as exc:
+        warnings_list.append(f'numerical solver failure: {exc}')
+        return PowerWeightFitResult(
+            status='numerical_failure',
+            hard_feasible=True,
+            weights=None,
+            radii=None,
+            weight_shift=None,
+            measurement=constraints.measurement,
+            target=geom.target.copy(),
+            predicted=None,
+            predicted_fraction=None,
+            predicted_position=None,
+            residuals=None,
+            rms_residual=None,
+            max_residual=None,
+            used_shifts=constraints.shifts.copy(),
+            solver=solver_eff,
+            n_iter=int(n_iter_max),
+            converged=False,
+            conflict=conflict,
+            warnings=tuple(warnings_list),
+        )
 
     if converged_all:
         status: Literal['optimal', 'max_iter', 'numerical_failure'] = 'optimal'
@@ -798,7 +841,7 @@ def _solve_component_analytic(
         rhs += lam * w0
 
     if n_c == 1:
-        return np.zeros(1, dtype=np.float64)
+        return w0.astype(np.float64, copy=True) if lam > 0 else np.zeros(1, dtype=np.float64)
 
     if lam > 0:
         return np.linalg.solve(L, rhs).astype(np.float64)
@@ -850,16 +893,27 @@ def _solve_component_admm(
 
     M = rho * L + lam * np.eye(n_c)
     Mf = M[np.ix_(free, free)]
+    if free.size and not np.all(np.isfinite(Mf)):
+        raise _NumericalFailure('ADMM system matrix contains non-finite values')
     try:
-        chol = np.linalg.cholesky(Mf)
+        chol = np.linalg.cholesky(Mf) if free.size else np.zeros((0, 0), dtype=np.float64)
     except np.linalg.LinAlgError:
         Mf2 = Mf + 1e-12 * np.eye(Mf.shape[0])
-        chol = np.linalg.cholesky(Mf2)
+        try:
+            chol = np.linalg.cholesky(Mf2)
+        except np.linalg.LinAlgError as exc:
+            raise _NumericalFailure(
+                'ADMM system matrix is not numerically positive definite'
+            ) from exc
         Mf = Mf2
 
     def solve_M(rhs_free: np.ndarray) -> np.ndarray:
+        if rhs_free.size == 0:
+            return np.zeros(0, dtype=np.float64)
         y = np.linalg.solve(chol, rhs_free)
         x = np.linalg.solve(chol.T, y)
+        if not np.all(np.isfinite(x)):
+            raise _NumericalFailure('ADMM linear solve produced non-finite values')
         return x
 
     # Initialize at the target z implied by the chosen measurement.
@@ -883,6 +937,8 @@ def _solve_component_admm(
         if anchor is not None:
             w[anchor] = 0.0
         w[free] = w_free
+        if not np.all(np.isfinite(w)):
+            raise _NumericalFailure('ADMM primal iterate became non-finite')
 
         v = (w[I] - w[J]) + u
         z_prev = z.copy()
@@ -901,6 +957,13 @@ def _solve_component_admm(
         Aw = w[I] - w[J]
         r = Aw - z
         u = u + r
+        if not (
+            np.all(np.isfinite(z))
+            and np.all(np.isfinite(r))
+            and np.all(np.isfinite(u))
+            and np.all(np.isfinite(Aw))
+        ):
+            raise _NumericalFailure('ADMM iterates became non-finite')
 
         r_norm = float(np.linalg.norm(r))
         z_norm = float(np.linalg.norm(z))
@@ -948,7 +1011,11 @@ def _prox_edge_objective(
 
         g = fp_y * alpha + rho * (z - v)
         gp = fpp_y * (alpha**2) + rho
+        if not np.all(np.isfinite(gp)) or np.any(np.abs(gp) < 1e-18):
+            raise _NumericalFailure('prox Newton derivative became singular or non-finite')
         step = g / gp
+        if not np.all(np.isfinite(step)):
+            raise _NumericalFailure('prox Newton step became non-finite')
         z_new = z - step
         if z_lo is not None and z_hi is not None:
             z_new = np.clip(z_new, z_lo, z_hi)

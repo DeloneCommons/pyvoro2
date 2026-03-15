@@ -152,7 +152,11 @@ class SelfConsistentPowerFitResult:
     n_outer_iter: int
     converged: bool
     termination: Literal[
-        'self_consistent', 'cycle_detected', 'max_outer_iter', 'infeasible_active_set'
+        'self_consistent',
+        'cycle_detected',
+        'max_outer_iter',
+        'infeasible_active_set',
+        'numerical_failure',
     ]
     cycle_length: int | None
     marginal_constraints: tuple[int, ...]
@@ -253,7 +257,11 @@ def solve_self_consistent_power_weights(
     comps = _connected_components(resolved.n_points, resolved.i, resolved.j)
 
     termination: Literal[
-        'self_consistent', 'cycle_detected', 'max_outer_iter', 'infeasible_active_set'
+        'self_consistent',
+        'cycle_detected',
+        'max_outer_iter',
+        'infeasible_active_set',
+        'numerical_failure',
     ] = 'max_outer_iter'
     cycle_length: int | None = None
     converged = False
@@ -274,7 +282,11 @@ def solve_self_consistent_power_weights(
         )
         if fit.weights is None:
             warnings_list.extend(fit.warnings)
-            termination = 'infeasible_active_set'
+            termination = (
+                'numerical_failure'
+                if fit.status == 'numerical_failure'
+                else 'infeasible_active_set'
+            )
             final_realized = _empty_realized_pair_diagnostics(
                 m,
                 return_boundary_measure=return_boundary_measure,
@@ -306,7 +318,7 @@ def solve_self_consistent_power_weights(
                 first_realized_iter=first_realized_iter.copy(),
                 last_realized_iter=last_realized_iter.copy(),
                 marginal=np.zeros(m, dtype=bool),
-                status=tuple('infeasible_active_set' for _ in range(m)),
+                status=tuple(termination for _ in range(m)),
             )
             return SelfConsistentPowerFitResult(
                 constraints=resolved,
@@ -456,6 +468,10 @@ def solve_self_consistent_power_weights(
     )
     warnings_list.extend(final_fit.warnings)
 
+    if final_fit.status == 'numerical_failure':
+        termination = 'numerical_failure'
+        converged = False
+
     if final_fit.weights is not None and final_fit.radii is not None:
         final_realized = match_realized_pairs(
             pts,
@@ -599,6 +615,9 @@ def _build_constraint_statuses(
 ) -> tuple[str, ...]:
     rows: list[str] = []
     for k in range(active.shape[0]):
+        if termination == 'numerical_failure':
+            rows.append('numerical_failure')
+            continue
         if termination == 'cycle_detected' and (
             bool(toggle_count[k] > 0) or bool(realized_toggle_count[k] > 0)
         ):

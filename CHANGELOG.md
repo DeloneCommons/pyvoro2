@@ -12,6 +12,18 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - `tools/install_wheel_overlay.py` to support a wheel-core + repository-source
   development workflow, so the compiled extension can come from an installed
   wheel while Python imports resolve to `src/pyvoro2`.
+- `DEV_PLAN.md` in the repository root with the planned 0.6.x refactoring and
+  2D implementation roadmap, including the current decision to ship planar 2D
+  against the existing dedicated 2D backend before considering a later
+  `voro-dev` migration.
+
+### Changed
+
+- Public API validation and block-grid resolution are now routed through shared
+  internal helpers (`_inputs.py`, `_domain_geometry.py`) so 3D wrappers and the
+  power-fit layer no longer duplicate the same coercion and geometry logic.
+- Project status metadata is now consistently marked as **beta** across the
+  package metadata and top-level documentation.
 
 ### Fixed
 
@@ -24,6 +36,13 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   constraints that would otherwise create singular gauge coupling.
 - Empty resolved constraint sets now respect L2 regularization and return the
   regularization-only solution instead of silently dropping the reference.
+- `fit_power_weights(...)` and the active-set driver now return the documented
+  `numerical_failure` status for linear-algebra and non-finite-iterate failures
+  instead of surfacing them as uncaught exceptions or misclassified active-set
+  infeasibility.
+- Triclinic nearest-image resolution now warns when a chosen image touches the
+  `image_search` boundary, making the search-window sensitivity explicit for
+  skewed periodic cells.
 
 ## [0.5.0] - 2026-03-14
 
