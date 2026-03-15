@@ -95,6 +95,7 @@ nav:
           - Solver: reference/powerfit/solver.md
           - Realization: reference/powerfit/realize.md
           - Active set: reference/powerfit/active.md
+          - Reports: reference/powerfit/report.md
       - Visualization: reference/viz3d.md
   - Project:
       - About: project/about.md

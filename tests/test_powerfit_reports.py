@@ -1,0 +1,90 @@
+import numpy as np
+
+
+def test_fit_report_exports_nested_plain_python_payload():
+    from pyvoro2 import (
+        Box,
+        FixedValue,
+        FitModel,
+        build_fit_report,
+        fit_power_weights,
+        resolve_pair_bisector_constraints,
+    )
+
+    pts = np.array(
+        [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0]],
+        dtype=float,
+    )
+    box = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
+    constraints = resolve_pair_bisector_constraints(
+        pts,
+        [(10, 20, 0.5), (20, 30, 0.5), (10, 30, 3.0)],
+        ids=[10, 20, 30],
+        index_mode='id',
+        measurement='position',
+        domain=box,
+    )
+    fit = fit_power_weights(
+        pts,
+        constraints,
+        model=FitModel(feasible=FixedValue(0.0)),
+        solver='admm',
+    )
+
+    report = build_fit_report(fit, constraints, use_ids=True)
+    report_via_method = fit.to_report(constraints, use_ids=True)
+
+    assert report['summary']['status'] == 'infeasible_hard_constraints'
+    assert report['summary']['is_infeasible'] is True
+    assert report['conflict'] is not None
+    assert report['conflict']['constraint_indices'] == [0, 1, 2]
+    assert report['constraints'][0]['site_i'] == 10
+    assert report['constraints'][0]['site_j'] == 20
+    assert len(report['fit_records']) == 3
+    assert report_via_method == report
+
+
+def test_active_set_report_collects_nested_diagnostics_and_history():
+    from pyvoro2 import (
+        ActiveSetOptions,
+        Box,
+        FitModel,
+        Interval,
+        build_active_set_report,
+        resolve_pair_bisector_constraints,
+        solve_self_consistent_power_weights,
+    )
+
+    pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
+    box = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
+    constraints = resolve_pair_bisector_constraints(
+        pts,
+        [(100, 200, 0.5)],
+        ids=[100, 200],
+        index_mode='id',
+        measurement='fraction',
+        domain=box,
+    )
+    result = solve_self_consistent_power_weights(
+        pts,
+        constraints,
+        domain=box,
+        model=FitModel(feasible=Interval(0.0, 1.0)),
+        options=ActiveSetOptions(max_iter=5),
+        return_history=True,
+        return_tessellation_diagnostics=True,
+    )
+
+    report = build_active_set_report(result, use_ids=True)
+    report_via_method = result.to_report(use_ids=True)
+
+    assert report['summary']['n_constraints'] == 1
+    assert report['summary']['n_active_final'] in {0, 1}
+    assert report['constraints'][0]['site_i'] == 100
+    assert report['fit']['summary']['measurement'] == 'fraction'
+    assert report['realized']['summary']['n_constraints'] == 1
+    assert report['diagnostics'][0]['site_j'] == 200
+    assert report['history'] is not None
+    assert len(report['history']) >= 1
+    assert report['tessellation_diagnostics'] is not None
+    assert report_via_method == report

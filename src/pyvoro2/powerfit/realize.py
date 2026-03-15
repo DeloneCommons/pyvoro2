@@ -13,6 +13,13 @@ from ..diagnostics import TessellationDiagnostics
 from ..domains import Box, OrthorhombicCell, PeriodicCell
 from ..face_properties import annotate_face_properties
 
+def _plain_value(value: object) -> object:
+    return value.item() if hasattr(value, 'item') else value
+
+def _boundary_value(values: np.ndarray | None, index: int) -> float | None:
+    if values is None or np.isnan(values[index]):
+        return None
+    return float(values[index])
 
 @dataclass(frozen=True, slots=True)
 class RealizedPairDiagnostics:
@@ -38,30 +45,51 @@ class RealizedPairDiagnostics:
         """Return one plain-Python record per candidate pair."""
 
         if constraints.n_constraints != int(self.realized.shape[0]):
-            raise ValueError('constraints do not match the realized diagnostics length')
+            raise ValueError(
+                'constraints do not match the realized diagnostics length'
+            )
         left, right = constraints.pair_labels(use_ids=use_ids)
         rows: list[dict[str, object]] = []
         left_is_int = np.issubdtype(np.asarray(left).dtype, np.integer)
         right_is_int = np.issubdtype(np.asarray(right).dtype, np.integer)
         for k in range(constraints.n_constraints):
+            site_i = int(left[k]) if left_is_int else _plain_value(left[k])
+            site_j = int(right[k]) if right_is_int else _plain_value(right[k])
+            realized_shifts = tuple(
+                tuple(int(v) for v in shift)
+                for shift in self.realized_shifts[k]
+            )
             rows.append(
                 {
                     'constraint_index': int(k),
-                    'site_i': int(left[k]) if left_is_int else left[k].item() if hasattr(left[k], 'item') else left[k],
-                    'site_j': int(right[k]) if right_is_int else right[k].item() if hasattr(right[k], 'item') else right[k],
+                    'site_i': site_i,
+                    'site_j': site_j,
                     'shift': tuple(int(v) for v in constraints.shifts[k]),
                     'realized': bool(self.realized[k]),
                     'realized_same_shift': bool(self.realized_same_shift[k]),
                     'realized_other_shift': bool(self.realized_other_shift[k]),
-                    'realized_shifts': tuple(tuple(int(v) for v in sh) for sh in self.realized_shifts[k]),
+                    'realized_shifts': realized_shifts,
                     'endpoint_i_empty': bool(self.endpoint_i_empty[k]),
                     'endpoint_j_empty': bool(self.endpoint_j_empty[k]),
-                    'boundary_measure': (None if self.boundary_measure is None or np.isnan(self.boundary_measure[k]) else float(self.boundary_measure[k])),
+                    'boundary_measure': _boundary_value(
+                        self.boundary_measure,
+                        k,
+                    ),
                 }
             )
         return tuple(rows)
 
+    def to_report(
+        self,
+        constraints: PairBisectorConstraints,
+        *,
+        use_ids: bool = False,
+    ) -> dict[str, object]:
+        """Return a JSON-friendly report for realized-face matching."""
 
+        from .report import build_realized_report
+
+        return build_realized_report(self, constraints, use_ids=use_ids)
 
 def match_realized_pairs(
     points: np.ndarray,
@@ -157,7 +185,10 @@ def match_realized_pairs(
         endpoint_j_empty[k] = bool(empty_by_id.get(j, False))
 
         forward = shifts_by_pair.get((i, j), set())
-        reverse = {(-sx, -sy, -sz) for (sx, sy, sz) in shifts_by_pair.get((j, i), set())}
+        reverse = {
+            (-sx, -sy, -sz)
+            for (sx, sy, sz) in shifts_by_pair.get((j, i), set())
+        }
         realized_set = tuple(sorted(forward | reverse))
         realized_shifts_rows.append(realized_set)
         same = target_shift in realized_set

@@ -1,0 +1,234 @@
+"""Plain-Python report helpers for power-fitting results.
+
+These helpers sit one layer above the numerical result objects. They keep the
+solver API array-oriented while making it easy to export nested diagnostics into
+JSON-friendly dictionaries and row lists for downstream packages.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import numpy as np
+
+from .constraints import PairBisectorConstraints
+from .realize import RealizedPairDiagnostics
+from .solver import HardConstraintConflict, PowerWeightFitResult
+from ..diagnostics import TessellationDiagnostics
+
+
+def _label_nodes(nodes: tuple[int, ...], ids: np.ndarray | None) -> list[object]:
+    labeled: list[object] = []
+    for node in nodes:
+        if ids is None:
+            labeled.append(int(node))
+            continue
+        value = ids[int(node)]
+        labeled.append(value.item() if hasattr(value, 'item') else value)
+    return labeled
+
+
+def _tessellation_record(
+    diagnostics: TessellationDiagnostics | None,
+) -> dict[str, object] | None:
+    if diagnostics is None:
+        return None
+    issue_rows = []
+    for issue in diagnostics.issues:
+        issue_rows.append(
+            {
+                'code': issue.code,
+                'message': issue.message,
+                'severity': issue.severity,
+                'examples': list(issue.examples),
+            }
+        )
+    return {
+        'n_sites_expected': int(diagnostics.n_sites_expected),
+        'n_cells_returned': int(diagnostics.n_cells_returned),
+        'sum_cell_volume': float(diagnostics.sum_cell_volume),
+        'domain_volume': float(diagnostics.domain_volume),
+        'volume_ratio': float(diagnostics.volume_ratio),
+        'volume_gap': float(diagnostics.volume_gap),
+        'volume_overlap': float(diagnostics.volume_overlap),
+        'missing_ids': [int(value) for value in diagnostics.missing_ids],
+        'empty_ids': [int(value) for value in diagnostics.empty_ids],
+        'face_shift_available': bool(diagnostics.face_shift_available),
+        'reciprocity_checked': bool(diagnostics.reciprocity_checked),
+        'n_faces_total': int(diagnostics.n_faces_total),
+        'n_faces_orphan': int(diagnostics.n_faces_orphan),
+        'n_faces_mismatched': int(diagnostics.n_faces_mismatched),
+        'ok_volume': bool(diagnostics.ok_volume),
+        'ok_reciprocity': bool(diagnostics.ok_reciprocity),
+        'ok': bool(diagnostics.ok),
+        'issues': issue_rows,
+    }
+
+
+def _conflict_record(
+    conflict: HardConstraintConflict | None,
+    *,
+    ids: np.ndarray | None,
+) -> dict[str, object] | None:
+    if conflict is None:
+        return None
+    return {
+        'message': conflict.message,
+        'component_nodes': _label_nodes(conflict.component_nodes, ids),
+        'cycle_nodes': _label_nodes(conflict.cycle_nodes, ids),
+        'constraint_indices': list(conflict.constraint_indices),
+        'terms': list(conflict.to_records(ids=ids)),
+    }
+
+
+def build_fit_report(
+    result: PowerWeightFitResult,
+    constraints: PairBisectorConstraints,
+    *,
+    use_ids: bool = False,
+) -> dict[str, object]:
+    """Return a JSON-friendly report for a low-level fit result."""
+
+    ids = constraints.ids if use_ids else None
+    return {
+        'kind': 'power_weight_fit',
+        'summary': {
+            'status': result.status,
+            'is_optimal': bool(result.is_optimal),
+            'is_infeasible': bool(result.is_infeasible),
+            'hard_feasible': bool(result.hard_feasible),
+            'solver': result.solver,
+            'measurement': result.measurement,
+            'n_constraints': int(constraints.n_constraints),
+            'n_points': int(constraints.n_points),
+            'converged': bool(result.converged),
+            'n_iter': int(result.n_iter),
+            'rms_residual': (
+                None if result.rms_residual is None else float(result.rms_residual)
+            ),
+            'max_residual': (
+                None if result.max_residual is None else float(result.max_residual)
+            ),
+            'conflicting_constraint_indices': list(
+                result.conflicting_constraint_indices
+            ),
+        },
+        'constraints': list(constraints.to_records(use_ids=use_ids)),
+        'fit_records': list(result.to_records(constraints, use_ids=use_ids)),
+        'weights': None if result.weights is None else result.weights.tolist(),
+        'radii': None if result.radii is None else result.radii.tolist(),
+        'weight_shift': (
+            None if result.weight_shift is None else float(result.weight_shift)
+        ),
+        'used_shifts': [
+            tuple(int(v) for v in shift_row) for shift_row in result.used_shifts
+        ],
+        'warnings': list(result.warnings),
+        'conflict': _conflict_record(result.conflict, ids=ids),
+    }
+
+
+def build_realized_report(
+    diagnostics: RealizedPairDiagnostics,
+    constraints: PairBisectorConstraints,
+    *,
+    use_ids: bool = False,
+) -> dict[str, object]:
+    """Return a JSON-friendly report for realized-face matching."""
+
+    return {
+        'kind': 'realized_pair_diagnostics',
+        'summary': {
+            'n_constraints': int(constraints.n_constraints),
+            'n_realized': int(np.count_nonzero(diagnostics.realized)),
+            'n_same_shift': int(np.count_nonzero(diagnostics.realized_same_shift)),
+            'n_other_shift': int(np.count_nonzero(diagnostics.realized_other_shift)),
+            'n_unrealized': int(len(diagnostics.unrealized)),
+        },
+        'records': list(diagnostics.to_records(constraints, use_ids=use_ids)),
+        'unrealized': [int(idx) for idx in diagnostics.unrealized],
+        'tessellation_diagnostics': _tessellation_record(
+            diagnostics.tessellation_diagnostics
+        ),
+    }
+
+
+def build_active_set_report(
+    result: Any,
+    *,
+    use_ids: bool = False,
+) -> dict[str, object]:
+    """Return a JSON-friendly report for a self-consistent active-set result."""
+
+    # Import lazily to avoid a module cycle during package initialization.
+    from .active import SelfConsistentPowerFitResult
+
+    if not isinstance(result, SelfConsistentPowerFitResult):
+        raise TypeError(
+            'build_active_set_report expects a SelfConsistentPowerFitResult'
+        )
+
+    history_rows: list[dict[str, object]] | None = None
+    if result.history is not None:
+        history_rows = []
+        for row in result.history:
+            history_rows.append(
+                {
+                    'iteration': int(row.iteration),
+                    'n_active': int(row.n_active),
+                    'n_realized': int(row.n_realized),
+                    'n_added': int(row.n_added),
+                    'n_removed': int(row.n_removed),
+                    'rms_residual_all': float(row.rms_residual_all),
+                    'max_residual_all': float(row.max_residual_all),
+                    'weight_step_norm': float(row.weight_step_norm),
+                }
+            )
+
+    diagnostic_rows = list(result.to_records(use_ids=use_ids))
+    marginal_rows = [diagnostic_rows[int(idx)] for idx in result.marginal_constraints]
+
+    return {
+        'kind': 'self_consistent_power_fit',
+        'summary': {
+            'termination': result.termination,
+            'converged': bool(result.converged),
+            'n_outer_iter': int(result.n_outer_iter),
+            'cycle_length': (
+                None if result.cycle_length is None else int(result.cycle_length)
+            ),
+            'n_constraints': int(result.constraints.n_constraints),
+            'n_active_final': int(np.count_nonzero(result.active_mask)),
+            'n_realized_final': int(np.count_nonzero(result.realized.realized)),
+            'rms_residual_all': float(result.rms_residual_all),
+            'max_residual_all': float(result.max_residual_all),
+            'marginal_constraint_indices': [
+                int(idx) for idx in result.marginal_constraints
+            ],
+        },
+        'constraints': list(result.constraints.to_records(use_ids=use_ids)),
+        'fit': build_fit_report(
+            result.fit,
+            result.constraints,
+            use_ids=use_ids,
+        ),
+        'realized': build_realized_report(
+            result.realized,
+            result.constraints,
+            use_ids=use_ids,
+        ),
+        'diagnostics': diagnostic_rows,
+        'marginal_records': marginal_rows,
+        'history': history_rows,
+        'tessellation_diagnostics': _tessellation_record(
+            result.tessellation_diagnostics
+        ),
+        'warnings': list(result.warnings),
+    }
+
+
+__all__ = [
+    'build_fit_report',
+    'build_realized_report',
+    'build_active_set_report',
+]

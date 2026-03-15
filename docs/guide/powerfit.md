@@ -249,6 +249,28 @@ These helpers keep the core API numerical while making it straightforward to
 feed results into custom logs, JSON encoders, or dataframe construction in a
 downstream package.
 
+## Full report bundles
+
+When downstream code wants a single nested object rather than several row sets,
+use the report helpers or the corresponding result methods:
+
+```python
+fit_report = fit.to_report(constraints, use_ids=True)
+realized_report = realized.to_report(constraints, use_ids=True)
+solve_report = result.to_report(use_ids=True)
+```
+
+The standalone helpers are also exported:
+
+```python
+fit_report = pv.build_fit_report(fit, constraints, use_ids=True)
+solve_report = pv.build_active_set_report(result, use_ids=True)
+```
+
+These report bundles stay plain-Python and JSON-friendly. They are useful when
+a downstream package wants a complete diagnostic payload for logging, caching,
+or UI work without manually unpacking NumPy-heavy result objects.
+
 ## Current scope
 
 The current implementation is 3D because it builds on the existing Voro++-based

@@ -20,6 +20,20 @@ from .solver import (
 from ..diagnostics import TessellationDiagnostics
 from ..domains import Box, OrthorhombicCell, PeriodicCell
 
+def _label_value(
+    values: np.ndarray,
+    index: int,
+    ids: np.ndarray | None,
+) -> object:
+    if ids is None:
+        return int(values[index])
+    item = ids[int(values[index])]
+    return item.item() if hasattr(item, 'item') else item
+
+def _boundary_value(values: np.ndarray | None, index: int) -> float | None:
+    if values is None or np.isnan(values[index]):
+        return None
+    return float(values[index])
 
 @dataclass(frozen=True, slots=True)
 class ActiveSetOptions:
@@ -44,7 +58,6 @@ class ActiveSetOptions:
         if float(self.weight_step_tol) < 0.0:
             raise ValueError('ActiveSetOptions.weight_step_tol must be >= 0')
 
-
 @dataclass(frozen=True, slots=True)
 class ActiveSetIteration:
     iteration: int
@@ -55,7 +68,6 @@ class ActiveSetIteration:
     rms_residual_all: float
     max_residual_all: float
     weight_step_norm: float
-
 
 @dataclass(frozen=True, slots=True)
 class PairConstraintDiagnostics:
@@ -83,18 +95,22 @@ class PairConstraintDiagnostics:
     marginal: np.ndarray
     status: tuple[str, ...]
 
-    def to_records(self, *, ids: np.ndarray | None = None) -> tuple[dict[str, object], ...]:
+    def to_records(
+        self, *, ids: np.ndarray | None = None
+    ) -> tuple[dict[str, object], ...]:
         """Return one plain-Python record per candidate pair."""
 
         rows: list[dict[str, object]] = []
         for k in range(int(self.site_i.shape[0])):
-            site_i = int(self.site_i[k]) if ids is None else ids[int(self.site_i[k])].item()
-            site_j = int(self.site_j[k]) if ids is None else ids[int(self.site_j[k])].item()
+            realized_shifts = tuple(
+                tuple(int(v) for v in shift)
+                for shift in self.realized_shifts[k]
+            )
             rows.append(
                 {
                     'constraint_index': int(k),
-                    'site_i': site_i,
-                    'site_j': site_j,
+                    'site_i': _label_value(self.site_i, k, ids),
+                    'site_j': _label_value(self.site_j, k, ids),
                     'shift': tuple(int(v) for v in self.shift[k]),
                     'target': float(self.target[k]),
                     'confidence': float(self.confidence[k]),
@@ -106,10 +122,10 @@ class PairConstraintDiagnostics:
                     'realized': bool(self.realized[k]),
                     'realized_same_shift': bool(self.realized_same_shift[k]),
                     'realized_other_shift': bool(self.realized_other_shift[k]),
-                    'realized_shifts': tuple(tuple(int(v) for v in sh) for sh in self.realized_shifts[k]),
+                    'realized_shifts': realized_shifts,
                     'endpoint_i_empty': bool(self.endpoint_i_empty[k]),
                     'endpoint_j_empty': bool(self.endpoint_j_empty[k]),
-                    'boundary_measure': (None if self.boundary_measure is None or np.isnan(self.boundary_measure[k]) else float(self.boundary_measure[k])),
+                    'boundary_measure': _boundary_value(self.boundary_measure, k),
                     'toggle_count': int(self.toggle_count[k]),
                     'realized_toggle_count': int(self.realized_toggle_count[k]),
                     'first_realized_iter': int(self.first_realized_iter[k]),
@@ -119,7 +135,6 @@ class PairConstraintDiagnostics:
                 }
             )
         return tuple(rows)
-
 
 @dataclass(frozen=True, slots=True)
 class SelfConsistentPowerFitResult:
@@ -147,7 +162,12 @@ class SelfConsistentPowerFitResult:
         ids = self.constraints.ids if use_ids else None
         return self.diagnostics.to_records(ids=ids)
 
+    def to_report(self, *, use_ids: bool = False) -> dict[str, object]:
+        """Return a JSON-friendly report for this active-set solve."""
 
+        from .report import build_active_set_report
+
+        return build_active_set_report(self, use_ids=use_ids)
 
 def solve_self_consistent_power_weights(
     points: np.ndarray,
@@ -162,7 +182,7 @@ def solve_self_consistent_power_weights(
     confidence: list[float] | tuple[float, ...] | np.ndarray | None = None,
     model: FitModel | None = None,
     active0: np.ndarray | None = None,
-    options: ActiveSetOptions = ActiveSetOptions(),
+    options: ActiveSetOptions | None = None,
     r_min: float = 0.0,
     fit_solver: Literal['auto', 'analytic', 'admm'] = 'auto',
     fit_max_iter: int = 2000,
@@ -183,6 +203,8 @@ def solve_self_consistent_power_weights(
 
     if model is None:
         model = FitModel()
+    if options is None:
+        options = ActiveSetOptions()
 
     if isinstance(constraints, PairBisectorConstraints):
         resolved = constraints
@@ -299,7 +321,11 @@ def solve_self_consistent_power_weights(
 
         weights_exact = fit.weights.copy()
         if prev_weights_eval is not None:
-            weights_exact = _align_weights_to_reference(weights_exact, prev_weights_eval, comps)
+            weights_exact = _align_weights_to_reference(
+                weights_exact,
+                prev_weights_eval,
+                comps,
+            )
             weights_eval = (
                 (1.0 - float(options.relax)) * prev_weights_eval
                 + float(options.relax) * weights_exact
@@ -349,7 +375,10 @@ def solve_self_consistent_power_weights(
         n_added = int(np.count_nonzero((~active) & new_active))
         n_removed = int(np.count_nonzero(active & (~new_active)))
 
-        pred_fraction, pred_position, pred = _predict_measurements(weights_eval, resolved)
+        pred_fraction, pred_position, pred = _predict_measurements(
+            weights_eval,
+            resolved,
+        )
         target = (
             resolved.target_fraction
             if resolved.measurement == 'fraction'
@@ -387,7 +416,10 @@ def solve_self_consistent_power_weights(
 
         active_key = new_active.tobytes()
         if np.any(toggled):
-            if active_key in seen_masks and outer_iter - seen_masks[active_key] <= options.cycle_window:
+            if (
+                active_key in seen_masks
+                and outer_iter - seen_masks[active_key] <= options.cycle_window
+            ):
                 cycle_length = outer_iter - seen_masks[active_key]
                 active = new_active
                 prev_weights_eval = weights_eval
@@ -428,7 +460,10 @@ def solve_self_consistent_power_weights(
             return_tessellation_diagnostics=return_tessellation_diagnostics,
             tessellation_check=tessellation_check,
         )
-        pred_fraction, pred_position, pred = _predict_measurements(final_fit.weights, resolved)
+        pred_fraction, pred_position, pred = _predict_measurements(
+            final_fit.weights,
+            resolved,
+        )
     else:
         final_realized = last_diag
         pred_fraction = np.full(m, np.nan, dtype=np.float64)
@@ -511,8 +546,6 @@ def solve_self_consistent_power_weights(
         warnings=tuple(warnings_list),
     )
 
-
-
 def _align_weights_to_reference(
     weights: np.ndarray, reference: np.ndarray, comps: list[list[int]]
 ) -> np.ndarray:
@@ -527,8 +560,6 @@ def _align_weights_to_reference(
         shift = float(np.mean(aligned[idx] - ref[idx]))
         aligned[idx] -= shift
     return aligned
-
-
 
 def _empty_realized_pair_diagnostics(
     m: int, *, return_boundary_measure: bool
@@ -547,8 +578,6 @@ def _empty_realized_pair_diagnostics(
         cells=None,
         tessellation_diagnostics=None,
     )
-
-
 
 def _build_constraint_statuses(
     *,
@@ -572,10 +601,18 @@ def _build_constraint_statuses(
             rows.append('endpoint_empty')
             continue
         if bool(active[k]) and bool(realized.realized_same_shift[k]):
-            rows.append('toggled_active' if bool(toggle_count[k] > 0) else 'stable_active')
+            rows.append(
+                'toggled_active'
+                if bool(toggle_count[k] > 0)
+                else 'stable_active'
+            )
             continue
         if (not bool(active[k])) and (not bool(realized.realized[k])):
-            rows.append('toggled_inactive' if bool(toggle_count[k] > 0) else 'stable_inactive')
+            rows.append(
+                'toggled_inactive'
+                if bool(toggle_count[k] > 0)
+                else 'stable_inactive'
+            )
             continue
         if bool(active[k]) and (not bool(realized.realized_same_shift[k])):
             rows.append('active_unrealized')

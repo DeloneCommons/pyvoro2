@@ -22,6 +22,11 @@ from .active import (
     solve_self_consistent_power_weights,
 )
 from .realize import RealizedPairDiagnostics, match_realized_pairs
+from .report import (
+    build_active_set_report,
+    build_fit_report,
+    build_realized_report,
+)
 from .solver import (
     HardConstraintConflict,
     HardConstraintConflictTerm,
@@ -47,6 +52,9 @@ __all__ = [
     'HardConstraintConflict',
     'PowerWeightFitResult',
     'RealizedPairDiagnostics',
+    'build_fit_report',
+    'build_realized_report',
+    'build_active_set_report',
     'ActiveSetOptions',
     'ActiveSetIteration',
     'PairConstraintDiagnostics',
