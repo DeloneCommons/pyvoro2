@@ -1,3 +1,4 @@
+import json
 import numpy as np
 
 
@@ -88,3 +89,48 @@ def test_active_set_report_collects_nested_diagnostics_and_history():
     assert len(report['history']) >= 1
     assert report['tessellation_diagnostics'] is not None
     assert report_via_method == report
+
+def test_report_json_helpers_roundtrip_plain_report(tmp_path):
+    from pyvoro2 import (
+        Box,
+        FixedValue,
+        FitModel,
+        build_fit_report,
+        dumps_report_json,
+        fit_power_weights,
+        resolve_pair_bisector_constraints,
+        write_report_json,
+    )
+
+    pts = np.array(
+        [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0]],
+        dtype=float,
+    )
+    box = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
+    constraints = resolve_pair_bisector_constraints(
+        pts,
+        [(10, 20, 0.5), (20, 30, 0.5), (10, 30, 3.0)],
+        ids=[10, 20, 30],
+        index_mode='id',
+        measurement='position',
+        domain=box,
+    )
+    fit = fit_power_weights(
+        pts,
+        constraints,
+        model=FitModel(feasible=FixedValue(0.0)),
+        solver='admm',
+    )
+
+    report = build_fit_report(fit, constraints, use_ids=True)
+    payload = dumps_report_json(report, sort_keys=True)
+    loaded = json.loads(payload)
+
+    assert loaded['kind'] == 'power_weight_fit'
+    assert loaded['summary']['status'] == 'infeasible_hard_constraints'
+    assert loaded['conflict'] is not None
+
+    out_path = tmp_path / 'fit_report.json'
+    write_report_json(report, out_path, sort_keys=True)
+    assert json.loads(out_path.read_text(encoding='utf-8')) == loaded
+

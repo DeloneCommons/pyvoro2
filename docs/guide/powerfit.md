@@ -271,6 +271,13 @@ These report bundles stay plain-Python and JSON-friendly. They are useful when
 a downstream package wants a complete diagnostic payload for logging, caching,
 or UI work without manually unpacking NumPy-heavy result objects.
 
+To serialize them directly:
+
+```python
+text = pv.dumps_report_json(solve_report, sort_keys=True)
+pv.write_report_json(solve_report, 'solve_report.json', sort_keys=True)
+```
+
 ## Current scope
 
 The current implementation is 3D because it builds on the existing Voro++-based

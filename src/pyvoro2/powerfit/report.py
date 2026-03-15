@@ -7,6 +7,8 @@ JSON-friendly dictionaries and row lists for downstream packages.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -227,8 +229,58 @@ def build_active_set_report(
     }
 
 
+def _jsonable_report_value(value: Any) -> Any:
+    """Convert nested report payloads into plain JSON-safe values."""
+
+    if isinstance(value, dict):
+        return {
+            str(key): _jsonable_report_value(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_jsonable_report_value(item) for item in value]
+    if isinstance(value, np.ndarray):
+        return [_jsonable_report_value(item) for item in value.tolist()]
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def dumps_report_json(
+    report: dict[str, object],
+    *,
+    indent: int = 2,
+    sort_keys: bool = False,
+) -> str:
+    """Serialize a powerfit report into a JSON string."""
+
+    return json.dumps(
+        _jsonable_report_value(report),
+        indent=indent,
+        sort_keys=sort_keys,
+    )
+
+
+def write_report_json(
+    report: dict[str, object],
+    path: str | Path,
+    *,
+    indent: int = 2,
+    sort_keys: bool = False,
+) -> None:
+    """Write a powerfit report to a JSON file."""
+
+    output_path = Path(path)
+    text = dumps_report_json(report, indent=indent, sort_keys=sort_keys)
+    if indent > 0 and not text.endswith('\n'):
+        text += '\n'
+    output_path.write_text(text, encoding='utf-8')
+
+
 __all__ = [
     'build_fit_report',
     'build_realized_report',
     'build_active_set_report',
+    'dumps_report_json',
+    'write_report_json',
 ]
