@@ -39,7 +39,6 @@ def test_self_consistent_solver_drops_unrealized_pair():
     assert res.diagnostics.status[2] in {'toggled_inactive', 'stable_inactive'}
 
 
-
 def test_self_consistent_solver_can_start_from_empty_active_set():
     from pyvoro2 import ActiveSetOptions, Box, solve_self_consistent_power_weights
 
@@ -58,7 +57,6 @@ def test_self_consistent_solver_can_start_from_empty_active_set():
     assert bool(res.active_mask[0]) is True
     assert bool(res.realized.realized_same_shift[0]) is True
     assert res.diagnostics.status == ('toggled_active',)
-
 
 
 def test_self_consistent_solver_respects_add_hysteresis_from_empty_start():
@@ -83,7 +81,6 @@ def test_self_consistent_solver_respects_add_hysteresis_from_empty_start():
     assert bool(res.active_mask[0]) is True
     assert int(res.diagnostics.first_realized_iter[0]) == 1
     assert int(res.diagnostics.toggle_count[0]) == 1
-
 
 
 def test_self_consistent_solver_under_relaxation_records_nonzero_weight_step():
@@ -114,9 +111,12 @@ def test_self_consistent_solver_under_relaxation_records_nonzero_weight_step():
     assert res.termination == 'self_consistent'
 
 
-
 def test_self_consistent_solver_reports_realized_other_shift_for_periodic_pair():
-    from pyvoro2 import ActiveSetOptions, PeriodicCell, solve_self_consistent_power_weights
+    from pyvoro2 import (
+        ActiveSetOptions,
+        PeriodicCell,
+        solve_self_consistent_power_weights,
+    )
 
     cell = PeriodicCell(vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     pts = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
@@ -136,7 +136,6 @@ def test_self_consistent_solver_reports_realized_other_shift_for_periodic_pair()
     assert bool(res.realized.realized_other_shift[0]) is True
     assert res.diagnostics.status == ('realized_other_shift',)
     assert (-1, 0, 0) in res.diagnostics.realized_shifts[0]
-
 
 
 def test_self_consistent_solver_detects_active_mask_cycle(monkeypatch):
@@ -217,4 +216,8 @@ def test_self_consistent_result_exports_records_with_ids():
     assert len(rows) == 1
     assert rows[0]['site_i'] == 101
     assert rows[0]['site_j'] == 202
-    assert rows[0]['status'] in {'stable_active', 'stable_inactive', 'active_unrealized'}
+    assert rows[0]['status'] in {
+        'stable_active',
+        'stable_inactive',
+        'active_unrealized',
+    }

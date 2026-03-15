@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 
-
 def test_resolve_pair_bisector_constraints_preserves_explicit_periodic_shift():
     from pyvoro2 import PeriodicCell, resolve_pair_bisector_constraints
 
@@ -22,7 +21,6 @@ def test_resolve_pair_bisector_constraints_preserves_explicit_periodic_shift():
     assert np.isclose(constraints.distance[0], 0.2)
     assert np.isclose(constraints.target_fraction[0], 0.5)
     assert np.isclose(constraints.target_position[0], 0.1)
-
 
 
 def test_resolve_pair_bisector_constraints_rejects_shifts_on_nonperiodic_axes():

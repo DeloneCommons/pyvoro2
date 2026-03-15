@@ -22,8 +22,10 @@ from .model import (
 )
 from ..domains import Box, OrthorhombicCell, PeriodicCell
 
+
 def _plain_value(value: object) -> object:
     return value.item() if hasattr(value, 'item') else value
+
 
 @dataclass(frozen=True, slots=True)
 class PowerWeightFitResult:
@@ -132,6 +134,7 @@ class PowerWeightFitResult:
 
         return build_fit_report(self, constraints, use_ids=use_ids)
 
+
 @dataclass(frozen=True, slots=True)
 class HardConstraintConflictTerm:
     """One bound relation participating in an infeasibility witness.
@@ -159,6 +162,7 @@ class HardConstraintConflictTerm:
             'bound_value': float(self.bound_value),
         }
 
+
 @dataclass(frozen=True, slots=True)
 class HardConstraintConflict:
     """Compact witness for inconsistent hard separator restrictions."""
@@ -181,6 +185,7 @@ class HardConstraintConflict:
 
         return tuple(term.to_record(ids=ids) for term in self.terms)
 
+
 @dataclass(frozen=True, slots=True)
 class _DifferenceEdge:
     source: int
@@ -192,6 +197,7 @@ class _DifferenceEdge:
     relation: Literal['<=', '>=']
     bound_value: float
 
+
 @dataclass(frozen=True, slots=True)
 class _MeasurementGeometry:
     alpha: np.ndarray
@@ -199,6 +205,7 @@ class _MeasurementGeometry:
     target: np.ndarray
     target_fraction: np.ndarray
     target_position: np.ndarray
+
 
 def radii_to_weights(radii: np.ndarray) -> np.ndarray:
     """Convert radii to power weights (``w = r^2``)."""
@@ -209,6 +216,7 @@ def radii_to_weights(radii: np.ndarray) -> np.ndarray:
     if np.any(r < 0):
         raise ValueError('radii must be non-negative')
     return r * r
+
 
 def weights_to_radii(
     weights: np.ndarray, *, r_min: float = 0.0
@@ -229,6 +237,7 @@ def weights_to_radii(
         raise ValueError('weight shift produced negative values (numerical issue)')
     w_shifted = np.maximum(w_shifted, 0.0)
     return np.sqrt(w_shifted), float(C)
+
 
 def fit_power_weights(
     points: np.ndarray,
@@ -293,6 +302,7 @@ def fit_power_weights(
         tol_abs=tol_abs,
         tol_rel=tol_rel,
     )
+
 
 def _fit_power_weights_resolved(
     constraints: PairBisectorConstraints,
@@ -510,6 +520,7 @@ def _fit_power_weights_resolved(
         warnings=tuple(warnings_list),
     )
 
+
 def _measurement_geometry(constraints: PairBisectorConstraints) -> _MeasurementGeometry:
     d = constraints.distance
     d2 = constraints.distance2
@@ -529,6 +540,7 @@ def _measurement_geometry(constraints: PairBisectorConstraints) -> _MeasurementG
         target_position=constraints.target_position.copy(),
     )
 
+
 def _predict_measurements(
     weights: np.ndarray, constraints: PairBisectorConstraints
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -542,6 +554,7 @@ def _predict_measurements(
         np.asarray(pred, dtype=np.float64),
     )
 
+
 def _regularization_reference(reg: L2Regularization, n: int) -> np.ndarray:
     if reg.reference is None:
         return np.zeros(n, dtype=np.float64)
@@ -549,6 +562,7 @@ def _regularization_reference(reg: L2Regularization, n: int) -> np.ndarray:
     if w0.shape != (n,):
         raise ValueError('regularization.reference must have shape (n,)')
     return w0.astype(np.float64)
+
 
 def _hard_constraint_bounds(
     feasible: HardConstraint | None,
@@ -571,12 +585,14 @@ def _hard_constraint_bounds(
     hi = np.maximum(z_lo, z_hi)
     return lo.astype(np.float64), hi.astype(np.float64)
 
+
 def _requires_admm(model: FitModel) -> bool:
     if model.feasible is not None:
         return True
     if model.penalties:
         return True
     return not isinstance(model.mismatch, SquaredLoss)
+
 
 def _connected_components(
     n: int, i_idx: np.ndarray, j_idx: np.ndarray
@@ -606,6 +622,7 @@ def _connected_components(
                     stack.append(nb)
         comps.append(sorted(comp))
     return comps
+
 
 def _check_hard_feasibility(
     n: int,
@@ -731,6 +748,7 @@ def _check_hard_feasibility(
     )
     return False, conflict
 
+
 def _solve_component_analytic(
     I: np.ndarray,
     J: np.ndarray,
@@ -769,6 +787,7 @@ def _solve_component_analytic(
     w = np.zeros(n_c, dtype=np.float64)
     w[free] = wf
     return w
+
 
 def _solve_component_admm(
     I: np.ndarray,
@@ -879,6 +898,7 @@ def _solve_component_admm(
 
     return w, _it, converged
 
+
 def _prox_edge_objective(
     v: np.ndarray,
     alpha: np.ndarray,
@@ -915,6 +935,7 @@ def _prox_edge_objective(
         z = z_new
     return z
 
+
 def _mismatch_derivatives(
     y: np.ndarray,
     target: np.ndarray,
@@ -934,6 +955,7 @@ def _mismatch_derivatives(
         fpp_y = np.where(quad, confidence, 0.0)
         return fp_y, fpp_y
     raise TypeError(f'unsupported mismatch: {type(mismatch)!r}')
+
 
 def _penalty_derivatives(
     y: np.ndarray,

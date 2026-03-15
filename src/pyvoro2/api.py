@@ -26,7 +26,7 @@ try:
     from . import _core  # type: ignore
 
     _CORE_IMPORT_ERROR: BaseException | None = None
-except BaseException as _e:  # pragma: no cover
+except Exception as _e:  # pragma: no cover
     _core = None  # type: ignore
     _CORE_IMPORT_ERROR = _e
 
@@ -457,7 +457,7 @@ def compute(
                     )
                     if tessellation_check == 'raise':
                         raise TessellationError(msg, diag)
-                    warnings.warn(msg)
+                    warnings.warn(msg, stacklevel=2)
 
         if return_diagnostics:
             assert diag is not None
@@ -596,7 +596,7 @@ def compute(
                 )
                 if tessellation_check == 'raise':
                     raise TessellationError(msg, diag)
-                warnings.warn(msg)
+                warnings.warn(msg, stacklevel=2)
 
     if return_diagnostics:
         assert diag is not None

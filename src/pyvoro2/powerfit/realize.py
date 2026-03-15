@@ -13,13 +13,16 @@ from ..diagnostics import TessellationDiagnostics
 from ..domains import Box, OrthorhombicCell, PeriodicCell
 from ..face_properties import annotate_face_properties
 
+
 def _plain_value(value: object) -> object:
     return value.item() if hasattr(value, 'item') else value
+
 
 def _boundary_value(values: np.ndarray | None, index: int) -> float | None:
     if values is None or np.isnan(values[index]):
         return None
     return float(values[index])
+
 
 @dataclass(frozen=True, slots=True)
 class RealizedPairDiagnostics:
@@ -90,6 +93,7 @@ class RealizedPairDiagnostics:
         from .report import build_realized_report
 
         return build_realized_report(self, constraints, use_ids=use_ids)
+
 
 def match_realized_pairs(
     points: np.ndarray,

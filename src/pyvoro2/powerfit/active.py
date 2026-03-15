@@ -20,6 +20,7 @@ from .solver import (
 from ..diagnostics import TessellationDiagnostics
 from ..domains import Box, OrthorhombicCell, PeriodicCell
 
+
 def _label_value(
     values: np.ndarray,
     index: int,
@@ -30,10 +31,12 @@ def _label_value(
     item = ids[int(values[index])]
     return item.item() if hasattr(item, 'item') else item
 
+
 def _boundary_value(values: np.ndarray | None, index: int) -> float | None:
     if values is None or np.isnan(values[index]):
         return None
     return float(values[index])
+
 
 @dataclass(frozen=True, slots=True)
 class ActiveSetOptions:
@@ -58,6 +61,7 @@ class ActiveSetOptions:
         if float(self.weight_step_tol) < 0.0:
             raise ValueError('ActiveSetOptions.weight_step_tol must be >= 0')
 
+
 @dataclass(frozen=True, slots=True)
 class ActiveSetIteration:
     iteration: int
@@ -68,6 +72,7 @@ class ActiveSetIteration:
     rms_residual_all: float
     max_residual_all: float
     weight_step_norm: float
+
 
 @dataclass(frozen=True, slots=True)
 class PairConstraintDiagnostics:
@@ -136,6 +141,7 @@ class PairConstraintDiagnostics:
             )
         return tuple(rows)
 
+
 @dataclass(frozen=True, slots=True)
 class SelfConsistentPowerFitResult:
     constraints: PairBisectorConstraints
@@ -168,6 +174,7 @@ class SelfConsistentPowerFitResult:
         from .report import build_active_set_report
 
         return build_active_set_report(self, use_ids=use_ids)
+
 
 def solve_self_consistent_power_weights(
     points: np.ndarray,
@@ -546,6 +553,7 @@ def solve_self_consistent_power_weights(
         warnings=tuple(warnings_list),
     )
 
+
 def _align_weights_to_reference(
     weights: np.ndarray, reference: np.ndarray, comps: list[list[int]]
 ) -> np.ndarray:
@@ -560,6 +568,7 @@ def _align_weights_to_reference(
         shift = float(np.mean(aligned[idx] - ref[idx]))
         aligned[idx] -= shift
     return aligned
+
 
 def _empty_realized_pair_diagnostics(
     m: int, *, return_boundary_measure: bool
@@ -578,6 +587,7 @@ def _empty_realized_pair_diagnostics(
         cells=None,
         tessellation_diagnostics=None,
     )
+
 
 def _build_constraint_statuses(
     *,

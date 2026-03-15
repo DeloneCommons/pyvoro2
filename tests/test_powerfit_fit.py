@@ -72,7 +72,12 @@ def test_soft_interval_penalty_prefers_inside_interval():
 
 
 def test_exponential_boundary_penalty_pushes_away_from_boundary():
-    from pyvoro2 import ExponentialBoundaryPenalty, FitModel, Interval, fit_power_weights
+    from pyvoro2 import (
+        ExponentialBoundaryPenalty,
+        FitModel,
+        Interval,
+        fit_power_weights,
+    )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
 

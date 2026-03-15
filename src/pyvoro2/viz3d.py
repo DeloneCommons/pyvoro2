@@ -689,7 +689,7 @@ def view_tessellation(
                         f'Skipping site labels because n={len(lbls)} exceeds '
                         f'max_site_labels={max_site_labels}.'
                     )
-                    warnings.warn(msg)
+                    warnings.warn(msg, stacklevel=2)
                 add_sites(
                     v, pts_arr, labels=None, color=st.site_color, radius=st.site_radius
                 )
@@ -738,7 +738,7 @@ def view_tessellation(
                                 f'{max_vertex_labels} of {len(vtx)}. '
                                 'Increase max_vertex_labels to label more.'
                             )
-                            warnings.warn(msg)
+                            warnings.warn(msg, stacklevel=2)
                             # Keep spheres for all vertices, but only label the
                             # first `max_vertex_labels` to avoid overwhelming
                             # the viewer.

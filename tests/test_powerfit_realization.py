@@ -29,12 +29,16 @@ def test_match_realized_pairs_flags_unrealized_constraints():
         solver='admm',
         max_iter=5000,
     )
-    diag = match_realized_pairs(pts, domain=domain, radii=fit.radii, constraints=constraints)
+    diag = match_realized_pairs(
+        pts,
+        domain=domain,
+        radii=fit.radii,
+        constraints=constraints,
+    )
 
     assert diag.realized.shape == (1,)
     assert bool(diag.realized[0]) is False
     assert diag.unrealized == (0,)
-
 
 
 def test_match_realized_pairs_reports_boundary_measure_when_requested():
@@ -68,7 +72,6 @@ def test_match_realized_pairs_reports_boundary_measure_when_requested():
     assert diag.boundary_measure[0] > 0.0
 
 
-
 def test_match_realized_pairs_can_return_tessellation_diagnostics():
     from pyvoro2 import (
         Box,
@@ -99,8 +102,7 @@ def test_match_realized_pairs_can_return_tessellation_diagnostics():
     assert diag.tessellation_diagnostics.ok is True
 
 
-
-def test_match_realized_pairs_reports_other_shift_when_same_pair_is_realized_periodically():
+def test_match_realized_pairs_reports_periodic_wrong_shift():
     from pyvoro2 import (
         PeriodicCell,
         fit_power_weights,
@@ -118,7 +120,12 @@ def test_match_realized_pairs_reports_other_shift_when_same_pair_is_realized_per
         image='given_only',
     )
     fit = fit_power_weights(pts, constraints)
-    diag = match_realized_pairs(pts, domain=cell, radii=fit.radii, constraints=constraints)
+    diag = match_realized_pairs(
+        pts,
+        domain=cell,
+        radii=fit.radii,
+        constraints=constraints,
+    )
 
     assert bool(diag.realized[0]) is True
     assert bool(diag.realized_same_shift[0]) is False
@@ -133,7 +140,12 @@ def test_realized_pair_diagnostics_export_records():
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     box = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
     constraints = resolve_pair_bisector_constraints(
-        pts, [(11, 22, 0.5)], ids=[11, 22], index_mode='id', measurement='fraction', domain=box
+        pts,
+        [(11, 22, 0.5)],
+        ids=[11, 22],
+        index_mode='id',
+        measurement='fraction',
+        domain=box,
     )
 
     realized = match_realized_pairs(

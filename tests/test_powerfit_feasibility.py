@@ -51,7 +51,12 @@ def test_feasible_fit_has_no_conflict_witness():
 
 
 def test_conflict_and_fit_records_are_exportable():
-    from pyvoro2 import FixedValue, FitModel, fit_power_weights, resolve_pair_bisector_constraints
+    from pyvoro2 import (
+        FixedValue,
+        FitModel,
+        fit_power_weights,
+        resolve_pair_bisector_constraints,
+    )
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0]],
@@ -68,9 +73,19 @@ def test_conflict_and_fit_records_are_exportable():
 
     rows = res.conflict.to_records()
     assert len(rows) >= 3
-    assert set(rows[0]) == {'constraint_index', 'site_i', 'site_j', 'relation', 'bound_value'}
+    assert set(rows[0]) == {
+        'constraint_index',
+        'site_i',
+        'site_j',
+        'relation',
+        'bound_value',
+    }
 
-    resolved = resolve_pair_bisector_constraints(pts, constraints, measurement='position')
+    resolved = resolve_pair_bisector_constraints(
+        pts,
+        constraints,
+        measurement='position',
+    )
     fit_rows = res.to_records(resolved)
     assert len(fit_rows) == 3
     assert fit_rows[0]['measurement'] == 'position'

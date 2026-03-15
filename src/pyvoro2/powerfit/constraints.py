@@ -14,6 +14,10 @@ ConstraintInput = Sequence[
 ]
 
 
+def _plain_value(value: object) -> object:
+    return value.item() if hasattr(value, 'item') else value
+
+
 @dataclass(frozen=True, slots=True)
 class PairBisectorConstraints:
     """Resolved pairwise separator constraints.
@@ -73,11 +77,15 @@ class PairBisectorConstraints:
 
         if use_ids:
             if self.ids is None:
-                raise ValueError('use_ids=True requires ids on the resolved constraint set')
+                raise ValueError(
+                    'use_ids=True requires ids on the resolved constraint set'
+                )
             return self.ids[self.i].copy(), self.ids[self.j].copy()
         return self.i.copy(), self.j.copy()
 
-    def to_records(self, *, use_ids: bool = False) -> tuple[dict[str, object], ...]:
+    def to_records(
+        self, *, use_ids: bool = False
+    ) -> tuple[dict[str, object], ...]:
         """Return one plain-Python record per constraint row."""
 
         left, right = self.pair_labels(use_ids=use_ids)
@@ -85,11 +93,13 @@ class PairBisectorConstraints:
         left_is_int = np.issubdtype(np.asarray(left).dtype, np.integer)
         right_is_int = np.issubdtype(np.asarray(right).dtype, np.integer)
         for k in range(self.n_constraints):
+            site_i = int(left[k]) if left_is_int else _plain_value(left[k])
+            site_j = int(right[k]) if right_is_int else _plain_value(right[k])
             rows.append(
                 {
                     'constraint_index': int(k),
-                    'site_i': int(left[k]) if left_is_int else left[k].item() if hasattr(left[k], 'item') else left[k],
-                    'site_j': int(right[k]) if right_is_int else right[k].item() if hasattr(right[k], 'item') else right[k],
+                    'site_i': site_i,
+                    'site_j': site_j,
                     'shift': tuple(int(v) for v in self.shifts[k]),
                     'target': float(self.target[k]),
                     'confidence': float(self.confidence[k]),
@@ -226,7 +236,10 @@ def resolve_pair_bisector_constraints(
     delta = pj_star - pts2[i_idx]
     d2 = np.einsum('mi,mi->m', delta, delta)
     if np.any(d2 <= 0.0):
-        raise ValueError('some constraints have zero distance (coincident points/image)')
+        raise ValueError(
+            'some constraints have zero distance '
+            '(coincident points/image)'
+        )
     d = np.sqrt(d2)
 
     target_arr = np.asarray(target, dtype=np.float64)
@@ -257,7 +270,6 @@ def resolve_pair_bisector_constraints(
         ids=ids_arr,
         warnings=warnings,
     )
-
 
 # ---------------------------- internal helpers ----------------------------
 
@@ -333,7 +345,6 @@ def maybe_remap_points(
     points: np.ndarray, domain: Box | OrthorhombicCell | PeriodicCell | None
 ) -> np.ndarray:
     return _maybe_remap_points(points, domain)
-
 
 
 def _maybe_remap_points(
