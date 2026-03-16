@@ -16,6 +16,8 @@ pyvoro2 is designed to be **honest and predictable**:
 - it vendors and wraps an upstream Voro++ snapshot (with a small numeric robustness patch for power/Laguerre diagrams);
 - the core tessellation modes are **standard Voronoi** and **power/Laguerre**.
 
+**License note:** starting with **0.6.0**, the pyvoro2-authored code is released under **LGPLv3+**. Versions before **0.6.0** were released under **MIT**. Vendored third-party code remains under its own licenses.
+
 ## Quickstart
 
 ### 1) Standard Voronoi in a bounding box
@@ -196,5 +198,6 @@ Details are documented in the [AI usage](project/ai.md) page.
 
 ## License
 
-- pyvoro2 is released under the **MIT License**.
-- Voro++ is vendored and redistributed under its original license (see the project pages).
+- Starting with **0.6.0**, the pyvoro2-authored code is released under the **GNU Lesser General Public License v3.0 or later (LGPLv3+)**.
+- Versions **before 0.6.0** were released under the **MIT License**.
+- Voro++ is vendored and redistributed under its original upstream license.

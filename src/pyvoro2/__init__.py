@@ -7,6 +7,7 @@ and power (Laguerre) tessellation library.
 from __future__ import annotations
 
 from .__about__ import __version__
+from . import planar
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from .api import compute, locate, ghost_cells
@@ -125,4 +126,5 @@ __all__ = [
     'radii_to_weights',
     'weights_to_radii',
     '__version__',
+    'planar',
 ]

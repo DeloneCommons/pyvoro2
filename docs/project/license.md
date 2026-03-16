@@ -2,15 +2,21 @@
 
 ## pyvoro2
 
-pyvoro2 is released under the **MIT License**.
+Starting with **0.6.0**, the pyvoro2-authored code is released under the
+**GNU Lesser General Public License v3.0 or later (LGPLv3+)**.
 
-See the repository file `LICENSE` for the full text.
+Versions **before 0.6.0** were released under the **MIT License**. Those
+historical releases remain available under MIT.
+
+See the repository files `LICENSE` and `COPYING` for the full texts.
 
 ## Voro++
 
-pyvoro2 vendors the Voro++ source code as its computational core.
+pyvoro2 vendors the Voro++ source code as its computational core, including the
+legacy 2D Voro++ sources used for the planar backend work.
 
-Voro++ is distributed under the **BSD 3-Clause license** (see the Voro++ source distribution and/or `vendor/voro++/LICENSE`).
+Voro++ is distributed under its original upstream license (see
+`vendor/voro++/LICENSE`).
 
 ## Notices
 

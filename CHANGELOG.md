@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 The format is based on *Keep a Changelog*, and this project follows *Semantic Versioning*.
 
+## [0.6.0.dev0] - 2026-03-15
+
+### Added
+
+- New `pyvoro2.planar` namespace with the first 2D public surface: `Box`, `RectangularCell`, `compute`, `locate`, `ghost_cells`, duplicate checking, edge-property annotation, and optional matplotlib visualization helpers.
+- Vendored legacy Voro++ 2D backend is now wired into the build as a separate `_core2d` extension target.
+- New planar edge-shift reconstruction helper and pre-wheel integration tests that skip cleanly until `_core2d` wheels are available.
+
+### Changed
+
+- `tools/install_wheel_overlay.py` now understands both `_core` and `_core2d`, so the editable-style wheel-overlay workflow can carry planar support once new wheels are built.
+- Package metadata now marks the start of the 0.6.0 development line.
+
 ## [0.5.1] - 2026-03-15
 
 

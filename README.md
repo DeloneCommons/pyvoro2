@@ -23,6 +23,8 @@ pyvoro2 is designed to be **honest and predictable**:
 - it vendors and wraps an upstream Voro++ snapshot (with a small numeric robustness patch for power/Laguerre diagrams);
 - the core tessellation modes are **standard Voronoi** and **power/Laguerre**.
 
+**License note:** starting with **0.6.0**, the pyvoro2-authored code is released under **LGPLv3+**. Versions before **0.6.0** were released under **MIT**. Vendored third-party code remains under its own licenses.
+
 ## Quickstart
 
 ### 1) Standard Voronoi in a bounding box
@@ -135,7 +137,7 @@ implementation-oriented details.
 | [Topology and graphs](https://delonecommons.github.io/pyvoro2/guide/topology/) | How to build a neighbor graph that respects periodic images, and how normalization helps. |
 | [Power fitting](https://delonecommons.github.io/pyvoro2/guide/powerfit/) | Fit power weights from pairwise bisector constraints, realized-face matching, and self-consistent active sets. |
 | [Visualization](https://delonecommons.github.io/pyvoro2/guide/visualization/) | Optional py3Dmol helpers for debugging and exploratory analysis. |
-| [Examples (notebooks)](https://delonecommons.github.io/pyvoro2/notebooks/01_basic_compute/) | End-to-end examples that combine the pieces above. |
+| [Examples (notebooks)](https://delonecommons.github.io/pyvoro2/notebooks/01_basic_compute/) | End-to-end examples, including focused power-fitting notebooks for reports and infeasibility witnesses. |
 | [API reference](https://delonecommons.github.io/pyvoro2/reference/api/) | The full reference (docstrings). |
 
 ## Installation
@@ -203,8 +205,9 @@ Details are documented in the [AI usage](https://delonecommons.github.io/pyvoro2
 
 ## License
 
-- pyvoro2 is released under the **MIT License**.
-- Voro++ is vendored and redistributed under its original license (see the project pages).
+- Starting with **0.6.0**, the pyvoro2-authored code is released under the **GNU Lesser General Public License v3.0 or later (LGPLv3+)**.
+- Versions **before 0.6.0** were released under the **MIT License**.
+- Voro++ is vendored and redistributed under its original upstream license.
 
 ---
 

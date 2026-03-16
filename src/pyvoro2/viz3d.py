@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: LGPL-3.0-or-later
 """Optional 3D visualization helpers.
 
 This module provides a small set of convenience functions for visualizing
