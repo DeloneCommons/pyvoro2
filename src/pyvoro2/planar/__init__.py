@@ -14,6 +14,7 @@ from .diagnostics import (
     validate_tessellation,
 )
 from .domains import Box, RectangularCell
+from .result import PlanarComputeResult
 from .duplicates import duplicate_check
 from .normalize import (
     NormalizedTopology,
@@ -32,6 +33,7 @@ from .validation import (
 __all__ = [
     'Box',
     'RectangularCell',
+    'PlanarComputeResult',
     'compute',
     'locate',
     'ghost_cells',

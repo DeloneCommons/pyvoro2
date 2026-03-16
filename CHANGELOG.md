@@ -13,11 +13,12 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - New planar edge-shift reconstruction helper and pre-wheel integration tests that skip cleanly until `_core2d` wheels are available.
 - New planar tessellation diagnostics and strict validation helpers: `analyze_tessellation(...)` and `validate_tessellation(...)`.
 - New planar normalization helpers: `normalize_vertices(...)`, `normalize_topology(...)`, and `validate_normalized_topology(...)`.
+- New `pyvoro2.planar.PlanarComputeResult` for structured wrapper-level compute results carrying raw cells, optional tessellation diagnostics, and optional normalized outputs.
 - `pyvoro2.powerfit` realized-boundary matching and self-consistent active-set refinement now support planar 2D domains in addition to the original 3D path.
 
 ### Changed
 
-- `pyvoro2.planar.compute(...)` now supports wrapper-level tessellation diagnostics (`return_diagnostics=...`, `tessellation_check=...`) and automatically computes temporary periodic edge shifts/geometry when needed for those checks, stripping the temporary fields back out unless they were explicitly requested.
+- `pyvoro2.planar.compute(...)` now supports wrapper-level tessellation diagnostics (`return_diagnostics=...`, `tessellation_check=...`) and structured normalization convenience (`normalize='vertices'|'topology'`, `return_result=True`), automatically computing temporary periodic edge shifts/geometry when needed and stripping the temporary fields back out of the raw returned cells unless they were explicitly requested.
 - `tools/install_wheel_overlay.py` now understands both `_core` and `_core2d`, so the editable-style wheel-overlay workflow can carry planar support once new wheels are built.
 - Package metadata now marks the start of the 0.6.0 development line.
 - `resolve_pair_bisector_constraints(...)` now accepts both planar (2D) and spatial (3D) point sets, with dimension-aware shift validation and nearest-image resolution.

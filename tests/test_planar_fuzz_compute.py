@@ -117,3 +117,41 @@ def test_fuzz_planar_compute_periodic_power_with_diagnostics(
         assert diag.ok_area
         assert diag.ok_reciprocity
         assert all(set(cell.keys()) >= {'id', 'area', 'site'} for cell in cells)
+
+
+@pytest.mark.fuzz
+def test_fuzz_planar_compute_result_periodic_topology(
+    fuzz_settings,
+) -> None:
+    n_runs = max(1, int(fuzz_settings['n']) // 2)
+    seed = int(fuzz_settings['seed'])
+
+    bounds = ((0.0, 1.0), (0.0, 1.0))
+    domain = pv2.RectangularCell(bounds, periodic=(True, True))
+
+    for run in range(n_runs):
+        rng = rng_for_run(seed, 6000 + run)
+        pts = _sample_points_in_bounds(rng, 20, bounds)
+        radii = rng.uniform(0.0, 0.08, size=(20,))
+
+        result = pv2.compute(
+            pts,
+            domain=domain,
+            mode='power',
+            radii=radii,
+            include_empty=True,
+            return_vertices=False,
+            return_adjacency=False,
+            return_edges=False,
+            return_diagnostics=True,
+            normalize='topology',
+        )
+
+        assert isinstance(result, pv2.PlanarComputeResult)
+        assert result.require_tessellation_diagnostics().ok is True
+        topo = result.require_normalized_topology()
+        diag = pv2.validate_normalized_topology(topo, domain, level='basic')
+        assert diag.ok_vertex_edge_shift is True
+        assert diag.ok_edge_vertex_sets is True
+        assert result.global_vertices is not None
+        assert result.global_edges is not None

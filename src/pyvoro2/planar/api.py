@@ -25,6 +25,8 @@ from .diagnostics import (
 )
 from .domains import Box, RectangularCell
 from .duplicates import duplicate_check as _duplicate_check
+from .normalize import normalize_edges, normalize_vertices
+from .result import PlanarComputeResult
 
 try:
     from .. import _core2d  # type: ignore[attr-defined]
@@ -134,13 +136,20 @@ def compute(
     repair_edge_shifts: bool = False,
     edge_shift_tol: float | None = None,
     return_diagnostics: bool = False,
+    return_result: bool = False,
+    normalize: Literal['none', 'vertices', 'topology'] = 'none',
+    normalization_tol: float | None = None,
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'none',
     tessellation_require_reciprocity: bool | None = None,
     tessellation_area_tol_rel: float = 1e-8,
     tessellation_area_tol_abs: float = 1e-12,
     tessellation_line_offset_tol: float | None = None,
     tessellation_line_angle_tol: float | None = None,
-) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], TessellationDiagnostics]:
+) -> (
+    list[dict[str, Any]]
+    | tuple[list[dict[str, Any]], TessellationDiagnostics]
+    | PlanarComputeResult
+):
     """Compute planar Voronoi or power tessellation cells.
 
     Supported domains:
@@ -153,10 +162,18 @@ def compute(
     ``tessellation_check='warn'`` or ``'raise'`` to have common area and
     reciprocity issues handled directly by the wrapper.
 
-    For periodic domains, diagnostics automatically compute temporary edge
-    shifts and the required edge/vertex geometry internally, even when those
-    fields were not requested by the caller. Any such temporary fields are
-    stripped from the returned cells unless they were explicitly requested.
+    Wrapper-level normalization convenience is also available via
+    ``normalize='vertices'`` or ``'topology'``. Any request for normalized
+    output returns a :class:`~pyvoro2.planar.PlanarComputeResult`, as does
+    ``return_result=True``. The normalized structures intentionally carry their
+    own augmented cell copies, so the raw ``cells`` field can stay lightweight
+    even when internal geometry was needed for diagnostics or normalization.
+
+    For periodic domains, diagnostics and normalization automatically compute
+    temporary edge shifts and the required edge/vertex geometry internally,
+    even when those fields were not requested by the caller. Any such
+    temporary fields are stripped from the raw returned cells unless they were
+    explicitly requested.
     """
 
     pts = coerce_point_array(points, name='points', dim=2)
@@ -169,6 +186,8 @@ def compute(
         raise ValueError(
             'tessellation_check must be one of: none, diagnose, warn, raise'
         )
+    if normalize not in ('none', 'vertices', 'topology'):
+        raise ValueError('normalize must be one of: none, vertices, topology')
 
     user_return_vertices = bool(return_vertices)
     user_return_adjacency = bool(return_adjacency)
@@ -176,18 +195,32 @@ def compute(
     user_return_edge_shifts = bool(return_edge_shifts)
 
     geom = geometry2d(domain)
+    periodic = bool(geom.has_any_periodic_axis)
     need_diag = bool(return_diagnostics) or tessellation_check != 'none'
-    need_periodic_diag_geometry = bool(need_diag and geom.has_any_periodic_axis)
+    need_norm_vertices = normalize in ('vertices', 'topology')
+    need_norm_topology = normalize == 'topology'
 
-    internal_return_vertices = user_return_vertices or need_periodic_diag_geometry
+    need_periodic_diag_geometry = bool(need_diag and periodic)
+    need_periodic_norm_geometry = bool(need_norm_vertices and periodic)
+
+    internal_return_vertices = (
+        user_return_vertices or need_periodic_diag_geometry or need_norm_vertices
+    )
     internal_return_adjacency = user_return_adjacency
-    internal_return_edges = user_return_edges or need_periodic_diag_geometry
+    internal_return_edges = (
+        user_return_edges
+        or need_periodic_diag_geometry
+        or need_norm_topology
+        or need_periodic_norm_geometry
+    )
     internal_return_edge_shifts = (
-        user_return_edge_shifts or need_periodic_diag_geometry
+        user_return_edge_shifts
+        or need_periodic_diag_geometry
+        or need_periodic_norm_geometry
     )
 
     if user_return_edge_shifts:
-        if not geom.has_any_periodic_axis:
+        if not periodic:
             raise ValueError(
                 'return_edge_shifts is only supported for periodic domains '
                 '(RectangularCell with any periodic axis)'
@@ -287,7 +320,6 @@ def compute(
     diag: TessellationDiagnostics | None = None
     if need_diag:
         expected = ids_user.tolist() if ids_user is not None else list(range(n))
-        periodic = bool(geom.has_any_periodic_axis)
         diag = analyze_tessellation(
             cells,
             domain,
@@ -325,6 +357,24 @@ def compute(
                     raise TessellationError(msg, diag)
                 warnings.warn(msg, stacklevel=2)
 
+    normalized_vertices = None
+    normalized_topology = None
+    if need_norm_vertices:
+        normalized_vertices = normalize_vertices(
+            cells,
+            domain=domain,
+            tol=normalization_tol,
+            require_edge_shifts=True,
+            copy_cells=True,
+        )
+        if need_norm_topology:
+            normalized_topology = normalize_edges(
+                normalized_vertices,
+                domain=domain,
+                tol=normalization_tol,
+                copy_cells=False,
+            )
+
     _strip_internal_geometry_inplace(
         cells,
         keep_vertices=user_return_vertices,
@@ -333,6 +383,13 @@ def compute(
         keep_edge_shifts=user_return_edge_shifts,
     )
 
+    if return_result or normalize != 'none':
+        return PlanarComputeResult(
+            cells=cells,
+            tessellation_diagnostics=diag,
+            normalized_vertices=normalized_vertices,
+            normalized_topology=normalized_topology,
+        )
     if return_diagnostics:
         assert diag is not None
         return cells, diag

@@ -301,6 +301,77 @@ def test_planar_compute_return_diagnostics(fake_core) -> None:
     assert diag.area_ratio == pytest.approx(1.0)
 
 
+def test_planar_compute_return_result_carries_diagnostics(fake_core) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    result = pv2.compute(
+        pts,
+        domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+        return_result=True,
+        tessellation_check='diagnose',
+    )
+
+    assert isinstance(result, pv2.PlanarComputeResult)
+    assert result.has_tessellation_diagnostics is True
+    assert result.require_tessellation_diagnostics().ok is True
+    assert result.normalized_vertices is None
+    assert result.normalized_topology is None
+
+
+def test_planar_compute_normalize_vertices_returns_result(fake_core) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    result = pv2.compute(
+        pts,
+        domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+        return_vertices=False,
+        return_adjacency=False,
+        return_edges=False,
+        normalize='vertices',
+    )
+
+    assert isinstance(result, pv2.PlanarComputeResult)
+    assert fake_core.last_call is not None
+    assert fake_core.last_call[0] == 'compute_box_standard'
+    assert fake_core.last_call[1][-1] == (True, False, False)
+    assert set(result.cells[0].keys()) == {'id', 'area', 'site'}
+    assert result.has_normalized_vertices is True
+    assert result.global_vertices is not None
+    assert result.global_vertices.shape == (6, 2)
+    assert result.global_edges is None
+    with pytest.raises(ValueError, match='normalized topology'):
+        result.require_normalized_topology()
+
+
+def test_planar_compute_normalize_topology_periodic_returns_result(
+    fake_core,
+) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    domain = pv2.RectangularCell(((0.0, 1.0), (0.0, 1.0)), periodic=(True, False))
+    result = pv2.compute(
+        pts,
+        domain=domain,
+        return_vertices=False,
+        return_adjacency=False,
+        return_edges=False,
+        normalize='topology',
+    )
+
+    assert isinstance(result, pv2.PlanarComputeResult)
+    assert fake_core.last_call is not None
+    assert fake_core.last_call[0] == 'compute_box_standard'
+    assert fake_core.last_call[1][-1] == (True, False, True)
+    assert set(result.cells[0].keys()) == {'id', 'area', 'site'}
+    assert result.has_normalized_vertices is True
+    assert result.has_normalized_topology is True
+    assert result.global_edges is not None
+    diag = pv2.validate_normalized_topology(
+        result.require_normalized_topology(),
+        domain,
+        level='basic',
+    )
+    assert diag.is_periodic_domain is True
+    assert diag.n_global_edges == len(result.global_edges)
+
+
 def test_planar_compute_periodic_diagnostics_strip_internal_geometry(
     fake_core,
 ) -> None:
@@ -366,4 +437,14 @@ def test_planar_compute_invalid_tessellation_check(fake_core) -> None:
             pts,
             domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
             tessellation_check='nope',  # type: ignore[arg-type]
+        )
+
+
+def test_planar_compute_invalid_normalize(fake_core) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    with pytest.raises(ValueError, match='normalize'):
+        pv2.compute(
+            pts,
+            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            normalize='nope',  # type: ignore[arg-type]
         )
