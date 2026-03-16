@@ -26,6 +26,11 @@ def _add_periodic_edge_shifts_inplace(
     the adjacent cell on that edge corresponds to the neighbor site translated
     by ``na * a + nb * b``, where ``(a, b)`` are the domain lattice vectors in
     the same coordinate system as the returned vertices.
+
+    In the legacy 2D backend, some periodic edges can also arrive with a
+    negative ``adjacent_cell`` even though they are not true domain walls.
+    This helper tries to resolve those hidden periodic adjacencies directly from
+    the edge geometry before running the reciprocity check.
     """
 
     if search < 0:
@@ -64,6 +69,16 @@ def _add_periodic_edge_shifts_inplace(
         if site.size == 2:
             sites[pid] = site.reshape(2)
 
+    if not sites:
+        return
+
+    max_pid = max(sites) + 1
+    site_arr = np.zeros((max_pid, 2), dtype=np.float64)
+    site_mask = np.zeros(max_pid, dtype=bool)
+    for pid, site in sites.items():
+        site_arr[pid] = site
+        site_mask[pid] = True
+
     rx = range(-search, search + 1) if px else range(0, 1)
     ry = range(-search, search + 1) if py else range(0, 1)
     shifts: list[tuple[int, int]] = []
@@ -76,6 +91,7 @@ def _add_periodic_edge_shifts_inplace(
     trans_arr = np.stack(trans, axis=0) if trans else np.zeros((0, 2), dtype=float)
     shift_to_idx = {shift: i for i, shift in enumerate(shifts)}
     l1 = np.asarray([abs(sx) + abs(sy) for sx, sy in shifts], dtype=np.int64)
+    idx_zero = shift_to_idx.get((0, 0))
 
     if mode == 'power':
         if radii is None:
@@ -84,29 +100,25 @@ def _add_periodic_edge_shifts_inplace(
     else:
         weights = None
 
-    def _residual_for_trans(
+    def _residual_for_images(
         *,
         pid: int,
-        nid: int,
+        nid_arr: np.ndarray,
         p_i: np.ndarray,
-        p_j: np.ndarray,
-        trans_subset: np.ndarray,
+        p_img: np.ndarray,
         verts: np.ndarray,
     ) -> np.ndarray:
-        p_img = p_j.reshape(1, 2) + trans_subset
         d = p_img - p_i.reshape(1, 2)
         dn = np.linalg.norm(d, axis=1)
         dn = np.where(dn == 0.0, 1.0, dn)
 
         proj = np.einsum('mk,nk->mn', d, verts)
         if mode == 'standard':
-            rhs = 0.5 * (
-                np.sum(p_img * p_img, axis=1) - np.dot(p_i, p_i)
-            )
+            rhs = 0.5 * (np.sum(p_img * p_img, axis=1) - np.dot(p_i, p_i))
         elif mode == 'power':
             assert weights is not None
             wi = float(weights[pid])
-            wj = float(weights[nid])
+            wj = weights[nid_arr]
             rhs = 0.5 * (
                 (np.sum(p_img * p_img, axis=1) - wj)
                 - (np.dot(p_i, p_i) - wi)
@@ -116,6 +128,169 @@ def _add_periodic_edge_shifts_inplace(
 
         dist = np.abs(proj - rhs[:, None]) / dn[:, None]
         return np.max(dist, axis=1)
+
+    def _best_shift_for_neighbor(
+        *,
+        pid: int,
+        nid: int,
+        p_i: np.ndarray,
+        p_j: np.ndarray,
+        verts: np.ndarray,
+    ) -> tuple[int, float]:
+        self_neighbor = nid == pid
+        if self_neighbor and search == 0:
+            raise ValueError(
+                'search=0 cannot resolve edges against periodic images of the same '
+                'site; increase search'
+            )
+
+        frac = basis_inv @ (p_j - p_i)
+        base = (-np.rint(frac)).astype(np.int64)
+        if not px:
+            base[0] = 0
+        if not py:
+            base[1] = 0
+
+        dx_rng = (-1, 0, 1) if px else (0,)
+        dy_rng = (-1, 0, 1) if py else (0,)
+        seed_idx: list[int] = []
+        for dx in dx_rng:
+            for dy in dy_rng:
+                shift = (int(base[0] + dx), int(base[1] + dy))
+                if max(abs(shift[0]), abs(shift[1])) > search:
+                    continue
+                ii = shift_to_idx.get(shift)
+                if ii is not None:
+                    seed_idx.append(ii)
+
+        if self_neighbor and idx_zero is not None:
+            seed_idx = [ii for ii in seed_idx if ii != idx_zero]
+        if not seed_idx:
+            if self_neighbor:
+                raise ValueError(
+                    'unable to seed edge shift candidates for self-neighbor edge; '
+                    'increase search'
+                )
+            if idx_zero is None:
+                raise ValueError('internal error: missing (0, 0) shift candidate')
+            seed_idx = [idx_zero]
+
+        seen: set[int] = set()
+        seed_idx = [ii for ii in seed_idx if not (ii in seen or seen.add(ii))]
+
+        p_img_seed = p_j.reshape(1, 2) + trans_arr[seed_idx]
+        resid_seed = _residual_for_images(
+            pid=pid,
+            nid_arr=np.full(len(seed_idx), int(nid), dtype=np.int64),
+            p_i=p_i,
+            p_img=p_img_seed,
+            verts=verts,
+        )
+        best_local = int(np.argmin(resid_seed))
+        best_idx = int(seed_idx[best_local])
+        best_resid = float(resid_seed[best_local])
+
+        if best_resid > tol_line and len(shifts) > len(seed_idx):
+            p_img_full = p_j.reshape(1, 2) + trans_arr
+            resid_full = _residual_for_images(
+                pid=pid,
+                nid_arr=np.full(len(shifts), int(nid), dtype=np.int64),
+                p_i=p_i,
+                p_img=p_img_full,
+                verts=verts,
+            )
+            if (
+                self_neighbor
+                and idx_zero is not None
+                and idx_zero < resid_full.shape[0]
+            ):
+                resid_full[idx_zero] = np.inf
+            best_idx = int(np.argmin(resid_full))
+            best_resid = float(resid_full[best_idx])
+            resid_for_tie = resid_full
+            cand_idx = list(range(len(shifts)))
+        else:
+            resid_for_tie = resid_seed
+            cand_idx = seed_idx
+
+        if best_resid > tol_line:
+            raise ValueError(
+                'unable to determine adjacent_shift within tolerance; '
+                f'pid={pid}, nid={nid}, best_resid={best_resid:g}, '
+                f'tol={tol_line:g}. Consider increasing search.'
+            )
+
+        scale = max(
+            float(np.linalg.norm(p_i)),
+            float(np.linalg.norm(p_j)),
+            length_scale,
+            1e-30,
+        )
+        eps_tie = max(1e-12 * scale, 64.0 * np.finfo(float).eps * scale)
+        near = [
+            cand_idx[k]
+            for k, rr in enumerate(resid_for_tie)
+            if float(rr) <= best_resid + eps_tie
+        ]
+        if len(near) > 1:
+            near.sort(key=lambda ii: (int(l1[ii]), shifts[ii]))
+            best_idx = int(near[0])
+
+        return best_idx, best_resid
+
+    def _best_unknown_neighbor(
+        *,
+        pid: int,
+        p_i: np.ndarray,
+        verts: np.ndarray,
+    ) -> tuple[int, int, float] | None:
+        cand_nids: list[int] = []
+        cand_shift_idx: list[int] = []
+        for nid in range(max_pid):
+            if not site_mask[nid]:
+                continue
+            for sidx, shift in enumerate(shifts):
+                if nid == pid and shift == (0, 0):
+                    continue
+                cand_nids.append(int(nid))
+                cand_shift_idx.append(int(sidx))
+
+        if not cand_nids:
+            return None
+
+        nid_arr = np.asarray(cand_nids, dtype=np.int64)
+        shift_idx_arr = np.asarray(cand_shift_idx, dtype=np.int64)
+        p_img = site_arr[nid_arr] + trans_arr[shift_idx_arr]
+        resid = _residual_for_images(
+            pid=pid,
+            nid_arr=nid_arr,
+            p_i=p_i,
+            p_img=p_img,
+            verts=verts,
+        )
+        best = int(np.argmin(resid))
+        best_resid = float(resid[best])
+        if best_resid > tol_line:
+            return None
+
+        scale = max(float(np.linalg.norm(p_i)), length_scale, 1e-30)
+        eps_tie = max(1e-12 * scale, 64.0 * np.finfo(float).eps * scale)
+        near = [
+            k
+            for k, rr in enumerate(resid)
+            if float(rr) <= best_resid + eps_tie
+        ]
+        if len(near) > 1:
+            near.sort(
+                key=lambda k: (
+                    int(l1[shift_idx_arr[k]]),
+                    int(nid_arr[k]),
+                    shifts[int(shift_idx_arr[k])],
+                )
+            )
+            best = int(near[0])
+
+        return int(nid_arr[best]), int(shift_idx_arr[best]), best_resid
 
     residuals_by_edge: dict[tuple[int, int], float] = {}
 
@@ -136,16 +311,6 @@ def _add_periodic_edge_shifts_inplace(
 
         edges = cell.get('edges') or []
         for ei, edge in enumerate(edges):
-            nid = int(edge.get('adjacent_cell', -999999))
-            if nid < 0:
-                edge['adjacent_shift'] = (0, 0)
-                residuals_by_edge[(pid, ei)] = 0.0
-                continue
-
-            p_j = sites.get(nid)
-            if p_j is None:
-                raise ValueError(f'missing site for adjacent_cell={nid}')
-
             idx = np.asarray(edge.get('vertices', []), dtype=np.int64)
             if idx.shape != (2,):
                 edge['adjacent_shift'] = (0, 0)
@@ -153,102 +318,30 @@ def _add_periodic_edge_shifts_inplace(
                 continue
             verts = vertices[idx]
 
-            self_neighbor = nid == pid
-            if self_neighbor and search == 0:
-                raise ValueError(
-                    'search=0 cannot resolve edges against periodic images '
-                    'of the same site; increase search'
-                )
+            nid = int(edge.get('adjacent_cell', -999999))
+            if nid < 0:
+                resolved = _best_unknown_neighbor(pid=pid, p_i=p_i, verts=verts)
+                if resolved is None:
+                    edge['adjacent_shift'] = (0, 0)
+                    residuals_by_edge[(pid, ei)] = 0.0
+                    continue
+                nid, best_idx, best_resid = resolved
+                edge['adjacent_cell'] = int(nid)
+                edge['adjacent_shift'] = shifts[best_idx]
+                residuals_by_edge[(pid, ei)] = best_resid
+                continue
 
-            frac = basis_inv @ (p_j - p_i)
-            base = (-np.rint(frac)).astype(np.int64)
-            if not px:
-                base[0] = 0
-            if not py:
-                base[1] = 0
+            p_j = sites.get(nid)
+            if p_j is None:
+                raise ValueError(f'missing site for adjacent_cell={nid}')
 
-            dx_rng = (-1, 0, 1) if px else (0,)
-            dy_rng = (-1, 0, 1) if py else (0,)
-            seed_idx: list[int] = []
-            for dx in dx_rng:
-                for dy in dy_rng:
-                    shift = (int(base[0] + dx), int(base[1] + dy))
-                    if max(abs(shift[0]), abs(shift[1])) > search:
-                        continue
-                    ii = shift_to_idx.get(shift)
-                    if ii is not None:
-                        seed_idx.append(ii)
-
-            idx0 = shift_to_idx.get((0, 0))
-            if self_neighbor and idx0 is not None:
-                seed_idx = [ii for ii in seed_idx if ii != idx0]
-            if not seed_idx:
-                if self_neighbor:
-                    raise ValueError(
-                        'unable to seed edge shift candidates for self-neighbor '
-                        'edge; increase search'
-                    )
-                if idx0 is None:
-                    raise ValueError('internal error: missing (0, 0) shift candidate')
-                seed_idx = [idx0]
-
-            seen: set[int] = set()
-            seed_idx = [ii for ii in seed_idx if not (ii in seen or seen.add(ii))]
-
-            resid_seed = _residual_for_trans(
+            best_idx, best_resid = _best_shift_for_neighbor(
                 pid=pid,
                 nid=nid,
                 p_i=p_i,
                 p_j=p_j,
-                trans_subset=trans_arr[seed_idx],
                 verts=verts,
             )
-            best_local = int(np.argmin(resid_seed))
-            best_idx = int(seed_idx[best_local])
-            best_resid = float(resid_seed[best_local])
-
-            if best_resid > tol_line and len(shifts) > len(seed_idx):
-                resid_full = _residual_for_trans(
-                    pid=pid,
-                    nid=nid,
-                    p_i=p_i,
-                    p_j=p_j,
-                    trans_subset=trans_arr,
-                    verts=verts,
-                )
-                if self_neighbor and idx0 is not None and idx0 < resid_full.shape[0]:
-                    resid_full[idx0] = np.inf
-                best_idx = int(np.argmin(resid_full))
-                best_resid = float(resid_full[best_idx])
-                resid_for_tie = resid_full
-                cand_idx = list(range(len(shifts)))
-            else:
-                resid_for_tie = resid_seed
-                cand_idx = seed_idx
-
-            if best_resid > tol_line:
-                raise ValueError(
-                    'unable to determine adjacent_shift within tolerance; '
-                    f'pid={pid}, nid={nid}, best_resid={best_resid:g}, '
-                    f'tol={tol_line:g}. Consider increasing search.'
-                )
-
-            scale = max(
-                float(np.linalg.norm(p_i)),
-                float(np.linalg.norm(p_j)),
-                length_scale,
-                1e-30,
-            )
-            eps_tie = max(1e-12 * scale, 64.0 * np.finfo(float).eps * scale)
-            near = [
-                cand_idx[k]
-                for k, rr in enumerate(resid_for_tie)
-                if float(rr) <= best_resid + eps_tie
-            ]
-            if len(near) > 1:
-                near.sort(key=lambda ii: (int(l1[ii]), shifts[ii]))
-                best_idx = int(near[0])
-
             edge['adjacent_shift'] = shifts[best_idx]
             residuals_by_edge[(pid, ei)] = best_resid
 
