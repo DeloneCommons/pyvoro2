@@ -4,8 +4,8 @@ This module adds optional post-processing utilities for Voronoi cells returned
 by :func:`pyvoro2.compute`.
 
 The core computation in Voro++ is fast and focuses on topology/geometry of the
-cells. Many chemistry workflows benefit from extra per-face descriptors (face
-centroid, oriented normals, and a few contact heuristics). These can be
+cells. Many downstream geometry workflows benefit from extra per-face descriptors
+(face centroid, oriented normals, and a few boundary heuristics). These can be
 expensive, so they are provided as an explicit, opt-in post-processing step.
 """
 
@@ -16,6 +16,7 @@ from typing import Any
 import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
+from ._domain_geometry import geometry3d
 from .diagnostics import TessellationDiagnostics
 
 
@@ -144,40 +145,26 @@ def annotate_face_properties(
         if cid >= 0 and s.size == 3:
             site_by_id[cid] = s.reshape(3)
 
-    domain_periodic = isinstance(domain, PeriodicCell) or (
-        isinstance(domain, OrthorhombicCell) and any(domain.periodic)
-    )
+    geom = geometry3d(domain)
+    domain_periodic = geom.has_any_periodic_axis
 
     if domain_periodic:
-        if isinstance(domain, PeriodicCell):
-            vec = np.asarray(domain.vectors, dtype=np.float64)
-            a, b, cvec = vec[0], vec[1], vec[2]
-        else:
-            # OrthorhombicCell
-            (xmin, xmax), (ymin, ymax), (zmin, zmax) = domain.bounds
-            a = np.array([xmax - xmin, 0.0, 0.0], dtype=np.float64)
-            b = np.array([0.0, ymax - ymin, 0.0], dtype=np.float64)
-            cvec = np.array([0.0, 0.0, zmax - zmin], dtype=np.float64)
 
-        def _other_site(i: int, f: dict[str, Any]) -> np.ndarray | None:
+        def _other_site(_i: int, f: dict[str, Any]) -> np.ndarray | None:
             j = int(f.get('adjacent_cell', -999999))
             if j < 0:
                 return None
             sj = site_by_id.get(j)
-            if sj is None:
+            if sj is None or 'adjacent_shift' not in f:
                 return None
-            if 'adjacent_shift' not in f:
+            shift = np.asarray(f.get('adjacent_shift', (0, 0, 0)), dtype=np.int64)
+            if shift.shape != (3,):
                 return None
-            s = f.get('adjacent_shift', (0, 0, 0))
-            try:
-                na, nb, nc = int(s[0]), int(s[1]), int(s[2])
-            except Exception:
-                return None
-            return sj + na * a + nb * b + nc * cvec
+            return sj + geom.shift_vector(shift)
 
     else:
 
-        def _other_site(i: int, f: dict[str, Any]) -> np.ndarray | None:
+        def _other_site(_i: int, f: dict[str, Any]) -> np.ndarray | None:
             j = int(f.get('adjacent_cell', -999999))
             if j < 0:
                 return None

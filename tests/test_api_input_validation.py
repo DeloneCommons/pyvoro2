@@ -146,3 +146,104 @@ def test_duplicate_check_argument_warns(monkeypatch) -> None:
             return_adjacency=False,
             return_faces=False,
         )
+
+
+def test_compute_rejects_invalid_block_specification() -> None:
+    dom = _box()
+    pts = np.array([[0.1, 0.2, 0.3], [0.7, 0.6, 0.5]], dtype=float)
+
+    with pytest.raises(ValueError, match='blocks'):
+        pyvoro2.compute(
+            pts,
+            domain=dom,
+            blocks=(2, 2),
+            return_vertices=False,
+            return_adjacency=False,
+            return_faces=False,
+        )
+
+    with pytest.raises(ValueError, match='positive'):
+        pyvoro2.compute(
+            pts,
+            domain=dom,
+            blocks=(2, 0, 2),
+            return_vertices=False,
+            return_adjacency=False,
+            return_faces=False,
+        )
+
+    with pytest.raises(ValueError, match='block_size'):
+        pyvoro2.compute(
+            pts,
+            domain=dom,
+            block_size=np.nan,
+            return_vertices=False,
+            return_adjacency=False,
+            return_faces=False,
+        )
+
+
+@pytest.mark.parametrize(
+    ('func', 'kwargs'),
+    [
+        (
+            pyvoro2.compute,
+            dict(
+                return_vertices=False,
+                return_adjacency=False,
+                return_faces=False,
+            ),
+        ),
+        (pyvoro2.locate, dict(queries=np.array([[0.2, 0.2, 0.2]], dtype=float))),
+        (
+            pyvoro2.ghost_cells,
+            dict(
+                queries=np.array([[0.2, 0.2, 0.2]], dtype=float),
+                return_vertices=False,
+                return_adjacency=False,
+                return_faces=False,
+            ),
+        ),
+    ],
+)
+def test_public_wrappers_reject_invalid_duplicate_check(func, kwargs) -> None:
+    dom = _box()
+    pts = np.array([[0.1, 0.2, 0.3], [0.7, 0.6, 0.5]], dtype=float)
+
+    with pytest.raises(ValueError, match='duplicate_check'):
+        if func is pyvoro2.compute:
+            func(pts, domain=dom, duplicate_check='bad', **kwargs)
+        else:
+            queries = kwargs.pop('queries')
+            func(pts, queries, domain=dom, duplicate_check='bad', **kwargs)
+
+
+def test_power_mode_rejects_nonfinite_radii_and_ghost_radius() -> None:
+    dom = _box()
+    pts = np.array([[0.1, 0.2, 0.3], [0.7, 0.6, 0.5]], dtype=float)
+    rr = np.array([0.1, np.inf], dtype=float)
+    q = np.array([[0.2, 0.2, 0.2]], dtype=float)
+
+    with pytest.raises(ValueError, match='finite'):
+        pyvoro2.compute(
+            pts,
+            domain=dom,
+            mode='power',
+            radii=rr,
+            return_vertices=False,
+            return_adjacency=False,
+            return_faces=False,
+        )
+
+    with pytest.raises(ValueError, match='finite'):
+        pyvoro2.ghost_cells(
+            pts,
+            q,
+            domain=dom,
+            mode='power',
+            radii=np.array([0.1, 0.2], dtype=float),
+            ghost_radius=np.nan,
+            return_vertices=False,
+            return_adjacency=False,
+            return_faces=False,
+        )

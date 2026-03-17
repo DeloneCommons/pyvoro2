@@ -1,5 +1,5 @@
 site_name: pyvoro2
-site_description: Python bindings for Voro++ (3D Voronoi and power/Laguerre tessellations) with periodic and topology utilities.
+site_description: Python bindings for Voro++ (2D/3D Voronoi and power/Laguerre tessellations) with periodic, topology, and inverse power-fitting utilities.
 site_url: https://delonecommons.github.io/pyvoro2/
 repo_url: https://github.com/DeloneCommons/pyvoro2
 repo_name: DeloneCommons/pyvoro2
@@ -28,21 +28,6 @@ plugins:
             show_root_heading: true
             show_root_toc_entry: false
             heading_level: 2
-  - mkdocs-jupyter:
-      # Limit mkdocs-jupyter processing strictly to notebooks.
-      #
-      # Why: both mkdocstrings and pandoc use the ":::" prefix for *different*
-      # syntaxes. mkdocstrings uses it as a directive ("::: pyvoro2.api"),
-      # while pandoc interprets it as a fenced Div block and emits warnings if
-      # there is no closing ":::".
-      #
-      # mkdocs-jupyter can invoke pandoc internally, so we scope it to *.ipynb
-      # to avoid spurious warnings on API reference pages.
-      include: ["notebooks/*.ipynb"]
-      execute: false
-      include_source: true
-      allow_errors: false
-
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -69,27 +54,50 @@ nav:
   - Home: index.md
   - User guide:
       - Concepts: guide/concepts.md
-      - Domains: guide/domains.md
+      - Domains (3D): guide/domains.md
+      - Planar (2D): guide/planar.md
       - Operations: guide/operations.md
       - Topology and graphs: guide/topology.md
-      - Inverse fitting: guide/inverse.md
+      - Power fitting: guide/powerfit.md
       - Visualization: guide/visualization.md
+      - Notebooks: guide/notebooks.md
   - Examples:
-      - notebooks/01_basic_compute.ipynb
-      - notebooks/02_periodic_graph.ipynb
-      - notebooks/03_locate_and_ghost.ipynb
-      - notebooks/04_inverse_fit.ipynb
-      - notebooks/05_visualization.ipynb
+      - notebooks/01_basic_compute.md
+      - notebooks/02_periodic_graph.md
+      - notebooks/03_locate_and_ghost.md
+      - notebooks/04_powerfit.md
+      - notebooks/05_visualization.md
+      - notebooks/06_powerfit_reports.md
+      - notebooks/07_powerfit_infeasibility.md
+      - notebooks/08_powerfit_active_path.md
   - API reference:
-      - Domains: reference/domains.md
-      - API: reference/api.md
-      - Diagnostics: reference/diagnostics.md
-      - Validation: reference/validation.md
-      - Duplicate check: reference/duplicates.md
-      - Normalization: reference/normalize.md
-      - Face properties: reference/face_properties.md
-      - Inverse fitting: reference/inverse.md
-      - Visualization: reference/viz3d.md
+      - Spatial (3D):
+          - Domains: reference/domains.md
+          - API: reference/api.md
+          - Diagnostics: reference/diagnostics.md
+          - Validation: reference/validation.md
+          - Duplicate check: reference/duplicates.md
+          - Normalization: reference/normalize.md
+          - Face properties: reference/face_properties.md
+          - Visualization (3D): reference/viz3d.md
+      - Planar (2D):
+          - Overview: reference/planar/index.md
+          - Domains: reference/planar/domains.md
+          - API: reference/planar/api.md
+          - Diagnostics: reference/planar/diagnostics.md
+          - Normalization: reference/planar/normalize.md
+          - Validation: reference/planar/validation.md
+          - Compute result: reference/planar/result.md
+          - Edge properties: reference/edge_properties.md
+          - Visualization (2D): reference/viz2d.md
+      - Power fitting:
+          - Overview: reference/powerfit/index.md
+          - Constraints: reference/powerfit/constraints.md
+          - Objective models: reference/powerfit/model.md
+          - Solver: reference/powerfit/solver.md
+          - Realization: reference/powerfit/realize.md
+          - Active set: reference/powerfit/active.md
+          - Reports: reference/powerfit/report.md
   - Project:
       - About: project/about.md
       - Changelog: about/changelog.md

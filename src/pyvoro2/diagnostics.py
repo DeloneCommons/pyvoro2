@@ -59,8 +59,11 @@ class TessellationError(ValueError):
     """Raised when tessellation sanity checks fail under strict settings."""
 
     def __init__(self, message: str, diagnostics: TessellationDiagnostics):
-        super().__init__(message)
+        super().__init__(message, diagnostics)
         self.diagnostics = diagnostics
+
+    def __str__(self) -> str:
+        return str(self.args[0])
 
 
 def _domain_volume(domain: Box | OrthorhombicCell | PeriodicCell) -> float:

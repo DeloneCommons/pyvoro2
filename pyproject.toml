@@ -10,7 +10,7 @@ build-backend = 'scikit_build_core.build'
 [project]
 name = 'pyvoro2'
 dynamic = ['version']
-description = 'Python bindings for Voro++ (3D Voronoi and Laguerre tessellations) with periodic and topology utilities.'
+description = 'Python bindings for Voro++ with 2D/3D Voronoi and power/Laguerre tessellations, periodic topology utilities, and inverse power fitting.'
 readme = 'README.md'
 requires-python = '>=3.10'
 license = {file = 'LICENSE'}
@@ -24,9 +24,9 @@ dependencies = [
 classifiers = [
   'Development Status :: 4 - Beta',
   'Intended Audience :: Science/Research',
-  'Topic :: Scientific/Engineering :: Chemistry',
+  'Topic :: Scientific/Engineering :: Mathematics',
   'Topic :: Scientific/Engineering :: Physics',
-  'License :: OSI Approved :: MIT License',
+  'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
   'Operating System :: OS Independent',
   'Programming Language :: Python :: 3',
   'Programming Language :: Python :: 3 :: Only',
@@ -47,17 +47,41 @@ Issues = 'https://github.com/DeloneCommons/pyvoro2/issues'
 
 [project.optional-dependencies]
 test = ['pytest']
-dev = ['pytest', 'flake8', 'tomli; python_version < "3.11"']
+dev = [
+  'pytest',
+  'flake8',
+  'build',
+  'twine',
+  'tomli; python_version < "3.11"',
+]
 docs = [
   'mkdocs>=1.6',
   'mkdocs-material>=9.5',
   'mkdocstrings[python]>=0.27',
-  'mkdocs-jupyter>=0.25',
   'pymdown-extensions>=10.0',
   'mkdocs-section-index>=0.3.9',
 ]
+viz2d = [
+  'matplotlib',
+]
 viz = [
+  'matplotlib',
   'py3Dmol',
+]
+
+all = [
+  'pytest',
+  'flake8',
+  'build',
+  'twine',
+  'mkdocs>=1.6',
+  'mkdocs-material>=9.5',
+  'mkdocstrings[python]>=0.27',
+  'pymdown-extensions>=10.0',
+  'mkdocs-section-index>=0.3.9',
+  'matplotlib',
+  'py3Dmol',
+  'tomli; python_version < "3.11"',
 ]
 
 [tool.scikit-build]

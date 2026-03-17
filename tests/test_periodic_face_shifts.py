@@ -24,7 +24,7 @@ def test_return_face_shifts_requires_faces_and_vertices():
             return_adjacency=False,
             return_face_shifts=True,
         )
-        assert False, 'expected ValueError'
+        raise AssertionError('expected ValueError')
     except ValueError:
         pass
 
@@ -39,7 +39,7 @@ def test_return_face_shifts_requires_faces_and_vertices():
             return_adjacency=False,
             return_face_shifts=True,
         )
-        assert False, 'expected ValueError'
+        raise AssertionError('expected ValueError')
     except ValueError:
         pass
 

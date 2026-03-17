@@ -60,8 +60,11 @@ class NormalizationError(ValueError):
     """Raised when strict normalization validation fails."""
 
     def __init__(self, message: str, diagnostics: NormalizationDiagnostics):
-        super().__init__(message)
+        super().__init__(message, diagnostics)
         self.diagnostics = diagnostics
+
+    def __str__(self) -> str:
+        return str(self.args[0])
 
 
 def _as_shift(s: Any) -> tuple[int, int, int]:
@@ -133,7 +136,7 @@ def validate_normalized_topology(
 
     cells = list(normalized.cells)
     n_cells = len(cells)
-    n_global_vertices = int(getattr(normalized, 'global_vertices').shape[0])
+    n_global_vertices = int(normalized.global_vertices.shape[0])
 
     n_global_edges: int | None = None
     n_global_faces: int | None = None

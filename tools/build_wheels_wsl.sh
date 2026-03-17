@@ -7,13 +7,13 @@ set -euo pipefail
 #   tools/build_wheels_wsl.sh dist_wheels  # outputs to ./dist_wheels
 #
 # Override defaults (examples):
-#   CIBW_BUILD="cp312-manylinux_x86_64" tools/build_wheels_wsl.sh
+#   CIBW_BUILD="cp313-manylinux_x86_64" tools/build_wheels_wsl.sh
 #   CIBW_SKIP="*musllinux* pp*"         tools/build_wheels_wsl.sh
 
 OUT_DIR="${1:-wheelhouse}"
 
 # Defaults that match your usual one-liner.
-export CIBW_BUILD="${CIBW_BUILD:-cp311-manylinux_x86_64}"
+export CIBW_BUILD="${CIBW_BUILD:-cp313-manylinux_x86_64}"
 export CIBW_SKIP="${CIBW_SKIP:-*musllinux*}"
 
 # Optional: uncomment to pin the manylinux image for consistency across machines.

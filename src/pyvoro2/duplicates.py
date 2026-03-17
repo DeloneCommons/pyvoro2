@@ -44,9 +44,12 @@ class DuplicateError(ValueError):
     def __init__(
         self, message: str, pairs: tuple[DuplicatePair, ...], threshold: float
     ):
-        super().__init__(message)
+        super().__init__(message, pairs, threshold)
         self.pairs = pairs
         self.threshold = float(threshold)
+
+    def __str__(self) -> str:
+        return str(self.args[0])
 
 
 def duplicate_check(
