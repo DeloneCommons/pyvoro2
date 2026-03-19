@@ -228,7 +228,7 @@ def test_fit_power_weights_returns_numerical_failure_on_internal_solver_error(
 def test_active_set_propagates_numerical_failure(monkeypatch):
     import pyvoro2.powerfit.active as active_mod
     from pyvoro2 import Box
-    from pyvoro2.powerfit.solver import PowerWeightFitResult
+    from pyvoro2.powerfit.types import PowerWeightFitResult
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     domain = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))

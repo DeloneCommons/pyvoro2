@@ -15,12 +15,11 @@ import numpy as np
 
 from .constraints import PairBisectorConstraints
 from .realize import RealizedPairDiagnostics
-from .solver import (
+from .types import (
     ConnectivityDiagnostics,
     ConstraintGraphDiagnostics,
     HardConstraintConflict,
     PowerWeightFitResult,
-    _edge_diagnostics_for_result,
 )
 
 
@@ -227,11 +226,36 @@ def _conflict_record(
     }
 
 
+def _objective_breakdown_record(
+    breakdown: object | None,
+) -> dict[str, object] | None:
+    if breakdown is None:
+        return None
+    return {
+        'total': float(breakdown.total),
+        'mismatch': float(breakdown.mismatch),
+        'penalties_total': float(breakdown.penalties_total),
+        'penalty_terms': [
+            {'name': str(name), 'value': float(value)}
+            for name, value in breakdown.penalty_terms
+        ],
+        'regularization': float(breakdown.regularization),
+        'hard_constraints_satisfied': bool(
+            breakdown.hard_constraints_satisfied
+        ),
+        'hard_max_violation': float(breakdown.hard_max_violation),
+    }
+
+
 def _edge_diagnostics_record(
     result: PowerWeightFitResult,
     constraints: PairBisectorConstraints,
 ) -> dict[str, object]:
-    diagnostics = _edge_diagnostics_for_result(result, constraints)
+    diagnostics = result.edge_diagnostics
+    if diagnostics is None:
+        from .problem import _edge_diagnostics_for_result
+
+        diagnostics = _edge_diagnostics_for_result(result, constraints)
     return {
         'alpha': diagnostics.alpha.tolist(),
         'beta': diagnostics.beta.tolist(),
@@ -281,6 +305,7 @@ def build_fit_report(
             'n_constraints': int(constraints.n_constraints),
             'n_points': int(constraints.n_points),
             'converged': bool(result.converged),
+            'status_detail': result.status_detail,
             'n_iter': int(result.n_iter),
             'rms_residual': (
                 None if result.rms_residual is None else float(result.rms_residual)
@@ -295,6 +320,9 @@ def build_fit_report(
         'constraints': list(constraints.to_records(use_ids=use_ids)),
         'fit_records': list(result.to_records(constraints, use_ids=use_ids)),
         'edge_diagnostics': _edge_diagnostics_record(result, constraints),
+        'objective_breakdown': _objective_breakdown_record(
+            result.objective_breakdown
+        ),
         'weights': None if result.weights is None else result.weights.tolist(),
         'radii': None if result.radii is None else result.radii.tolist(),
         'weight_shift': (

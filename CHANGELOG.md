@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file.
 
 The format is based on *Keep a Changelog*, and this project follows *Semantic Versioning*.
 
+## [0.6.3] - 2026-03-19
+
+### Added
+
+- Public power-fit problem export via `pyvoro2.powerfit.build_power_fit_problem(...)`, including stable `PowerFitProblem`, `PowerFitBounds`, and `PowerFitPredictions` objects for external evaluation or solver experiments.
+- Public result packaging via `pyvoro2.powerfit.build_power_fit_result(...)`, so externally computed candidate weights can be turned back into a normal `PowerWeightFitResult` with standard residuals, reports, and algebraic diagnostics.
+- `PowerFitObjectiveBreakdown` and `PowerWeightFitResult.objective_breakdown`, including explicit hard-bound satisfaction and per-penalty summaries for debugging or research workflows.
+- A small advanced problem-API regression suite covering problem export, read-only arrays, result repackaging, and status-detail reporting.
+
+### Changed
+
+- Shared public power-fit dataclasses now live in `pyvoro2.powerfit.types`, while pure public weight/radius conversions live in `pyvoro2.powerfit.transforms`.
+- Mathematical formulas for prediction, algebraic diagnostics, hard-bound conversion, gauge canonicalization, and objective evaluation are now centralized in `pyvoro2.powerfit.problem` instead of being split across solver/report helpers.
+- The standalone native solver, active-set layer, and report layer now consume that shared problem/evaluation machinery instead of maintaining their own private copies of the same formulas.
+- `PairBisectorConstraints` and the new problem-definition objects now expose read-only NumPy arrays to match their frozen-dataclass semantics more honestly.
+- `PowerWeightFitResult.status` is now open-ended and pairs with `status_detail` so externally packaged results can preserve solver-specific termination text without expanding the native status vocabulary.
+
+### Fixed
+
+- Internal formula drift risks between low-level fitting, active-set post-processing, and report serialization were removed by routing them all through one public problem/evaluation layer.
+
 ## [0.6.2] - 2026-03-19
 
 ### Added

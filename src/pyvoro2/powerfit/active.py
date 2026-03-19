@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Literal
 
 import numpy as np
@@ -10,18 +10,18 @@ import numpy as np
 from .constraints import PairBisectorConstraints, resolve_pair_bisector_constraints
 from .model import FitModel
 from .realize import RealizedPairDiagnostics, match_realized_pairs
+from .problem import (
+    _build_active_set_connectivity_diagnostics,
+    build_power_fit_problem,
+    build_power_fit_result,
+)
 from .solver import (
     ConnectivityDiagnostics,
     PowerWeightFitResult,
     _apply_connectivity_policy,
-    _build_active_set_connectivity_diagnostics,
-    _compute_edge_diagnostics,
-    _connected_components,
-    _difference_identifying_mask,
-    _predict_measurements,
     fit_power_weights,
-    weights_to_radii,
 )
+from .transforms import weights_to_radii
 from ..diagnostics import TessellationDiagnostics as TessellationDiagnostics3D
 from ..domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ..planar.diagnostics import TessellationDiagnostics as TessellationDiagnostics2D
@@ -324,6 +324,7 @@ def solve_self_consistent_power_weights(
             raise ValueError('active0 must have shape (m,)')
 
     warnings_list = list(resolved.warnings)
+    full_problem = build_power_fit_problem(resolved, model=model)
     add_streak = np.zeros(m, dtype=np.int64)
     drop_streak = np.zeros(m, dtype=np.int64)
     toggle_count = np.zeros(m, dtype=np.int64)
@@ -510,10 +511,10 @@ def solve_self_consistent_power_weights(
         n_added = int(np.count_nonzero((~active) & new_active))
         n_removed = int(np.count_nonzero(active & (~new_active)))
 
-        pred_fraction, pred_position, pred = _predict_measurements(
-            weights_eval,
-            resolved,
-        )
+        pred_all = full_problem.predict(weights_eval)
+        pred_fraction = np.asarray(pred_all.fraction, dtype=np.float64)
+        pred_position = np.asarray(pred_all.position, dtype=np.float64)
+        pred = np.asarray(pred_all.measurement, dtype=np.float64)
         target = (
             resolved.target_fraction
             if resolved.measurement == 'fraction'
@@ -617,6 +618,7 @@ def solve_self_consistent_power_weights(
             final_fit,
             active_constraints,
             final_weights,
+            model=model,
             r_min=r_min,
             weight_shift=weight_shift,
         )
@@ -632,10 +634,10 @@ def solve_self_consistent_power_weights(
             unaccounted_pair_check=unaccounted_pair_check,
         )
         warnings_list.extend(final_realized.warnings)
-        pred_fraction, pred_position, pred = _predict_measurements(
-            final_fit.weights,
-            resolved,
-        )
+        pred_all = full_problem.predict(final_fit.weights)
+        pred_fraction = np.asarray(pred_all.fraction, dtype=np.float64)
+        pred_position = np.asarray(pred_all.position, dtype=np.float64)
+        pred = np.asarray(pred_all.measurement, dtype=np.float64)
     else:
         final_realized = last_diag
         pred_fraction = np.full(m, np.nan, dtype=np.float64)
@@ -755,12 +757,11 @@ def _active_alignment_components(
     constraints: PairBisectorConstraints,
     model: FitModel,
 ) -> list[list[int]]:
-    effective_mask = _difference_identifying_mask(constraints, model)
-    return _connected_components(
-        constraints.n_points,
-        constraints.i[effective_mask],
-        constraints.j[effective_mask],
-    )
+    problem = build_power_fit_problem(constraints, model=model)
+    return [
+        list(component)
+        for component in problem.connectivity.effective_graph.connected_components
+    ]
 
 
 def _self_consistent_gauge_policy_description() -> str:
@@ -864,38 +865,23 @@ def _rebuild_fit_with_weights(
     constraints: PairBisectorConstraints,
     weights: np.ndarray,
     *,
+    model: FitModel,
     r_min: float,
     weight_shift: float | None,
 ) -> PowerWeightFitResult:
-    radii, shift = weights_to_radii(
+    problem = build_power_fit_problem(constraints, model=model)
+    return build_power_fit_result(
+        problem,
         weights,
+        solver=fit.solver,
+        status=fit.status,
+        status_detail=fit.status_detail,
+        converged=fit.converged,
+        n_iter=fit.n_iter,
+        warnings=fit.warnings,
+        canonicalize_gauge=False,
         r_min=r_min,
         weight_shift=weight_shift,
-    )
-    pred_fraction, pred_position, pred = _predict_measurements(weights, constraints)
-    target = (
-        constraints.target_fraction
-        if constraints.measurement == 'fraction'
-        else constraints.target_position
-    )
-    residuals = pred - target
-    rms = float(np.sqrt(np.mean(residuals * residuals))) if residuals.size else 0.0
-    mx = float(np.max(np.abs(residuals))) if residuals.size else 0.0
-    return replace(
-        fit,
-        weights=np.asarray(weights, dtype=np.float64).copy(),
-        radii=radii,
-        weight_shift=shift,
-        predicted=pred,
-        predicted_fraction=pred_fraction,
-        predicted_position=pred_position,
-        residuals=residuals,
-        rms_residual=rms,
-        max_residual=mx,
-        edge_diagnostics=_compute_edge_diagnostics(
-            constraints,
-            weights=weights,
-        ),
     )
 
 
