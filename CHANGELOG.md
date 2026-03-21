@@ -4,6 +4,44 @@ All notable changes to this project are documented in this file.
 
 The format is based on *Keep a Changelog*, and this project follows *Semantic Versioning*.
 
+## [0.6.3] - 2026-03-19
+
+### Added
+
+- Public power-fit problem export via `pyvoro2.powerfit.build_power_fit_problem(...)`, including stable `PowerFitProblem`, `PowerFitBounds`, and `PowerFitPredictions` objects for external evaluation or solver experiments.
+- Public result packaging via `pyvoro2.powerfit.build_power_fit_result(...)`, so externally computed candidate weights can be turned back into a normal `PowerWeightFitResult` with standard residuals, reports, and algebraic diagnostics.
+- `PowerFitObjectiveBreakdown` and `PowerWeightFitResult.objective_breakdown`, including explicit hard-bound satisfaction and per-penalty summaries for debugging or research workflows.
+- A small advanced problem-API regression suite covering problem export, read-only arrays, result repackaging, and status-detail reporting.
+
+### Changed
+
+- Shared public power-fit dataclasses now live in `pyvoro2.powerfit.types`, while pure public weight/radius conversions live in `pyvoro2.powerfit.transforms`.
+- Mathematical formulas for prediction, algebraic diagnostics, hard-bound conversion, gauge canonicalization, and objective evaluation are now centralized in `pyvoro2.powerfit.problem` instead of being split across solver/report helpers.
+- The standalone native solver, active-set layer, and report layer now consume that shared problem/evaluation machinery instead of maintaining their own private copies of the same formulas.
+- `PairBisectorConstraints` and the new problem-definition objects now expose read-only NumPy arrays to match their frozen-dataclass semantics more honestly.
+- `PowerWeightFitResult.status` is now open-ended and pairs with `status_detail` so externally packaged results can preserve solver-specific termination text without expanding the native status vocabulary.
+
+### Fixed
+
+- Internal formula drift risks between low-level fitting, active-set post-processing, and report serialization were removed by routing them all through one public problem/evaluation layer.
+
+## [0.6.2] - 2026-03-19
+
+### Added
+
+- `PowerWeightFitResult.edge_diagnostics` with theorem-facing edge-space arrays and summaries: `alpha`, `beta`, `z_obs`, `z_fit`, algebraic residuals, and weighted/unweighted algebraic inconsistency metrics.
+- Fit reports and per-constraint record exporters now serialize the new algebraic edge diagnostics alongside the existing measurement-space predictions and residuals.
+- A medium-size robust-fit regression test that checks the native Huber/ADMM path on a deterministic sparse-outlier benchmark rather than only on tiny two-point cases.
+
+### Changed
+
+- The iterative `solver='admm'` backend now splits on the predicted measurement variable itself (`y = beta + alpha (w_i - w_j)`) instead of on raw weight differences, so the linear solve uses the scientifically natural `alpha^2` scaling of the graph Laplacian.
+- The ADMM backend now warm-starts from the quadratic analytic fit when that warm start is identifiable, improving convergence on robust Huber fits without expanding the public optimizer API.
+
+### Fixed
+
+- Native Huber fitting via `FitModel(mismatch=HuberLoss(...))` and `solver='admm'` no longer stalls or blows up on the medium-size sparse-outlier benchmark family used during the JCAM paper work; the corrected native path now matches the expected measurement-space residual quality and converges in a small number of iterations on the representative failure case.
+
 ## [0.6.1] - 2026-03-16
 
 ### Added

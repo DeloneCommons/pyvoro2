@@ -22,6 +22,11 @@ from .active import (
     SelfConsistentPowerFitResult,
     solve_self_consistent_power_weights,
 )
+from .problem import (
+    PowerFitProblem,
+    build_power_fit_problem,
+    build_power_fit_result,
+)
 from .realize import (
     RealizedPairDiagnostics,
     UnaccountedRealizedPair,
@@ -35,16 +40,18 @@ from .report import (
     dumps_report_json,
     write_report_json,
 )
-from .solver import (
+from .solver import ConnectivityDiagnosticsError, fit_power_weights
+from .transforms import radii_to_weights, weights_to_radii
+from .types import (
+    AlgebraicEdgeDiagnostics,
     ConnectivityDiagnostics,
-    ConnectivityDiagnosticsError,
     ConstraintGraphDiagnostics,
     HardConstraintConflict,
     HardConstraintConflictTerm,
+    PowerFitBounds,
+    PowerFitObjectiveBreakdown,
+    PowerFitPredictions,
     PowerWeightFitResult,
-    fit_power_weights,
-    radii_to_weights,
-    weights_to_radii,
 )
 
 __all__ = [
@@ -59,12 +66,19 @@ __all__ = [
     'ReciprocalBoundaryPenalty',
     'L2Regularization',
     'FitModel',
+    'AlgebraicEdgeDiagnostics',
     'ConstraintGraphDiagnostics',
     'ConnectivityDiagnostics',
     'ConnectivityDiagnosticsError',
     'HardConstraintConflictTerm',
     'HardConstraintConflict',
+    'PowerFitBounds',
+    'PowerFitPredictions',
+    'PowerFitObjectiveBreakdown',
+    'PowerFitProblem',
     'PowerWeightFitResult',
+    'build_power_fit_problem',
+    'build_power_fit_result',
     'RealizedPairDiagnostics',
     'UnaccountedRealizedPair',
     'UnaccountedRealizedPairError',

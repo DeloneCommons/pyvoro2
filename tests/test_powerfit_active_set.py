@@ -317,7 +317,8 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
     import pyvoro2.powerfit.active as active_mod
     from pyvoro2 import ActiveSetOptions, Box
     from pyvoro2.powerfit.realize import RealizedPairDiagnostics
-    from pyvoro2.powerfit.solver import PowerWeightFitResult, weights_to_radii
+    from pyvoro2.powerfit.transforms import weights_to_radii
+    from pyvoro2.powerfit.types import PowerWeightFitResult
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [10.0, 0.0, 0.0], [12.0, 0.0, 0.0]],

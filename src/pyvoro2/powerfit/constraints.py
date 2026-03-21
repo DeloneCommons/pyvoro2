@@ -23,6 +23,18 @@ def _plain_value(value: object) -> object:
     return value.item() if hasattr(value, 'item') else value
 
 
+def _readonly_array(
+    value: np.ndarray | None,
+    *,
+    dtype: np.dtype | type | None = None,
+) -> np.ndarray | None:
+    if value is None:
+        return None
+    arr = np.array(value, dtype=dtype, copy=True)
+    arr.setflags(write=False)
+    return arr
+
+
 def _validated_ids_array(ids: Sequence[int] | np.ndarray, n_points: int) -> np.ndarray:
     """Return validated external ids as a 1D NumPy array.
 
@@ -68,6 +80,57 @@ class PairBisectorConstraints:
     warnings: tuple[str, ...]
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, 'i', _readonly_array(self.i, dtype=np.int64))
+        object.__setattr__(self, 'j', _readonly_array(self.j, dtype=np.int64))
+        object.__setattr__(
+            self,
+            'shifts',
+            _readonly_array(self.shifts, dtype=np.int64),
+        )
+        object.__setattr__(
+            self,
+            'target',
+            _readonly_array(self.target, dtype=np.float64),
+        )
+        object.__setattr__(
+            self,
+            'confidence',
+            _readonly_array(self.confidence, dtype=np.float64),
+        )
+        object.__setattr__(
+            self,
+            'distance',
+            _readonly_array(self.distance, dtype=np.float64),
+        )
+        object.__setattr__(
+            self,
+            'distance2',
+            _readonly_array(self.distance2, dtype=np.float64),
+        )
+        object.__setattr__(self, 'delta', _readonly_array(self.delta, dtype=np.float64))
+        object.__setattr__(
+            self,
+            'target_fraction',
+            _readonly_array(self.target_fraction, dtype=np.float64),
+        )
+        object.__setattr__(
+            self,
+            'target_position',
+            _readonly_array(self.target_position, dtype=np.float64),
+        )
+        object.__setattr__(
+            self,
+            'input_index',
+            _readonly_array(self.input_index, dtype=np.int64),
+        )
+        object.__setattr__(
+            self,
+            'explicit_shift',
+            _readonly_array(self.explicit_shift, dtype=bool),
+        )
+        object.__setattr__(self, 'ids', _readonly_array(self.ids))
+        object.__setattr__(self, 'warnings', tuple(self.warnings))
+
         m = int(self.i.shape[0])
         if self.i.shape != (m,) or self.j.shape != (m,):
             raise ValueError('PairBisectorConstraints.i/j must have shape (m,)')

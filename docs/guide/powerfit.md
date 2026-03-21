@@ -123,7 +123,9 @@ The result contains:
 - fitted `weights` and shifted `radii`,
 - predicted separator locations in both fraction and position form,
 - residuals in the chosen measurement space,
-- solver/termination metadata,
+- `edge_diagnostics` with algebraic edge-space quantities such as `z_obs`, `z_fit`, and weighted inconsistency summaries,
+- `objective_breakdown` with mismatch / penalty / regularization totals for the packaged candidate weights,
+- solver/termination metadata including optional `status_detail`,
 - and explicit infeasibility reporting for contradictory hard constraints.
 
 For example, if hard interval or equality restrictions cannot all hold
@@ -141,7 +143,47 @@ Both low-level fits and active-set results also provide `to_records(...)` helper
 that turn per-constraint diagnostics into plain Python rows for downstream
 packages, table exporters, or custom reporting.
 
-For radii output, 0.6.1 makes the gauge choice explicit:
+
+### Measurement-space vs algebraic edge-space diagnostics
+
+`PowerWeightFitResult` now exposes two complementary diagnostic views.
+
+Measurement-space quantities live in the same space as the chosen separator
+targets:
+
+- `target`, `predicted`, `residuals`
+
+Algebraic edge-space quantities live in the implied difference model
+
+\[
+ y = \beta + \alpha (w_i - w_j),
+\]
+
+with
+
+\[
+ z_{\mathrm{obs}} = \frac{y_{\mathrm{target}} - \beta}{\alpha},
+ \qquad
+ z_{\mathrm{fit}} = w_i - w_j.
+\]
+
+The edge diagnostics expose `alpha`, `beta`, `z_obs`, `z_fit`, the algebraic
+residual `z_obs - z_fit`, and edge weights
+
+\[
+ \omega = \mathrm{confidence} \cdot \alpha^2.
+\]
+
+The exported `weighted_rmse` is defined explicitly as
+
+\[
+ \sqrt{\mathrm{mean}(\omega r^2)},
+\]
+
+not as `sqrt(sum(w r^2) / sum(w))`. That distinction matters when you compare
+results to other code that uses a normalized weighted RMSE convention.
+
+For radii output, 0.6.3 makes the gauge choice explicit:
 
 - by default, `weights_to_radii(...)` uses the minimal additive shift that makes
   all returned radii non-negative;
@@ -327,6 +369,45 @@ text = pv.dumps_report_json(solve_report, sort_keys=True)
 pv.write_report_json(solve_report, 'solve_report.json', sort_keys=True)
 ```
 
+## Native Huber fit on sparse outliers
+
+A short robust-fitting example looks like this:
+
+```python
+model = pv.FitModel(mismatch=pv.HuberLoss(delta=0.03))
+fit = pv.fit_power_weights(points, constraints, model=model, solver='admm')
+
+print(fit.status, fit.rms_residual)
+print(fit.edge_diagnostics.weighted_rmse)
+```
+
+This is still the native `pyvoro2` solver path. The robust part comes from the
+measurement-space Huber objective, while `edge_diagnostics` lets you inspect
+the theorem-facing algebraic residuals directly.
+
+## Advanced problem export / repackaging
+
+For research workflows or external solvers, `pyvoro2` now exposes the resolved
+inverse problem itself:
+
+```python
+resolved = pv.powerfit.resolve_pair_bisector_constraints(points, raw_constraints)
+problem = pv.powerfit.build_power_fit_problem(resolved, model=model)
+
+weights = some_external_solver(problem)
+result = pv.powerfit.build_power_fit_result(
+    problem,
+    weights,
+    solver='external',
+    status='external_failure',
+    status_detail='candidate iterate only',
+)
+```
+
+This keeps `fit_power_weights(...)` solver-owned while still giving downstream
+code a stable public export of the mathematics, prediction formulas, objective
+evaluation, and result packaging.
+
 ## Current scope
 
 The current implementation supports both **3D** domains through `pyvoro2` and
@@ -341,9 +422,9 @@ The main current restriction is geometric, not algebraic:
 - 2D currently supports `Box` and rectangular `RectangularCell`;
 - there is **no** planar oblique-periodic `PeriodicCell` yet.
 
-### Objective-model scope for 0.6.1
+### Objective-model scope for 0.6.3
 
-The 0.6.1 line still keeps the built-in objective family compact:
+The 0.6.3 line still keeps the built-in objective family compact:
 
 - mismatch terms: `SquaredLoss`, `HuberLoss`
 - hard feasibility: `Interval`, `FixedValue`
@@ -356,7 +437,7 @@ hard-feasibility checks, residual diagnostics, and solver behavior easy to
 reason about.
 
 Additional mismatch or penalty families should wait until downstream packages
-validate a concrete need for them. In particular, 0.6.1 does **not** try to
+validate a concrete need for them. In particular, 0.6.3 still does **not** try to
 freeze an open-ended callback API for arbitrary user-defined objectives.
 
 ## Worked example notebooks
