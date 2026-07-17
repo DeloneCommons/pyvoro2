@@ -125,9 +125,11 @@ In particular:
 - distinguish stable, provisional, experimental, compatibility-only, and
   internal surfaces.
 
-The current `pyvoro2.powerfit` API is an important compatibility surface. A
-clearer inverse namespace may be introduced, but existing users should not be
-forced through an abrupt rename.
+`pyvoro2.inverse` is the canonical v0.7 inverse namespace. The current
+`pyvoro2.powerfit` package and broad top-level separator exports remain as
+compatibility-only paths for v0.7 and are planned for removal in v0.8. New work
+must place numerical ownership under `pyvoro2.inverse.separator` and document
+migration explicitly.
 
 ## Planning substantial changes
 
@@ -139,7 +141,7 @@ For planned work:
 
 1. confirm that the change is in the active plan;
 2. link the issue to the relevant work package and decision records;
-3. resolve blocking design gates before implementation;
+3. confirm that accepted ADRs and the API inventory cover the public behavior;
 4. keep issue acceptance criteria focused on observable behavior;
 5. update tests and current documentation with the implementation;
 6. add a `[Unreleased]` changelog entry when the accepted change is
@@ -152,6 +154,18 @@ completed with an outcome summary and moved to the plan archive.
 
 Important decisions made in a conversation should be transferred to an issue,
 plan, or decision record before they govern later changes.
+
+
+### Agent-assisted issue execution
+
+A substantial issue should be self-contained for a fresh human or coding agent:
+it should link the plan and ADRs, state in/out of scope behavior, define
+observable acceptance criteria, and name required tests and documentation. The
+implementer is free to choose clean internal details within those boundaries.
+
+Use one issue per implementation chain where practical. Escalate conflicts with
+accepted ADRs, new mandatory dependencies, unexplained numerical changes, or
+unplanned public API changes rather than resolving them silently in code.
 
 ## Coding expectations
 

@@ -17,6 +17,8 @@ Each record has a status:
 1. [Project scope and layering](0001-project-scope-and-layering.md)
 2. [Weights, radii, gauge, and component offsets](0002-weights-radii-and-gauge.md)
 3. [Compatibility-first API evolution](0003-compatibility-first-evolution.md)
+4. [Canonical inverse namespace and separator organization](0004-canonical-inverse-namespace.md)
+5. [Common tessellation result contract](0005-tessellation-result-contract.md)
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the

@@ -110,13 +110,15 @@ Set `Status: Active`, record the approval date, and update the plans index.
 
 Create small issues with:
 
-- a clear problem statement;
-- links to the plan and relevant decision records;
+- a clear user or scientific outcome;
+- links to the plan, API inventory, and relevant decision records;
 - dependencies;
-- implementation scope;
+- explicit in-scope and out-of-scope behavior;
+- baseline behavior that must be characterized or preserved;
 - tests and documentation requirements;
-- acceptance criteria;
-- lifecycle or compatibility impact.
+- acceptance criteria stated as observable behavior;
+- lifecycle, compatibility, warning, and removal impact where relevant;
+- stop conditions for choices that require maintainer review.
 
 Issues track progress. The plan tracks release structure. Avoid copying the full
 plan into every issue.
@@ -233,18 +235,26 @@ Agent-assisted changes follow the same process as human-authored changes.
 
 Agents must:
 
-- read `AGENTS.md`, the active plan, and linked issue before implementation;
+- read `AGENTS.md`, the active plan, linked issue, relevant ADRs, and API
+  inventory before implementation;
 - use repository documents rather than private conversation as authority;
-- surface unresolved choices instead of silently selecting an API;
+- work issue by issue unless the issue explicitly combines inseparable work;
+- choose clean internal details within the accepted public contract rather than
+  asking for approval on every local refactor;
+- surface conflicts with ADRs, new mandatory dependencies, unexplained numerical
+  changes, scope expansion, or unplanned public API choices;
 - keep current and planned language distinct;
-- include tests, documentation, generated outputs, and changelog changes where
-  required;
-- report what was changed and which checks passed;
+- include tests, documentation, generated outputs, inventory, and changelog
+  changes where required;
+- report public behavior changed, compatibility/lifecycle impact, checks passed,
+  and any deviations or follow-ups;
 - never mark a plan or decision as approved without an explicit maintainer
   instruction.
 
 Any important decision reached in a chat must be transferred to an issue,
-release plan, or decision record before it governs later work.
+release plan, API inventory, or decision record before it governs later work.
+The process should not produce duplicate status documents when the issue, tests,
+docs, changelog, and plan already provide the needed record.
 
 ## Completion checklist for substantial work
 

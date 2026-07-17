@@ -25,10 +25,13 @@ tessellations:
   not separate one-off solvers.
 
 The v0.7 development line is stabilizing the forward/result contract and the
-separator inverse API. Read the current
-[v0.7 development plan](docs/development/plans/v0.7.md) before implementing
-work for that release. Do not present roadmap or draft-plan functionality as
-implemented.
+separator inverse API. ADR 0004 and ADR 0005 fix the canonical inverse namespace
+and common result direction. Read the current
+[v0.7 development plan](docs/development/plans/v0.7.md) and
+[v0.7 API inventory](docs/development/api-inventory.md) before implementing
+work for that release. Do not begin public v0.7 implementation until the plan is
+marked **Active** and the work is linked to an issue. Do not present target
+functionality as implemented.
 
 ## Authoritative sources
 
@@ -41,12 +44,14 @@ Use the following order when sources disagree:
    target responsibilities.
 5. The active development plan defines approved release scope, dependencies,
    and release gates.
-6. `docs/project/roadmap.md` defines version-level direction, not current
+6. The active-release API inventory assigns lifecycle and migration status to
+   concrete public surfaces.
+7. `docs/project/roadmap.md` defines version-level direction, not current
    behavior.
-7. GitHub issues define concrete work and current progress.
+8. GitHub issues define concrete work and current progress.
 
-A draft plan is not approval to invent a resolution for an open decision gate.
-Surface the decision and wait for explicit maintainer direction.
+A draft plan is not implementation approval. Surface choices not covered by an
+accepted ADR, active issue, or inventory entry and wait for maintainer direction.
 
 Update the relevant documentation when a change makes any of these sources
 inconsistent.
@@ -59,7 +64,9 @@ inconsistent.
 - `src/pyvoro2/`: 3D forward API, shared utilities, diagnostics, topology,
   visualization, and public package exports.
 - `src/pyvoro2/planar/`: explicit 2D API and planar result/diagnostic layer.
-- `src/pyvoro2/powerfit/`: current separator-based inverse implementation.
+- `src/pyvoro2/powerfit/`: current v0.6.3 separator implementation; v0.7 moves
+  ownership to `src/pyvoro2/inverse/separator/` and leaves `powerfit` as a
+  compatibility shim.
 - `tests/`: deterministic tests plus opt-in fuzz and cross-check groups.
 - `notebooks/`: source notebooks.
 - `docs/notebooks/`: generated notebook exports; do not edit directly.
@@ -142,8 +149,15 @@ Preserve these unless an accepted decision record supersedes them:
    prescribed-volume or mixed solver as an unrelated utility.
 7. **Failures should be inspectable.** Prefer structured status, diagnostics,
    and witnesses over silent fallback or a bare convergence exception.
-8. **Compatibility is deliberate.** Public renames require aliases/adapters,
-   migration documentation, tests, and release-note coverage.
+8. **Compatibility is deliberate and bounded.** Public renames require
+   aliases/adapters, migration documentation, tests, a removal horizon, and
+   release-note coverage.
+9. **One forward result, explicit capability differences.** v0.7 uses one
+   `TessellationResult` in both dimensions without pretending that every
+   optional geometry or normalization capability is shared.
+10. **Immutability is pragmatic.** Prefer frozen outer containers and read-only
+    owned arrays when clean; do not deep-freeze or copy raw nested records solely
+    to claim immutability.
 
 ## Planning and change tracking
 
@@ -152,7 +166,7 @@ Follow [Development workflow](docs/development/development-workflow.md).
 For substantial work:
 
 1. read the active plan and linked issue;
-2. confirm that blocking decision gates are resolved;
+2. confirm that accepted ADRs and the API inventory cover the public behavior;
 3. implement only the issue scope;
 4. add tests and current documentation with the code;
 5. update or add a decision record for durable choices;
@@ -167,12 +181,36 @@ Do not remove completed work packages from an active plan. Issues show detailed
 progress; plans preserve release structure. During release review, record
 outcomes and deferrals, then archive the completed plan.
 
+
+## Issue-scoped agent handoff
+
+For substantial v0.7 implementation, one coding-agent chain should normally own
+one linked issue. Before editing, read the issue, its work package, relevant
+ADRs, and the API inventory. The issue defines observable outcomes and
+boundaries; choose clean internal implementation details without inventing new
+public policy.
+
+Stop and request maintainer input when implementation would require:
+
+- contradicting an accepted ADR;
+- adding a new mandatory dependency;
+- accepting an unexplained numerical change;
+- expanding into a plan non-goal;
+- introducing a public name/default not covered by the issue and inventory;
+- weakening or extending a documented compatibility/removal schedule.
+
+At handoff, report public behavior changed, compatibility/lifecycle impact,
+validation commands run, and any deviation or follow-up. Do not create extra
+process artifacts when the issue, tests, docs, and changelog already record the
+work adequately.
+
 ## Public API changes
 
 Before adding or changing a public name, signature, default, return schema, or
 field meaning:
 
-1. identify its lifecycle status using `docs/development/api-lifecycle.md`;
+1. identify its lifecycle status using `docs/development/api-lifecycle.md`
+   and the active-release API inventory;
 2. confirm that the change belongs to the active plan or an approved maintenance
    issue;
 3. open or reference an issue for architectural or breaking-change risk;
@@ -182,9 +220,10 @@ field meaning:
    boundary;
 7. update the changelog.
 
-Do not freeze speculative class names merely because they appear in a roadmap
-or draft plan. Architectural requirements and implementation names are
-different.
+Do not freeze speculative names merely because they appear in a roadmap or
+brainstorming document. Names fixed by accepted ADRs and the active issue are
+part of the implementation contract; secondary names remain subject to the API
+inventory.
 
 ## Forward computation changes
 
@@ -201,7 +240,8 @@ shifts, or normalization:
 
 ## Inverse changes
 
-For changes under `powerfit/` or the future inverse namespace:
+For changes under the current `powerfit/` implementation or the canonical
+`inverse/` namespace:
 
 - keep measurement-space and algebraic edge-space quantities distinct;
 - preserve confidence-zero/effective-graph semantics;

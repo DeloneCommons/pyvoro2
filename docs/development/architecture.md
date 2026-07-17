@@ -7,9 +7,10 @@ downstream use and later inverse methods.
 
 !!! note "Current and target descriptions"
     Sections labelled *current* describe code that exists in the repository.
-    Sections labelled *target* describe architectural requirements, not public
-    classes that can already be imported. Exact implementation names remain
-    provisional until the corresponding v0.7 decision gate is accepted. See the
+    Sections labelled *target* describe accepted v0.7 responsibilities and API
+    direction, not classes that can already be imported. The canonical inverse
+    namespace and common result contract are fixed by ADR 0004 and ADR 0005;
+    implementation status remains tracked in the
     [v0.7 development plan](plans/v0.7.md).
 
 ## Architectural principles
@@ -23,8 +24,9 @@ downstream use and later inverse methods.
 5. **Exact inner problems and realization-aware outer algorithms are separate.**
 6. **Diagnostics are part of the scientific result.** Non-identifiability,
    infeasibility, empty cells, and wrong periodic images should be inspectable.
-7. **API evolution is compatibility-first.** New organization should not make
-   archived or downstream code fail without a migration path.
+7. **API evolution is compatibility-first and time-bounded.** Important old
+   workflows receive explicit migration paths, but compatibility names do not
+   remain architectural owners indefinitely.
 8. **Real downstream use validates stability.** The chemvoro integration is an
    intended test of the v0.7 contract.
 
@@ -33,8 +35,8 @@ downstream use and later inverse methods.
 | Layer | Current v0.6.3 state | v0.7 requirement |
 |---|---|---|
 | Native backends | Separate 3D and legacy planar Voro++ extensions | Preserve explicit dimensional capabilities and backend isolation |
-| Forward Python API | Mature domain and operation layers, but asymmetric result containers | Provide aligned access to cells, measures, boundaries, shifts, and diagnostics |
-| Inverse API | Separator fitting under `pyvoro2.powerfit` with broad top-level re-exports | Introduce a clearer inverse organization while preserving compatibility |
+| Forward Python API | Mature domain and operation layers, but asymmetric result containers | Return one dimension-neutral `TessellationResult` by default, with explicit raw compatibility output |
+| Inverse API | Separator fitting under `pyvoro2.powerfit` with broad top-level re-exports | Move ownership to `pyvoro2.inverse.separator`; keep a bounded v0.7 compatibility shim |
 | Downstream boundary | Rich records and reports exist, but some callers still need implementation knowledge | Support chemvoro through documented weights, IDs, geometry, and diagnostic contracts |
 
 ## Current implementation: v0.6.3
@@ -289,17 +291,25 @@ The v0.7 line should provide one inspectable conceptual contract across 2D and
 - empty-cell information;
 - tessellation and normalization diagnostics.
 
-Whether the final implementation uses one `TessellationResult`, dimension-
-specific result types, adapters over existing records, or another design is an
-open v0.7 decision. The requirement is a stable access contract, not a premature
-class name.
+[ADR 0005](decisions/0005-tessellation-result-contract.md) selects one public
+`pyvoro2.TessellationResult` for both dimensions.
+Both `compute` functions return it by default; `output='cells'` preserves the raw
+compatibility route. The result keeps dimension-specific geometry explicit and
+must not compute unrequested expensive data merely to fill optional fields.
+
+The outer result should be structurally immutable where this is straightforward.
+Owned aligned arrays should be read-only when practical, but nested raw cell
+records are not deep-frozen or defensively copied solely to claim immutability.
+The public documentation must state contained mutability honestly.
 
 ### Preferred inverse organization
 
-A public `pyvoro2.inverse` namespace is the leading candidate for the preferred
-home of math-aligned inverse concepts. The final namespace and export policy are
-an open v0.7 decision. Whatever is selected, the current `pyvoro2.powerfit`
-namespace remains a compatibility and convenience surface for separator fitting.
+[ADR 0004](decisions/0004-canonical-inverse-namespace.md) selects
+`pyvoro2.inverse` as the canonical home of math-aligned
+inverse concepts and `pyvoro2.inverse.separator` as the implementation owner for
+the first observation family. `pyvoro2.powerfit` becomes a thin
+compatibility-only shim during v0.7 and is planned for removal in v0.8. Broad
+separator-specific top-level exports follow the same transition schedule.
 
 The separator workflow should be described using the following concepts:
 
@@ -311,9 +321,11 @@ The separator workflow should be described using the following concepts:
 - realized-boundary diagnostics;
 - optional realization-aware refinement.
 
-Historical names such as `PairBisectorConstraints` can remain as aliases or
-compatibility classes. New documentation should prefer the mathematical
-terminology without breaking current code.
+Historical names such as `PairBisectorConstraints` remain compatibility aliases
+in v0.7. New documentation prefers `SeparatorObservations`,
+`SeparatorFitResult`, and `fit_weights_from_separators`. Compatibility code
+imports from the canonical namespace; canonical code never imports from
+`powerfit`.
 
 ### Inspectable algebraic operators
 
@@ -355,11 +367,13 @@ explicitly unsupported rather than filled with misleading placeholders.
 
 The v0.7 implementation should:
 
-- keep documented v0.6.3 imports functioning where practical;
-- introduce preferred names and paths without abrupt removal;
-- document aliases, semantic changes, and return adapters;
-- avoid encouraging new code to import every inverse type from the top-level
-  package;
+- keep documented v0.6.3 inverse imports functioning through a one-way shim;
+- keep raw forward returns available through `output='cells'`;
+- make `TessellationResult` and `pyvoro2.inverse` the normal new-user paths;
+- document aliases, default changes, warnings, and the planned v0.8 removal of
+  historical inverse paths;
+- avoid encouraging new code to import separator-specific types from top-level
+  `pyvoro2`;
 - keep the paper's archived v0.6.3 environment independent of later internal
   refactors.
 
@@ -415,8 +429,8 @@ inside the stable weights-only solver.
 - Forward domain and result concepts do not depend on observation families.
 - Inverse observation implementations may depend on forward computation and
   common diagnostics.
-- `powerfit` compatibility code may delegate to preferred inverse
-  implementations, not the reverse.
+- `powerfit` compatibility code delegates to `inverse.separator`; the
+  canonical implementation never depends on `powerfit`.
 - Visualization remains optional and outside solver requirements.
 - Chemistry-specific data and models remain downstream.
 - Optional performance backends must not define the only public data format.

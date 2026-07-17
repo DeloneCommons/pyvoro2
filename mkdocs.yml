@@ -76,11 +76,14 @@ nav:
       - Documentation conventions: development/documentation-conventions.md
       - Architecture: development/architecture.md
       - API lifecycle: development/api-lifecycle.md
+      - v0.7 API inventory: development/api-inventory.md
       - Decision records:
           - Overview: development/decisions/index.md
           - Project scope and layering: development/decisions/0001-project-scope-and-layering.md
           - Weights, radii, gauge, and component offsets: development/decisions/0002-weights-radii-and-gauge.md
           - Compatibility-first evolution: development/decisions/0003-compatibility-first-evolution.md
+          - Canonical inverse namespace: development/decisions/0004-canonical-inverse-namespace.md
+          - Common tessellation result: development/decisions/0005-tessellation-result-contract.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

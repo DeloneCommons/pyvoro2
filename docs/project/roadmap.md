@@ -27,12 +27,14 @@ contract.
 
 Target outcomes:
 
-- aligned 2D/3D access to cells, cell measures, realized boundaries, periodic
-  shifts, empty-cell state, and diagnostics;
+- one dimension-neutral `TessellationResult` returned by default in 2D and 3D,
+  with explicit capability differences and raw compatibility output;
 - direct forward power computation from mathematical weights;
 - stable association among sites, external IDs, and output cells;
-- a preferred inverse organization and separator-observation terminology;
-- compatibility for existing `pyvoro2.powerfit` workflows;
+- canonical inverse ownership under `pyvoro2.inverse.separator` and
+  math-aligned separator terminology;
+- a bounded v0.7 compatibility period for existing `pyvoro2.powerfit` and broad
+  top-level separator imports;
 - explicit global gauge and disconnected-component-offset semantics;
 - inspectable graph, incidence, and Laplacian problem data without requiring one
   sparse-matrix dependency as the public representation;
@@ -51,7 +53,9 @@ The detailed scope, dependencies, decisions, and release gates are in the
 ## v0.8 — Prescribed cell measures
 
 The next inverse family targets fixed sites and domain, unknown power weights,
-and prescribed cell areas in 2D or volumes in 3D.
+and prescribed cell areas in 2D or volumes in 3D. v0.8 is also the planned
+removal release for the v0.7 `pyvoro2.powerfit` and broad top-level separator
+compatibility paths, unless an explicit release decision extends the transition.
 
 Expected development order:
 
@@ -137,7 +141,8 @@ These directions are not commitments for 1.0.
 - GPU acceleration;
 - site motion in the first mixed solver;
 - planar oblique-periodic support solely for API symmetry;
-- breaking removal of the current `pyvoro2.powerfit` API.
+- indefinite preservation of historical inverse namespaces after the documented
+  v0.7 transition.
 
 ## Planning responsibilities
 

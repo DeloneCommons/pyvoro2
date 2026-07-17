@@ -66,18 +66,19 @@ v0.7.0 is intended to establish a credible stable/provisional boundary for:
 - forward domain and site input;
 - forward standard and power computation;
 - direct weight-first power computation;
-- common access to cells, measures, boundaries, periodic shifts, and
-  diagnostics;
-- the preferred separator-observation fitting workflow;
+- one common `TessellationResult` contract for spatial and planar compute;
+- explicit raw compatibility output through `output='cells'`;
+- the canonical separator-observation workflow under `pyvoro2.inverse`;
 - global gauge and disconnected-component-offset reporting;
-- compatibility with the existing `pyvoro2.powerfit` workflow.
+- a bounded v0.7 compatibility period for `pyvoro2.powerfit`, broad top-level
+  separator exports, and historical result switches.
 
-The exact public inventory must be published with the release. The
-[v0.7 development plan](plans/v0.7.md) requires a dedicated inventory
-page: this policy defines the categories, while the inventory assigns them to
-concrete names, return routes, record schemas, and defaults. Future
-prescribed-measure and mixed solvers may remain experimental without weakening
-the stable forward and separator core.
+The [v0.7 API inventory](api-inventory.md) is maintained throughout
+implementation and finalized before the release candidate. This policy defines
+the categories; the inventory assigns them to concrete names, return routes,
+record schemas, defaults, and scientific semantics. Future prescribed-measure
+and mixed solvers may remain experimental without weakening the stable forward
+and separator core.
 
 v0.7.0 is not the same promise as 1.0. It is a stabilization release designed to
 support real downstream integration and to expose remaining rough edges before
@@ -124,18 +125,19 @@ migration path whenever possible.
 
 ## Renaming and namespace evolution
 
-A `pyvoro2.inverse` namespace is the leading candidate for the preferred home
-of inverse concepts, but the v0.7 namespace choice remains an open decision.
-Whatever is selected, `pyvoro2.powerfit` should remain a compatibility and
-convenience surface during the transition.
+ADR 0004 establishes `pyvoro2.inverse` as the canonical namespace and
+`pyvoro2.inverse.separator` as the owner of separator implementation.
+`pyvoro2.powerfit` and broad top-level separator exports are
+compatibility-only and deprecated for v0.7, with planned removal in v0.8.
 
-Preferred practice:
+Required practice:
 
-- new guides use the preferred namespace and terminology;
-- old imports remain functional through aliases or delegation;
-- top-level re-exports are reduced only through a documented deprecation path;
-- historical class names can remain as compatibility names even when prose uses
-  clearer mathematical language.
+- new guides use the canonical namespace and mathematical terminology;
+- old imports delegate one-way to the canonical implementation;
+- every historical name has a documented replacement and removal horizon;
+- compatibility code does not duplicate numerical logic;
+- an extension beyond v0.7 requires an explicit release decision based on real
+  downstream use.
 
 ## Result schemas
 
@@ -156,6 +158,12 @@ handling.
 Where possible, results should expose plain-record export separately from rich
 NumPy objects. This gives downstream packages a stable serialization boundary
 without forcing internal storage details to remain fixed.
+
+ADR 0005 establishes one common `TessellationResult` as the preferred default
+forward return. Its outer structure should be immutable when straightforward,
+but nested raw cell records are not promised to be deeply immutable. Mutability,
+copying, and optional-data costs must be documented rather than hidden behind an
+expensive wrapper.
 
 ## Numerical behavior and tolerances
 

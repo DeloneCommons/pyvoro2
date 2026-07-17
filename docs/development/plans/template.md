@@ -64,7 +64,7 @@ For each work package, define:
 
 - purpose;
 - deliverables;
-- compatibility requirements;
+- compatibility and lifecycle requirements;
 - validation;
 - acceptance criteria.
 
@@ -105,6 +105,15 @@ criteria from conditional improvements that may be deferred.
 ## Proposed issue decomposition
 
 List durable issue titles and dependencies. Final issue bodies live on GitHub.
+For issue-scoped human or coding-agent work, each issue should state the
+observable outcome, in/out of scope behavior, accepted decisions, baseline to
+preserve, tests/docs required, and stop conditions for maintainer review.
+
+## Public API inventory
+
+Link the release inventory when the plan changes public names, defaults, return
+schemas, record fields, or scientific semantics. The inventory should be updated
+during implementation and approved before release, not reconstructed afterward.
 
 ## Linked decisions and issues
 

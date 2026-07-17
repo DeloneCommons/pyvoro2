@@ -15,6 +15,8 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - A top-level API-reference overview linking the spatial, planar, and separator-fitting reference sections.
 - Development workflow and documentation-convention policies that define plan, decision, issue, changelog, release, and archival responsibilities for maintainers and coding agents.
 - A release-plan framework with an index, reusable template, and detailed draft v0.7 forward/separator stabilization plan.
+- Accepted decision records for the canonical `pyvoro2.inverse.separator` ownership model and one common spatial/planar `TessellationResult` contract.
+- A maintained v0.7 API inventory covering preferred, provisional, experimental, compatibility-only, and internal surfaces plus the planned v0.8 removal horizon for historical inverse imports.
 
 ### Changed
 
@@ -22,7 +24,9 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - Replaced internal numbered-stage language with a version-oriented roadmap for v0.7, prescribed cell measures, mixed inverse problems, 1.0, and future research.
 - Updated the concepts and power-fitting guides to distinguish mathematical weights from backend radii, global gauge from unidentified component offsets, and algebraic fitting from geometric realization.
 - Reworked the theory pages into a more readable mathematical narrative and made the AI-assistance note independent of specific model versions.
-- Clarified current-versus-planned language across architecture and policy pages, and made `pyvoro2.inverse` and the common forward-result shape explicit v0.7 decision gates rather than assumed outcomes.
+- Clarified current-versus-planned language across architecture and policy pages, then resolved the v0.7 namespace and result decisions: canonical inverse ownership moves to `pyvoro2.inverse.separator`, while both forward namespaces target one structured default result with an explicit raw compatibility route.
+- Revised the v0.7 plan into an implementation-ready issue sequence with pragmatic immutability guidance, bounded compatibility policy, downstream validation gates, and issue-scoped coding-agent handoff rules.
+- Deferred theory-figure and literature synchronization to a non-blocking follow-up issue after the manuscript reaches its final public form.
 - Updated the source-distribution content check for the new root, reference, workflow, and release-planning documentation files.
 
 ### Removed

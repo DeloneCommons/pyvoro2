@@ -19,6 +19,7 @@ Each kind of document has one primary responsibility.
 | `docs/reference/` | Record exact current imports, signatures, fields, and docstrings. |
 | `docs/development/architecture.md` | Describe the implemented architecture and accepted target responsibilities. |
 | `docs/development/api-lifecycle.md` | Define stability, compatibility, and deprecation policy. |
+| `docs/development/api-inventory.md` | Assign lifecycle status to concrete public names, defaults, result fields, and scientific semantics for the active release. |
 | `docs/development/decisions/` | Record durable choices, alternatives, and consequences. |
 | `docs/development/plans/` | Define the scope, dependencies, validation, and release gates for active or archived development work. |
 | `docs/project/roadmap.md` | Describe version-level outcomes and long-term direction. |
@@ -94,8 +95,9 @@ is available.
   …” or “the v0.7 plan requires …”.
 - Use conditional language for unresolved design choices: “the result may use
   …”.
-- Do not describe an object as public, stable, or preferred before the API
-  lifecycle inventory assigns that status.
+- Do not describe an object as implemented before it exists. A preferred target
+  may be named before implementation only when an accepted decision and active
+  plan define it; stability still requires the API lifecycle inventory.
 - Do not infer implementation from a roadmap, plan, or decision proposal.
 
 Source code and tests define implemented behavior. Documentation should be
