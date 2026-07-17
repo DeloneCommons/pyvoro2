@@ -1,8 +1,9 @@
 # Decision records
 
 Decision records capture durable architectural choices and their trade-offs.
-They complement GitHub issues: an issue tracks work, while a decision record
-explains why a long-lived choice was made.
+They complement release plans and GitHub issues: an active plan defines approved
+scope, an issue tracks implementation, and a decision record explains why a
+long-lived choice was made.
 
 Each record has a status:
 
@@ -18,5 +19,6 @@ Each record has a status:
 3. [Compatibility-first API evolution](0003-compatibility-first-evolution.md)
 
 New records should describe context, decision, consequences, alternatives, and
-links to relevant issues. Do not create a record for every small implementation
-choice.
+links to the active plan and relevant issues. See the
+[development workflow](../development-workflow.md). Do not create a record for
+every small implementation choice.

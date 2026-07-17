@@ -123,10 +123,15 @@ for the development workflow.
 
 ## Design and roadmap
 
+- [Development workflow](../development/development-workflow.md) defines how
+  plans, decisions, issues, implementation, changelog entries, and releases fit
+  together.
+- [v0.7 development plan](../development/plans/v0.7.md) records the proposed release
+  scope, open decisions, work packages, validation, and release gates.
 - [Architecture](../development/architecture.md) describes the current v0.6.3
   implementation and target v0.7 responsibilities.
 - [API lifecycle](../development/api-lifecycle.md) defines stability and
   compatibility.
 - [Decision records](../development/decisions/index.md) explain durable choices.
-- [Roadmap](roadmap.md) describes the staged path toward prescribed measures,
-  mixed problems, 1.0, and JOSS.
+- [Roadmap](roadmap.md) describes version-level direction toward prescribed
+  measures, mixed problems, 1.0, and future research.

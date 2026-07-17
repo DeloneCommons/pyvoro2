@@ -1,8 +1,13 @@
 # Roadmap
 
-This roadmap records durable development phases. It is not a timeline or a list
-of every implementation task. GitHub issues and milestones hold actionable work
-and current status.
+This roadmap records version-level outcomes and long-term direction. It is not a
+timeline, release plan, or list of every implementation task.
+
+- Active release scope and gates live in
+  [development plans](../development/plans/index.md).
+- GitHub issues and milestones track concrete work and current progress.
+- Decision records explain durable architectural choices.
+- The changelog records completed user-visible behavior.
 
 ## Project direction
 
@@ -15,57 +20,40 @@ The sequencing rule is:
 > separator method through that contract; validate it in downstream use; only
 > then add prescribed-measure and mixed inverse methods.
 
-## Stage 0 — Documentation and architectural contract
+## v0.7 — Forward and separator API stabilization
 
-Purpose: make the current package, target boundaries, and compatibility policy
-explicit before code is reorganized.
+The v0.7 line establishes a chemvoro-ready forward and separator-inverse
+contract.
 
-Deliverables:
+Target outcomes:
 
-- maintainer/agent instructions;
-- current and target architecture documentation;
-- theory pages for power diagrams and separator inversion;
-- API lifecycle and deprecation policy;
-- initial decision records;
-- a durable public roadmap;
-- contributor guidance appropriate to a single-maintainer research package;
-- retirement of the obsolete root `DEV_PLAN.md`.
-
-Stage 0 documents requirements and terminology. It does not claim that target
-v0.7 classes or namespaces already exist.
-
-## Stage 1 — v0.7 forward and separator API stabilization
-
-Purpose: provide a chemvoro-ready contract and prepare the package for future
-inverse families.
-
-Expected outcomes:
-
-- common 2D/3D forward result concepts for cells, measures, boundaries,
-  periodic shifts, empty cells, and diagnostics;
-- direct forward computation from mathematical power weights;
-- stable site/external-ID association;
-- a preferred inverse namespace and separator-observation terminology;
+- aligned 2D/3D access to cells, cell measures, realized boundaries, periodic
+  shifts, empty-cell state, and diagnostics;
+- direct forward power computation from mathematical weights;
+- stable association among sites, external IDs, and output cells;
+- a preferred inverse organization and separator-observation terminology;
 - compatibility for existing `pyvoro2.powerfit` workflows;
 - explicit global gauge and disconnected-component-offset semantics;
-- inspectable graph/incidence/Laplacian diagnostics without requiring one sparse
-  dependency;
-- a structured separator result that keeps algebraic, realization, and solver
-  diagnostics distinct;
-- an optional sparse quadratic solve path where it is beneficial;
-- migration documentation and a public API inventory;
-- a small downstream integration example shaped like chemvoro usage.
+- inspectable graph, incidence, and Laplacian problem data without requiring one
+  sparse-matrix dependency as the public representation;
+- separator results that distinguish state, observations, algebraic structure,
+  realization, and solver diagnostics;
+- migration documentation and an explicit API lifecycle inventory;
+- paper-style and chemvoro-shaped integration validation.
 
-Stages 0 and 1 may be developed on the `dev` branch and merged to `main`
-together for v0.7.0. Before release, documentation must be audited so planned
-features are rewritten as implemented behavior where appropriate.
+A sparse quadratic execution path is desirable only when benchmarks justify its
+performance and dependency cost. It is not part of the core compatibility
+promise by default.
 
-## Stage 2 — Prescribed cell measures
+The detailed scope, dependencies, decisions, and release gates are in the
+[v0.7 development plan](../development/plans/v0.7.md).
 
-Purpose: add the second genuine inverse observation family: fixed sites and
-domain, unknown weights, target cell areas in 2D or volumes in 3D.
+## v0.8 — Prescribed cell measures
 
-Implementation order:
+The next inverse family targets fixed sites and domain, unknown power weights,
+and prescribed cell areas in 2D or volumes in 3D.
+
+Expected development order:
 
 1. common cell-measure extraction;
 2. target validation and explicit mass-balance policies;
@@ -73,18 +61,18 @@ Implementation order:
 4. graph-structured sensitivity/Jacobian diagnostics;
 5. finite-difference validation on stable generated cases;
 6. damped Newton, Gauss–Newton, or trust-region weight updates;
-7. empty/near-empty cell diagnostics;
+7. empty and near-empty cell diagnostics;
 8. generated-data recovery benchmarks;
 9. partial and noisy targets;
 10. expansion from simpler 2D domains to stable 3D and periodic cases.
 
-The first public solver should remain experimental until generated diagrams can
-be recovered modulo global gauge across representative cases and failures return
-structured diagnostics.
+The first public prescribed-measure solver should remain experimental until it
+recovers generated diagrams modulo global gauge across representative cases and
+returns structured diagnostics for failure.
 
-## Stage 3 — Mixed inverse problems
+## v0.9 — Mixed inverse problems
 
-Purpose: combine multiple observation families without creating unrelated
+The mixed-problem line combines observation families without creating unrelated
 solver APIs.
 
 The first mixed problem should support:
@@ -103,20 +91,21 @@ public observation-block protocol be finalized.
 Moving sites remains a separate later unknown family, not an option hidden in
 the first mixed solver.
 
-## Stage 4 — Stable 1.0 and JOSS readiness
+## 1.0 — Stable research-software contract and JOSS readiness
 
-Purpose: publish a stable research-software contract backed by real use and a
+Version 1.0 should publish a stable core backed by real downstream use and a
 visible development history.
 
 Expected gates:
 
 - public API inventory and lifecycle audit;
 - forward and separator contracts validated by downstream use;
-- complete install, test, docs, notebook, and release path;
+- complete install, test, documentation, notebook, and release path;
 - migration and deprecation status reviewed;
 - examples and benchmarks suitable for reviewers;
 - research-impact and reproducibility documentation;
-- maintained issue/release history showing iterative development;
+- maintained issue, decision, plan, and release history showing iterative
+  development;
 - stable citation and archival metadata;
 - JOSS paper and statement of need.
 
@@ -124,14 +113,14 @@ Version 1.0 does not require every research extension to be stable. Measure and
 mixed solvers may remain explicitly experimental if the forward core and
 separator API have a credible stable contract.
 
-## Long-horizon research directions
+## Future research directions
 
-Possible later branches include:
+Possible later workstreams include:
 
 - cell-centroid observations;
 - combined separator, measure, and centroid fitting;
 - inverse fitting from planar sections or slices;
-- regular-triangulation/dual diagnostics;
+- regular-triangulation and dual diagnostics;
 - optional solver backend plugins;
 - bounded site-coordinate optimization;
 - anisotropic or non-Euclidean models when a concrete research project requires
@@ -152,8 +141,11 @@ These directions are not commitments for 1.0.
 
 ## Planning responsibilities
 
-- This page records phases and scope.
+- This page records version-level direction and scope.
+- [Development plans](../development/plans/index.md) define active release
+  outcomes, dependencies, validation, and gates.
 - Decision records explain durable choices.
 - GitHub milestones group release outcomes.
-- GitHub issues define small implementation tasks and acceptance criteria.
+- GitHub issues define implementation tasks and acceptance criteria.
 - The changelog records completed user-visible changes.
+- Completed plans are archived with their outcome and deferrals.

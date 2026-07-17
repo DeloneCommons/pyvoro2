@@ -9,7 +9,8 @@ downstream use and later inverse methods.
     Sections labelled *current* describe code that exists in the repository.
     Sections labelled *target* describe architectural requirements, not public
     classes that can already be imported. Exact implementation names remain
-    provisional until they are evaluated in Stage 1.
+    provisional until the corresponding v0.7 decision gate is accepted. See the
+    [v0.7 development plan](plans/v0.7.md).
 
 ## Architectural principles
 
@@ -289,15 +290,16 @@ The v0.7 line should provide one inspectable conceptual contract across 2D and
 - tessellation and normalization diagnostics.
 
 Whether the final implementation uses one `TessellationResult`, dimension-
-specific subclasses, adapters over existing records, or another design is a
-Stage 1 decision. The requirement is a stable access contract, not a premature
+specific result types, adapters over existing records, or another design is an
+open v0.7 decision. The requirement is a stable access contract, not a premature
 class name.
 
 ### Preferred inverse organization
 
-A public `pyvoro2.inverse` namespace is the intended home for math-aligned
-inverse concepts. The current `pyvoro2.powerfit` namespace remains a compatibility
-and convenience facade for separator fitting.
+A public `pyvoro2.inverse` namespace is the leading candidate for the preferred
+home of math-aligned inverse concepts. The final namespace and export policy are
+an open v0.7 decision. Whatever is selected, the current `pyvoro2.powerfit`
+namespace remains a compatibility and convenience surface for separator fitting.
 
 The separator workflow should be described using the following concepts:
 
@@ -435,10 +437,18 @@ The v0.7 line does not commit to:
 
 ## Keeping this document current
 
-When implementation resolves a provisional choice:
+When implementation resolves a provisional choice under the active release
+plan:
 
-1. add or update a decision record if the choice is durable;
-2. change the target section into factual current-architecture text;
-3. update user guides and API reference;
-4. retain historical context in the decision record and changelog rather than
-   maintaining parallel obsolete plans.
+1. record the resolution in the linked issue and plan revision log;
+2. add or update a decision record if the choice is durable;
+3. change the relevant target description into factual current-architecture
+   text;
+4. update user guides and API reference;
+5. add completed user-visible behavior to the changelog;
+6. retain historical context in the decision record and archived plan rather
+   than maintaining parallel obsolete descriptions.
+
+The [development workflow](development-workflow.md) defines how architecture,
+plans, issues, documentation, changelog entries, and release review move
+together.

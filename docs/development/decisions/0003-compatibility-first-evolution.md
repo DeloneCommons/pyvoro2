@@ -21,7 +21,8 @@ v0.6.3 name and record shape would prevent the package from becoming coherent.
 - Existing documented `pyvoro2.powerfit` workflows remain available through
   aliases, adapters, or delegation during the v0.7 transition.
 - A clearer `pyvoro2.inverse` namespace may become the preferred public home for
-  inverse concepts.
+  inverse concepts; the final v0.7 namespace choice remains a separate decision
+  gate.
 - New-user documentation should lead with preferred terminology and imports;
   migration documentation should cover older paths.
 - Top-level inverse re-exports may be reduced only through an explicit
@@ -33,14 +34,18 @@ v0.6.3 name and record shape would prevent the package from becoming coherent.
 
 ## Consequences
 
-- Stage 1 changes need compatibility tests.
+- v0.7 API changes need compatibility tests.
 - Public aliases should preserve semantics, not only importability.
 - Release notes must distinguish preferred, compatibility, provisional, and
   experimental surfaces.
 - Documentation on the development branch must distinguish current v0.6.3 APIs
   from target v0.7 concepts until implementation catches up.
-- The common result schema and observation protocol should receive their own
-  decisions only after concrete alternatives are evaluated.
+- Release scope, decision gates, and validation are tracked in the active
+  development plan rather than in private planning notes.
+- The common forward-result contract should receive its own decision after
+  concrete alternatives are evaluated. A generic observation protocol should
+  remain deferred until at least two implemented observation families provide
+  evidence for it.
 
 ## Alternatives considered
 

@@ -72,7 +72,10 @@ v0.7.0 is intended to establish a credible stable/provisional boundary for:
 - global gauge and disconnected-component-offset reporting;
 - compatibility with the existing `pyvoro2.powerfit` workflow.
 
-The exact public inventory must be published with the release. Future
+The exact public inventory must be published with the release. The
+[v0.7 development plan](plans/v0.7.md) requires a dedicated inventory
+page: this policy defines the categories, while the inventory assigns them to
+concrete names, return routes, record schemas, and defaults. Future
 prescribed-measure and mixed solvers may remain experimental without weakening
 the stable forward and separator core.
 
@@ -121,9 +124,10 @@ migration path whenever possible.
 
 ## Renaming and namespace evolution
 
-The planned `pyvoro2.inverse` namespace may become the preferred home for
-inverse concepts. `pyvoro2.powerfit` should remain a compatibility and
-convenience facade during the transition.
+A `pyvoro2.inverse` namespace is the leading candidate for the preferred home
+of inverse concepts, but the v0.7 namespace choice remains an open decision.
+Whatever is selected, `pyvoro2.powerfit` should remain a compatibility and
+convenience surface during the transition.
 
 Preferred practice:
 
@@ -210,7 +214,8 @@ published numbers.
 
 ## Release audit
 
-Before a stabilization or 1.0 release:
+Before a stabilization or 1.0 release, follow the
+[development workflow](development-workflow.md) and:
 
 - inventory public exports and documented record schemas;
 - label each surface by lifecycle category;

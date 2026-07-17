@@ -13,18 +13,21 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - New theory documentation for power diagrams, power weights versus backend radii, global gauge versus disconnected-component offsets, and the separator-based inverse problem.
 - New development documentation covering the current v0.6.3 architecture, the target v0.7 layering, API lifecycle categories, compatibility policy, and initial architecture decision records.
 - A top-level API-reference overview linking the spatial, planar, and separator-fitting reference sections.
+- Development workflow and documentation-convention policies that define plan, decision, issue, changelog, release, and archival responsibilities for maintainers and coding agents.
+- A release-plan framework with an index, reusable template, and detailed draft v0.7 forward/separator stabilization plan.
 
 ### Changed
 
 - Reframed the public project documentation around forward and inverse weighted tessellations while keeping prescribed-measure and mixed solvers clearly marked as future work.
-- Replaced the old release-specific roadmap with staged development toward the v0.7 forward/separator contract, prescribed cell measures, mixed inverse problems, 1.0, and JOSS.
+- Replaced internal numbered-stage language with a version-oriented roadmap for v0.7, prescribed cell measures, mixed inverse problems, 1.0, and future research.
 - Updated the concepts and power-fitting guides to distinguish mathematical weights from backend radii, global gauge from unidentified component offsets, and algebraic fitting from geometric realization.
 - Reworked the theory pages into a more readable mathematical narrative and made the AI-assistance note independent of specific model versions.
-- Updated the source-distribution content check for the new root and reference documentation files.
+- Clarified current-versus-planned language across architecture and policy pages, and made `pyvoro2.inverse` and the common forward-result shape explicit v0.7 decision gates rather than assumed outcomes.
+- Updated the source-distribution content check for the new root, reference, workflow, and release-planning documentation files.
 
 ### Removed
 
-- Obsolete root `DEV_PLAN.md`; its durable content is now split among architecture, API lifecycle, decision records, the public roadmap, and future GitHub issues.
+- Obsolete root `DEV_PLAN.md`; its durable content is now split among architecture, API lifecycle, decision records, version-oriented roadmap, release plans, and GitHub issues.
 
 ## [0.6.3] - 2026-03-19
 

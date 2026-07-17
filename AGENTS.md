@@ -1,10 +1,15 @@
 # AGENTS.md
 
 This file is the operational contract for coding agents and maintainers working
-on pyvoro2. It is intentionally concise. The durable design rationale lives in
-[`docs/development/architecture.md`](docs/development/architecture.md), and
-major decisions live in
-[`docs/development/decisions/`](docs/development/decisions/).
+on pyvoro2. Durable rationale and process live in the linked repository
+documents:
+
+- [Architecture](docs/development/architecture.md)
+- [Development workflow](docs/development/development-workflow.md)
+- [Documentation conventions](docs/development/documentation-conventions.md)
+- [API lifecycle](docs/development/api-lifecycle.md)
+- [Decision records](docs/development/decisions/)
+- [Development plans](docs/development/plans/)
 
 ## Project direction
 
@@ -20,19 +25,28 @@ tessellations:
   not separate one-off solvers.
 
 The v0.7 development line is stabilizing the forward/result contract and the
-separator inverse API. Do not present roadmap functionality as implemented.
+separator inverse API. Read the current
+[v0.7 development plan](docs/development/plans/v0.7.md) before implementing
+work for that release. Do not present roadmap or draft-plan functionality as
+implemented.
 
 ## Authoritative sources
 
 Use the following order when sources disagree:
 
 1. Tests and current source code define implemented behavior.
-2. User guides and API reference define the documented public behavior.
-3. `docs/development/architecture.md` defines architectural responsibilities
-   and the target direction.
-4. Accepted decision records define durable design choices.
-5. `docs/project/roadmap.md` defines sequencing, not current behavior.
-6. GitHub issues define concrete work in progress.
+2. User guides and API reference define documented public behavior.
+3. Accepted decision records define durable choices.
+4. `docs/development/architecture.md` defines current architecture and accepted
+   target responsibilities.
+5. The active development plan defines approved release scope, dependencies,
+   and release gates.
+6. `docs/project/roadmap.md` defines version-level direction, not current
+   behavior.
+7. GitHub issues define concrete work and current progress.
+
+A draft plan is not approval to invent a resolution for an open decision gate.
+Surface the decision and wait for explicit maintainer direction.
 
 Update the relevant documentation when a change makes any of these sources
 inconsistent.
@@ -51,7 +65,9 @@ inconsistent.
 - `docs/notebooks/`: generated notebook exports; do not edit directly.
 - `docs/guide/`: task-oriented documentation for the current API.
 - `docs/theory/`: API-independent mathematical concepts.
-- `docs/development/`: architecture, API policy, and decision records.
+- `docs/reference/`: exact current API reference.
+- `docs/development/`: architecture, API policy, workflow, plans, and decisions.
+- `docs/development/plans/`: draft, active, and archived release/workstream plans.
 - `docs/project/`: public project identity, roadmap, license, and AI policy.
 - `tools/`: repository generation, validation, and release helpers.
 
@@ -129,21 +145,46 @@ Preserve these unless an accepted decision record supersedes them:
 8. **Compatibility is deliberate.** Public renames require aliases/adapters,
    migration documentation, tests, and release-note coverage.
 
+## Planning and change tracking
+
+Follow [Development workflow](docs/development/development-workflow.md).
+
+For substantial work:
+
+1. read the active plan and linked issue;
+2. confirm that blocking decision gates are resolved;
+3. implement only the issue scope;
+4. add tests and current documentation with the code;
+5. update or add a decision record for durable choices;
+6. add a `[Unreleased]` changelog entry when accepted user-visible behavior
+   changes;
+7. report the validation commands that passed.
+
+Do not use private chat history as lasting authority. Transfer important scope
+or design decisions into the plan, an issue, or a decision record.
+
+Do not remove completed work packages from an active plan. Issues show detailed
+progress; plans preserve release structure. During release review, record
+outcomes and deferrals, then archive the completed plan.
+
 ## Public API changes
 
 Before adding or changing a public name, signature, default, return schema, or
 field meaning:
 
 1. identify its lifecycle status using `docs/development/api-lifecycle.md`;
-2. open or reference an issue for architectural or breaking-change risk;
-3. add or update tests for both preferred and compatibility paths;
-4. update the user guide and API reference/docstrings;
-5. add a decision record when the choice fixes a durable architectural
+2. confirm that the change belongs to the active plan or an approved maintenance
+   issue;
+3. open or reference an issue for architectural or breaking-change risk;
+4. add or update tests for both preferred and compatibility paths;
+5. update the user guide and API reference/docstrings;
+6. add a decision record when the choice fixes a durable architectural
    boundary;
-6. update the changelog.
+7. update the changelog.
 
-Do not freeze speculative class names merely because they appear in the
-roadmap. Architectural requirements and implementation names are different.
+Do not freeze speculative class names merely because they appear in a roadmap
+or draft plan. Architectural requirements and implementation names are
+different.
 
 ## Forward computation changes
 
@@ -173,16 +214,21 @@ For changes under `powerfit/` or the future inverse namespace:
 
 ## Documentation rules
 
-- User guides describe callable behavior in the current tree.
-- Theory pages avoid dependence on provisional Python class names.
-- Architecture pages distinguish **current implementation** from **target
-  architecture**.
-- The roadmap describes durable phases; GitHub issues hold actionable task
-  lists.
-- Do not copy large parts of the manuscript into the docs. Link to it for proofs
-  and benchmark details.
-- Use `separator observation` in explanatory prose. Keep historical API names
-  such as `PairBisectorConstraints` where code requires them.
+The authoritative writing policy is
+[Documentation conventions](docs/development/documentation-conventions.md).
+In brief:
+
+- user guides describe callable behavior in the current tree;
+- theory pages use accessible paper-like language and avoid provisional class
+  names;
+- architecture pages distinguish current implementation from target
+  responsibility;
+- release plans define scope and gates; issues track progress;
+- the roadmap uses version-level outcomes, not private “Stage 0/1” labels;
+- the changelog records completed user-visible changes;
+- use `separator observation` in explanatory prose and historical API names
+  only where code requires them;
+- do not copy large parts of the manuscript into the docs.
 
 ## Scope control
 
@@ -200,9 +246,11 @@ and concrete research need:
 
 A change is complete when:
 
+- its issue acceptance criteria are met;
 - implementation and tests agree;
 - generated files are synchronized;
 - current/target wording in the docs is accurate;
 - compatibility behavior is explicit;
 - the changelog is updated when user-visible behavior changed;
-- the narrowest relevant validation commands pass.
+- the narrowest relevant validation commands pass;
+- no unresolved design decision is hidden in the implementation.

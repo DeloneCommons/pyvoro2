@@ -67,6 +67,13 @@ nav:
       - Inverse fitting from separator observations: theory/separator-inverse.md
   - Development:
       - Overview: development/index.md
+      - Development workflow: development/development-workflow.md
+      - Development plans:
+          - Overview: development/plans/index.md
+          - v0.7 plan: development/plans/v0.7.md
+          - Plan template: development/plans/template.md
+          - Archive: development/plans/archive/index.md
+      - Documentation conventions: development/documentation-conventions.md
       - Architecture: development/architecture.md
       - API lifecycle: development/api-lifecycle.md
       - Decision records:

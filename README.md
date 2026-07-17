@@ -216,11 +216,11 @@ of the Python-side contracts needed in scientific workflows. pyvoro2 adds:
 | [Topology and graphs](https://delonecommons.github.io/pyvoro2/guide/topology/) | Periodic image-labelled adjacency and normalized topology. |
 | [Separator fitting](https://delonecommons.github.io/pyvoro2/guide/powerfit/) | Current inverse API, result diagnostics, realization matching, and active-set refinement. |
 | [Theory](https://delonecommons.github.io/pyvoro2/theory/) | API-independent definitions of power diagrams, weights, gauge, and separator inversion. |
-| [Development](https://delonecommons.github.io/pyvoro2/development/) | Architecture, API lifecycle, decision records, and contribution paths. |
+| [Development](https://delonecommons.github.io/pyvoro2/development/) | Architecture, workflow, documentation conventions, release plans, API lifecycle, and decision records. |
 | [Visualization](https://delonecommons.github.io/pyvoro2/guide/visualization/) | Optional `py3Dmol` and `matplotlib` helpers. |
 | [Examples](https://delonecommons.github.io/pyvoro2/guide/notebooks/) | Executable notebook workflows. |
 | [API reference](https://delonecommons.github.io/pyvoro2/reference/) | Exact signatures and docstring reference for spatial, planar, and separator-fitting APIs. |
-| [Roadmap](https://delonecommons.github.io/pyvoro2/project/roadmap/) | Durable stages toward v0.7, prescribed measures, mixed fitting, 1.0, and JOSS. |
+| [Roadmap](https://delonecommons.github.io/pyvoro2/project/roadmap/) | Version-level outcomes for v0.7, prescribed measures, mixed fitting, 1.0, and future research. |
 
 ## Installation
 
@@ -278,10 +278,12 @@ python tools/release_check.py
 
 ## Project status and support
 
-pyvoro2 is currently **beta**. The public v0.6.3 release is the archived baseline
-for the separator-inverse manuscript. The v0.7 development line is documenting
-and stabilizing the common forward/result contract and preferred separator API
-before new inverse families are implemented.
+pyvoro2 is currently **beta**. The public v0.6.3 release is the archived
+baseline for the separator-inverse manuscript. The v0.7 development line is
+stabilizing the common forward/result contract and preferred separator API
+before new inverse families are implemented. The
+[v0.7 development plan](https://delonecommons.github.io/pyvoro2/development/plans/v0.7/) records the proposed
+scope, decision gates, validation, and release criteria.
 
 Reproducible bugs and focused feature proposals are welcome through GitHub
 issues. Development is currently led by one maintainer, so support is

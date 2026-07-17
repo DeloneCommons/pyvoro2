@@ -209,11 +209,11 @@ of the Python-side contracts needed in scientific workflows. pyvoro2 adds:
 | [Topology and graphs](guide/topology.md) | Periodic image-labelled adjacency and normalized topology. |
 | [Separator fitting](guide/powerfit.md) | Current inverse API, result diagnostics, realization matching, and active-set refinement. |
 | [Theory](theory/index.md) | API-independent definitions of power diagrams, weights, gauge, and separator inversion. |
-| [Development](development/index.md) | Architecture, API lifecycle, decision records, and contribution paths. |
+| [Development](development/index.md) | Architecture, workflow, documentation conventions, release plans, API lifecycle, and decision records. |
 | [Visualization](guide/visualization.md) | Optional `py3Dmol` and `matplotlib` helpers. |
 | [Examples](guide/notebooks.md) | Executable notebook workflows. |
 | [API reference](reference/index.md) | Exact signatures and docstring reference for spatial, planar, and separator-fitting APIs. |
-| [Roadmap](project/roadmap.md) | Durable stages toward v0.7, prescribed measures, mixed fitting, 1.0, and JOSS. |
+| [Roadmap](project/roadmap.md) | Version-level outcomes for v0.7, prescribed measures, mixed fitting, 1.0, and future research. |
 
 ## Installation
 
@@ -271,10 +271,12 @@ python tools/release_check.py
 
 ## Project status and support
 
-pyvoro2 is currently **beta**. The public v0.6.3 release is the archived baseline
-for the separator-inverse manuscript. The v0.7 development line is documenting
-and stabilizing the common forward/result contract and preferred separator API
-before new inverse families are implemented.
+pyvoro2 is currently **beta**. The public v0.6.3 release is the archived
+baseline for the separator-inverse manuscript. The v0.7 development line is
+stabilizing the common forward/result contract and preferred separator API
+before new inverse families are implemented. The
+[v0.7 development plan](development/plans/v0.7.md) records the proposed
+scope, decision gates, validation, and release criteria.
 
 Reproducible bugs and focused feature proposals are welcome through GitHub
 issues. Development is currently led by one maintainer, so support is
