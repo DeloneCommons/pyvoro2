@@ -1,79 +1,159 @@
 # Roadmap
 
-This page lists intended future improvements. It is not a guarantee of timelines.
+This roadmap records durable development phases. It is not a timeline or a list
+of every implementation task. GitHub issues and milestones hold actionable work
+and current status.
 
-## Recently completed
+## Project direction
 
-### Planar 2D support in 0.6.0
+pyvoro2 will remain a forward 2D/3D Voronoi and power/Laguerre package while
+developing a coherent inverse weighted-tessellation layer.
 
-The 0.6.0 line adds a dedicated `pyvoro2.planar` namespace built on a separate
-`_core2d` backend. The supported first-release planar scope is intentionally
-honest:
+The sequencing rule is:
 
-- `Box` and `RectangularCell` domains,
-- planar compute / locate / ghost-cell operations,
-- periodic edge-shift recovery for rectangular periodic domains,
-- planar diagnostics, normalization, plotting, and power-fitting support.
+> Stabilize shared forward geometry and results first; express the implemented
+> separator method through that contract; validate it in downstream use; only
+> then add prescribed-measure and mixed inverse methods.
 
-It does **not** yet promise a planar oblique-periodic analogue of the 3D
-`PeriodicCell`.
+## Stage 0 — Documentation and architectural contract
 
-### Documentation and release hygiene in 0.6.1
+Purpose: make the current package, target boundaries, and compatibility policy
+explicit before code is reorganized.
 
-The 0.6.1 line also cleans up the repository-facing documentation workflow:
+Deliverables:
 
-- notebooks now live at the repository root and are exported into generated
-  Markdown pages for the docs site;
-- the package metadata now exposes a convenience `pyvoro2[all]` extra for full
-  local validation;
-- repository tooling now includes notebook export checks, notebook execution,
-  README sync checks, distribution-content validation, and a single
-  `tools/release_check.py` entry point.
+- maintainer/agent instructions;
+- current and target architecture documentation;
+- theory pages for power diagrams and separator inversion;
+- API lifecycle and deprecation policy;
+- initial decision records;
+- a durable public roadmap;
+- contributor guidance appropriate to a single-maintainer research package;
+- retirement of the obsolete root `DEV_PLAN.md`.
 
-### Powerfit robustness in 0.6.1
+Stage 0 documents requirements and terminology. It does not claim that target
+v0.7 classes or namespaces already exist.
 
-The 0.6.1 line hardens the inverse-fitting stack around underdetermined and
-mis-specified candidate graphs:
+## Stage 1 — v0.7 forward and separator API stabilization
 
-- realized internal boundaries for candidate-absent pairs are now reported
-  explicitly in both 3D and planar 2D workflows;
-- low-level fits and self-consistent solves now expose structured connectivity
-  diagnostics for candidate graphs, active graphs, unconstrained sites, and
-  component identifiability;
-- disconnected-component gauge handling now follows explicit component-mean or
-  previous-iterate alignment policies rather than arbitrary anchor order;
-- self-consistent results now distinguish final-state diagnostics from
-  optimization-path diagnostics through `path_summary` and richer history rows;
-- the weight-to-radius conversion path now exposes `weight_shift=` directly
-  instead of relying only on the older minimum-radius convention.
+Purpose: provide a chemvoro-ready contract and prepare the package for future
+inverse families.
 
-## Planned / likely
+Expected outcomes:
 
-The next roadmap questions are no longer about the basic powerfit surface, but
-about validation depth and overall API stabilization.
+- common 2D/3D forward result concepts for cells, measures, boundaries,
+  periodic shifts, empty cells, and diagnostics;
+- direct forward computation from mathematical power weights;
+- stable site/external-ID association;
+- a preferred inverse namespace and separator-observation terminology;
+- compatibility for existing `pyvoro2.powerfit` workflows;
+- explicit global gauge and disconnected-component-offset semantics;
+- inspectable graph/incidence/Laplacian diagnostics without requiring one sparse
+  dependency;
+- a structured separator result that keeps algebraic, realization, and solver
+  diagnostics distinct;
+- an optional sparse quadratic solve path where it is beneficial;
+- migration documentation and a public API inventory;
+- a small downstream integration example shaped like chemvoro usage.
 
-## Potential / exploratory
+Stages 0 and 1 may be developed on the `dev` branch and merged to `main`
+together for v0.7.0. Before release, documentation must be audited so planned
+features are rewritten as implemented behavior where appropriate.
 
-### Planar oblique-periodic domains
+## Stage 2 — Prescribed cell measures
 
-A future planar `PeriodicCell` remains possible, but it is deferred rather than
-promised. One possible fallback is a pseudo-3D implementation with careful
-projection back to 2D, but that needs its own evaluation before it should be
-part of the public contract.
+Purpose: add the second genuine inverse observation family: fixed sites and
+domain, unknown weights, target cell areas in 2D or volumes in 3D.
 
-### Visualization usability
+Implementation order:
 
-The optional viewers (`pyvoro2[viz]` / `pyvoro2[viz2d]`) are intended as
-lightweight debugging and exploration tools. The current direction is to keep
-them simple but make the examples and notebook workflows more polished, rather
-than turning visualization into a heavy core dependency.
+1. common cell-measure extraction;
+2. target validation and explicit mass-balance policies;
+3. residual evaluation without solving;
+4. graph-structured sensitivity/Jacobian diagnostics;
+5. finite-difference validation on stable generated cases;
+6. damped Newton, Gauss–Newton, or trust-region weight updates;
+7. empty/near-empty cell diagnostics;
+8. generated-data recovery benchmarks;
+9. partial and noisy targets;
+10. expansion from simpler 2D domains to stable 3D and periodic cases.
 
-## Release stability
+The first public solver should remain experimental until generated diagrams can
+be recovered modulo global gauge across representative cases and failures return
+structured diagnostics.
 
-pyvoro2 is currently in **beta**.
+## Stage 3 — Mixed inverse problems
 
-A “stable” 1.0 release is expected only after:
+Purpose: combine multiple observation families without creating unrelated
+solver APIs.
 
-- the 0.6.1 robustness work is validated in downstream use,
-- the current planar scope is validated in downstream use,
-- the need (or non-need) for planar `PeriodicCell` is reassessed.
+The first mixed problem should support:
+
+- fixed sites;
+- unknown weights only;
+- separator observations;
+- cell-measure observations;
+- explicit block and row scaling;
+- per-block objective and diagnostic reporting;
+- a separate final realization report.
+
+Only after separator and measure implementations both exist should a generic
+public observation-block protocol be finalized.
+
+Moving sites remains a separate later unknown family, not an option hidden in
+the first mixed solver.
+
+## Stage 4 — Stable 1.0 and JOSS readiness
+
+Purpose: publish a stable research-software contract backed by real use and a
+visible development history.
+
+Expected gates:
+
+- public API inventory and lifecycle audit;
+- forward and separator contracts validated by downstream use;
+- complete install, test, docs, notebook, and release path;
+- migration and deprecation status reviewed;
+- examples and benchmarks suitable for reviewers;
+- research-impact and reproducibility documentation;
+- maintained issue/release history showing iterative development;
+- stable citation and archival metadata;
+- JOSS paper and statement of need.
+
+Version 1.0 does not require every research extension to be stable. Measure and
+mixed solvers may remain explicitly experimental if the forward core and
+separator API have a credible stable contract.
+
+## Long-horizon research directions
+
+Possible later branches include:
+
+- cell-centroid observations;
+- combined separator, measure, and centroid fitting;
+- inverse fitting from planar sections or slices;
+- regular-triangulation/dual diagnostics;
+- optional solver backend plugins;
+- bounded site-coordinate optimization;
+- anisotropic or non-Euclidean models when a concrete research project requires
+  them.
+
+These directions are not commitments for 1.0.
+
+## Explicit near-term non-goals
+
+- spherical-surface tessellations;
+- a general-purpose replacement for CGAL or other broad geometry frameworks;
+- arbitrary user-defined nonlinear callbacks before built-in inverse families
+  establish a stable protocol;
+- GPU acceleration;
+- site motion in the first mixed solver;
+- planar oblique-periodic support solely for API symmetry;
+- breaking removal of the current `pyvoro2.powerfit` API.
+
+## Planning responsibilities
+
+- This page records phases and scope.
+- Decision records explain durable choices.
+- GitHub milestones group release outcomes.
+- GitHub issues define small implementation tasks and acceptance criteria.
+- The changelog records completed user-visible changes.

@@ -4,6 +4,28 @@ All notable changes to this project are documented in this file.
 
 The format is based on *Keep a Changelog*, and this project follows *Semantic Versioning*.
 
+## [Unreleased]
+
+### Added
+
+- `AGENTS.md` with repository boundaries, generated-file rules, validation commands, and numerical/architectural invariants for agent-assisted development.
+- `CONTRIBUTING.md` with the development workflow plus compact support, governance, and private security-reporting guidance suitable for the current single-maintainer project.
+- New theory documentation for power diagrams, power weights versus backend radii, global gauge versus disconnected-component offsets, and the separator-based inverse problem.
+- New development documentation covering the current v0.6.3 architecture, the target v0.7 layering, API lifecycle categories, compatibility policy, and initial architecture decision records.
+- A top-level API-reference overview linking the spatial, planar, and separator-fitting reference sections.
+
+### Changed
+
+- Reframed the public project documentation around forward and inverse weighted tessellations while keeping prescribed-measure and mixed solvers clearly marked as future work.
+- Replaced the old release-specific roadmap with staged development toward the v0.7 forward/separator contract, prescribed cell measures, mixed inverse problems, 1.0, and JOSS.
+- Updated the concepts and power-fitting guides to distinguish mathematical weights from backend radii, global gauge from unidentified component offsets, and algebraic fitting from geometric realization.
+- Reworked the theory pages into a more readable mathematical narrative and made the AI-assistance note independent of specific model versions.
+- Updated the source-distribution content check for the new root and reference documentation files.
+
+### Removed
+
+- Obsolete root `DEV_PLAN.md`; its durable content is now split among architecture, API lifecycle, decision records, the public roadmap, and future GitHub issues.
+
 ## [0.6.3] - 2026-03-19
 
 ### Added

@@ -1,12 +1,14 @@
-# AI usage
+# AI-assisted development
 
-This project was developed with AI assistance.
+pyvoro2 has been developed with AI assistance. During different stages of the
+project, the maintainer used the latest **Chat** and **Codex** models available at
+the time of development for planning, design discussion, code drafting and
+refactoring, test development, and editorial support.
 
-The maintainer used:
+AI-generated suggestions are not accepted automatically. The maintainer reviews,
+modifies, and integrates changes, validates the resulting software and
+documentation, and remains responsible for releases and scientific claims.
 
-- **ChatGPT 5.2 Plus and Pro** for planning, design discussions, and implementation guidance
-- **ChatGPT-codex-5.3** for code drafting and refactoring assistance
-
-All changes were reviewed by the maintainer and validated with an automated test suite.
-
-If you reuse or redistribute pyvoro2, please keep in mind that the package is still marked as **Beta** and the public API may evolve.
+The repository history, tests, archived releases, and reproducibility materials
+are the authoritative record of the project; model-generated intermediate text
+or code is not.

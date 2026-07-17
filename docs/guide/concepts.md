@@ -1,103 +1,166 @@
 # Concepts
 
-This section introduces the geometric objects that pyvoro2 computes. The goal is
-not to be encyclopedic, but to give you the minimum vocabulary needed to use the
-library confidently.
+This guide introduces the geometric objects needed to use pyvoro2. Precise
+mathematical definitions and invariants are collected in
+[Power diagrams](../theory/power-diagrams.md).
 
-## The problem being solved
+## Sites, domains, and cells
 
-Suppose you have a finite set of points in three dimensions, which we will call
-**sites** (or *generators*),
+Let
 
-- $p_1, p_2, \dots, p_n \in \mathbb{R}^3$.
+\[
+p_1,\ldots,p_n \in \mathbb{R}^d, \qquad d\in\{2,3\},
+\]
 
-A *tessellation* assigns every point $x$ in your domain (a box or a periodic unit cell)
-to one of these sites, producing a set of convex polyhedra. These polyhedra can be
-used as a spatial partition, a neighbor definition, or a geometric model of “regions
-of influence” around sites.
+be **sites** or **generators**. A tessellation assigns points in a bounded or
+periodic domain to these sites, producing convex polygonal cells in 2D or
+polyhedral cells in 3D.
 
-Two related tessellations appear again and again in scientific computing:
+Cells can be used as:
 
-- the **standard Voronoi tessellation** (unweighted), and
-- the **power / Laguerre tessellation** (weighted Voronoi).
+- a spatial partition;
+- a neighbor definition;
+- a periodic graph source;
+- a geometric model of regions of influence.
 
-pyvoro2 computes both, using the proven C++ library **Voro++**.
+pyvoro2 computes two related tessellations using Voro++.
 
 ## Standard Voronoi tessellation
 
-In the standard Voronoi tessellation, the cell of site $p_i$ is the set of points
-that are closer to $p_i$ than to any other site:
+The standard Voronoi cell of site \(i\) contains points no farther from \(p_i\)
+than from any other site:
 
-$$
-V_i = \{x \in \mathbb{R}^3 \mid \lVert x - p_i \rVert^2 \le \lVert x - p_j \rVert^2 \;\; \forall j\}.
-$$
+\[
+V_i=\left\{x:\lVert x-p_i\rVert^2
+\le\lVert x-p_j\rVert^2\;\forall j\right\}.
+\]
 
-Geometrically, each boundary between two neighboring sites is a plane located at
-the midpoint between them (an “equidistance plane”). The resulting cells are
-convex polyhedra.
+A boundary between two neighboring sites lies on their perpendicular bisector.
+In pyvoro2, use:
 
-In pyvoro2 this corresponds to:
+```python
+cells = compute(points, domain=domain, mode='standard')
+```
 
-- `mode='standard'`
+## Power/Laguerre tessellation
 
-## Power / Laguerre tessellation
+A power diagram assigns a scalar **power weight** \(w_i\) to each site and
+compares
 
-Many scientific problems need something slightly more flexible than “closest site”.
-For example, you may want larger atoms to occupy more volume, or you may want to
-approximate a reference partition that is not purely distance-based.
+\[
+\pi_i(x)=\lVert x-p_i\rVert^2-w_i.
+\]
 
-A **power diagram** (also called **Laguerre** or **radical Voronoi**) introduces a per-site
-weight $w_i$ and compares *power distances* instead of Euclidean distances:
+The cell is
 
-$$
-\pi_i(x) = \lVert x - p_i \rVert^2 - w_i.
-$$
+\[
+P_i=\left\{x:\pi_i(x)\le\pi_j(x)\;\forall j\right\}.
+\]
 
-The cell of site $i$ becomes:
+The separating hyperplane between sites \(i\) and \(j\) depends on the weight
+difference \(w_i-w_j\). Larger weight tends to enlarge a cell, but the result is
+a collective geometric construction rather than an independent radius around
+each point.
 
-$$
-V_i = \{x \in \mathbb{R}^3 \mid \pi_i(x) \le \pi_j(x) \;\; \forall j\}.
-$$
+### Current radius-based API
 
-A convenient interpretation is to write weights as squared “radii”, $w_i = r_i^2$.
-This is the convention used by Voro++ (and therefore by pyvoro2), where you pass
-`radii=...`.
+Voro++ represents a weight as the square of a non-negative radius. The current
+forward pyvoro2 API therefore uses:
 
-**Important consequences (and common surprises):**
+```python
+cells = compute(
+    points,
+    domain=domain,
+    mode='power',
+    radii=radii,
+    include_empty=True,
+)
+```
 
-- The separating plane between two sites depends only on the **difference**
-  $w_i - w_j$.
-- Some sites can acquire **empty cells** (zero volume). This is not a failure: it
-  is a normal feature of power diagrams.
+Mathematically, the weights are \(w_i=r_i^2\). More generally, one common
+constant can be added to every weight and the diagram is unchanged. Fitted
+weights can therefore be shifted before conversion to non-negative backend
+radii.
 
-In pyvoro2 this corresponds to:
+Radii in this context are a computational representation unless an application
+supplies an independent physical interpretation.
 
-- `mode='power'`
-- `radii=...` (per-site)
-- `include_empty=True` if you want explicit records for empty cells
+### Global gauge
 
-## Periodicity and “which neighbor image”
+Replacing every weight by \(w_i+c\) leaves all pairwise power-distance
+comparisons unchanged. This is the global additive **gauge** of a power diagram.
 
-In periodic domains, every site has infinitely many periodic images. A face between
-two sites therefore corresponds not just to “$i$ is adjacent to $j$”, but to a
-**specific periodic image** of $j$.
+The absolute weight level is therefore not unique; weight differences and the
+realized geometry are the gauge-invariant quantities.
 
-If your goal is a neighbor graph (e.g., for crystals), this image information is
-essential.
+A disconnected inverse observation graph creates additional unidentified
+relative offsets between its components. Those are not necessarily harmless
+gauge shifts of the complete diagram, because changing them can alter how
+sites from different components compete. See the
+[separator theory page](../theory/separator-inverse.md).
 
-pyvoro2 can annotate each face with:
+## Empty cells
 
-- `adjacent_cell`: the neighbor site id
-- `adjacent_shift`: an integer lattice shift `(na, nb, nc)` describing *which image*
-  of the neighbor produced the face
+A weighted site can be dominated everywhere and have an empty cell. This is a
+normal power-diagram outcome, not automatically a numerical error.
 
-You enable this with `return_face_shifts=True`.
+Use `include_empty=True` when downstream code needs an explicit record for every
+input site. In inverse workflows, empty endpoint cells are also reported by
+realization diagnostics.
+
+## Periodicity and neighbor images
+
+In a periodic domain, every site has infinitely many translated images. An
+adjacency therefore needs both:
+
+- the neighbor site ID;
+- the integer lattice shift of the image that produced the boundary.
+
+In 3D cell records these are commonly:
+
+- `adjacent_cell`;
+- `adjacent_shift=(n_a,n_b,n_c)`.
+
+Enable image labels with `return_face_shifts=True`. The planar namespace exposes
+analogous edge-shift information for rectangular periodic domains.
+
+The shift is essential for crystal graphs, transport networks, and periodic
+separator observations. Different images of the same site are not separate
+weight unknowns.
+
+## Cell and boundary measures
+
+The documentation uses **cell measure** for:
+
+- area in 2D;
+- volume in 3D.
+
+It uses **boundary measure** for:
+
+- edge length in 2D;
+- face area in 3D.
+
+This shared vocabulary is useful for code that supports both dimensions and for
+future inverse fitting from prescribed cell measures.
+
+## Algebraic separators and realized boundaries
+
+Every pair of weighted sites defines a two-site separator hyperplane. A pair is
+a realized neighbor only where that separator survives competition from all
+other sites and intersects the domain with positive boundary measure.
+
+Consequently:
+
+- fitting a requested separator position is an algebraic inverse problem;
+- checking whether the pair is an actual face/edge is a forward geometric
+  realization problem.
+
+pyvoro2 reports these as separate layers.
 
 ## Stateless design
 
-pyvoro2 is intentionally **stateless** at the API level:
+The current public API is stateless. Each call to `compute(...)`, `locate(...)`,
+or `ghost_cells(...)` creates a Voro++ container, inserts the sites, performs the
+operation, and returns Python objects.
 
-- each call to `compute(...)`, `locate(...)`, or `ghost_cells(...)` builds a Voro++
-  container in C++, inserts the sites, runs the computation, and returns Python objects.
-
-This keeps the public interface simple and results reproducible.
+This avoids hidden mutable state and keeps computations reproducible.

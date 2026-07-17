@@ -7,32 +7,48 @@
 
 ---
 
-**pyvoro2** is a Python interface to the C++ library **Voro++** for computing
-**2D and 3D Voronoi-type tessellations** around a set of points:
+**pyvoro2** is a scientific Python package for computing **2D and 3D Voronoi
+and power/Laguerre tessellations**, with particular support for periodic
+topology and inverse fitting of power weights from partial geometric data.
 
-- **Voronoi tessellations** (standard, unweighted)
-- **power / Laguerre tessellations** (weighted Voronoi, via per-site radii)
-- a dedicated planar namespace, **`pyvoro2.planar`**, for 2D rectangular domains
+The current public release provides:
 
-The focus is not only on computing cells, but on making the results *usable*
-in scientific and geometric settings that need **periodic boundary
-conditions**, explicit **neighbor-image shifts**, reproducible
-**topology/normalization** utilities, and a reusable mathematical interface to
-Voronoi and power tessellations.
+- standard Voronoi tessellations;
+- power/Laguerre tessellations through per-site radii;
+- a dedicated `pyvoro2.planar` namespace for 2D rectangular domains;
+- bounded, partially periodic, and triclinic periodic 3D domains;
+- explicit periodic neighbor-image shifts;
+- diagnostics, validation, topology normalization, and visualization helpers;
+- separator-based inverse fitting in 2D and 3D, including graph/connectivity
+  diagnostics, hard-constraint witnesses, realized-boundary matching, and an
+  optional realization-aware active-set loop.
 
-pyvoro2 is designed to be **honest and predictable**:
+The package is evolving toward a stable architecture for **forward and inverse
+weighted tessellations**. Prescribed cell measures and mixed inverse problems
+are planned extensions; they are not part of the current release.
 
-- it vendors and wraps an upstream Voro++ snapshot (with a small numeric robustness patch for power/Laguerre diagrams);
-- the 3D top-level API stays separate from the 2D `pyvoro2.planar` namespace;
-- the core tessellation modes are **standard Voronoi** and **power/Laguerre**.
+pyvoro2 is designed to be explicit and predictable:
 
-**License note:** starting with **0.6.0**, the pyvoro2-authored code is released under **LGPLv3+**. Versions before **0.6.0** were released under **MIT**. Vendored third-party code remains under its own licenses.
+- it vendors and wraps upstream Voro++ sources, including a small numeric
+  robustness fix already accepted upstream for power/Laguerre pruning;
+- 3D and planar APIs remain separate where their backends and domain support
+  differ;
+- power **weights** are the mathematical quantities, while Voro++ **radii** are
+  a backend representation;
+- algebraic inverse fit and realized geometry are reported as separate layers;
+- numerical and topological failure modes are exposed through diagnostics
+  rather than hidden fallback.
+
+**License note:** pyvoro2-authored code is released under **LGPLv3+** starting
+with version 0.6.0. Earlier versions were released under MIT. Vendored
+third-party code remains under its own licenses.
 
 ## Quickstart
 
-### 1) Standard Voronoi in a 3D bounding box
+### 1) Standard Voronoi in a 3D box
 
-For 3D visualization, install the optional dependency: `pip install "pyvoro2[viz]"`.
+For 3D visualization, install the optional dependency with
+`pip install "pyvoro2[viz]"`.
 
 ```python
 import numpy as np
@@ -58,25 +74,31 @@ view_tessellation(
 import numpy as np
 import pyvoro2.planar as pv2
 
-pts2 = np.array([
+points2d = np.array([
     [0.2, 0.2],
     [0.8, 0.25],
     [0.4, 0.8],
 ], dtype=float)
 
-cell2 = pv2.RectangularCell(((0.0, 1.0), (0.0, 1.0)), periodic=(True, True))
-result2 = pv2.compute(
-    pts2,
-    domain=cell2,
+cell2d = pv2.RectangularCell(
+    ((0.0, 1.0), (0.0, 1.0)),
+    periodic=(True, True),
+)
+result2d = pv2.compute(
+    points2d,
+    domain=cell2d,
     return_diagnostics=True,
     normalize='topology',
 )
 
-diag2 = result2.require_tessellation_diagnostics()
-topo2 = result2.require_normalized_topology()
+diagnostics2d = result2d.require_tessellation_diagnostics()
+topology2d = result2d.require_normalized_topology()
 ```
 
-### 3) Power/Laguerre tessellation (weighted Voronoi)
+### 3) Power/Laguerre tessellation
+
+The current forward API accepts non-negative radii and uses their squares as
+power weights:
 
 ```python
 radii = np.full(len(points), 1.2)
@@ -86,9 +108,14 @@ cells = pv.compute(
     domain=box,
     mode='power',
     radii=radii,
-    include_empty=True,  # power diagrams can have zero-volume cells
+    include_empty=True,
 )
 ```
+
+A common shift of every power weight leaves the diagram unchanged. The planned
+v0.7 API adds a direct weight-first route so callers do not need to choose a
+backend radius shift themselves. See [Power diagrams](https://delonecommons.github.io/pyvoro2/theory/power-diagrams/)
+for the precise distinction.
 
 ### 4) Periodic crystal cell with neighbor image shifts
 
@@ -104,22 +131,48 @@ cell = pv.PeriodicCell(
 cells = pv.compute(points, domain=cell, return_face_shifts=True)
 
 # Each face can include:
-#   adjacent_cell  (neighbor id)
+#   adjacent_cell  (neighbor site id)
 #   adjacent_shift (which periodic image produced the face)
 ```
 
+### 5) Fit weights from separator observations
+
+```python
+points_pair = np.array([
+    [0.0, 0.0, 0.0],
+    [2.0, 0.0, 0.0],
+])
+pair_box = pv.Box(((-5, 5), (-5, 5), (-5, 5)))
+
+observations = pv.resolve_pair_bisector_constraints(
+    points_pair,
+    [(0, 1, 0.25)],
+    measurement='fraction',
+    domain=pair_box,
+)
+
+fit = pv.fit_power_weights(
+    points_pair,
+    observations,
+    model=pv.FitModel(mismatch=pv.SquaredLoss()),
+)
+```
+
+`PairBisectorConstraints` is the current API name. The documentation uses
+**separator observations** for the mathematical concept and distinguishes the
+fixed-observation fit from subsequent realized-face checks.
+
 ## Numerical safety notes
 
-Voro++ uses a few fixed absolute tolerances internally (most importantly a hard
-near-duplicate check around ~`1e-5` in container distance units). For very small
-or very large coordinate systems, this can lead to hard process termination or
-loss of accuracy.
+Voro++ uses fixed absolute tolerances internally, including a hard
+near-duplicate check around approximately `1e-5` in container distance units.
+Very small or very large coordinate systems can therefore cause process
+termination inside the backend or loss of geometric accuracy.
 
-pyvoro2 does **not** silently rescale your coordinates. If you work in unusual
-units, rescale explicitly before calling into the C++ layer.
+pyvoro2 does not silently rescale coordinates. Rescale explicitly when using
+unusual units.
 
-As an additional safety net, you can ask pyvoro2 to run a fast Python-side
-near-duplicate pre-check before entering the C++ layer:
+A Python-side near-duplicate precheck can run before the native call:
 
 ```python
 cells = pv.compute(points, domain=cell, duplicate_check='raise')
@@ -127,49 +180,47 @@ cells = pv.compute(points, domain=cell, duplicate_check='raise')
 
 For stricter post-hoc checks, see:
 
-- `pyvoro2.validate_tessellation(..., level='strict')`
-- `pyvoro2.validate_normalized_topology(..., level='strict')`
-- `pyvoro2.planar.validate_tessellation(..., level='strict')`
-- `pyvoro2.planar.validate_normalized_topology(..., level='strict')`
+- `pyvoro2.validate_tessellation(..., level='strict')`;
+- `pyvoro2.validate_normalized_topology(..., level='strict')`;
+- `pyvoro2.planar.validate_tessellation(..., level='strict')`;
+- `pyvoro2.planar.validate_normalized_topology(..., level='strict')`.
 
-Note: pyvoro2 vendors a Voro++ snapshot that includes the upstream numeric robustness fix for
-*power/Laguerre* mode (radical pruning). This avoids rare cross-platform edge cases where fully
-periodic power tessellations could yield a non-reciprocal face/neighbor graph under aggressive
-floating-point codegen.
+The vendored Voro++ snapshot includes the upstream robustness fix for radical
+pruning in power mode. This avoids rare cross-platform cases where fully
+periodic power tessellations could produce a non-reciprocal face/neighbor graph
+under aggressive floating-point code generation.
 
-## Why use pyvoro2
+## Why use pyvoro2?
 
-Voro++ is fast and feature-rich, but it is a C++ library with a low-level API.
-pyvoro2 aims to be a *scientific* interface that stays close to Voro++ while adding
-practical pieces that are easy to get wrong:
+Voro++ is fast and mature, but its low-level C++ interface does not provide all
+of the Python-side contracts needed in scientific workflows. pyvoro2 adds:
 
-- **triclinic periodic cells** (`PeriodicCell`) with robust coordinate mapping in 3D
-- **partially periodic orthorhombic cells** (`OrthorhombicCell`) for slabs and wires
-- dedicated **planar 2D support** in `pyvoro2.planar` for boxes and rectangular periodic cells
-- optional **periodic image shifts** (`adjacent_shift`) on faces/edges for building periodic graphs
-- **diagnostics** and **normalization utilities** for reproducible topology work
-- convenience operations beyond full tessellation:
-  - `locate(...)` / `pyvoro2.planar.locate(...)` (owner lookup for arbitrary query points)
-  - `ghost_cells(...)` / `pyvoro2.planar.ghost_cells(...)` (probe cell at a query point without inserting it)
-  - power-fitting utilities for **fitting power weights** from desired pairwise separator locations in both 2D and 3D
+- triclinic periodic cells and coordinate mapping in 3D;
+- partially periodic orthorhombic cells for slabs and wires;
+- explicit planar support through `pyvoro2.planar`;
+- periodic image-labelled faces and edges for graph construction;
+- diagnostics and normalization for reproducible topology;
+- owner lookup with `locate(...)`;
+- non-inserting probe cells with `ghost_cells(...)`;
+- separator-based inverse fitting with inspectable graph, feasibility,
+  realization, and active-set diagnostics.
 
 ## Documentation overview
 
-The documentation is written as a short scientific tutorial: it starts with the
-geometric ideas, then explains domains and operations, and only then dives into
-implementation-oriented details.
-
 | Section | What it contains |
 |---|---|
-| [Concepts](https://delonecommons.github.io/pyvoro2/guide/concepts/) | What Voronoi and power/Laguerre tessellations are, and what you can expect from them. |
-| [Domains (3D)](https://delonecommons.github.io/pyvoro2/guide/domains/) | Which spatial containers exist (`Box`, `OrthorhombicCell`, `PeriodicCell`) and how to choose between them. |
-| [Planar (2D)](https://delonecommons.github.io/pyvoro2/guide/planar/) | The planar namespace, current 2D domain scope, wrapper-level diagnostics/normalization convenience, and plotting. |
-| [Operations](https://delonecommons.github.io/pyvoro2/guide/operations/) | How to compute tessellations, assign query points, and compute probe (ghost) cells in the 3D and planar namespaces. |
-| [Topology and graphs](https://delonecommons.github.io/pyvoro2/guide/topology/) | How to build periodic neighbor graphs and how normalization helps in both 2D and 3D. |
-| [Power fitting](https://delonecommons.github.io/pyvoro2/guide/powerfit/) | Fit power weights from pairwise bisector constraints, realized-boundary matching, and self-consistent active sets in 2D or 3D. |
-| [Visualization](https://delonecommons.github.io/pyvoro2/guide/visualization/) | Optional `py3Dmol` / `matplotlib` helpers for debugging and exploratory analysis. |
-| [Examples (notebooks)](https://delonecommons.github.io/pyvoro2/guide/notebooks/) | End-to-end examples, including focused power-fitting notebooks for reports, infeasibility witnesses, and active-set path diagnostics. |
-| [API reference](https://delonecommons.github.io/pyvoro2/reference/planar/) | The full reference (docstrings) for both the spatial and planar APIs. |
+| [Concepts](https://delonecommons.github.io/pyvoro2/guide/concepts/) | A concise user introduction to Voronoi and power/Laguerre tessellations. |
+| [Domains (3D)](https://delonecommons.github.io/pyvoro2/guide/domains/) | `Box`, `OrthorhombicCell`, and `PeriodicCell`. |
+| [Planar (2D)](https://delonecommons.github.io/pyvoro2/guide/planar/) | The planar namespace, rectangular periodicity, diagnostics, normalization, and plotting. |
+| [Operations](https://delonecommons.github.io/pyvoro2/guide/operations/) | Forward tessellation, owner lookup, and ghost-cell workflows. |
+| [Topology and graphs](https://delonecommons.github.io/pyvoro2/guide/topology/) | Periodic image-labelled adjacency and normalized topology. |
+| [Separator fitting](https://delonecommons.github.io/pyvoro2/guide/powerfit/) | Current inverse API, result diagnostics, realization matching, and active-set refinement. |
+| [Theory](https://delonecommons.github.io/pyvoro2/theory/) | API-independent definitions of power diagrams, weights, gauge, and separator inversion. |
+| [Development](https://delonecommons.github.io/pyvoro2/development/) | Architecture, API lifecycle, decision records, and contribution paths. |
+| [Visualization](https://delonecommons.github.io/pyvoro2/guide/visualization/) | Optional `py3Dmol` and `matplotlib` helpers. |
+| [Examples](https://delonecommons.github.io/pyvoro2/guide/notebooks/) | Executable notebook workflows. |
+| [API reference](https://delonecommons.github.io/pyvoro2/reference/) | Exact signatures and docstring reference for spatial, planar, and separator-fitting APIs. |
+| [Roadmap](https://delonecommons.github.io/pyvoro2/project/roadmap/) | Durable stages toward v0.7, prescribed measures, mixed fitting, 1.0, and JOSS. |
 
 ## Installation
 
@@ -181,18 +232,19 @@ pip install pyvoro2
 
 Optional extras:
 
-- `pyvoro2[viz]` for the 3D `py3Dmol` viewer (and 2D plotting too)
-- `pyvoro2[viz2d]` for 2D matplotlib plotting only
-- `pyvoro2[all]` to install the full optional stack used for local notebook,
-  docs, lint, and publishability checks
+- `pyvoro2[viz]` for 3D `py3Dmol` and 2D plotting;
+- `pyvoro2[viz2d]` for 2D matplotlib plotting only;
+- `pyvoro2[all]` for the full local notebook, docs, lint, test, and release
+  validation stack.
 
-To build from source (requires a C++ compiler and Python development headers):
+To build from source, a C++ compiler and Python development headers are
+required:
 
 ```bash
 pip install -e .
 ```
 
-For contributor-style local validation, install the full optional stack:
+For local repository development:
 
 ```bash
 pip install -e ".[all]"
@@ -200,67 +252,56 @@ pip install -e ".[all]"
 
 ## Testing
 
-pyvoro2 uses **pytest**. The default test suite is intended to be fast and deterministic:
+The default deterministic suite is:
 
 ```bash
 pip install -e ".[test]"
-pytest
+pytest -q
 ```
 
-Additional test groups are **opt-in**:
+Additional opt-in groups:
 
-- **Fuzz/property tests** (randomized):
+```bash
+# Randomized property/fuzz checks
+pytest -m fuzz --fuzz-n 100
 
-  ```bash
-  pytest -m fuzz --fuzz-n 100
-  ```
+# Independent wrapper cross-checks; requires pyvoro
+pip install pyvoro
+pytest -m pyvoro --fuzz-n 100
+```
 
-- **Cross-check tests vs `pyvoro`** (requires installing `pyvoro` first):
-
-  ```bash
-  pip install pyvoro
-  pytest -m pyvoro --fuzz-n 100
-  ```
-
-- **Slow tests** (if any are added in the future):
-
-  ```bash
-  pytest -m slow
-  ```
-
-Tip: you can combine markers, e.g. `pytest -m "fuzz and pyvoro" --fuzz-n 100`.
-
-## Release and publishability checks
-
-For a one-shot local publishability pass (lint, notebook execution, exported notebook sync, README sync, tests, docs, build, metadata checks, and wheel smoke test):
+For a complete local publishability pass:
 
 ```bash
 python tools/release_check.py
 ```
 
-## Project status
+## Project status and support
 
-pyvoro2 is currently in **beta**.
+pyvoro2 is currently **beta**. The public v0.6.3 release is the archived baseline
+for the separator-inverse manuscript. The v0.7 development line is documenting
+and stabilizing the common forward/result contract and preferred separator API
+before new inverse families are implemented.
 
-The core tessellation modes (standard and power/Laguerre) are stable, and the
-0.6.0 release now includes a first-class planar namespace.
-A future 1.0 release is planned once the inverse-fitting workflow is more mature,
-its disconnected-graph / coverage diagnostics are stabilized, and the project has
-reassessed whether planar `PeriodicCell` support is actually needed.
+Reproducible bugs and focused feature proposals are welcome through GitHub
+issues. Development is currently led by one maintainer, so support is
+best-effort. Contribution and decision policies are described in
+[`CONTRIBUTING.md`](https://github.com/DeloneCommons/pyvoro2/blob/main/CONTRIBUTING.md).
 
 ## AI-assisted development
 
-Some parts of the implementation, tests, and documentation were developed with
-AI assistance (OpenAI ChatGPT). The maintainer reviews and integrates changes,
-and remains responsible for the resulting code and scientific claims.
+The project has used the latest Chat and Codex models available at the time of
+development for planning, implementation support, testing, and documentation.
+The maintainer reviews and validates all integrated changes and remains
+responsible for the software and scientific claims.
 
-Details are documented in the [AI usage](https://delonecommons.github.io/pyvoro2/project/ai/) page.
+See [AI-assisted development](https://delonecommons.github.io/pyvoro2/project/ai/) for details.
 
 ## License
 
-- Starting with **0.6.0**, the pyvoro2-authored code is released under the **GNU Lesser General Public License v3.0 or later (LGPLv3+)**.
-- Versions **before 0.6.0** were released under the **MIT License**.
-- Voro++ is vendored and redistributed under its original upstream license.
+- pyvoro2-authored code is **LGPLv3+** starting with version 0.6.0;
+- versions before 0.6.0 were released under MIT;
+- vendored Voro++ code remains under its upstream license.
 
 ---
 

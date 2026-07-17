@@ -1,5 +1,5 @@
 site_name: pyvoro2
-site_description: Python bindings for Voro++ (2D/3D Voronoi and power/Laguerre tessellations) with periodic, topology, and inverse power-fitting utilities.
+site_description: Scientific Python tools for forward and inverse 2D/3D Voronoi and power/Laguerre tessellations, periodic topology, and separator fitting.
 site_url: https://delonecommons.github.io/pyvoro2/
 repo_url: https://github.com/DeloneCommons/pyvoro2
 repo_name: DeloneCommons/pyvoro2
@@ -58,9 +58,22 @@ nav:
       - Planar (2D): guide/planar.md
       - Operations: guide/operations.md
       - Topology and graphs: guide/topology.md
-      - Power fitting: guide/powerfit.md
+      - Separator fitting: guide/powerfit.md
       - Visualization: guide/visualization.md
       - Notebooks: guide/notebooks.md
+  - Theory:
+      - Overview: theory/index.md
+      - Power diagrams: theory/power-diagrams.md
+      - Inverse fitting from separator observations: theory/separator-inverse.md
+  - Development:
+      - Overview: development/index.md
+      - Architecture: development/architecture.md
+      - API lifecycle: development/api-lifecycle.md
+      - Decision records:
+          - Overview: development/decisions/index.md
+          - Project scope and layering: development/decisions/0001-project-scope-and-layering.md
+          - Weights, radii, gauge, and component offsets: development/decisions/0002-weights-radii-and-gauge.md
+          - Compatibility-first evolution: development/decisions/0003-compatibility-first-evolution.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md
@@ -71,6 +84,7 @@ nav:
       - notebooks/07_powerfit_infeasibility.md
       - notebooks/08_powerfit_active_path.md
   - API reference:
+      - Overview: reference/index.md
       - Spatial (3D):
           - Domains: reference/domains.md
           - API: reference/api.md
@@ -100,7 +114,7 @@ nav:
           - Reports: reference/powerfit/report.md
   - Project:
       - About: project/about.md
+      - Roadmap: project/roadmap.md
       - Changelog: about/changelog.md
       - License: project/license.md
-      - AI usage: project/ai.md
-      - Roadmap: project/roadmap.md
+      - AI-assisted development: project/ai.md

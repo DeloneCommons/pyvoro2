@@ -2,108 +2,131 @@
 
 ## Summary
 
-pyvoro2 is a scientific Python package for computing **2D and 3D Voronoi-type tessellations**.
-It is built on top of the established C++ library **Voro++**, and it focuses on the parts
-that usually decide whether a tessellation is merely “computed” or actually **usable** in downstream analysis:
+pyvoro2 is a scientific Python package for **forward and inverse weighted
+tessellations** in two and three dimensions.
 
-- periodic boundary conditions (including **triclinic** unit cells in 3D and rectangular periodicity in 2D),
-- extraction of neighbor graphs with the correct periodic images,
-- diagnostic checks and normalization utilities for reproducible topology work.
+Its forward core wraps vendored Voro++ backends for:
 
-At the core, pyvoro2 exposes only two mathematically standard tessellations:
+- standard Voronoi tessellations;
+- power/Laguerre tessellations;
+- bounded and periodic domains;
+- explicit periodic neighbor-image labels;
+- diagnostics, normalization, and graph-ready geometric output.
 
-- **standard Voronoi** (unweighted), and
-- **power / Laguerre** tessellations (weighted Voronoi, via per-site radii).
+Its implemented inverse layer fits power weights from selected pairwise
+separator observations, reports compatibility, identifiability, and
+hard-constraint feasibility, and separates algebraic fitting from
+realized-boundary checks.
+Prescribed cell measures and mixed inverse problems are roadmap items rather
+than current release claims.
 
-## What is Voro++
+## What is Voro++?
 
-Voro++ is a widely used C++ library for computing Voronoi cells efficiently in 3D.
-pyvoro2 also vendors the legacy upstream 2D sources for its planar namespace.
-These backends are commonly used in computational physics and materials science.
+Voro++ is an established C++ library for efficient Voronoi-cell computation.
+pyvoro2 vendors a 3D snapshot and the legacy upstream 2D sources, then builds two
+separate pybind11 extensions.
 
-pyvoro2 vendors a snapshot of upstream Voro++ and builds its Python extension against it.
-The vendored snapshot includes the upstream numeric robustness fix for *power/Laguerre* (radical) pruning,
-which avoids rare cross-platform edge cases in fully periodic power tessellations.
+The vendored 3D snapshot includes the upstream numeric robustness fix for
+power/Laguerre radical pruning, avoiding rare cross-platform failures in fully
+periodic weighted tessellations.
 
-## When should you use pyvoro2?
+pyvoro2 stays close to the backend where that is useful, but it is not only a
+binding. Much of its scientific value is in the Python-side domain model,
+periodic image reconstruction, validation, normalized topology, inverse
+problem, and structured diagnostics.
 
-Use pyvoro2 when you need one (or more) of the following:
+## Explicit dimensional namespaces
 
-- Voronoi or power/Laguerre tessellations in **2D or 3D**,
-- periodic domains (especially triclinic crystal cells in 3D or rectangular periodic cells in 2D),
-- a neighbor graph where the periodic image is explicit,
-- “point queries” such as owner lookup (`locate`) or probe cells (`ghost_cells`).
+The package keeps dimensions visible:
 
-If your task is a one-off Voronoi computation in a simple orthogonal box and you do not need
-periodic graph bookkeeping, a smaller wrapper may also be sufficient.
+- `pyvoro2` is the 3D namespace, with `Box`, partially periodic
+  `OrthorhombicCell`, and triclinic `PeriodicCell`;
+- `pyvoro2.planar` is the 2D namespace, with planar `Box` and rectangular
+  periodic `RectangularCell`.
 
-## What does pyvoro2 add on top of Voro++?
+Common concepts should use aligned terminology, but the package does not claim
+that both backends support every identical domain or output feature.
 
-Voro++ is a C++ library with a low-level API. pyvoro2 provides:
+## What pyvoro2 adds
 
-- a stable and test-driven Python API,
-- Python-friendly outputs (dicts + NumPy arrays),
-- periodic neighbor image shifts (`adjacent_shift`) for graph work,
-- diagnostics (`analyze_tessellation`) and normalization helpers,
-- inverse fitting tools that turn desired interface placements into a **power diagram** in both planar and spatial settings.
+Compared with a minimal wrapper, pyvoro2 provides:
 
-## Compared to `pyvoro`
+- Python-side validation and duplicate safety checks;
+- 3D triclinic and partially periodic domain handling;
+- rectangular periodic planar workflows;
+- image-labelled adjacency for periodic graph construction;
+- tessellation diagnostics and strict validation;
+- vertex/topology normalization;
+- face and edge property annotation;
+- `locate` and `ghost_cells` operations;
+- optional 2D/3D visualization helpers;
+- separator-based inverse fitting with confidence, robust losses, hard
+  restrictions, graph diagnostics, realization matching, and active-set path
+  diagnostics;
+- record/JSON-friendly reporting for downstream research packages.
 
-`pyvoro` is an older Python wrapper around Voro++.
+## Forward and inverse roles
 
-pyvoro2 aims to be a more modern interface with a larger emphasis on:
+The forward core remains independently useful. A user does not need the inverse
+layer to compute cells, measures, boundaries, or periodic neighbor graphs.
 
-- periodic crystals (including triclinic),
-- correctness checks and reproducible topology utilities,
-- a dedicated planar namespace (`pyvoro2.planar`) rather than 2D/3D overload magic,
-- additional operations beyond “compute all cells”.
+The inverse layer answers a different question: given fixed sites and partial
+geometric observations, which power weights reconcile those observations? The
+current method uses pairwise separator positions. Future methods are intended to
+reuse the same geometry and result contract for prescribed cell measures and
+mixed data.
 
-## Design note: stateless API
+The mathematical distinction between weights, backend radii, global gauge,
+disconnected observation offsets, and realized boundaries is described in the
+[theory section](../theory/index.md).
 
-pyvoro2 does not keep a persistent C++ container object across calls.
-Each call creates a container, inserts sites, performs the operation, and returns results.
+## Relationship to downstream applications
 
-This keeps the interface small and avoids hidden state.
-A persistent “index/container” object may be added in the far future for specialized workloads,
-but it is not a current priority.
+pyvoro2 is intentionally domain-agnostic. For example, chemvoro can supply
+atomic reference data and proposed interatomic separator positions while
+pyvoro2 performs the geometric and inverse calculations.
+
+Chemistry-specific interpretation, atomic models, and application policy belong
+in chemvoro rather than the pyvoro2 core. This separation also lets pyvoro2 serve
+materials, image reconstruction, and other weighted-tessellation workflows.
+
+## Stateless computation
+
+The current public API is stateless: each call creates a backend container,
+inserts the sites, performs the operation, and returns Python objects.
+
+This avoids hidden mutable state and keeps calls reproducible. A persistent
+container/index could be considered for a demonstrated performance need, but it
+is not a near-term architectural requirement.
 
 ## Testing and validation
 
-pyvoro2 is developed with a strong emphasis on **reproducible correctness**.
-In practice, numerical geometry libraries can fail in subtle ways (degeneracies,
-near-coplanar faces, roundoff on periodic images), so tests are structured in layers:
+Numerical geometry needs layered validation. pyvoro2 uses:
 
-- **Deterministic unit tests** (default `pytest` run) cover the public API and
-  common edge cases for all supported domains.
-- **Fuzz/property tests** (`pytest -m fuzz`) generate random point sets and domains
-  and assert robust invariants (finite volumes, no NaNs, reciprocal face-shift bookkeeping, etc.).
-  These tests are opt-in because they are intentionally more expensive.
-- **Optional cross-check tests** (`pytest -m pyvoro`) compare a subset of results against
-  the older `pyvoro` wrapper (when installed). This provides an additional sanity check
-  that two independent wrappers around Voro++ agree on stable quantities.
+- deterministic unit and regression tests in the default `pytest` run;
+- opt-in fuzz/property tests for random geometries;
+- optional cross-checks against the older `pyvoro` wrapper;
+- notebook execution and export checks;
+- strict documentation and README synchronization checks;
+- source/wheel distribution checks and smoke tests.
 
-Typical commands:
+Typical local validation is:
 
 ```bash
-pip install -e ".[test]"
-pytest
-
-# Opt-in randomized checks
-pytest -m fuzz --fuzz-n 100
-
-# Optional cross-checks (requires pyvoro)
-pip install pyvoro
-pytest -m pyvoro --fuzz-n 100
-```
-
-For contributor-style local validation of the whole repository, including
-notebooks, docs, generated files, and distribution artifacts:
-
-```bash
-pip install -e ".[all]"
+python -m pip install -e ".[all]"
+pytest -q
 python tools/release_check.py
 ```
 
-For continuous integration and local development, the recommended approach is to run
-the deterministic suite frequently, and run fuzz/cross-check suites periodically.
+See [`CONTRIBUTING.md`](https://github.com/DeloneCommons/pyvoro2/blob/main/CONTRIBUTING.md)
+for the development workflow.
 
+## Design and roadmap
+
+- [Architecture](../development/architecture.md) describes the current v0.6.3
+  implementation and target v0.7 responsibilities.
+- [API lifecycle](../development/api-lifecycle.md) defines stability and
+  compatibility.
+- [Decision records](../development/decisions/index.md) explain durable choices.
+- [Roadmap](roadmap.md) describes the staged path toward prescribed measures,
+  mixed problems, 1.0, and JOSS.
