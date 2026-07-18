@@ -275,8 +275,8 @@ pyvoro2 is currently **beta**. The public v0.6.3 release is the archived
 baseline for the separator-inverse manuscript. The v0.7 development line is
 stabilizing the common forward/result contract and preferred separator API
 before new inverse families are implemented. The
-[v0.7 development plan](development/plans/v0.7.md) records the proposed
-scope, decision gates, validation, and release criteria.
+[v0.7 development plan](development/plans/v0.7.md) records the active scope,
+accepted decisions, validation, and release criteria.
 
 Reproducible bugs and focused feature proposals are welcome through GitHub
 issues. Development is currently led by one maintainer, so support is

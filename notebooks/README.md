@@ -4,7 +4,15 @@ These notebooks are the source examples for the documentation site and are kept
 at the repository root so they can be browsed directly on GitHub.
 
 Generated Markdown copies for the docs live under `docs/notebooks/` and are
-produced by `python tools/export_notebooks.py`.
+produced by `python tools/export_notebooks.py`. Export is intentionally
+non-executing and renders outputs already stored in each source notebook.
+
+For v0.7,
+[issue #20](https://github.com/DeloneCommons/pyvoro2/issues/20) establishes that
+source notebooks are committed in an executed state, except for explicitly
+tagged skipped cells. It will add clean Jupyter-kernel execution and metadata
+validation after the notebooks have migrated to the preferred v0.7 API. Do not
+regenerate the currently missing outputs against the pre-v0.7 API.
 
 Included notebooks:
 

@@ -35,6 +35,10 @@ The generated documentation pages are:
 
 ## Regeneration
 
+The Markdown exporter does not execute notebook code. It renders code and
+outputs already stored in each source `.ipynb`, so an unexecuted source notebook
+produces a page without its print or final-expression output.
+
 To refresh the generated pages after editing notebooks:
 
 ```bash
@@ -52,3 +56,11 @@ If you are using the wheel-overlay developer workflow and want notebook imports 
 ```bash
 python tools/check_notebooks.py --use-src
 ```
+
+The current checker validates that code cells run, but it does not refresh
+stored notebook outputs. The v0.7
+[#20 notebook-execution issue](https://github.com/DeloneCommons/pyvoro2/issues/20)
+will replace that path with real Jupyter-semantic execution, explicit metadata
+validation, and a separate output-refresh command. That work is scheduled after
+the notebooks migrate to the preferred v0.7 API; outputs should not be refreshed
+against the pre-v0.7 API merely to fill the current generated pages.

@@ -94,6 +94,14 @@ python tools/gen_readme.py
 python tools/export_notebooks.py
 ```
 
+Notebook execution is separate from Markdown export. The current exporter
+renders outputs already stored in the source notebook, while the current
+checker validates code execution without refreshing those outputs. The v0.7
+[#20](https://github.com/DeloneCommons/pyvoro2/issues/20) work adds clean
+Jupyter-semantic execution and committed-output validation after the notebooks
+migrate to the preferred v0.7 API; do not regenerate the currently missing
+outputs against the pre-v0.7 API.
+
 ### Documentation roles
 
 The authoritative role and language policy is in

@@ -17,6 +17,13 @@ Main entry points:
 - `python tools/check_dist.py dist` — verify that built sdists and wheels
   contain the expected key files.
 
+The current notebook checker executes cell source as plain Python and discards
+stdout; it does not update stored notebook outputs. The active v0.7
+[#20](https://github.com/DeloneCommons/pyvoro2/issues/20) work replaces this
+with clean Jupyter-kernel execution and adds a separate refresh tool after the
+notebooks migrate to the preferred v0.7 API. Markdown export remains
+non-executing.
+
 For a full local pre-release pass after installing the project with all optional
 extras, run:
 

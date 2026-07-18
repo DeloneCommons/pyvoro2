@@ -214,6 +214,14 @@ When a change affects several document types, update each according to its role:
 - Edit source notebooks under `notebooks/`, then regenerate
   `docs/notebooks/*.md` with `python tools/export_notebooks.py`.
 
+Notebook execution and Markdown export are separate responsibilities. The
+exporter renders outputs already stored in source notebooks and must not execute
+code. Targeted for v0.7 by
+[#20](https://github.com/DeloneCommons/pyvoro2/issues/20), source notebooks are
+committed in an executed state unless a code cell carries the documented
+skip-execution tag; notebook refresh uses real Jupyter semantics and keeps
+notebook packages outside pyvoro2 runtime dependencies.
+
 Generated outputs must be committed with their sources.
 
 ## Documentation review checklist

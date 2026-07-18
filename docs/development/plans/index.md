@@ -11,11 +11,19 @@ milestones.
 
 | Plan | Status | Target | Purpose |
 |---|---|---|---|
-| [v0.7 forward and separator API stabilization](v0.7.md) | Draft; scope approved, activation pending | v0.7.0 | Establish the common forward/result and canonical separator-inverse contract needed by chemvoro and later inverse methods. |
+| [v0.7 forward and separator API stabilization](v0.7.md) | Active | v0.7.0 | Establish the common forward/result and canonical separator-inverse contract needed by chemvoro and later inverse methods. |
 
-The v0.7 namespace and result decisions are accepted. To activate the plan,
-create the milestone and initial issue set, link them in the plan, and record the
-activation date. Public implementation should then proceed issue by issue.
+The v0.7 namespace and result decisions are accepted. The plan links the
+milestone and issue sequence; implementation proceeds issue by issue under its
+dependencies and release gates.
+
+Notebook execution and published-output work is tracked by
+[#20](https://github.com/DeloneCommons/pyvoro2/issues/20). It follows downstream
+workflow validation in
+[#15](https://github.com/DeloneCommons/pyvoro2/issues/15) and blocks final
+documentation in [#16](https://github.com/DeloneCommons/pyvoro2/issues/16) and
+release qualification in
+[#18](https://github.com/DeloneCommons/pyvoro2/issues/18).
 
 ## Plan lifecycle
 
