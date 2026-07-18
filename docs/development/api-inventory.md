@@ -675,6 +675,20 @@ WP-01 stop condition was triggered, and dependent implementation may preserve
 the recorded baseline through the compatibility policy without reopening an
 accepted decision.
 
+## Current v0.7 implementation status
+
+The current development tree owns the two weight/radius conversion
+implementations in the private neutral module `pyvoro2._weight_transforms`.
+Top-level `pyvoro2`, `pyvoro2.powerfit`, and
+`pyvoro2.powerfit.transforms` expose the same function objects, with the latter
+two retained as historical compatibility routes. Separator implementation code
+imports the neutral module directly. This changes ownership only: signatures,
+defaults, validation, global-shift behavior, and return values remain the
+characterized v0.6.3 behavior above.
+
+Direct forward `weights=` input and canonical inverse ownership remain assigned
+to later issues. This status note does not alter the factual v0.6.3 baseline.
+
 ## Accepted v0.7 contract decisions
 
 The following boundaries are already accepted:

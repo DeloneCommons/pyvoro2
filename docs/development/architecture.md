@@ -1,16 +1,19 @@
 # Architecture
 
-This document has two roles. It describes the **current v0.6.3 implementation**,
-which is the software baseline used by the separator-inverse manuscript, and it
-states the **target responsibilities for v0.7**, which will stabilize pyvoro2 for
-downstream use and later inverse methods.
+This document has three roles. It describes the **factual v0.6.3
+implementation**, which is the software baseline used by the separator-inverse
+manuscript, records completed ownership changes in the **current v0.7
+development tree**, and states the remaining **target responsibilities for
+v0.7**, which will stabilize pyvoro2 for downstream use and later inverse
+methods.
 
 !!! note "Current and target descriptions"
-    Sections labelled *current* describe code that exists in the repository.
-    Sections labelled *target* describe accepted v0.7 responsibilities and API
-    direction, not classes that can already be imported. The canonical inverse
-    namespace and common result contract are fixed by ADR 0004 and ADR 0005;
-    implementation status remains tracked in the
+    The v0.6.3 section remains a historical baseline. Sections explicitly
+    labelled *current v0.7* describe code in the development tree. Sections
+    labelled *target* describe accepted v0.7 responsibilities and API direction,
+    not classes that can already be imported. The canonical inverse namespace
+    and common result contract are fixed by ADR 0004 and ADR 0005; implementation
+    status remains tracked in the
     [v0.7 development plan](plans/v0.7.md).
 
 ## Architectural principles
@@ -175,6 +178,32 @@ fitted weights/radii
 The fixed-observation fit and the realization-aware outer loop are intentionally
 separate computations.
 
+## Current v0.7 implementation status
+
+### Neutral weight/radius transforms
+
+The sole implementations of `weights_to_radii` and `radii_to_weights` now live
+in the private shared module `pyvoro2._weight_transforms`. The top-level
+`pyvoro2` helpers import from that module directly. Separator problem and
+active-set code also import the neutral implementation directly, without going
+through a separator-owned module.
+
+`pyvoro2.powerfit.weights_to_radii`, `pyvoro2.powerfit.radii_to_weights`, and
+the historical `pyvoro2.powerfit.transforms` module remain compatibility routes
+to the same function objects. The compatibility module contains no numerical
+formulas. Import arrows point toward the implementation provider:
+
+```text
+top-level pyvoro2 exports -----------------+
+separator problem and active-set code -----+--> pyvoro2._weight_transforms
+pyvoro2.powerfit compatibility exports ----+
+```
+
+This ownership move does not add weight-first forward arguments; direct
+`weights=` support remains a separate WP-02 implementation issue. It also does
+not move separator ownership, which remains assigned to the later canonical
+inverse work package.
+
 ## Why stabilization is needed
 
 The v0.6.3 implementation is functional, but several details should be stabilized
@@ -244,7 +273,9 @@ Compatibility facades and downstream adapters
 
 Dependencies should point downward. The forward core must not depend on inverse
 solvers. Observation blocks may use forward computation and common result
-concepts, but should not duplicate domain or periodic-image logic.
+concepts, but should not duplicate domain or periodic-image logic. Neutral
+weight/radius transforms are a shared provider for forward and inverse callers
+and must not depend on `pyvoro2.powerfit` or either native extension.
 
 ### Shared geometry input contract
 
@@ -427,6 +458,8 @@ inside the stable weights-only solver.
 
 - Native/backend modules do not depend on high-level inverse code.
 - Forward domain and result concepts do not depend on observation families.
+- Neutral weight/radius transforms do not depend on separator or native-backend
+  modules.
 - Inverse observation implementations may depend on forward computation and
   common diagnostics.
 - `powerfit` compatibility code delegates to `inverse.separator`; the

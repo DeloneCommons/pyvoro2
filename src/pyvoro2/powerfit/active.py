@@ -7,6 +7,7 @@ from typing import Literal
 
 import numpy as np
 
+from .._weight_transforms import weights_to_radii
 from .constraints import PairBisectorConstraints, resolve_pair_bisector_constraints
 from .model import FitModel
 from .realize import RealizedPairDiagnostics, match_realized_pairs
@@ -21,7 +22,6 @@ from .solver import (
     _apply_connectivity_policy,
     fit_power_weights,
 )
-from .transforms import weights_to_radii
 from ..diagnostics import TessellationDiagnostics as TessellationDiagnostics3D
 from ..domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ..planar.diagnostics import TessellationDiagnostics as TessellationDiagnostics2D

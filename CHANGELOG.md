@@ -20,6 +20,9 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Moved the sole weight/radius transform implementation to a neutral private
+  module while preserving the unchanged top-level and `pyvoro2.powerfit`
+  helper routes.
 - Reframed the public project documentation around forward and inverse weighted tessellations while keeping prescribed-measure and mixed solvers clearly marked as future work.
 - Replaced internal numbered-stage language with a version-oriented roadmap for v0.7, prescribed cell measures, mixed inverse problems, 1.0, and future research.
 - Updated the concepts and power-fitting guides to distinguish mathematical weights from backend radii, global gauge from unidentified component offsets, and algebraic fitting from geometric realization.

@@ -7,6 +7,7 @@ from typing import Literal
 
 import numpy as np
 
+from .._weight_transforms import weights_to_radii
 from .constraints import PairBisectorConstraints
 from .model import (
     ExponentialBoundaryPenalty,
@@ -20,7 +21,6 @@ from .model import (
     SoftIntervalPenalty,
     SquaredLoss,
 )
-from .transforms import weights_to_radii
 from .types import (
     AlgebraicEdgeDiagnostics,
     ConnectivityDiagnostics,

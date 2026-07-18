@@ -40,6 +40,7 @@ from .normalize import (
     normalize_edges_faces,
     normalize_topology,
 )
+from ._weight_transforms import radii_to_weights, weights_to_radii
 from .powerfit import (
     PairBisectorConstraints,
     resolve_pair_bisector_constraints,
@@ -75,8 +76,6 @@ from .powerfit import (
     fit_power_weights,
     match_realized_pairs,
     solve_self_consistent_power_weights,
-    radii_to_weights,
-    weights_to_radii,
 )
 
 __all__ = [

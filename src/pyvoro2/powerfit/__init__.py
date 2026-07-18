@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .._weight_transforms import radii_to_weights, weights_to_radii
 from .constraints import PairBisectorConstraints, resolve_pair_bisector_constraints
 from .model import (
     ExponentialBoundaryPenalty,
@@ -41,7 +42,6 @@ from .report import (
     write_report_json,
 )
 from .solver import ConnectivityDiagnosticsError, fit_power_weights
-from .transforms import radii_to_weights, weights_to_radii
 from .types import (
     AlgebraicEdgeDiagnostics,
     ConnectivityDiagnostics,
