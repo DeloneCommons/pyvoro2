@@ -203,6 +203,11 @@ For radii output, v0.6.3 makes the **global representation shift** explicit:
   specific minimum radius is required;
 - `weight_shift=` lets downstream code request one explicit common shift.
 
+Both conversion directions require finite inputs and finite representable
+results. `weights_to_radii(...)` also requires a finite, non-negative `r_min`.
+If squaring a radius or applying the common shift would overflow, the transform
+raises `ValueError`; it does not clip or substitute a fallback value.
+
 One common shift of every weight is the geometric gauge of the complete power
 diagram. Disconnected observation graphs introduce an additional and different
 ambiguity: each effective component can be shifted independently without
@@ -487,4 +492,3 @@ Three focused notebooks complement the guide:
 These examples are aimed at downstream packages that want to keep the solver
 API numerical while still producing human-readable logs, cached payloads, or UI
 views.
-

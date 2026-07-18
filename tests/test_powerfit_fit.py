@@ -83,6 +83,20 @@ def test_r_min_sets_minimum_radius_via_weight_shift():
     assert np.allclose(res.radii * res.radii, res.weights + res.weight_shift)
 
 
+def test_fit_power_weights_rejects_nonfinite_r_min_before_returning_result():
+    from pyvoro2 import fit_power_weights
+
+    pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
+
+    with pytest.raises(ValueError, match='r_min must be finite'):
+        fit_power_weights(
+            pts,
+            [(0, 1, 0.25)],
+            measurement='fraction',
+            r_min=np.nan,
+        )
+
+
 def test_soft_interval_penalty_prefers_inside_interval():
     from pyvoro2 import FitModel, SoftIntervalPenalty, fit_power_weights
 

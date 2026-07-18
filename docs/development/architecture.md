@@ -191,7 +191,9 @@ through a separator-owned module.
 `pyvoro2.powerfit.weights_to_radii`, `pyvoro2.powerfit.radii_to_weights`, and
 the historical `pyvoro2.powerfit.transforms` module remain compatibility routes
 to the same function objects. The compatibility module contains no numerical
-formulas. Import arrows point toward the implementation provider:
+formulas. The neutral transforms reject non-finite inputs and any arithmetic
+that would produce non-finite weights, radii, or representation shifts. Import
+arrows point toward the implementation provider:
 
 ```text
 top-level pyvoro2 exports -----------------+

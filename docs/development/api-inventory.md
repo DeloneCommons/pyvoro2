@@ -682,9 +682,12 @@ implementations in the private neutral module `pyvoro2._weight_transforms`.
 Top-level `pyvoro2`, `pyvoro2.powerfit`, and
 `pyvoro2.powerfit.transforms` expose the same function objects, with the latter
 two retained as historical compatibility routes. Separator implementation code
-imports the neutral module directly. This changes ownership only: signatures,
-defaults, validation, global-shift behavior, and return values remain the
-characterized v0.6.3 behavior above.
+imports the neutral module directly. Issue #7 changed ownership without
+changing behavior. Issue #21 then hardened the shared numerical contract:
+`r_min` must be finite and non-negative, and any non-finite intermediate or
+result from squaring or applying the representation shift raises `ValueError`.
+Signatures, defaults, global-shift behavior, and valid finite representable
+results remain the characterized v0.6.3 behavior above.
 
 Direct forward `weights=` input and canonical inverse ownership remain assigned
 to later issues. This status note does not alter the factual v0.6.3 baseline.
@@ -736,7 +739,7 @@ downstream validation are complete.
 | Domains | `Box`, `OrthorhombicCell`, `PeriodicCell` | Stable |
 | Operations | `compute`, `locate`, `ghost_cells` | Stable |
 | Structured result | `TessellationResult` | Stable candidate |
-| Weight transforms | `weights_to_radii`, `radii_to_weights` | Stable; implementation moves out of separator-specific code |
+| Weight transforms | `weights_to_radii`, `radii_to_weights` | Stable; neutral implementation requires finite inputs and finite representable results |
 | Tessellation diagnostics | `TessellationDiagnostics`, `TessellationIssue`, `TessellationError`, `analyze_tessellation`, `validate_tessellation` | Stable unless the baseline audit identifies undocumented schema details |
 | Duplicate handling | `DuplicatePair`, `DuplicateError`, `duplicate_check` | Stable |
 | Geometry annotations | `annotate_face_properties` | Stable candidate |

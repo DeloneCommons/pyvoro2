@@ -184,6 +184,69 @@ def test_nonfinite_values_are_rejected(bad_value: float) -> None:
         )
 
 
+@pytest.mark.parametrize('bad_r_min', (np.nan, np.inf, -np.inf))
+def test_nonfinite_r_min_is_rejected(bad_r_min: float) -> None:
+    with pytest.raises(ValueError, match='r_min must be finite'):
+        neutral_transforms.weights_to_radii(
+            np.array([0.0, 1.0]),
+            r_min=bad_r_min,
+        )
+
+
+@pytest.mark.filterwarnings('error::RuntimeWarning')
+def test_overflowing_radius_squares_are_rejected() -> None:
+    float_max = np.finfo(float).max
+
+    with pytest.raises(ValueError, match='non-finite weights'):
+        neutral_transforms.radii_to_weights(np.array([1.0, float_max]))
+    with pytest.raises(ValueError, match='r_min squared must be finite'):
+        neutral_transforms.weights_to_radii(
+            np.array([0.0, 1.0]),
+            r_min=float_max,
+        )
+
+
+@pytest.mark.filterwarnings('error::RuntimeWarning')
+def test_overflowing_derived_shift_and_shifted_weights_are_rejected() -> None:
+    float_max = np.finfo(float).max
+    finite_r_min = np.sqrt(float_max / 2.0)
+
+    with pytest.raises(ValueError, match='derived weight shift must be finite'):
+        neutral_transforms.weights_to_radii(
+            np.array([-float_max, 0.0]),
+            r_min=finite_r_min,
+        )
+    with pytest.raises(ValueError, match='non-finite values'):
+        neutral_transforms.weights_to_radii(
+            np.array([-float_max, float_max]),
+        )
+    with pytest.raises(ValueError, match='non-finite values'):
+        neutral_transforms.weights_to_radii(
+            np.array([0.0, float_max]),
+            weight_shift=float_max,
+        )
+
+
+@pytest.mark.parametrize(
+    ('weights', 'kwargs'),
+    (
+        (np.array([-2.0, 0.0, 3.0]), {}),
+        (np.array([0.0, 1.0, 4.0]), {'r_min': 0.5}),
+        (np.array([-1.0, 3.0]), {'weight_shift': 1.0}),
+        (np.array([]), {'r_min': 2.0}),
+    ),
+)
+def test_successful_weight_transforms_return_only_finite_values(
+    weights: np.ndarray,
+    kwargs: dict[str, float],
+) -> None:
+    radii, shift = neutral_transforms.weights_to_radii(weights, **kwargs)
+
+    assert np.all(np.isfinite(radii))
+    assert np.isfinite(shift)
+    assert np.all(np.isfinite(neutral_transforms.radii_to_weights(radii)))
+
+
 def test_dimension_and_negative_value_validation() -> None:
     with pytest.raises(ValueError, match='radii must be 1D'):
         neutral_transforms.radii_to_weights(np.zeros((1, 1)))

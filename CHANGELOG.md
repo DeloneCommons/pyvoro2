@@ -32,6 +32,13 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - Deferred theory-figure and literature synchronization to a non-blocking follow-up issue after the manuscript reaches its final public form.
 - Updated the source-distribution content check for the new root, reference, workflow, and release-planning documentation files.
 
+### Fixed
+
+- Weight/radius transforms now reject non-finite `r_min` values and finite
+  inputs whose squaring or representation-shift arithmetic overflows, so
+  successful conversions and inverse-fit results cannot contain NaN or
+  infinite radii, weights, or shifts through this path.
+
 ### Removed
 
 - Obsolete root `DEV_PLAN.md`; its durable content is now split among architecture, API lifecycle, decision records, version-oriented roadmap, release plans, and GitHub issues.
