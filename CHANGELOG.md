@@ -24,6 +24,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Documented the Voro++ radical/power dynamic-range limitation: finite backend
+  radii or a successful weight conversion do not guarantee numerical resolution
+  when absolute squared radii or genuine weight ranges dwarf squared geometric
+  scales; no universal safe radius cutoff is promised.
 - Moved the sole weight/radius transform implementation to a neutral private
   module while preserving the unchanged top-level and `pyvoro2.powerfit`
   helper routes.

@@ -118,6 +118,33 @@ The radii passed to Voro++ are therefore a computational representation of the
 weights. The selected shift is representation metadata, not a uniquely
 recovered physical quantity.
 
+### Numerical dynamic range of the backend
+
+Finite weights or radii are not by themselves a guarantee that the native
+radical tessellation is numerically resolvable. Voro++ performs parts of the
+power computation with binary64 expressions involving absolute squared radii.
+If those values, or the genuine range of the power weights, become very large
+relative to squared coordinate and domain scales, small geometric terms can be
+lost to floating-point rounding.
+
+There is no universal radius limit that pyvoro2 can state independently of the
+problem scale. The onset depends on the geometry, the requested accuracy, the
+platform, and compiler floating-point behavior; periodic power tessellations
+are a particularly sensitive regime. For intuition only, in a unit-scale
+problem an absolute radius near \(10^6\) makes the spacing of numbers near
+\(r^2\) roughly \(10^{-4}\), while around \(10^8\) an order-one squared-distance
+term can be lost entirely. These values are illustrations, not supported-range
+thresholds.
+
+The weight-first route removes an irrelevant common additive weight offset
+before conversion, but it cannot remove a genuinely large weight range. Direct
+`radii=` input may additionally contain a large common squared-radius offset.
+pyvoro2 currently preserves the caller's radius representation rather than
+silently re-gauging it, and it does not weaken topology or periodic-shift
+validation to make an unresolved native result appear valid. A future upstream
+Voro++ fix can be adopted through the normal vendored-backend update without
+changing the mathematical pyvoro2 API.
+
 ## Global additive gauge
 
 For any scalar \(c\), replacing every weight by \(w_i+c\) leaves the complete

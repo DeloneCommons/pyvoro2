@@ -119,10 +119,12 @@ complete diagram unchanged. Existing `radii=` calls remain available, but the
 resulting length-unit radii are a non-unique backend representation rather than
 necessarily physical radii. Supply exactly one of `weights=` or `radii=` in
 power mode. Finite representability is necessary for conversion but does not
-guarantee backend numerical resolution. Extremely large backend radius-squared
-magnitudes relative to squared domain lengths—or, for canonical weight-first
-input, extremely large weight ranges—may exceed Voro++'s numerical resolution,
-especially for periodic power tessellations. See
+guarantee a numerically resolvable native tessellation. Voro++ evaluates radical
+geometry with binary64 squared-radius arithmetic, so very large absolute
+`radii**2` values or genuine weight ranges relative to squared coordinate/domain
+scales can lose geometric resolution. There is no universal safe cutoff: the
+onset depends on scale, geometry, platform, and compiler, and periodic power
+tessellations are a particularly sensitive regime. See
 [Power diagrams](https://delonecommons.github.io/pyvoro2/theory/power-diagrams/) for the precise distinction.
 
 ### 4) Periodic crystal cell with neighbor image shifts

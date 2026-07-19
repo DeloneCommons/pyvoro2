@@ -82,11 +82,15 @@ the diagram. Adding a common constant to all weights is therefore geometrically
 invariant. The input and converted representation must remain finite;
 non-finite input or overflow during conversion raises `ValueError` before the
 native call.
-Finite representability is necessary for conversion but does not guarantee
-backend numerical resolution. Extremely large backend radius-squared
-magnitudes relative to squared domain lengths—or, for canonical weight-first
-input, extremely large weight ranges—may exceed Voro++'s numerical resolution,
-especially for periodic power tessellations.
+Finite representability is necessary for conversion but does not guarantee a
+numerically resolvable native tessellation. Voro++ evaluates radical geometry
+with binary64 squared-radius arithmetic, so very large absolute `radii**2`
+values or genuine weight ranges relative to squared coordinate/domain scales
+can lose geometric resolution. There is no universal safe cutoff: the onset
+depends on scale, geometry, platform, and compiler, and periodic power
+tessellations are a particularly sensitive regime. pyvoro2 does not silently
+weaken validation or alter the requested power geometry in this unsupported
+regime.
 
 Power-mode `compute(...)` requires exactly one of `weights=` or the existing
 `radii=` representation. Radii have length units and should not be interpreted

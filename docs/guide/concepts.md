@@ -83,11 +83,15 @@ therefore uses `weights_to_radii(weights)` internally, applying one common
 global shift before the native call. No componentwise shift is used. Non-finite
 input, or an extreme finite range that makes the shift or converted
 representation non-finite, raises `ValueError` before native computation.
-Finite representability is necessary for conversion but does not guarantee
-backend numerical resolution. Extremely large backend radius-squared
-magnitudes relative to squared domain lengths—or, for canonical weight-first
-input, extremely large weight ranges—may exceed Voro++'s numerical resolution,
-especially for periodic power tessellations.
+Finite representability is necessary for conversion but does not guarantee a
+numerically resolvable native tessellation. Voro++ evaluates radical geometry
+with binary64 squared-radius arithmetic, so very large absolute `radii**2`
+values or genuine weight ranges relative to squared coordinate/domain scales
+can lose geometric resolution. There is no universal safe cutoff: the onset
+depends on scale, geometry, platform, and compiler, and periodic power
+tessellations are a particularly sensitive regime. pyvoro2 does not silently
+weaken validation or alter the requested power geometry in this unsupported
+regime.
 
 Existing `radii=` calls remain supported. Radii have length units, while
 weights have squared-length units. In power mode, exactly one of `weights=` and

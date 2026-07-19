@@ -254,11 +254,14 @@ def compute(
         radii: Per-point non-negative backend radii for ``mode='power'``, with
             length units. This compatibility representation is not unique and
             should not be interpreted as physical radii. Radii are rejected in
-            standard mode. Finite values do not guarantee backend numerical
-            resolution: extremely large radius-squared magnitudes relative to
-            squared domain lengths—or, for canonical weight-first input,
-            extremely large weight ranges—may exceed Voro++'s numerical
-            resolution, especially for periodic power tessellations.
+            standard mode. Finite values do not guarantee a numerically
+            resolvable native tessellation. Voro++ evaluates radical geometry
+            with binary64 squared-radius arithmetic, so very large absolute
+            ``radii**2`` values or genuine weight ranges relative to squared
+            coordinate/domain scales can lose geometric resolution. There is no
+            universal safe cutoff: the onset depends on scale, geometry,
+            platform, and compiler, and periodic power tessellations are a
+            particularly sensitive regime.
         return_vertices: Include vertex coordinates.
         return_adjacency: Include vertex adjacency.
         return_faces: Include faces with adjacent cell IDs.

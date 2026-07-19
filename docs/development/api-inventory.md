@@ -702,11 +702,12 @@ raises `ValueError` before native tessellation. Standard mode also rejects every
 non-`None` `radii=` argument before native tessellation rather than preserving
 the v0.6.3 behavior of silently ignoring it. Valid radius-based power
 computation remains numerically unchanged. Finite representability is
-necessary for conversion but does not guarantee backend numerical resolution.
-Extremely large backend radius-squared magnitudes relative to squared domain
-lengths—or, for canonical weight-first input, extremely large weight ranges—may
-exceed Voro++'s numerical resolution, especially for periodic power
-tessellations.
+necessary for conversion but does not guarantee a numerically resolvable native
+tessellation. Voro++ uses binary64 squared-radius arithmetic, so very large
+absolute backend ``radii**2`` values or genuine weight ranges relative to
+squared coordinate/domain scales can lose geometric resolution. No universal
+safe cutoff is promised; sensitivity depends on scale, geometry, platform, and
+compiler, especially for periodic power tessellations.
 
 The private dimension-neutral `pyvoro2._power_input` resolution path keeps the
 validated input weights, resolved backend radii, and representation shift
@@ -918,11 +919,12 @@ The following are API even when no dedicated Python class represents them:
   shift and converted representation remain finite and representable;
 - non-finite weight input or conversion overflow raises `ValueError` before
   native computation;
-- finite representability does not guarantee backend numerical resolution;
-  extremely large backend radius-squared magnitudes relative to squared domain
-  lengths—or, for canonical weight-first input, extremely large weight ranges—
-  may exceed Voro++'s numerical resolution, especially in periodic power
-  tessellations;
+- finite representability does not guarantee a numerically resolvable native
+  tessellation; Voro++ uses binary64 squared-radius arithmetic, so very large
+  absolute backend ``radii**2`` values or genuine weight ranges relative to
+  squared coordinate/domain scales can lose geometric resolution. No universal
+  safe cutoff is promised, and periodic power tessellations are particularly
+  sensitive;
 - backend radii have coordinate units;
 - one global additive weight shift leaves the complete power diagram unchanged;
 - power-mode `compute(...)` requires exactly one of `weights=` or `radii=`,
