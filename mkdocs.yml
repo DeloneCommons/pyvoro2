@@ -98,6 +98,7 @@ nav:
       - Spatial (3D):
           - Domains: reference/domains.md
           - API: reference/api.md
+          - Common result: reference/result.md
           - Diagnostics: reference/diagnostics.md
           - Validation: reference/validation.md
           - Duplicate check: reference/duplicates.md
@@ -108,10 +109,11 @@ nav:
           - Overview: reference/planar/index.md
           - Domains: reference/planar/domains.md
           - API: reference/planar/api.md
+          - Common result: reference/result.md
           - Diagnostics: reference/planar/diagnostics.md
           - Normalization: reference/planar/normalize.md
           - Validation: reference/planar/validation.md
-          - Compute result: reference/planar/result.md
+          - Historical compute result: reference/planar/result.md
           - Edge properties: reference/edge_properties.md
           - Visualization (2D): reference/viz2d.md
       - Power fitting:

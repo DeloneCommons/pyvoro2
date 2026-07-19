@@ -8,6 +8,7 @@ and power (Laguerre) tessellation library, including the planar
 from __future__ import annotations
 
 from .__about__ import __version__
+from .result import TessellationResult
 from . import planar
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
@@ -82,6 +83,7 @@ __all__ = [
     'Box',
     'OrthorhombicCell',
     'PeriodicCell',
+    'TessellationResult',
     'compute',
     'locate',
     'ghost_cells',

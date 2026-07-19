@@ -743,7 +743,7 @@ See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 | Domain classes and domain geometry semantics | Stable | Mature bounded and periodic behavior; capability differences remain explicit by dimension. |
 | `pyvoro2.compute` and `pyvoro2.planar.compute` | Stable | Direct weight/radius keyword behavior is implemented and tested; the structured default remains assigned to the result/output issues. |
 | `weights=` and `radii=` mathematical meaning | Stable | Mode-specific rejection/exclusivity, one global representation shift, finite and representable conversion, and empty-cell behavior are part of the contract. |
-| `pyvoro2.TessellationResult` core contract | Stable candidate | Core identity, ID alignment, measures, empty mask, and representation metadata should be stable at release. |
+| `pyvoro2.TessellationResult` core contract | Stable candidate | The shared class and private construction path are implemented by issue #9; public compute wiring and the default/output migration remain assigned to issue #10. |
 | Detailed optional result conveniences and raw geometry views | Provisional | Refine through implementation and chemvoro-shaped validation. |
 | `pyvoro2.inverse` preferred high-level separator workflow | Stable candidate | Main observations/fit entry point should be suitable for chemvoro at release. |
 | `pyvoro2.inverse.separator` advanced problem and operator views | Provisional | Public for research use, but likely to evolve before prescribed measures and mixed problems. |
@@ -825,7 +825,7 @@ transition.
 | Domains | `Box`, `RectangularCell` | Stable |
 | Operations | `compute`, `locate`, `ghost_cells` | Stable |
 | Structured result | `TessellationResult` re-export | Stable candidate |
-| Historical result name | `PlanarComputeResult` | Compatibility-only alias; planned removal or reconsideration in v0.8 |
+| Historical result name | `PlanarComputeResult` | Still a separate compatibility class after issue #9; issue #10 owns the alias migration, with removal or reconsideration planned for v0.8 |
 | Diagnostics and validation | Planar tessellation and normalization diagnostics | Stable unless the baseline audit identifies schema details needing provisional status |
 | Duplicate handling and annotations | `duplicate_check`, `annotate_edge_properties` | Stable candidates |
 | Normalization | Planar normalization helpers and result objects | Stable or provisional per detailed baseline audit |
@@ -865,38 +865,79 @@ but numerical implementations must not be duplicated.
 
 ## Forward return contract
 
-### Preferred route
+### Implemented common data contract
+
+Issue #9 implements one frozen, slotted `TessellationResult` class and exports
+the identical class object as both `pyvoro2.TessellationResult` and
+`pyvoro2.planar.TessellationResult`. Its private shared builder aligns cells by
+final external ID, represents omitted empty cells explicitly in aligned
+arrays, and does not invoke native computation, diagnostics, normalization, or
+boundary annotation.
+
+The stable-candidate fields are exact:
+
+| Field | Lifecycle | Semantics |
+|---|---|---|
+| `dimension` | Stable candidate | Explicit `2` or `3`. |
+| `domain` | Stable candidate | Validated domain used by the computation. |
+| `mode` | Stable candidate | `"standard"` or `"power"`. |
+| `sites` | Stable candidate | Read-only owned `(n, dimension)` copy of validated input coordinates in original input order. |
+| `ids` | Stable candidate | Read-only owned `(n,)` external-ID array in original input order; omitted IDs become `np.arange(n, dtype=np.int64)`. |
+| `cells` | Stable candidate | Exact supplied raw-cell list after ID remapping; the list, dictionaries, and nested records are not copied or frozen. |
+| `cell_measures` | Stable candidate | Read-only owned `(n,)` construction-time snapshot of areas or volumes aligned with input order; hidden cells are zero. |
+| `empty_mask` | Stable candidate | Read-only owned boolean `(n,)` construction-time snapshot aligned with input order, including raw records omitted by `include_empty=False`. |
+| `input_weights` | Stable candidate | Read-only owned mathematical input weights for weight-first power input; otherwise `None`. |
+| `backend_radii` | Stable candidate | Read-only owned exact native power radii; `None` in standard mode. |
+| `representation_shift` | Stable candidate | Finite common additive shift for weight-first conversion; `None` for standard or direct-radius input. |
+| `tessellation_diagnostics` | Stable candidate | Existing dimension-specific diagnostics when computed; otherwise `None`. |
+| `normalized_vertices` | Stable candidate | Existing dimension-specific vertex normalization when computed; otherwise `None`. |
+| `normalized_topology` | Stable candidate | Existing dimension-specific topology normalization when computed; otherwise `None`. |
+
+The following small convenience surface is **provisional** while downstream
+integration validates the exact access vocabulary:
+
+| Convenience | Lifecycle | Semantics |
+|---|---|---|
+| `measure_kind` | Provisional | `"area"` in 2D or `"volume"` in 3D. |
+| `boundary_kind` | Provisional | `"edges"` in 2D or `"faces"` in 3D. |
+| `has_tessellation_diagnostics`, `has_normalized_vertices`, `has_normalized_topology` | Provisional | Distinguish absent optional objects from present objects. |
+| `has_boundaries`, `has_periodic_shifts` | Provisional | Report explicit builder capabilities, including available-but-empty geometry. |
+| `require_tessellation_diagnostics()`, `require_normalized_vertices()`, `require_normalized_topology()` | Provisional | Return optional objects or raise a clear `ValueError`. |
+| `require_boundaries()` | Provisional | Return input-order-aligned edge/face collections, using an empty collection for hidden sites, or raise when boundaries were unavailable. |
+
+The outer object prevents field replacement. Its aligned arrays are copies and
+are non-writeable, so construction never marks caller-owned arrays read-only.
+The raw `cells` list and its nested dictionaries remain shared and mutable by
+design. Later raw-record mutation does not update the `cell_measures` or
+`empty_mask` snapshots. Boundary access revalidates mutable boundary record
+types, current empty flags, required non-empty records, and periodic-shift
+fields and raises if mutation made them inconsistent with the recorded
+snapshots or capabilities. An empty cell cannot contain realized edge or face
+records; both omitted and explicitly empty boundary collections remain valid.
+
+Direct dataclass construction is supported and validates raw IDs, measures,
+empty state, representation metadata, and capability metadata against the
+aligned fields. Weight-first metadata must satisfy the shared exact
+weight/shift-to-radius transform. Boundary and periodic-shift availability are
+private keyword-only construction state supplied by the shared builder;
+keeping them as normal dataclass initialization fields preserves them through
+`dataclasses.replace()` without adding stable public result fields. Deep copies
+and pickle round trips preserve the exact existing snapshot state rather than
+revalidating it against later permitted raw-record mutation; reconstructed
+arrays remain owned and read-only, and capability state is preserved.
+
+### Pending preferred compute route — issue #10
 
 ```python
 result = pyvoro2.compute(..., output='result')
 result = pyvoro2.planar.compute(..., output='result')
 ```
 
-`output='result'` is the default.
-
-The stable-candidate core of `TessellationResult` is:
-
-| Concept | Required semantics |
-|---|---|
-| `dimension` | `2` or `3`; never inferred from record shape by the caller |
-| `domain` | The validated domain associated with the computation |
-| `mode` | Standard or power computation |
-| site coordinates | Aligned with original input order |
-| external IDs | Aligned with original input order and preserved through cell lookup |
-| `cells` | Raw backend-shaped cell records; contained mutability is documented |
-| cell measures | Area in 2D or volume in 3D, aligned with input-site order |
-| empty-cell state | Explicit mask aligned with input-site order, independent of whether raw empty records were requested |
-| input weights | Mathematical weights when the caller supplied them |
-| backend radii | Actual non-negative backend representation when power mode used it |
-| representation shift | One common additive weight shift used to construct backend radii |
-| diagnostics | Present only when requested or required by a check |
-| normalized output | Present only where requested and supported |
-| boundary access | Available only when required face/edge data were requested or computed |
-
-Exact field names, helper names, and which optional conveniences are stable
-versus provisional must be filled in by the result-contract implementation
-issue. The result should be structurally immutable when straightforward, but
-nested raw records are not promised to be deeply immutable.
+This is the accepted v0.7 preferred route, but it is not implemented by issue
+#9. Issue #10 owns both `output=` and the default-return migration. Until that
+issue lands, both `compute()` functions retain their characterized raw return
+behavior, planar `return_result=` is unchanged, and `PlanarComputeResult`
+remains a distinct class rather than an alias.
 
 ### Raw compatibility route
 
@@ -905,9 +946,10 @@ cells = pyvoro2.compute(..., output='cells')
 cells = pyvoro2.planar.compute(..., output='cells')
 ```
 
-The raw route preserves established list/tuple behavior during v0.7. Existing
-record keys and meanings are inventoried by characterization tests before the
-default return changes.
+Issue #10 will add this explicit raw route while preserving the established
+list/tuple behavior. After issue #9 alone, the characterized raw list/tuple
+behavior is still the current default and neither compute signature includes
+`output=`.
 
 ## Scientifically meaningful semantics to inventory explicitly
 

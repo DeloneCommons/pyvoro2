@@ -27,6 +27,7 @@ TOP_LEVEL_ALL = (
     'Box',
     'OrthorhombicCell',
     'PeriodicCell',
+    'TessellationResult',
     'compute',
     'locate',
     'ghost_cells',
@@ -91,6 +92,7 @@ TOP_LEVEL_ALL = (
 PLANAR_ALL = (
     'Box',
     'RectangularCell',
+    'TessellationResult',
     'PlanarComputeResult',
     'compute',
     'locate',

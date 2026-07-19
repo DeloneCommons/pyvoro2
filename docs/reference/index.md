@@ -12,6 +12,7 @@ diagnostics, validation, normalization, face properties, and visualization.
 
 - [Domains](domains.md)
 - [Forward API](api.md)
+- [Common tessellation result](result.md)
 - [Diagnostics](diagnostics.md)
 - [Validation](validation.md)
 - [Normalization](normalize.md)
@@ -24,7 +25,8 @@ and visualization.
 
 - [Planar overview](planar/index.md)
 - [Planar API](planar/api.md)
-- [Planar result](planar/result.md)
+- [Common tessellation result](result.md)
+- [Historical planar compute result](planar/result.md)
 
 ## Separator fitting
 

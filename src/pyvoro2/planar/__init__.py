@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..result import TessellationResult
 from ..duplicates import DuplicateError, DuplicatePair
 from ..edge_properties import annotate_edge_properties
 from ..viz2d import plot_tessellation
@@ -33,6 +34,7 @@ from .validation import (
 __all__ = [
     'Box',
     'RectangularCell',
+    'TessellationResult',
     'PlanarComputeResult',
     'compute',
     'locate',

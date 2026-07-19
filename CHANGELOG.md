@@ -8,6 +8,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Added
 
+- A frozen, dimension-neutral `TessellationResult` data contract shared by the
+  spatial and planar namespaces, with input-aligned read-only arrays, explicit
+  optional-geometry capabilities, and a private common builder. Public
+  `compute()` defaults and raw returns are unchanged pending issue #10.
 - Direct mathematical `weights=` input for spatial and planar
   `compute(..., mode='power')`, using one common global representation shift
   before the existing native radius-based calls while retaining `radii=` in

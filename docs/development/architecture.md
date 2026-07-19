@@ -213,11 +213,40 @@ the common representation shift. It delegates the conversion itself to
 dependency.
 
 Both forward wrappers pass the resolved backend radii to every native power
-call and to periodic face/edge image-shift reconstruction. This completes the
-forward-input part of WP-02 without adding weights to `locate(...)` or
-`ghost_cells(...)`, changing raw returns, or implementing the common result
-object. Separator ownership also remains assigned to the later canonical
-inverse work package.
+call and to periodic face/edge image-shift reconstruction. Issue #8 completed
+the forward-input part of WP-02 without adding weights to `locate(...)` or
+`ghost_cells(...)` and without changing raw returns. It also left the common
+result object to issue #9. Separator ownership remains assigned to the later
+canonical inverse work package.
+
+### Common forward result data contract
+
+The current v0.7 tree now defines the dimension-neutral
+`pyvoro2.TessellationResult` in `pyvoro2.result` and re-exports the identical
+class from `pyvoro2.planar`. A single private builder constructs aligned
+measures and empty-cell state by final external ID, including cells that the
+backend omitted from raw output. The result owns read-only construction-time
+snapshots of aligned numerical arrays while retaining the exact mutable
+raw-cell list.
+
+Capability flags for boundaries and periodic shifts are validated keyword-only
+construction state supplied explicitly by the builder, so replacement, empty
+input, and all-hidden output preserve the distinction between unavailable
+geometry and requested geometry with no records. Direct construction validates
+the raw/aligned invariants. Later raw-cell mutation does not alter the aligned
+measure and empty-mask snapshots; boundary access revalidates mutable boundary
+records against those snapshots before returning them. Weight-first metadata
+is validated against the shared weight-to-radius transform. Deep-copy and
+pickle reconstruction preserve the existing snapshot state, including allowed
+raw-record divergence, while restoring owned read-only arrays and capability
+state. The builder does no native work and does not trigger diagnostics,
+normalization, or boundary annotation.
+
+This is the issue #9 data-contract layer only. Both public `compute(...)`
+functions still return their characterized v0.6.3 list/tuple variants by
+default; planar `return_result=` and the separate `PlanarComputeResult` also
+remain unchanged. Issue #10 owns `output=`, default-return migration, and the
+planar compatibility alias.
 
 ## Why stabilization is needed
 
@@ -343,8 +372,9 @@ The v0.7 line should provide one inspectable conceptual contract across 2D and
 - tessellation and normalization diagnostics.
 
 [ADR 0005](decisions/0005-tessellation-result-contract.md) selects one public
-`pyvoro2.TessellationResult` for both dimensions.
-Both `compute` functions return it by default; `output='cells'` preserves the raw
+`pyvoro2.TessellationResult` for both dimensions. The common class and private
+construction path now exist. The remaining issue #10 migration makes both
+`compute` functions return it by default and adds `output='cells'` as the raw
 compatibility route. The result keeps dimension-specific geometry explicit and
 must not compute unrequested expensive data merely to fill optional fields.
 
