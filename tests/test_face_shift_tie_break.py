@@ -1,4 +1,8 @@
 import numpy as np
+import pytest
+
+import pyvoro2 as pv
+from pyvoro2._face_shifts3d import _add_periodic_face_shifts_inplace
 
 
 def test_face_shift_tie_break_prefers_best_residual_over_small_l1():
@@ -14,8 +18,6 @@ def test_face_shift_tie_break_prefers_best_residual_over_small_l1():
       - shift (1,0,0) has a small but nonzero residual,
     and asserts that the algorithm picks (2,0,0).
     """
-
-    from pyvoro2.api import _add_periodic_face_shifts_inplace
 
     # Tiny cubic lattice: chosen specifically to stress any absolute eps floors.
     a = np.array([1e-10, 0.0, 0.0])
@@ -70,3 +72,46 @@ def test_face_shift_tie_break_prefers_best_residual_over_small_l1():
     )
 
     assert tuple(cells[0]['faces'][0]['adjacent_shift']) == (2, 0, 0)
+
+
+def test_spatial_power_shift_residual_handles_large_common_radius() -> None:
+    points = np.array([[0.25, 0.4, 0.6]], dtype=float)
+    domain = pv.PeriodicCell(
+        ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+    )
+    cells = pv.compute(
+        points,
+        domain=domain,
+        mode='power',
+        radii=np.array([1.0]),
+        return_vertices=True,
+        return_faces=True,
+        return_face_shifts=False,
+    )
+    assert len(cells) == 1
+    assert not bool(cells[0].get('empty', False))
+    assert float(cells[0]['volume']) == pytest.approx(1.0)
+
+    _add_periodic_face_shifts_inplace(
+        cells,
+        lattice_vectors=tuple(
+            np.asarray(vector, dtype=float) for vector in domain.vectors
+        ),
+        periodic_mask=(True, True, True),
+        mode='power',
+        radii=np.array([1e8]),
+    )
+
+    shifts = {
+        tuple(int(value) for value in face['adjacent_shift'])
+        for face in cells[0]['faces']
+    }
+    assert {int(face['adjacent_cell']) for face in cells[0]['faces']} == {0}
+    assert shifts == {
+        (-1, 0, 0),
+        (1, 0, 0),
+        (0, -1, 0),
+        (0, 1, 0),
+        (0, 0, -1),
+        (0, 0, 1),
+    }

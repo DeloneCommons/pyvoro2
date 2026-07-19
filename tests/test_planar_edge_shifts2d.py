@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+import pyvoro2.planar as pv2
 from pyvoro2.planar._edge_shifts2d import _add_periodic_edge_shifts_inplace
 
 
@@ -96,6 +97,41 @@ def test_planar_edge_shifts_can_repair_reciprocity() -> None:
 
     assert s01 == [(-1, 0), (0, 0)]
     assert s10 == [(0, 0), (1, 0)]
+
+
+def test_planar_power_shift_residual_handles_large_common_radius() -> None:
+    points = np.array([[0.25, 0.4]], dtype=float)
+    domain = pv2.RectangularCell(
+        ((0.0, 1.0), (0.0, 1.0)),
+        periodic=(True, True),
+    )
+    cells = pv2.compute(
+        points,
+        domain=domain,
+        mode='power',
+        radii=np.array([1.0]),
+        return_vertices=True,
+        return_edges=True,
+        return_edge_shifts=False,
+    )
+    assert len(cells) == 1
+    assert not bool(cells[0].get('empty', False))
+    assert float(cells[0]['area']) == pytest.approx(1.0)
+
+    _add_periodic_edge_shifts_inplace(
+        cells,
+        lattice_vectors=domain.lattice_vectors,
+        periodic_mask=domain.periodic,
+        mode='power',
+        radii=np.array([1e8]),
+    )
+
+    shifts = {
+        tuple(int(value) for value in edge['adjacent_shift'])
+        for edge in cells[0]['edges']
+    }
+    assert {int(edge['adjacent_cell']) for edge in cells[0]['edges']} == {0}
+    assert shifts == {(-1, 0), (1, 0), (0, -1), (0, 1)}
 
 
 @pytest.mark.parametrize(

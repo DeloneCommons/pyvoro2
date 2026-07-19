@@ -158,9 +158,9 @@ INTEGRATION_CASES = (
 )
 
 
-BACKEND_RESOLVABLE_PERIODIC_CASES = (
+PORTABLE_PERIODIC_SHIFT_CASES = (
     ForwardCase(
-        'planar-large-periodic-power',
+        'planar-portable-periodic-power',
         pv2.compute,
         np.array([[0.1, 0.1], [0.1, 0.2]], dtype=float),
         pv2.RectangularCell(
@@ -173,7 +173,7 @@ BACKEND_RESOLVABLE_PERIODIC_CASES = (
         kwargs={'return_edge_shifts': True},
     ),
     ForwardCase(
-        'spatial-large-periodic-power',
+        'spatial-portable-periodic-power',
         pv.compute,
         np.array([[0.1, 0.1, 0.1], [0.1, 0.1, 0.2]], dtype=float),
         pv.PeriodicCell(
@@ -187,10 +187,7 @@ BACKEND_RESOLVABLE_PERIODIC_CASES = (
 )
 
 
-BACKEND_RESOLVABLE_WEIGHTS = {
-    'planar-large-periodic-power': np.array([0.0, 3e10]),
-    'spatial-large-periodic-power': np.array([0.0, 1e11]),
-}
+PORTABLE_PERIODIC_WEIGHTS = np.array([0.0, 1e6])
 
 
 def _case_id(case: ForwardCase) -> str:
@@ -206,6 +203,29 @@ def _cells_and_diagnostics(result: Any) -> tuple[list[dict[str, Any]], Any | Non
 
 def _cell_map(cells: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
     return {int(cell['id']): cell for cell in cells}
+
+
+def _assert_native_periodic_topology_is_valid(
+    cells: list[dict[str, Any]],
+    case: ForwardCase,
+) -> None:
+    assert sum(float(cell[case.measure_key]) for cell in cells) == pytest.approx(
+        1.0,
+        rel=1e-9,
+        abs=1e-12,
+    )
+
+    cells_by_id = _cell_map(cells)
+    for cell in cells:
+        if bool(cell.get('empty', False)):
+            continue
+        for boundary in cell.get(case.boundary_key, ()):
+            adjacent_id = int(boundary['adjacent_cell'])
+            if adjacent_id < 0:
+                continue
+            adjacent_cell = cells_by_id.get(adjacent_id)
+            assert adjacent_cell is not None
+            assert not bool(adjacent_cell.get('empty', False))
 
 
 def _boundary_signature(
@@ -540,11 +560,9 @@ def test_power_compute_rejects_unrepresentable_finite_weights(
         )
 
 
-@pytest.mark.parametrize(
-    'case', BACKEND_RESOLVABLE_PERIODIC_CASES, ids=_case_id
-)
+@pytest.mark.parametrize('case', PORTABLE_PERIODIC_SHIFT_CASES, ids=_case_id)
 @pytest.mark.parametrize('representation', ('weights', 'radii'))
-def test_backend_resolvable_large_power_input_supports_periodic_shifts(
+def test_portable_periodic_power_input_supports_image_shifts(
     case: ForwardCase,
     representation: str,
 ) -> None:
@@ -558,7 +576,7 @@ def test_backend_resolvable_large_power_input_supports_periodic_shifts(
     else:
         base_kwargs['return_faces'] = True
 
-    weights = BACKEND_RESOLVABLE_WEIGHTS[case.name]
+    weights = PORTABLE_PERIODIC_WEIGHTS
     values = weights if representation == 'weights' else np.sqrt(weights)
     power_input = {representation: values}
     unannotated, _ = _cells_and_diagnostics(
@@ -570,9 +588,7 @@ def test_backend_resolvable_large_power_input_supports_periodic_shifts(
             **base_kwargs,
         )
     )
-    assert sum(
-        float(cell[case.measure_key]) for cell in unannotated
-    ) == pytest.approx(1.0, rel=1e-9, abs=1e-12)
+    _assert_native_periodic_topology_is_valid(unannotated, case)
     annotated, _ = _cells_and_diagnostics(
         case.compute(
             case.points,
