@@ -91,8 +91,9 @@ related, but not equivalent, statements.
 ## Weights, radii, and backend representation
 
 Voro++ represents a weighted site by a non-negative radius \(r_i\) and uses
-\(r_i^2\) as its effective power weight. The current forward pyvoro2 API mirrors
-that backend representation through `radii=`.
+\(r_i^2\) as its effective power weight. The forward pyvoro2 `compute(...)`
+APIs accept mathematical `weights=` directly and retain `radii=` as an
+alternative representation.
 
 Inverse methods naturally produce general real-valued weights, including
 negative values. Choose a common constant \(c\) such that \(w_i+c\ge 0\) for all
@@ -190,9 +191,10 @@ addition to raw cell records.
 
 ## Relation to the current API
 
-The current public release computes power diagrams through `mode='power'` and
-`radii=...`. The v0.7 development line is intended to add a direct weight-first
-route while retaining the radius-based path for compatibility.
+The current development API computes power diagrams through `mode='power'` and
+exactly one of `weights=...` or `radii=...`. Direct weights are available on
+the spatial and planar `compute(...)` functions, not automatically on every
+forward operation. The radius-based path remains available for compatibility.
 
 See the [concepts guide](../guide/concepts.md) for current calls, the
 [architecture](../development/architecture.md) for the target result contract,

@@ -687,10 +687,36 @@ changing behavior. Issue #21 then hardened the shared numerical contract:
 `r_min` must be finite and non-negative, and any non-finite intermediate or
 result from squaring or applying the representation shift raises `ValueError`.
 Signatures, defaults, global-shift behavior, and valid finite representable
-results remain the characterized v0.6.3 behavior above.
+results for those helpers remain the characterized v0.6.3 behavior above.
 
-Direct forward `weights=` input and canonical inverse ownership remain assigned
-to later issues. This status note does not alter the factual v0.6.3 baseline.
+Issue #8 adds the keyword-only `weights=None` argument immediately before the
+existing `radii=None` argument on `pyvoro2.compute(...)` and
+`pyvoro2.planar.compute(...)`. In power mode exactly one representation is
+required. Weights must have shape `(n,)`, must be finite, and may be positive,
+zero, or negative; the required global shift and converted representation must
+also remain finite and representable. They are converted with the default
+`weights_to_radii(weights)` policy, which applies one common global
+representation shift. Non-finite input, conversion overflow, supplying both
+representations, supplying neither, or supplying weights in standard mode
+raises `ValueError` before native tessellation. Standard mode also rejects every
+non-`None` `radii=` argument before native tessellation rather than preserving
+the v0.6.3 behavior of silently ignoring it. Valid radius-based power
+computation remains numerically unchanged. Finite representability is
+necessary for conversion but does not guarantee backend numerical resolution.
+Extremely large backend radius-squared magnitudes relative to squared domain
+lengths—or, for canonical weight-first input, extremely large weight ranges—may
+exceed Voro++'s numerical resolution, especially for periodic power
+tessellations.
+
+The private dimension-neutral `pyvoro2._power_input` resolution path keeps the
+validated input weights, resolved backend radii, and representation shift
+together for later `TessellationResult` construction. It imports only the
+neutral transform and input-validation helpers. The resolved radii feed native
+2D, 3D box/orthorhombic, and 3D triclinic power calls, as well as periodic
+edge/face shift inference. `locate(...)` and `ghost_cells(...)` signatures are
+unchanged. Canonical inverse ownership and the public structured result remain
+assigned to later issues; this status note does not alter the factual v0.6.3
+baseline.
 
 ## Accepted v0.7 contract decisions
 
@@ -714,8 +740,8 @@ See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 | Surface | Intended status | Notes |
 |---|---|---|
 | Domain classes and domain geometry semantics | Stable | Mature bounded and periodic behavior; capability differences remain explicit by dimension. |
-| `pyvoro2.compute` and `pyvoro2.planar.compute` | Stable | Function role is stable; the new structured default and exact keyword contract must be finalized and tested. |
-| `weights=` and `radii=` mathematical meaning | Stable | Mutual exclusivity, one global representation shift, finite input, and empty-cell behavior are part of the contract. |
+| `pyvoro2.compute` and `pyvoro2.planar.compute` | Stable | Direct weight/radius keyword behavior is implemented and tested; the structured default remains assigned to the result/output issues. |
+| `weights=` and `radii=` mathematical meaning | Stable | Mode-specific rejection/exclusivity, one global representation shift, finite and representable conversion, and empty-cell behavior are part of the contract. |
 | `pyvoro2.TessellationResult` core contract | Stable candidate | Core identity, ID alignment, measures, empty mask, and representation metadata should be stable at release. |
 | Detailed optional result conveniences and raw geometry views | Provisional | Refine through implementation and chemvoro-shaped validation. |
 | `pyvoro2.inverse` preferred high-level separator workflow | Stable candidate | Main observations/fit entry point should be suitable for chemvoro at release. |
@@ -888,8 +914,24 @@ The following are API even when no dedicated Python class represents them:
 
 - coordinate units are caller-defined but consistent within one computation;
 - power weights have squared-coordinate units;
+- positive, zero, and negative finite power weights are valid when the global
+  shift and converted representation remain finite and representable;
+- non-finite weight input or conversion overflow raises `ValueError` before
+  native computation;
+- finite representability does not guarantee backend numerical resolution;
+  extremely large backend radius-squared magnitudes relative to squared domain
+  lengths—or, for canonical weight-first input, extremely large weight ranges—
+  may exceed Voro++'s numerical resolution, especially in periodic power
+  tessellations;
 - backend radii have coordinate units;
 - one global additive weight shift leaves the complete power diagram unchanged;
+- power-mode `compute(...)` requires exactly one of `weights=` or `radii=`,
+  while standard mode rejects both arguments;
+- valid radius-based power computation remains numerically unchanged;
+- direct `weights=` input currently belongs to the two `compute(...)`
+  functions, not to every forward operation;
+- backend radii are a shifted representation and are not unique physical
+  radii;
 - disconnected separator-observation components have additional unidentified
   offsets that may change global realization;
 - external IDs remain attached to original sites;

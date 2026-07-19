@@ -19,6 +19,7 @@ from ._inputs import (
 )
 from ._domain_geometry import geometry3d
 from ._face_shifts3d import _add_periodic_face_shifts_inplace
+from ._power_input import resolve_power_input
 from .duplicates import duplicate_check as _duplicate_check
 from .diagnostics import (
     TessellationDiagnostics,
@@ -180,6 +181,7 @@ def compute(
     blocks: tuple[int, int, int] | None = None,
     init_mem: int = 8,
     mode: Literal['standard', 'power'] = 'standard',
+    weights: Sequence[float] | np.ndarray | None = None,
     radii: Sequence[float] | np.ndarray | None = None,
     return_vertices: bool = True,
     return_adjacency: bool = True,
@@ -207,9 +209,10 @@ def compute(
       - :class:`~pyvoro2.domains.PeriodicCell` (fully periodic triclinic)
 
     Supported modes:
-      - ``mode='standard'``: classic Voronoi midplanes
-      - ``mode='power'``: power/Laguerre (radical) diagram using per-site radii
-        as supported by Voro++
+      - ``mode='standard'``: classic Voronoi midplanes; both ``weights`` and
+        ``radii`` must be ``None``
+      - ``mode='power'``: power/Laguerre (radical) diagram using exactly one of
+        mathematical power ``weights`` or backend-compatible ``radii``
 
     Notes:
         Internally, the C++ layer always uses point indices 0..n-1 as particle IDs.
@@ -237,7 +240,25 @@ def compute(
         blocks: Explicit (nx, ny, nz) grid blocks. Overrides `block_size`.
         init_mem: Initial per-block particle memory in Voro++.
         mode: 'standard' or 'power'.
-        radii: Per-point radii for `mode='power'`.
+        weights: Per-point mathematical power weights for ``mode='power'``,
+            with shape ``(n,)`` and squared-length units. Positive, zero, and
+            negative finite values are accepted when the common-shift
+            conversion remains finite and representable. Non-finite input or
+            overflow during conversion raises ``ValueError`` before native
+            computation. One common global shift is applied before conversion
+            to non-negative backend radii; adding a common constant
+            to every weight therefore leaves the diagram unchanged. The
+            convention is ``||x - p_i||^2 - w_i``. Supplying both ``weights``
+            and ``radii`` is an error in power mode. Standard mode rejects both
+            arguments.
+        radii: Per-point non-negative backend radii for ``mode='power'``, with
+            length units. This compatibility representation is not unique and
+            should not be interpreted as physical radii. Radii are rejected in
+            standard mode. Finite values do not guarantee backend numerical
+            resolution: extremely large radius-squared magnitudes relative to
+            squared domain lengths—or, for canonical weight-first input,
+            extremely large weight ranges—may exceed Voro++'s numerical
+            resolution, especially for periodic power tessellations.
         return_vertices: Include vertex coordinates.
         return_adjacency: Include vertex adjacency.
         return_faces: Include faces with adjacent cell IDs.
@@ -271,6 +292,13 @@ def compute(
     pts = coerce_point_array(points, name='points', dim=3)
     _warn_if_scale_suspicious(pts=pts, domain=domain)
     n = int(pts.shape[0])
+    power_input = resolve_power_input(
+        mode=mode,
+        weights=weights,
+        radii=radii,
+        n=n,
+    )
+    rr = power_input.backend_radii
 
     # Internal IDs are always 0..n-1. If `ids=...` is provided, we remap on return.
     ids_internal = np.arange(n, dtype=np.int32)
@@ -326,17 +354,13 @@ def compute(
             if face_shift_tol is not None and float(face_shift_tol) < 0:
                 raise ValueError('face_shift_tol must be >= 0')
 
-        rr: np.ndarray | None = None
-
         if mode == 'standard':
             cells = core.compute_box_standard(
                 pts, ids_internal, bounds, (nx, ny, nz), periodic_flags, init_mem, opts
             )
 
         elif mode == 'power':
-            if radii is None:
-                raise ValueError('radii is required for mode="power"')
-            rr = coerce_nonnegative_vector(radii, name='radii', n=n)
+            assert rr is not None
             cells = core.compute_box_power(
                 pts,
                 ids_internal,
@@ -366,11 +390,7 @@ def compute(
                 lattice_vectors=(a, b, cvec),
                 periodic_mask=periodic_flags,
                 mode=mode,
-                radii=(
-                    np.asarray(radii, dtype=np.float64)
-                    if radii is not None
-                    else None
-                ),
+                radii=rr,
                 search=int(face_shift_search),
                 tol=face_shift_tol,
                 validate=bool(validate_face_shifts),
@@ -457,15 +477,7 @@ def compute(
         )
 
     elif mode == 'power':
-        if radii is None:
-            raise ValueError('radii is required for mode="power"')
-        rr = np.asarray(radii, dtype=np.float64)
-        if rr.shape != (n,):
-            raise ValueError('radii must have shape (n,)')
-        if not np.all(np.isfinite(rr)):
-            raise ValueError('radii must contain only finite values')
-        if np.any(rr < 0):
-            raise ValueError('radii must be non-negative')
+        assert rr is not None
         cells = core.compute_periodic_power(
             pts_i,
             ids_internal,
@@ -495,7 +507,7 @@ def compute(
             lattice_vectors=(a, b, cvec),
             periodic_mask=(True, True, True),
             mode=mode,
-            radii=np.asarray(radii, dtype=np.float64) if radii is not None else None,
+            radii=rr,
             search=int(face_shift_search),
             tol=face_shift_tol,
             validate=bool(validate_face_shifts),

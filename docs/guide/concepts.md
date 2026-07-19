@@ -62,28 +62,43 @@ difference \(w_i-w_j\). Larger weight tends to enlarge a cell, but the result is
 a collective geometric construction rather than an independent radius around
 each point.
 
-### Current radius-based API
+### Weight-first forward API
 
-Voro++ represents a weight as the square of a non-negative radius. The current
-forward pyvoro2 API therefore uses:
+Power weights have squared-length units. Both forward `compute(...)` functions
+accept positive, zero, and negative finite weights directly when the required
+common-shift conversion remains finite and representable:
 
 ```python
 cells = compute(
     points,
     domain=domain,
     mode='power',
-    radii=radii,
+    weights=weights,
     include_empty=True,
 )
 ```
 
-Mathematically, the weights are \(w_i=r_i^2\). More generally, one common
-constant can be added to every weight and the diagram is unchanged. Fitted
-weights can therefore be shifted before conversion to non-negative backend
-radii.
+Voro++ represents a weight as the square of a non-negative radius. pyvoro2
+therefore uses `weights_to_radii(weights)` internally, applying one common
+global shift before the native call. No componentwise shift is used. Non-finite
+input, or an extreme finite range that makes the shift or converted
+representation non-finite, raises `ValueError` before native computation.
+Finite representability is necessary for conversion but does not guarantee
+backend numerical resolution. Extremely large backend radius-squared
+magnitudes relative to squared domain lengths—or, for canonical weight-first
+input, extremely large weight ranges—may exceed Voro++'s numerical resolution,
+especially for periodic power tessellations.
 
-Radii in this context are a computational representation unless an application
-supplies an independent physical interpretation.
+Existing `radii=` calls remain supported. Radii have length units, while
+weights have squared-length units. In power mode, exactly one of `weights=` and
+`radii=` is required; supplying both or neither is an error. Backend radii are
+a non-unique computational representation unless an application supplies an
+independent physical interpretation. Valid radius-based power computations
+remain supported unchanged.
+
+Direct `weights=` input is currently limited to `compute(...)`. It is not an
+argument to `locate(...)` or `ghost_cells(...)`. Standard Voronoi computation
+rejects both `weights=` and `radii=` because neither has meaning in that mode.
 
 ### Global gauge
 

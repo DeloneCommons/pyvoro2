@@ -47,6 +47,38 @@ Raw planar cells are dimension-specific by design:
 - `edges` instead of `faces`,
 - `adjacent_shift` is a length-2 periodic image shift when requested.
 
+## Power weights
+
+Planar power diagrams accept mathematical weights through the same explicit
+contract as the 3D `compute(...)` function:
+
+```python
+weights = np.array([-0.1, 0.0, 0.2])
+cells = pv2.compute(
+    pts,
+    domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+    mode='power',
+    weights=weights,
+    include_empty=True,
+)
+```
+
+The convention is \(\pi_i(x)=\lVert x-p_i\rVert^2-w_i\). Weights have
+squared-length units and may be negative. Internally, one common global shift
+converts them to non-negative length-unit backend radii, so a common additive
+change to all weights leaves areas, adjacency, realized edges, and periodic
+image shifts unchanged within numerical tolerance. Existing `radii=` calls
+remain valid and numerically unchanged in power mode, but supplying both
+representations is an error. Standard mode rejects either representation.
+`weights=` is currently a `compute(...)` argument only. The input and converted
+representation must remain finite; non-finite input or overflow during
+conversion raises `ValueError` before native computation.
+Finite representability is necessary for conversion but does not guarantee
+backend numerical resolution. Extremely large backend radius-squared
+magnitudes relative to squared domain lengths—or, for canonical weight-first
+input, extremely large weight ranges—may exceed Voro++'s numerical resolution,
+especially for periodic power tessellations.
+
 ## Rectangular periodic cells and edge shifts
 
 For periodic rectangular domains, request `return_edge_shifts=True` when you

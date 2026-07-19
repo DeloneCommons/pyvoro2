@@ -139,7 +139,9 @@ def test_documented_forward_module_routes_are_characterized() -> None:
 
 
 def test_spatial_compute_signature_and_defaults_are_characterized() -> None:
-    assert _parameter_defaults(pv.compute) == (
+    defaults = _parameter_defaults(pv.compute)
+    assert defaults[11] == ('weights', None)
+    assert defaults[:11] + defaults[12:] == (
         ('points', REQUIRED),
         ('domain', REQUIRED),
         ('ids', None),
@@ -172,7 +174,9 @@ def test_spatial_compute_signature_and_defaults_are_characterized() -> None:
 
 
 def test_planar_compute_signature_and_defaults_are_characterized() -> None:
-    assert _parameter_defaults(pv2.compute) == (
+    defaults = _parameter_defaults(pv2.compute)
+    assert defaults[11] == ('weights', None)
+    assert defaults[:11] + defaults[12:] == (
         ('points', REQUIRED),
         ('domain', REQUIRED),
         ('ids', None),

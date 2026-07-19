@@ -8,6 +8,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Added
 
+- Direct mathematical `weights=` input for spatial and planar
+  `compute(..., mode='power')`, using one common global representation shift
+  before the existing native radius-based calls while retaining `radii=` in
+  power mode.
 - `AGENTS.md` with repository boundaries, generated-file rules, validation commands, and numerical/architectural invariants for agent-assisted development.
 - `CONTRIBUTING.md` with the development workflow plus compact support, governance, and private security-reporting guidance suitable for the current single-maintainer project.
 - New theory documentation for power diagrams, power weights versus backend radii, global gauge versus disconnected-component offsets, and the separator-based inverse problem.
@@ -34,6 +38,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Improved numerical stability of periodic 2D edge-shift and 3D face-shift
+  reconstruction for large backend-resolvable power inputs.
+- Standard spatial and planar `compute(...)` calls now reject `radii=` rather
+  than silently ignoring it; radius-based power computation remains unchanged.
 - Weight/radius transforms now reject non-finite `r_min` values and finite
   inputs whose squaring or representation-shift arithmetic overflows, so
   successful conversions and inverse-fit results cannot contain NaN or

@@ -199,11 +199,24 @@ arrows point toward the implementation provider:
 top-level pyvoro2 exports -----------------+
 separator problem and active-set code -----+--> pyvoro2._weight_transforms
 pyvoro2.powerfit compatibility exports ----+
+forward power-input resolution ------------+
 ```
 
-This ownership move does not add weight-first forward arguments; direct
-`weights=` support remains a separate WP-02 implementation issue. It also does
-not move separator ownership, which remains assigned to the later canonical
+### Direct weight-first forward input
+
+The spatial and planar `compute(...)` functions now accept direct mathematical
+`weights=` in power mode. The dimension-neutral private module
+`pyvoro2._power_input` validates the input contract once and carries three
+values together: supplied mathematical weights, resolved backend radii, and
+the common representation shift. It delegates the conversion itself to
+`pyvoro2._weight_transforms` and has no separator or native-extension
+dependency.
+
+Both forward wrappers pass the resolved backend radii to every native power
+call and to periodic face/edge image-shift reconstruction. This completes the
+forward-input part of WP-02 without adding weights to `locate(...)` or
+`ghost_cells(...)`, changing raw returns, or implementing the common result
+object. Separator ownership also remains assigned to the later canonical
 inverse work package.
 
 ## Why stabilization is needed
@@ -217,12 +230,12 @@ The 3D API normally returns raw records, while the planar API can return a
 `PlanarComputeResult`. Future inverse methods need common access to cells,
 measures, boundaries, periodic labels, and diagnostics in both dimensions.
 
-### Radius-first forward input
+### Radius-first v0.6.3 forward input
 
-The mathematical inverse variable is a power weight, but the forward API accepts
-`radii=` because Voro++ represents weights as squared radii. Downstream code
-should not need to choose an arbitrary global shift merely to compute a diagram
-from weights.
+The mathematical inverse variable is a power weight, but the v0.6.3 forward API
+accepted only `radii=` because Voro++ represents weights as squared radii. The
+current v0.7 development tree resolves that baseline limitation for both
+`compute(...)` functions.
 
 ### Separator-specific public organization
 
@@ -296,8 +309,10 @@ re-parse or reorder the same geometry independently.
 
 ### Weight-first forward route
 
-The forward power API should accept mathematical weights directly in addition
-to the existing `radii=` route.
+The current v0.7 forward power API accepts mathematical weights directly in
+addition to the existing `radii=` route. Power mode requires exactly one
+representation. Standard mode rejects both representations rather than silently
+ignoring unused weighted inputs.
 
 At the backend boundary, a single global shift can be chosen so that
 
@@ -305,9 +320,12 @@ At the backend boundary, a single global shift can be chosen so that
 r_i = \sqrt{w_i + c}
 \]
 
-is real and non-negative. The chosen shift is representation metadata; it does
-not change the diagram. Supplying both weights and radii should either be
-rejected clearly or require an explicit consistency policy.
+is real and non-negative. The implementation uses the established
+`weights_to_radii(weights)` default, and the chosen shift is representation
+metadata that does not change the diagram. Supplying both weights and radii is
+rejected before native computation. The private resolution carrier keeps the
+validated weights, backend radii, and shift available for the later common
+result implementation without exposing a new public weights object.
 
 ### Shared forward result contract
 

@@ -69,10 +69,31 @@ cells = pyvoro2.compute(
     points,
     domain=box,
     mode='power',
-    radii=radii,
+    weights=weights,
     include_empty=True,
 )
 ```
+
+Here `weights[i]` is the \(w_i\) in
+\(\lVert x-p_i\rVert^2-w_i\). Weights have squared-length units and may be
+negative. pyvoro2 uses one common global shift to convert them to non-negative
+backend radii before entering Voro++; this representation shift does not change
+the diagram. Adding a common constant to all weights is therefore geometrically
+invariant. The input and converted representation must remain finite;
+non-finite input or overflow during conversion raises `ValueError` before the
+native call.
+Finite representability is necessary for conversion but does not guarantee
+backend numerical resolution. Extremely large backend radius-squared
+magnitudes relative to squared domain lengths—or, for canonical weight-first
+input, extremely large weight ranges—may exceed Voro++'s numerical resolution,
+especially for periodic power tessellations.
+
+Power-mode `compute(...)` requires exactly one of `weights=` or the existing
+`radii=` representation. Radii have length units and should not be interpreted
+as unique physical radii; valid radius-based power computations remain
+unchanged. Standard-mode `compute(...)` rejects both representations. Direct
+weights are available on `compute(...)`, not on `locate(...)` or
+`ghost_cells(...)`.
 
 Power diagrams can produce **empty cells** (volume 0). Voro++ omits those in its iteration;
 pyvoro2 can reinsert explicit empty-cell records when `include_empty=True`.

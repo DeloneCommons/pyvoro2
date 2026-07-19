@@ -16,6 +16,7 @@ from .._inputs import (
     coerce_point_array,
     validate_duplicate_check_mode,
 )
+from .._power_input import resolve_power_input
 from ._domain_geometry import geometry2d
 from ._edge_shifts2d import _add_periodic_edge_shifts_inplace
 from .diagnostics import (
@@ -125,6 +126,7 @@ def compute(
     blocks: tuple[int, int] | None = None,
     init_mem: int = 8,
     mode: Literal['standard', 'power'] = 'standard',
+    weights: Sequence[float] | np.ndarray | None = None,
     radii: Sequence[float] | np.ndarray | None = None,
     return_vertices: bool = True,
     return_adjacency: bool = True,
@@ -174,11 +176,35 @@ def compute(
     even when those fields were not requested by the caller. Any such
     temporary fields are stripped from the raw returned cells unless they were
     explicitly requested.
+
+    In ``mode='power'``, supply exactly one of ``weights`` or ``radii``.
+    Mathematical weights follow the power convention
+    ``||x - p_i||^2 - w_i`` and have squared-length units; positive, zero, and
+    negative finite weights are valid when the common-shift conversion remains
+    finite and representable. Non-finite input or overflow during conversion
+    raises ``ValueError`` before native computation. Finite representability
+    does not guarantee backend numerical resolution. Extremely large backend
+    radius-squared magnitudes relative to squared domain lengths—or, for
+    canonical weight-first input, extremely large weight ranges—may exceed
+    Voro++'s numerical resolution, especially for periodic power
+    tessellations.
+    pyvoro2 converts valid weights to non-negative backend radii with one common
+    global shift, so adding the same constant to every weight does not change
+    the diagram. Radii have length units and are a non-unique backend
+    representation, not necessarily physical radii. Standard mode rejects both
+    ``weights`` and ``radii`` because neither representation has meaning there.
     """
 
     pts = coerce_point_array(points, name='points', dim=2)
     _warn_if_scale_suspicious(pts=pts, domain=domain)
     n = int(pts.shape[0])
+    power_input = resolve_power_input(
+        mode=mode,
+        weights=weights,
+        radii=radii,
+        n=n,
+    )
+    rr = power_input.backend_radii
 
     if int(edge_shift_search) < 0:
         raise ValueError('edge_shift_search must be >= 0')
@@ -264,7 +290,6 @@ def compute(
         internal_return_edges,
     )
 
-    rr: np.ndarray | None = None
     if mode == 'standard':
         cells = core.compute_box_standard(
             pts,
@@ -276,9 +301,7 @@ def compute(
             opts,
         )
     elif mode == 'power':
-        if radii is None:
-            raise ValueError('radii is required for mode="power"')
-        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
+        assert rr is not None
         cells = core.compute_box_power(
             pts,
             ids_internal,

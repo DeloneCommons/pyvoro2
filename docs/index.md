@@ -7,7 +7,8 @@ topology and inverse fitting of power weights from partial geometric data.
 The current public release provides:
 
 - standard Voronoi tessellations;
-- power/Laguerre tessellations through per-site radii;
+- power/Laguerre tessellations directly from mathematical weights, with the
+  existing radius representation retained;
 - a dedicated `pyvoro2.planar` namespace for 2D rectangular domains;
 - bounded, partially periodic, and triclinic periodic 3D domains;
 - explicit periodic neighbor-image shifts;
@@ -90,25 +91,32 @@ topology2d = result2d.require_normalized_topology()
 
 ### 3) Power/Laguerre tessellation
 
-The current forward API accepts non-negative radii and uses their squares as
-power weights:
+The forward `compute(...)` APIs accept mathematical power weights directly:
 
 ```python
-radii = np.full(len(points), 1.2)
+weights = np.linspace(-0.2, 0.2, len(points))
 
 cells = pv.compute(
     points,
     domain=box,
     mode='power',
-    radii=radii,
+    weights=weights,
     include_empty=True,
 )
 ```
 
-A common shift of every power weight leaves the diagram unchanged. The planned
-v0.7 API adds a direct weight-first route so callers do not need to choose a
-backend radius shift themselves. See [Power diagrams](theory/power-diagrams.md)
-for the precise distinction.
+The power function is `||x - p_i||^2 - w_i`: weights have squared-length
+units, may be negative, and are converted to non-negative backend radii using
+one common global shift. Adding the same constant to every weight leaves the
+complete diagram unchanged. Existing `radii=` calls remain available, but the
+resulting length-unit radii are a non-unique backend representation rather than
+necessarily physical radii. Supply exactly one of `weights=` or `radii=` in
+power mode. Finite representability is necessary for conversion but does not
+guarantee backend numerical resolution. Extremely large backend radius-squared
+magnitudes relative to squared domain lengths—or, for canonical weight-first
+input, extremely large weight ranges—may exceed Voro++'s numerical resolution,
+especially for periodic power tessellations. See
+[Power diagrams](theory/power-diagrams.md) for the precise distinction.
 
 ### 4) Periodic crystal cell with neighbor image shifts
 

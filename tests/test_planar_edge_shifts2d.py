@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from pyvoro2.planar._edge_shifts2d import _add_periodic_edge_shifts_inplace
 
@@ -97,7 +98,18 @@ def test_planar_edge_shifts_can_repair_reciprocity() -> None:
     assert s10 == [(0, 0), (1, 0)]
 
 
-def test_planar_edge_shifts_support_ghost_query_cells() -> None:
+@pytest.mark.parametrize(
+    ('mode', 'radii', 'ghost_radii'),
+    (
+        ('standard', None, None),
+        ('power', np.full(3, 1e8), np.array([1e8])),
+    ),
+)
+def test_planar_edge_shifts_support_ghost_query_cells(
+    mode: str,
+    radii: np.ndarray | None,
+    ghost_radii: np.ndarray | None,
+) -> None:
     cells = [
         {
             'id': -1,
@@ -126,7 +138,9 @@ def test_planar_edge_shifts_support_ghost_query_cells() -> None:
         cells,
         lattice_vectors=(np.array([1.0, 0.0]), np.array([0.0, 1.0])),
         periodic_mask=(True, True),
-        mode='standard',
+        mode=mode,
+        radii=radii,
+        ghost_radii=ghost_radii,
         site_positions=np.array([[0.2, 0.2], [0.8, 0.2], [0.5, 0.8]]),
         search=1,
     )

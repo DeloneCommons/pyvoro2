@@ -123,13 +123,13 @@ def _add_periodic_face_shifts_inplace(
     shift_to_idx = {s: i for i, s in enumerate(shifts)}
     l1 = np.asarray([abs(s[0]) + abs(s[1]) + abs(s[2]) for s in shifts], dtype=np.int64)
 
-    # Weights for power mode (Laguerre diagram)
+    # Backend radii for power mode (Laguerre diagram).
     if mode == 'power':
         if radii is None:
             raise ValueError('radii is required for mode="power"')
-        w = np.asarray(radii, dtype=np.float64) ** 2
+        power_radii = np.asarray(radii, dtype=np.float64)
     else:
-        w = None
+        power_radii = None
 
     def _residual_for_trans(
         *,
@@ -162,13 +162,17 @@ def _add_periodic_face_shifts_inplace(
             return np.max(dist, axis=1)
 
         if mode == 'power':
-            assert w is not None
-            wi = float(w[pid])
-            wj = float(w[nid])
-            # Radical plane: d·x = (|pj|^2 - wj - (|pi|^2 - wi)) / 2
-            rhs = 0.5 * (
-                (np.sum(pj * pj, axis=1) - wj) - (np.dot(p_i, p_i) - wi)
-            )  # (m,)
+            assert power_radii is not None
+            geom_delta = np.einsum(
+                'mk,mk->m',
+                d,
+                pj + p_i.reshape(1, 3),
+            )
+            r_i = float(power_radii[pid])
+            r_j = float(power_radii[nid])
+            weight_delta = (r_i - r_j) * (r_i + r_j)
+            # Radical plane: d·x = (|pj|^2 - |pi|^2 + wi - wj) / 2
+            rhs = 0.5 * (geom_delta + weight_delta)
             dist = np.abs(proj - rhs[:, None]) / dn[:, None]
             return np.max(dist, axis=1)
 
