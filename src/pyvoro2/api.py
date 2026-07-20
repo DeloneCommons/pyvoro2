@@ -28,22 +28,23 @@ from .diagnostics import (
 )
 from .result import TessellationResult, _build_tessellation_result
 
-# The compiled C++ extension is required for geometry operations.
-#
-# We import it lazily so that documentation builds (and basic package imports)
-# can work without a compiled wheel present. Any attempt to call compute/locate/
-# ghost_cells without the extension will raise an informative ImportError.
-try:
-    from . import _core  # type: ignore
-
-    _CORE_IMPORT_ERROR: BaseException | None = None
-except Exception as _e:  # pragma: no cover
-    _core = None  # type: ignore
-    _CORE_IMPORT_ERROR = _e
+# The compiled C++ extension is loaded only when a geometry operation needs it.
+# Documentation builds and inverse-only imports therefore work without a
+# compiled wheel and do not pay the native-import cost.
+_core = None
+_CORE_IMPORT_ERROR: BaseException | None = None
 
 
 def _require_core():
     """Return the compiled extension module or raise a helpful ImportError."""
+    global _core, _CORE_IMPORT_ERROR
+    if _core is None and _CORE_IMPORT_ERROR is None:
+        try:
+            from importlib import import_module
+
+            _core = import_module('._core', __package__)
+        except Exception as exc:  # pragma: no cover
+            _CORE_IMPORT_ERROR = exc
     if _core is None:  # pragma: no cover
         raise ImportError(
             'pyvoro2 C++ extension module \'_core\' is not available. '

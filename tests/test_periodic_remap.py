@@ -1,6 +1,9 @@
+from types import SimpleNamespace
+
 import numpy as np
 
 from pyvoro2 import PeriodicCell, compute
+import pyvoro2.api as api3d
 
 
 def _sheared_cell() -> PeriodicCell:
@@ -78,10 +81,11 @@ def test_compute_does_not_pre_wrap_periodic_points(monkeypatch) -> None:
         # Minimal stub cells.
         return [{'id': int(i), 'volume': 0.0} for i in range(len(pts_i))]
 
-    monkeypatch.setattr(
-        'pyvoro2.api._core.compute_periodic_standard',
-        fake_compute_periodic_standard,
+    fake_core = SimpleNamespace(
+        compute_periodic_standard=fake_compute_periodic_standard,
     )
+    monkeypatch.setattr(api3d, '_core', fake_core)
+    monkeypatch.setattr(api3d, '_CORE_IMPORT_ERROR', None)
 
     compute(
         pts,

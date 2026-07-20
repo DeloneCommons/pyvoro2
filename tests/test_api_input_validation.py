@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
 import pyvoro2
+import pyvoro2.api as api3d
 
 
 def _box() -> pyvoro2.Box:
@@ -132,10 +135,11 @@ def test_duplicate_check_argument_warns(monkeypatch) -> None:
         # Minimal stub cells.
         return [{'id': int(i), 'volume': 0.0} for i in range(len(pts))]
 
-    monkeypatch.setattr(
-        'pyvoro2.api._core.compute_box_standard',
-        fake_compute_box_standard,
+    fake_core = SimpleNamespace(
+        compute_box_standard=fake_compute_box_standard,
     )
+    monkeypatch.setattr(api3d, '_core', fake_core)
+    monkeypatch.setattr(api3d, '_CORE_IMPORT_ERROR', None)
 
     with pytest.warns(RuntimeWarning):
         pyvoro2.compute(

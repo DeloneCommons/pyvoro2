@@ -10,6 +10,8 @@ active-set solver.
 import numpy as np
 
 import pyvoro2 as pv
+import pyvoro2.inverse as inverse
+import pyvoro2.inverse.separator as separator
 ```
 ## 1) Resolve a small candidate set
 
@@ -27,22 +29,22 @@ points = np.array(
 ids = np.array([100, 101, 102], dtype=int)
 box = pv.Box(((-1.0, 5.0), (-2.0, 2.0), (-2.0, 2.0)))
 
-constraints = pv.resolve_pair_bisector_constraints(
+observations = inverse.resolve_separator_observations(
     points,
     [(0, 1, 0.35), (1, 2, 0.55), (0, 2, 0.50)],
     measurement="fraction",
     domain=box,
     ids=ids,
 )
-constraints.to_records(use_ids=True)
+observations.to_records(use_ids=True)
 ```
 ## 2) Fit power weights and export low-level reports
 ```python
-model = pv.FitModel(
-    mismatch=pv.SquaredLoss(),
-    feasible=pv.Interval(0.0, 1.0),
+model = separator.FitModel(
+    mismatch=separator.SquaredLoss(),
+    feasible=separator.Interval(0.0, 1.0),
     penalties=(
-        pv.ExponentialBoundaryPenalty(
+        separator.ExponentialBoundaryPenalty(
             lower=0.0,
             upper=1.0,
             margin=0.05,
@@ -52,31 +54,31 @@ model = pv.FitModel(
     ),
 )
 
-fit = pv.fit_power_weights(
+fit = inverse.fit_weights_from_separators(
     points,
-    constraints,
+    observations,
     model=model,
 )
 
-fit_rows = fit.to_records(constraints, use_ids=True)
-fit_report = fit.to_report(constraints, use_ids=True)
+fit_rows = fit.to_records(observations, use_ids=True)
+fit_report = fit.to_report(observations, use_ids=True)
 fit_report["summary"]
 
 fit_report["weight_shift"]
 ```
 ## 3) Check realized pairs against the actual power tessellation
 ```python
-realized = pv.match_realized_pairs(
+realized = separator.match_realized_pairs(
     points,
     domain=box,
     radii=fit.radii,
-    constraints=constraints,
+    constraints=observations,
     return_boundary_measure=True,
     return_tessellation_diagnostics=True,
 )
 
-realized_rows = realized.to_records(constraints, use_ids=True)
-realized_report = realized.to_report(constraints, use_ids=True)
+realized_rows = realized.to_records(observations, use_ids=True)
+realized_report = realized.to_report(observations, use_ids=True)
 realized_report["summary"]
 ```
 ## 4) Run the self-consistent active-set solver
@@ -84,12 +86,12 @@ realized_report["summary"]
 
 `solve_report["connectivity"]` and `solve_report["realized"]` describe the final returned solution. `solve_report["path_summary"]` and the optional `history` rows capture transient disconnectivity or candidate-absent realized pairs that occurred during the outer iterations.
 ```python
-result = pv.solve_self_consistent_power_weights(
+result = separator.solve_self_consistent_power_weights(
     points,
-    constraints,
+    observations,
     domain=box,
     model=model,
-    options=pv.ActiveSetOptions(
+    options=separator.ActiveSetOptions(
         add_after=1,
         drop_after=2,
         relax=0.5,
@@ -109,7 +111,7 @@ solve_report["path_summary"]
 ```
 ## 5) Serialize the report bundle
 ```python
-text = pv.dumps_report_json(solve_report, sort_keys=True)
+text = separator.dumps_report_json(solve_report, sort_keys=True)
 text[:200]
 ```
 The numerical API stays array-oriented, while the report helpers make it

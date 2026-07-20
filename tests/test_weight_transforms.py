@@ -352,5 +352,5 @@ print(json.dumps(attempted))
     package_attempts = native_import_attempts('pyvoro2')
     transform_attempts = native_import_attempts('pyvoro2._weight_transforms')
 
-    assert set(package_attempts) == {'pyvoro2._core', 'pyvoro2._core2d'}
+    assert package_attempts == []
     assert transform_attempts == package_attempts

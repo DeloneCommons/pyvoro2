@@ -130,7 +130,11 @@ That package exposed much of this surface both through
 for existing users, but it creates a large accidental top-level stability
 surface.
 
-### v0.6.3 data flows
+### Core data flows
+
+The inverse flows use the current canonical v0.7 names for clarity. The v0.6.3
+implementation exposed the same roles through the historical names recorded in
+the [advanced separator API inventory](api-inventory.md#advanced-separator-api).
 
 #### 3D forward computation
 
@@ -157,11 +161,11 @@ points + IDs + planar domain + mode + radii/options
 
 ```text
 raw pair observations
-    -> resolved PairBisectorConstraints
-    -> FitModel + PowerFitProblem
+    -> resolved SeparatorObservations
+    -> FitModel + SeparatorFitProblem
     -> graph/connectivity and hard-feasibility analysis
     -> quadratic or iterative solver
-    -> PowerWeightFitResult
+    -> SeparatorFitResult
     -> optional conversion to radii
 ```
 
@@ -225,10 +229,12 @@ first access. Plain `import pyvoro2` and canonical-only imports therefore do
 not load the compatibility package, while existing `pv.powerfit` calls still
 receive the historical module. The attribute remains outside `pyvoro2.__all__`.
 
-Issue #11 changes ownership only. `pyvoro2.inverse.separator` therefore exposes
-the existing historical names, while `pyvoro2.inverse` itself remains minimal.
-The terminology aliases, preferred high-level convenience surface,
-deprecation behavior, and migration policy are deferred to issue #12.
+Issue #12 adds canonical primary definitions for the five accepted core names
+and keeps their historical names as identity aliases. `pyvoro2.inverse`
+exposes only the normal fixed-observation workflow and neutral transforms;
+advanced separator objects remain in `pyvoro2.inverse.separator`. Importing
+the historical `pyvoro2.powerfit` package emits a hidden-by-default
+`DeprecationWarning` with the planned v0.8 removal horizon.
 
 ### Direct weight-first forward input
 
@@ -431,11 +437,11 @@ the first observation family. `pyvoro2.powerfit` becomes a thin
 compatibility-only shim during v0.7 and is planned for removal in v0.8. Broad
 separator-specific top-level exports follow the same transition schedule.
 
-The physical ownership and one-way shim direction are implemented in the
-current tree. The canonical separator package still uses the historical names,
-and the high-level `pyvoro2.inverse` convenience surface is intentionally not
-present yet. Issue #12 owns the preferred names, aliases, warnings, and
-migration-facing surface below.
+The physical ownership, one-way shim direction, canonical core names, and
+high-level convenience surface are implemented in the current tree. The
+historical names are identity aliases for v0.7, while `pyvoro2.powerfit` and
+broad top-level separator exports are deprecated compatibility routes planned
+for removal in v0.8.
 
 The separator workflow should be described using the following concepts:
 
@@ -447,12 +453,11 @@ The separator workflow should be described using the following concepts:
 - realized-boundary diagnostics;
 - optional realization-aware refinement.
 
-Historical names such as `PairBisectorConstraints` are retained unchanged by
-issue #11 and become compatibility aliases as part of issue #12. After that
-terminology work, new documentation will prefer `SeparatorObservations`,
-`SeparatorFitResult`, and `fit_weights_from_separators`. Compatibility code
-imports from the canonical namespace; canonical code never imports from
-`powerfit`.
+New documentation prefers `SeparatorObservations`, `SeparatorFitResult`, and
+`fit_weights_from_separators`. Historical names such as
+`PairBisectorConstraints` resolve to those same canonical objects during v0.7.
+Compatibility code imports from the canonical namespace; canonical code never
+imports from `powerfit`.
 
 ### Inspectable algebraic operators
 

@@ -242,7 +242,7 @@ def test_active_set_propagates_numerical_failure(monkeypatch):
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     domain = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
 
-    def fake_fit_power_weights(points, constraints, **kwargs):
+    def fake_fit_weights_from_separators(points, constraints, **kwargs):
         return PowerWeightFitResult(
             status='numerical_failure',
             hard_feasible=True,
@@ -265,7 +265,11 @@ def test_active_set_propagates_numerical_failure(monkeypatch):
             warnings=('synthetic fit failure',),
         )
 
-    monkeypatch.setattr(active_mod, 'fit_power_weights', fake_fit_power_weights)
+    monkeypatch.setattr(
+        active_mod,
+        'fit_weights_from_separators',
+        fake_fit_weights_from_separators,
+    )
 
     res = active_mod.solve_self_consistent_power_weights(
         pts,

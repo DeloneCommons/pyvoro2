@@ -116,8 +116,11 @@ nav:
           - Historical result alias: reference/planar/result.md
           - Edge properties: reference/edge_properties.md
           - Visualization (2D): reference/viz2d.md
-      - Power fitting:
-          - Overview: reference/powerfit/index.md
+      - Inverse fitting:
+          - High-level API: reference/inverse/index.md
+          - Advanced separator API: reference/inverse/separator.md
+      - Deprecated power fitting:
+          - Compatibility overview: reference/powerfit/index.md
           - Constraints: reference/powerfit/constraints.md
           - Objective models: reference/powerfit/model.md
           - Solver: reference/powerfit/solver.md

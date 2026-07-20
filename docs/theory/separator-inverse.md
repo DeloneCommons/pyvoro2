@@ -12,9 +12,9 @@ condition on that graph; noisy fitting leads to a gauge-aware graph-Laplacian
 problem. Geometric realization remains a separate question because a third site
 may block a pair even when its requested separator equation is fitted exactly.
 
-The current Python API stores these data in `PairBisectorConstraints`. This page
-uses the more descriptive term **separator observations** and states the main
-mathematical ideas independently of current class names.
+The current Python API stores these data in `SeparatorObservations`. This page
+uses the same term **separator observations** while stating the main
+mathematical ideas independently of API details.
 
 ## Observation model for one pair
 

@@ -8,7 +8,7 @@ from typing import Literal
 import numpy as np
 
 from ..._weight_transforms import weights_to_radii
-from .constraints import PairBisectorConstraints
+from .constraints import SeparatorObservations
 from .model import (
     ExponentialBoundaryPenalty,
     FitModel,
@@ -30,7 +30,7 @@ from .types import (
     PowerFitBounds,
     PowerFitObjectiveBreakdown,
     PowerFitPredictions,
-    PowerWeightFitResult,
+    SeparatorFitResult,
     _readonly_array,
 )
 
@@ -57,10 +57,10 @@ class _DifferenceEdge:
 
 
 @dataclass(frozen=True, slots=True)
-class PowerFitProblem:
-    """Stable public export of the resolved inverse power-fit problem."""
+class SeparatorFitProblem:
+    """Resolved fixed-observation separator fit problem."""
 
-    constraints: PairBisectorConstraints
+    constraints: SeparatorObservations
     model: FitModel
     alpha: np.ndarray
     beta: np.ndarray
@@ -198,11 +198,11 @@ class PowerFitProblem:
 
 
 def build_power_fit_problem(
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
     *,
     model: FitModel | None = None,
-) -> PowerFitProblem:
-    """Build a stable public power-fit problem from resolved constraints."""
+) -> SeparatorFitProblem:
+    """Build a public separator-fit problem from resolved observations."""
 
     if model is None:
         model = FitModel()
@@ -239,7 +239,7 @@ def build_power_fit_problem(
     target = np.asarray(geom.target, dtype=np.float64)
     z_obs = (target - beta) / alpha
     edge_weight = np.asarray(constraints.confidence, dtype=np.float64) * (alpha * alpha)
-    return PowerFitProblem(
+    return SeparatorFitProblem(
         constraints=constraints,
         model=model,
         alpha=alpha,
@@ -260,7 +260,7 @@ def build_power_fit_problem(
 
 
 def build_power_fit_result(
-    problem: PowerFitProblem,
+    problem: SeparatorFitProblem,
     weights: np.ndarray,
     *,
     solver: str = 'external',
@@ -272,7 +272,7 @@ def build_power_fit_result(
     canonicalize_gauge: bool = True,
     r_min: float = 0.0,
     weight_shift: float | None = None,
-) -> PowerWeightFitResult:
+) -> SeparatorFitResult:
     """Package candidate weights into a standard power-fit result object."""
 
     w = _validated_weight_vector(problem, weights)
@@ -301,7 +301,7 @@ def build_power_fit_result(
     )
     rms = float(np.sqrt(np.mean(residuals * residuals))) if residuals.size else 0.0
     mx = float(np.max(np.abs(residuals))) if residuals.size else 0.0
-    return PowerWeightFitResult(
+    return SeparatorFitResult(
         status=status,
         status_detail=status_detail,
         hard_feasible=bool(problem.hard_feasible),
@@ -329,7 +329,7 @@ def build_power_fit_result(
 
 
 def _validated_weight_vector(
-    problem: PowerFitProblem,
+    problem: SeparatorFitProblem,
     weights: np.ndarray,
 ) -> np.ndarray:
     w = np.asarray(weights, dtype=float)
@@ -340,7 +340,7 @@ def _validated_weight_vector(
     return np.asarray(w, dtype=np.float64)
 
 
-def _measurement_geometry(constraints: PairBisectorConstraints) -> _MeasurementGeometry:
+def _measurement_geometry(constraints: SeparatorObservations) -> _MeasurementGeometry:
     d = constraints.distance
     d2 = constraints.distance2
     if constraints.measurement == 'fraction':
@@ -361,7 +361,7 @@ def _measurement_geometry(constraints: PairBisectorConstraints) -> _MeasurementG
 
 
 def _predict_all(
-    problem: PowerFitProblem,
+    problem: SeparatorFitProblem,
     weights: np.ndarray,
 ) -> PowerFitPredictions:
     z_pred = weights[problem.constraints.i] - weights[problem.constraints.j]
@@ -379,7 +379,7 @@ def _predict_all(
 
 
 def _compute_edge_diagnostics(
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
     *,
     weights: np.ndarray | None,
     predictions: PowerFitPredictions | None = None,
@@ -439,8 +439,8 @@ def _compute_edge_diagnostics(
 
 
 def _edge_diagnostics_for_result(
-    result: PowerWeightFitResult,
-    constraints: PairBisectorConstraints,
+    result: SeparatorFitResult,
+    constraints: SeparatorObservations,
 ) -> AlgebraicEdgeDiagnostics:
     if result.edge_diagnostics is not None:
         return result.edge_diagnostics
@@ -518,7 +518,7 @@ def _penalty_values(
 
 
 def _hard_constraint_status(
-    problem: PowerFitProblem,
+    problem: SeparatorFitProblem,
     predictions: PowerFitPredictions,
 ) -> tuple[bool, float]:
     lower = problem.bounds.measurement_lower
@@ -536,7 +536,7 @@ def _hard_constraint_status(
 
 
 def _objective_breakdown(
-    problem: PowerFitProblem,
+    problem: SeparatorFitProblem,
     predictions: PowerFitPredictions,
     weights: np.ndarray,
 ) -> PowerFitObjectiveBreakdown:
@@ -585,7 +585,7 @@ def _regularization_reference(reg: L2Regularization, n: int) -> np.ndarray:
 
 
 def _offset_identifying_constraint_mask(
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
     model: FitModel,
 ) -> np.ndarray:
     mask = np.asarray(constraints.confidence > 0.0, dtype=bool)
@@ -700,7 +700,7 @@ def _format_point_list(points: tuple[int, ...]) -> str:
 
 
 def _build_fit_connectivity_diagnostics(
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
     *,
     model: FitModel,
     gauge_policy: str,
@@ -759,7 +759,7 @@ def _build_fit_connectivity_diagnostics(
 
 
 def _build_active_set_connectivity_diagnostics(
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
     active_mask: np.ndarray,
     *,
     model: FitModel,
@@ -1112,3 +1112,8 @@ def _penalty_derivatives(
         return fp, fpp
 
     raise TypeError(f'unsupported penalty: {type(penalty)!r}')
+
+
+# Historical v0.6 name retained as an identity alias during v0.7.
+# Planned removal: v0.8.
+PowerFitProblem = SeparatorFitProblem

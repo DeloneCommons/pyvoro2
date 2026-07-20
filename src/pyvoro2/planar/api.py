@@ -29,13 +29,8 @@ from .domains import Box, RectangularCell
 from .duplicates import duplicate_check as _duplicate_check
 from .normalize import normalize_edges, normalize_vertices
 
-try:
-    from .. import _core2d  # type: ignore[attr-defined]
-
-    _CORE2D_IMPORT_ERROR: BaseException | None = None
-except Exception as _e:  # pragma: no cover
-    _core2d = None  # type: ignore[assignment]
-    _CORE2D_IMPORT_ERROR = _e
+_core2d = None
+_CORE2D_IMPORT_ERROR: BaseException | None = None
 
 
 Domain2D = Box | RectangularCell
@@ -79,6 +74,14 @@ def _strip_internal_geometry_inplace(
 def _require_core2d():
     """Return the compiled 2D extension module or raise a helpful ImportError."""
 
+    global _core2d, _CORE2D_IMPORT_ERROR
+    if _core2d is None and _CORE2D_IMPORT_ERROR is None:
+        try:
+            from importlib import import_module
+
+            _core2d = import_module('.._core2d', __package__)
+        except Exception as exc:  # pragma: no cover
+            _CORE2D_IMPORT_ERROR = exc
     if _core2d is None:  # pragma: no cover
         raise ImportError(
             "pyvoro2 C++ extension module '_core2d' is not available. "

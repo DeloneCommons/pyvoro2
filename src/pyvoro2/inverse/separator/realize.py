@@ -9,7 +9,7 @@ import warnings
 
 import numpy as np
 
-from .constraints import PairBisectorConstraints
+from .constraints import SeparatorObservations
 from ..._domain_geometry import geometry3d
 from ...api import compute as compute3d
 from ...diagnostics import TessellationDiagnostics as TessellationDiagnostics3D
@@ -45,7 +45,7 @@ def _boundary_value(values: np.ndarray | None, index: int) -> float | None:
     return float(values[index])
 
 
-def _supported_realization_dim(constraints: PairBisectorConstraints) -> None:
+def _supported_realization_dim(constraints: SeparatorObservations) -> None:
     if constraints.dim not in (2, 3):
         raise ValueError(
             'match_realized_pairs currently supports only 2D and 3D resolved '
@@ -115,7 +115,7 @@ class RealizedPairDiagnostics:
 
     def to_records(
         self,
-        constraints: PairBisectorConstraints,
+        constraints: SeparatorObservations,
         *,
         use_ids: bool = False,
     ) -> tuple[dict[str, object], ...]:
@@ -164,7 +164,7 @@ class RealizedPairDiagnostics:
 
     def to_report(
         self,
-        constraints: PairBisectorConstraints,
+        constraints: SeparatorObservations,
         *,
         use_ids: bool = False,
     ) -> dict[str, object]:
@@ -180,7 +180,7 @@ def match_realized_pairs(
     *,
     domain: DomainAny,
     radii: np.ndarray,
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
     return_boundary_measure: bool = False,
     return_cells: bool = False,
     return_tessellation_diagnostics: bool = False,
@@ -440,7 +440,7 @@ def _canonical_pair_and_shift(
 
 
 def _collect_unaccounted_pairs(
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
     *,
     shifts_by_pair: dict[tuple[int, int], set[ShiftTuple]],
     measure_by_pair_shift: dict[MeasureKey, float],

@@ -13,13 +13,13 @@ from typing import Any
 
 import numpy as np
 
-from .constraints import PairBisectorConstraints
+from .constraints import SeparatorObservations
 from .realize import RealizedPairDiagnostics
 from .types import (
     ConnectivityDiagnostics,
     ConstraintGraphDiagnostics,
     HardConstraintConflict,
-    PowerWeightFitResult,
+    SeparatorFitResult,
 )
 
 
@@ -248,8 +248,8 @@ def _objective_breakdown_record(
 
 
 def _edge_diagnostics_record(
-    result: PowerWeightFitResult,
-    constraints: PairBisectorConstraints,
+    result: SeparatorFitResult,
+    constraints: SeparatorObservations,
 ) -> dict[str, object]:
     diagnostics = result.edge_diagnostics
     if diagnostics is None:
@@ -285,8 +285,8 @@ def _edge_diagnostics_record(
 
 
 def build_fit_report(
-    result: PowerWeightFitResult,
-    constraints: PairBisectorConstraints,
+    result: SeparatorFitResult,
+    constraints: SeparatorObservations,
     *,
     use_ids: bool = False,
 ) -> dict[str, object]:
@@ -339,7 +339,7 @@ def build_fit_report(
 
 def build_realized_report(
     diagnostics: RealizedPairDiagnostics,
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
     *,
     use_ids: bool = False,
 ) -> dict[str, object]:

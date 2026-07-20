@@ -1,6 +1,8 @@
-"""Compatibility exports for the historical separator-fitting namespace."""
+"""Deprecated compatibility exports for historical separator fitting."""
 
 from __future__ import annotations
+
+from warnings import warn
 
 from ..inverse.separator import (
     ActiveSetIteration,
@@ -45,6 +47,17 @@ from ..inverse.separator import (
     solve_self_consistent_power_weights,
     weights_to_radii,
     write_report_json,
+)
+
+warn(
+    'pyvoro2.powerfit is deprecated; use pyvoro2.inverse for fixed-observation '
+    'separator fitting or pyvoro2.inverse.separator for advanced workflows. '
+    'The compatibility package is planned for removal in v0.8.',
+    DeprecationWarning,
+    # A caller-facing stack level attributes a direct import to ``__main__``,
+    # where Python shows DeprecationWarning by default. Keep the warning
+    # library-attributed so ordinary imports remain silent as promised.
+    stacklevel=1,
 )
 
 __all__ = [

@@ -4,9 +4,10 @@
 tessellations**: fit power weights so that selected pairwise separators land at
 desired locations along the connectors between sites.
 
-This guide documents the current v0.6.3 API. It uses **separator observation** for
-the mathematical concept; the current public container is named
-`PairBisectorConstraints` for compatibility.
+New code should begin with the concise fixed-observation surface in
+`pyvoro2.inverse`. Advanced objective models, realization checks, reports, and
+the experimental active-set outer loop live in
+`pyvoro2.inverse.separator`.
 
 The API is geometry-first and domain-agnostic. The same high-level functions
 work with supported 3D domains and planar `pyvoro2.planar` domains. Downstream
@@ -63,11 +64,13 @@ problems**.
 ```python
 import numpy as np
 import pyvoro2 as pv
+import pyvoro2.inverse as inverse
+import pyvoro2.inverse.separator as separator
 
 points = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
 box = pv.Box(((-5, 5), (-5, 5), (-5, 5)))
 
-constraints = pv.resolve_pair_bisector_constraints(
+observations = inverse.resolve_separator_observations(
     points,
     [(0, 1, 0.25)],
     measurement='fraction',
@@ -78,19 +81,17 @@ constraints = pv.resolve_pair_bisector_constraints(
 Each raw tuple is `(i, j, value[, shift])`, where `shift=(na, nb, nc)` is the
 integer lattice image applied to site `j`.
 
-The resolved `PairBisectorConstraints` object stores the validated pair indices,
+The resolved `SeparatorObservations` object stores the validated pair indices,
 shifts, connector geometry, and targets in both fraction and position form.
-Despite the historical class name, each entry is best interpreted as one
-separator observation.
 
 ## Step 2: define the fitting model
 
 ```python
-model = pv.FitModel(
-    mismatch=pv.SquaredLoss(),
-    feasible=pv.Interval(0.0, 1.0),
+model = separator.FitModel(
+    mismatch=separator.SquaredLoss(),
+    feasible=separator.Interval(0.0, 1.0),
     penalties=(
-        pv.ExponentialBoundaryPenalty(
+        separator.ExponentialBoundaryPenalty(
             lower=0.0,
             upper=1.0,
             margin=0.05,
@@ -122,9 +123,9 @@ Built-in pieces currently include:
 ## Step 3: fit power weights
 
 ```python
-fit = pv.fit_power_weights(
+fit = inverse.fit_weights_from_separators(
     points,
-    constraints,
+    observations,
     model=model,
 )
 ```
@@ -158,7 +159,7 @@ packages, table exporters, or custom reporting.
 
 ### Measurement-space and difference-space diagnostics
 
-`PowerWeightFitResult` now exposes two complementary diagnostic views.
+`SeparatorFitResult` exposes two complementary diagnostic views.
 
 Measurement-space quantities live in the same space as the chosen separator
 targets:
@@ -195,7 +196,7 @@ The exported `weighted_rmse` is defined explicitly as
 not as `sqrt(sum(w r^2) / sum(w))`. That distinction matters when you compare
 results to other code that uses a normalized weighted RMSE convention.
 
-For radii output, v0.6.3 makes the **global representation shift** explicit:
+For radii output, the API makes the **global representation shift** explicit:
 
 - by default, `weights_to_radii(...)` uses the minimal common additive shift that
   makes all returned radii non-negative;
@@ -239,11 +240,11 @@ power tessellation. After fitting, you can ask which requested pairs became real
 neighbors.
 
 ```python
-realized = pv.match_realized_pairs(
+realized = separator.match_realized_pairs(
     points,
     domain=box,
     radii=fit.radii,
-    constraints=constraints,
+    constraints=observations,
     return_boundary_measure=True,
     return_tessellation_diagnostics=True,
     unaccounted_pair_check='warn',
@@ -275,15 +276,15 @@ This is a practical realization-aware outer algorithm. It is not part of the
 exact graph/Laplacian theory of the fixed-observation inner fit, and its
 termination status and path diagnostics should be inspected explicitly.
 
-`pyvoro2` provides this as:
+The explicitly experimental separator API provides this as:
 
 ```python
-result = pv.solve_self_consistent_power_weights(
+result = separator.solve_self_consistent_power_weights(
     points,
-    constraints,
+    observations,
     domain=box,
     model=model,
-    options=pv.ActiveSetOptions(
+    options=separator.ActiveSetOptions(
         add_after=1,
         drop_after=2,
         relax=0.5,
@@ -376,16 +377,16 @@ When downstream code wants a single nested object rather than several row sets,
 use the report helpers or the corresponding result methods:
 
 ```python
-fit_report = fit.to_report(constraints, use_ids=True)
-realized_report = realized.to_report(constraints, use_ids=True)
+fit_report = fit.to_report(observations, use_ids=True)
+realized_report = realized.to_report(observations, use_ids=True)
 solve_report = result.to_report(use_ids=True)
 ```
 
 The standalone helpers are also exported:
 
 ```python
-fit_report = pv.build_fit_report(fit, constraints, use_ids=True)
-solve_report = pv.build_active_set_report(result, use_ids=True)
+fit_report = separator.build_fit_report(fit, observations, use_ids=True)
+solve_report = separator.build_active_set_report(result, use_ids=True)
 ```
 
 These report bundles stay plain-Python and JSON-friendly. They are useful when
@@ -395,8 +396,8 @@ or UI work without manually unpacking NumPy-heavy result objects.
 To serialize them directly:
 
 ```python
-text = pv.dumps_report_json(solve_report, sort_keys=True)
-pv.write_report_json(solve_report, 'solve_report.json', sort_keys=True)
+text = separator.dumps_report_json(solve_report, sort_keys=True)
+separator.write_report_json(solve_report, 'solve_report.json', sort_keys=True)
 ```
 
 ## Native Huber fit on sparse outliers
@@ -404,8 +405,13 @@ pv.write_report_json(solve_report, 'solve_report.json', sort_keys=True)
 A short robust-fitting example looks like this:
 
 ```python
-model = pv.FitModel(mismatch=pv.HuberLoss(delta=0.03))
-fit = pv.fit_power_weights(points, constraints, model=model, solver='admm')
+model = separator.FitModel(mismatch=separator.HuberLoss(delta=0.03))
+fit = inverse.fit_weights_from_separators(
+    points,
+    observations,
+    model=model,
+    solver='admm',
+)
 
 print(fit.status, fit.rms_residual)
 print(fit.edge_diagnostics.weighted_rmse)
@@ -421,11 +427,11 @@ For research workflows or external solvers, `pyvoro2` now exposes the resolved
 inverse problem itself:
 
 ```python
-resolved = pv.powerfit.resolve_pair_bisector_constraints(points, raw_constraints)
-problem = pv.powerfit.build_power_fit_problem(resolved, model=model)
+observations = inverse.resolve_separator_observations(points, raw_observations)
+problem = separator.build_power_fit_problem(observations, model=model)
 
 weights = some_external_solver(problem)
-result = pv.powerfit.build_power_fit_result(
+result = separator.build_power_fit_result(
     problem,
     weights,
     solver='external',
@@ -434,7 +440,7 @@ result = pv.powerfit.build_power_fit_result(
 )
 ```
 
-This keeps `fit_power_weights(...)` solver-owned while still giving downstream
+This keeps `fit_weights_from_separators(...)` solver-owned while giving downstream
 code a public export of the mathematics, prediction formulas, objective
 evaluation, and result packaging.
 
@@ -446,9 +452,11 @@ intentionally dimension-safe: fitting is phrased in terms of separator
 observations and generic boundary measure rather than chemistry-specific or
 3D-only semantics.
 
-The v0.7 development line plans a clearer inverse namespace and preferred
-separator-observation terminology while retaining this v0.6.3 surface as a
-compatibility path. See the [architecture](../development/architecture.md) and
+The historical `pyvoro2.powerfit` package, broad top-level separator exports,
+and the five historical core names remain deprecated compatibility routes for
+v0.7. They are planned for removal in v0.8. See the
+[compatibility reference](../reference/powerfit/index.md),
+[architecture](../development/architecture.md), and
 [API lifecycle](../development/api-lifecycle.md).
 
 The main current restriction is geometric, not algebraic:
@@ -457,9 +465,9 @@ The main current restriction is geometric, not algebraic:
 - 2D currently supports `Box` and rectangular `RectangularCell`;
 - there is **no** planar oblique-periodic `PeriodicCell` yet.
 
-### Objective-model scope for v0.6.3
+### Current objective-model scope
 
-The v0.6.3 line still keeps the built-in objective family compact:
+The built-in objective family remains compact:
 
 - mismatch terms: `SquaredLoss`, `HuberLoss`
 - hard feasibility: `Interval`, `FixedValue`
@@ -472,7 +480,7 @@ hard-feasibility checks, residual diagnostics, and solver behavior easy to
 reason about.
 
 Additional mismatch or penalty families should wait until downstream packages
-validate a concrete need for them. In particular, v0.6.3 still does **not** try to
+validate a concrete need for them. In particular, pyvoro2 does **not** try to
 freeze an open-ended callback API for arbitrary user-defined objectives.
 
 ## Worked example notebooks

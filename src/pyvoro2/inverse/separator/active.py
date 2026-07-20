@@ -8,7 +8,7 @@ from typing import Literal
 import numpy as np
 
 from ..._weight_transforms import weights_to_radii
-from .constraints import PairBisectorConstraints, resolve_pair_bisector_constraints
+from .constraints import SeparatorObservations, resolve_separator_observations
 from .model import FitModel
 from .realize import RealizedPairDiagnostics, match_realized_pairs
 from .problem import (
@@ -18,9 +18,9 @@ from .problem import (
 )
 from .solver import (
     ConnectivityDiagnostics,
-    PowerWeightFitResult,
+    SeparatorFitResult,
     _apply_connectivity_policy,
-    fit_power_weights,
+    fit_weights_from_separators,
 )
 from ...diagnostics import TessellationDiagnostics as TessellationDiagnostics3D
 from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
@@ -48,7 +48,7 @@ def _boundary_value(values: np.ndarray | None, index: int) -> float | None:
 
 
 def _require_self_consistent_supported_dim(
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
 ) -> None:
     if constraints.dim not in (2, 3):
         raise ValueError(
@@ -200,8 +200,8 @@ class PairConstraintDiagnostics:
 
 @dataclass(frozen=True, slots=True)
 class SelfConsistentPowerFitResult:
-    constraints: PairBisectorConstraints
-    fit: PowerWeightFitResult
+    constraints: SeparatorObservations
+    fit: SeparatorFitResult
     realized: RealizedPairDiagnostics
     diagnostics: PairConstraintDiagnostics
     active_mask: np.ndarray
@@ -242,7 +242,7 @@ class SelfConsistentPowerFitResult:
 
 def solve_self_consistent_power_weights(
     points: np.ndarray,
-    constraints: PairBisectorConstraints | list[tuple] | tuple[tuple, ...],
+    constraints: SeparatorObservations | list[tuple] | tuple[tuple, ...],
     *,
     measurement: Literal['fraction', 'position'] = 'fraction',
     domain: Box2D | RectangularCell | Box3D | OrthorhombicCell | PeriodicCell,
@@ -289,7 +289,7 @@ def solve_self_consistent_power_weights(
     if options is None:
         options = ActiveSetOptions()
 
-    if isinstance(constraints, PairBisectorConstraints):
+    if isinstance(constraints, SeparatorObservations):
         resolved = constraints
         if resolved.n_points != pts.shape[0]:
             raise ValueError('resolved constraints do not match the number of points')
@@ -302,7 +302,7 @@ def solve_self_consistent_power_weights(
                 'solve_self_consistent_power_weights currently supports only '
                 '2D and 3D points'
             )
-        resolved = resolve_pair_bisector_constraints(
+        resolved = resolve_separator_observations(
             pts,
             constraints,
             measurement=measurement,
@@ -351,7 +351,7 @@ def solve_self_consistent_power_weights(
 
     for outer_iter in range(1, options.max_iter + 1):
         active_constraints = resolved.subset(active)
-        fit = fit_power_weights(
+        fit = fit_weights_from_separators(
             pts,
             active_constraints,
             model=model,
@@ -587,7 +587,7 @@ def solve_self_consistent_power_weights(
         termination = 'max_outer_iter'
 
     active_constraints = resolved.subset(active)
-    final_fit = fit_power_weights(
+    final_fit = fit_weights_from_separators(
         pts,
         active_constraints,
         model=model,
@@ -754,7 +754,7 @@ def _align_weights_to_reference(
 
 
 def _active_alignment_components(
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
     model: FitModel,
 ) -> list[list[int]]:
     problem = build_power_fit_problem(constraints, model=model)
@@ -861,14 +861,14 @@ def _finalize_path_summary(
 
 
 def _rebuild_fit_with_weights(
-    fit: PowerWeightFitResult,
-    constraints: PairBisectorConstraints,
+    fit: SeparatorFitResult,
+    constraints: SeparatorObservations,
     weights: np.ndarray,
     *,
     model: FitModel,
     r_min: float,
     weight_shift: float | None,
-) -> PowerWeightFitResult:
+) -> SeparatorFitResult:
     problem = build_power_fit_problem(constraints, model=model)
     return build_power_fit_result(
         problem,

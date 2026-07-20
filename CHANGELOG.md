@@ -8,6 +8,11 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Added
 
+- Canonical separator names and a deliberately small `pyvoro2.inverse` surface
+  for resolving separator observations, fitting weights, inspecting fit
+  results, and converting weights/radii; advanced separator objects remain at
+  `pyvoro2.inverse.separator`, with active-set refinement explicitly
+  experimental.
 - A frozen, dimension-neutral `TessellationResult` data contract shared by the
   spatial and planar namespaces, with input-aligned read-only arrays, explicit
   optional-geometry capabilities, provisional planar normalization
@@ -28,6 +33,11 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Made the five historical separator core names identity aliases to canonical
+  primary definitions. `pyvoro2.powerfit` remains a one-way compatibility-only
+  package for v0.7 and now emits a hidden-by-default `DeprecationWarning` that
+  points to the canonical namespaces and planned v0.8 removal; broad historical
+  top-level exports remain available without adding canonical names there.
 - Moved physical ownership of the existing separator-fitting implementation to
   `pyvoro2.inverse.separator`. Historical names, top-level exports, and all
   `pyvoro2.powerfit` module routes remain unchanged one-way compatibility
@@ -63,6 +73,9 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Made the spatial and planar native extensions genuinely lazy so plain and
+  canonical inverse imports neither require nor eagerly load `_core` or
+  `_core2d`; forward operations still load their backend on first use.
 - Restored the historical top-level `pyvoro2.powerfit` package attribute
   through lazy resolution, without eagerly importing the compatibility package
   or adding it to `pyvoro2.__all__`.

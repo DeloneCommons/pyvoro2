@@ -7,7 +7,11 @@ from typing import Literal
 
 import numpy as np
 
-from .constraints import PairBisectorConstraints, resolve_pair_bisector_constraints
+from .constraints import (
+    DomainAny,
+    SeparatorObservations,
+    resolve_separator_observations,
+)
 from .model import FitModel, HuberLoss, SquaredLoss
 from .problem import (
     _compute_edge_diagnostics,
@@ -18,8 +22,7 @@ from .problem import (
     build_power_fit_problem,
     build_power_fit_result,
 )
-from .types import ConnectivityDiagnostics, PowerWeightFitResult
-from ...domains import Box, OrthorhombicCell, PeriodicCell
+from .types import ConnectivityDiagnostics, SeparatorFitResult
 
 
 class ConnectivityDiagnosticsError(ValueError):
@@ -41,12 +44,12 @@ class _NumericalFailure(RuntimeError):
     """Raised when the numerical backend fails before producing a result."""
 
 
-def fit_power_weights(
+def fit_weights_from_separators(
     points: np.ndarray,
-    constraints: PairBisectorConstraints | list[tuple] | tuple[tuple, ...],
+    constraints: SeparatorObservations | list[tuple] | tuple[tuple, ...],
     *,
     measurement: Literal['fraction', 'position'] = 'fraction',
-    domain: Box | OrthorhombicCell | PeriodicCell | None = None,
+    domain: DomainAny | None = None,
     ids: list[int] | tuple[int, ...] | np.ndarray | None = None,
     index_mode: Literal['index', 'id'] = 'index',
     image: Literal['nearest', 'given_only'] = 'nearest',
@@ -61,8 +64,8 @@ def fit_power_weights(
     tol_abs: float = 1e-6,
     tol_rel: float = 1e-5,
     connectivity_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'warn',
-) -> PowerWeightFitResult:
-    """Fit power weights from resolved pairwise separator constraints."""
+) -> SeparatorFitResult:
+    """Fit power weights from resolved pairwise separator observations."""
 
     pts = np.asarray(points, dtype=float)
     if pts.ndim != 2 or pts.shape[1] <= 0:
@@ -73,7 +76,7 @@ def fit_power_weights(
     if model is None:
         model = FitModel()
 
-    if isinstance(constraints, PairBisectorConstraints):
+    if isinstance(constraints, SeparatorObservations):
         resolved = constraints
         if resolved.n_points != pts.shape[0]:
             raise ValueError('resolved constraints do not match the number of points')
@@ -82,7 +85,7 @@ def fit_power_weights(
         if resolved.measurement != measurement:
             measurement = resolved.measurement
     else:
-        resolved = resolve_pair_bisector_constraints(
+        resolved = resolve_separator_observations(
             pts,
             constraints,
             measurement=measurement,
@@ -111,7 +114,7 @@ def fit_power_weights(
 
 
 def _fit_power_weights_resolved(
-    constraints: PairBisectorConstraints,
+    constraints: SeparatorObservations,
     *,
     model: FitModel,
     r_min: float,
@@ -122,7 +125,7 @@ def _fit_power_weights_resolved(
     tol_abs: float,
     tol_rel: float,
     connectivity_check: Literal['none', 'diagnose', 'warn', 'raise'],
-) -> PowerWeightFitResult:
+) -> SeparatorFitResult:
     n = int(constraints.n_points)
     m = int(constraints.n_constraints)
     warnings_list = list(constraints.warnings)
@@ -167,7 +170,7 @@ def _fit_power_weights_resolved(
         warnings_list.append('hard feasibility check failed before optimization')
         if problem.hard_conflict is not None:
             warnings_list.append(problem.hard_conflict.message)
-        result = PowerWeightFitResult(
+        result = SeparatorFitResult(
             status='infeasible_hard_constraints',
             status_detail=(
                 None
@@ -347,7 +350,7 @@ def _fit_power_weights_resolved(
         return result
     except (np.linalg.LinAlgError, FloatingPointError, _NumericalFailure) as exc:
         warnings_list.append(f'numerical solver failure: {exc}')
-        return PowerWeightFitResult(
+        return SeparatorFitResult(
             status='numerical_failure',
             status_detail=str(exc),
             hard_feasible=True,
@@ -708,4 +711,13 @@ def _apply_connectivity_policy(
     raise ValueError('unsupported connectivity policy')
 
 
-__all__ = ['fit_power_weights', 'ConnectivityDiagnosticsError']
+# Historical v0.6 name retained as an identity alias during v0.7.
+# Planned removal: v0.8.
+fit_power_weights = fit_weights_from_separators
+
+
+__all__ = [
+    'fit_weights_from_separators',
+    'fit_power_weights',
+    'ConnectivityDiagnosticsError',
+]

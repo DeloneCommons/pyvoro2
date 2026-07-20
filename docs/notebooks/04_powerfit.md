@@ -1,11 +1,11 @@
 <!-- This file is generated from the matching notebook. -->
 <!-- Regenerate with: python tools/export_notebooks.py -->
 [Open the original notebook on GitHub](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/04_powerfit.ipynb)
-# Power fitting from pairwise bisector constraints
+# Power fitting from separator observations
 
 This notebook shows the new math-oriented inverse API in `pyvoro2`:
 
-1. resolve pairwise bisector constraints,
+1. resolve separator observations,
 2. fit power weights under a configurable model,
 3. match realized pairs in the resulting power tessellation,
 4. run the self-consistent active-set solver.
@@ -13,6 +13,8 @@ This notebook shows the new math-oriented inverse API in `pyvoro2`:
 import numpy as np
 
 import pyvoro2 as pv
+import pyvoro2.inverse as inverse
+import pyvoro2.inverse.separator as separator
 ```
 ## 1) Resolve and fit a simple two-site constraint
 
@@ -22,14 +24,14 @@ interpreted in either fraction-space or absolute position-space.
 points = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
 box = pv.Box(((-5, 5), (-5, 5), (-5, 5)))
 
-constraints = pv.resolve_pair_bisector_constraints(
+observations = inverse.resolve_separator_observations(
     points,
     [(0, 1, 0.25)],
     measurement='fraction',
     domain=box,
 )
 
-fit = pv.fit_power_weights(points, constraints)
+fit = inverse.fit_weights_from_separators(points, observations)
 
 print('weights:', fit.weights)
 print('radii:', fit.radii)
@@ -42,11 +44,11 @@ print('weight shift:', fit.weight_shift)
 
 The fitting model separates mismatch, hard feasibility, and soft penalties.
 ```python
-model = pv.FitModel(
-    mismatch=pv.SquaredLoss(),
-    feasible=pv.Interval(0.0, 1.0),
+model = separator.FitModel(
+    mismatch=separator.SquaredLoss(),
+    feasible=separator.Interval(0.0, 1.0),
     penalties=(
-        pv.ExponentialBoundaryPenalty(
+        separator.ExponentialBoundaryPenalty(
             lower=0.0,
             upper=1.0,
             margin=0.05,
@@ -56,7 +58,7 @@ model = pv.FitModel(
     ),
 )
 
-fit_penalized = pv.fit_power_weights(
+fit_penalized = inverse.fit_weights_from_separators(
     points,
     [(0, 1, 1e-3)],
     measurement='fraction',
@@ -72,11 +74,11 @@ print('predicted fraction with penalty:', fit_penalized.predicted_fraction[0])
 Requested pairwise separators do not automatically become realized faces
 in the full power tessellation.
 ```python
-realized = pv.match_realized_pairs(
+realized = separator.match_realized_pairs(
     points,
     domain=box,
     radii=fit.radii,
-    constraints=constraints,
+    constraints=observations,
     return_boundary_measure=True,
     return_tessellation_diagnostics=True,
 )
@@ -97,12 +99,12 @@ points3 = np.array(
 )
 box3 = pv.Box(((-5, 5), (-5, 5), (-5, 5)))
 
-result = pv.solve_self_consistent_power_weights(
+result = separator.solve_self_consistent_power_weights(
     points3,
     [(0, 1, 0.5), (1, 2, 0.5), (0, 2, 0.5)],
     measurement='fraction',
     domain=box3,
-    options=pv.ActiveSetOptions(add_after=1, drop_after=2, relax=0.5),
+    options=separator.ActiveSetOptions(add_after=1, drop_after=2, relax=0.5),
     return_history=True,
     return_boundary_measure=True,
 )
@@ -124,13 +126,13 @@ points4 = np.array(
 )
 box4 = pv.Box(((-5, 5), (-5, 5), (-5, 5)))
 
-result_path = pv.solve_self_consistent_power_weights(
+result_path = separator.solve_self_consistent_power_weights(
     points4,
     [(0, 1, 0.5), (1, 2, 0.5), (0, 2, 0.5)],
     measurement='fraction',
     domain=box4,
     active0=np.array([False, False, False]),
-    options=pv.ActiveSetOptions(add_after=1, drop_after=1, max_iter=6),
+    options=separator.ActiveSetOptions(add_after=1, drop_after=1, max_iter=6),
     return_history=True,
     connectivity_check='diagnose',
     unaccounted_pair_check='diagnose',

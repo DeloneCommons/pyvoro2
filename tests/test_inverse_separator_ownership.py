@@ -38,7 +38,7 @@ def _parsed(path: Path) -> ast.Module:
 
 
 def test_canonical_and_historical_package_exports_are_identity_aliases() -> None:
-    assert tuple(powerfit.__all__) == tuple(separator.__all__)
+    assert set(powerfit.__all__) < set(separator.__all__)
     for name in powerfit.__all__:
         canonical = getattr(separator, name)
         assert getattr(powerfit, name) is canonical
@@ -47,14 +47,24 @@ def test_canonical_and_historical_package_exports_are_identity_aliases() -> None
 
 
 def test_module_metadata_is_canonical_and_old_pickle_globals_still_resolve() -> None:
-    assert separator.PairBisectorConstraints.__module__ == (
+    assert separator.SeparatorObservations.__module__ == (
         'pyvoro2.inverse.separator.constraints'
     )
-    assert separator.PowerWeightFitResult.__module__ == (
+    assert separator.SeparatorObservations.__name__ == 'SeparatorObservations'
+    assert separator.SeparatorFitProblem.__module__ == (
+        'pyvoro2.inverse.separator.problem'
+    )
+    assert separator.SeparatorFitProblem.__name__ == 'SeparatorFitProblem'
+    assert separator.SeparatorFitResult.__module__ == (
         'pyvoro2.inverse.separator.types'
     )
-    assert separator.fit_power_weights.__module__ == (
+    assert separator.SeparatorFitResult.__name__ == 'SeparatorFitResult'
+    assert separator.fit_weights_from_separators.__module__ == (
         'pyvoro2.inverse.separator.solver'
+    )
+    assert (
+        separator.fit_weights_from_separators.__name__
+        == 'fit_weights_from_separators'
     )
 
     old_class_global = (
@@ -84,17 +94,25 @@ def test_historical_direct_submodules_forward_the_canonical_objects() -> None:
         )
 
 
-def test_inverse_package_does_not_add_issue_12_convenience_exports() -> None:
-    assert inverse.__all__ == []
-    for future_name in (
+def test_inverse_package_exposes_only_the_small_issue_12_surface() -> None:
+    assert inverse.__all__ == [
         'SeparatorObservations',
-        'SeparatorFitProblem',
+        'resolve_separator_observations',
         'SeparatorFitResult',
         'fit_weights_from_separators',
-        'resolve_separator_observations',
+        'weights_to_radii',
+        'radii_to_weights',
+    ]
+    for name in inverse.__all__:
+        assert getattr(inverse, name) is getattr(separator, name)
+    for advanced_name in (
+        'SeparatorFitProblem',
+        'FitModel',
+        'match_realized_pairs',
+        'ActiveSetOptions',
+        'solve_self_consistent_power_weights',
     ):
-        assert not hasattr(inverse, future_name)
-        assert not hasattr(separator, future_name)
+        assert not hasattr(inverse, advanced_name)
 
 
 def test_canonical_sources_have_no_reverse_compatibility_imports() -> None:
@@ -108,6 +126,16 @@ def test_canonical_sources_have_no_reverse_compatibility_imports() -> None:
             elif isinstance(node, ast.ImportFrom):
                 assert not (node.module or '').startswith('pyvoro2.powerfit')
                 assert (node.module or '') != 'powerfit'
+
+
+def test_active_set_uses_the_canonical_fixed_observation_solver_name() -> None:
+    tree = _parsed(CANONICAL_ROOT / 'active.py')
+    referenced_names = {
+        node.id for node in ast.walk(tree) if isinstance(node, ast.Name)
+    }
+
+    assert 'fit_weights_from_separators' in referenced_names
+    assert 'fit_power_weights' not in referenced_names
 
 
 def test_compatibility_sources_contain_only_explicit_forwarding() -> None:
@@ -135,7 +163,7 @@ def test_compatibility_sources_contain_only_explicit_forwarding() -> None:
         ]
         assert imports
         assert all(
-            node.module == '_weight_transforms'
+            node.module in {'_weight_transforms', 'warnings'}
             or (node.module or '').startswith('inverse.separator')
             for node in imports
         )
@@ -204,9 +232,9 @@ class BlockNativeExtensions(importlib.abc.MetaPathFinder):
 
 sys.meta_path.insert(0, BlockNativeExtensions())
 import pyvoro2 as pv
-import pyvoro2.inverse.separator as separator
+import pyvoro2.inverse as inverse
 print(json.dumps({
-    'callable': callable(separator.fit_power_weights),
+    'callable': callable(inverse.fit_weights_from_separators),
     'powerfit': 'pyvoro2.powerfit' in sys.modules,
     'powerfit_cached': 'powerfit' in pv.__dict__,
     'core3d': 'pyvoro2._core' in sys.modules,

@@ -1,9 +1,19 @@
-"""Public API for inverse fitting of power weights from pairwise constraints."""
+"""Separator-specific inverse fitting, diagnostics, and advanced workflows.
+
+The fixed-observation solver is exact for its selected convex model. The
+realization-aware active-set workflow is a separate experimental outer
+algorithm and does not carry a universal convergence guarantee.
+"""
 
 from __future__ import annotations
 
 from ..._weight_transforms import radii_to_weights, weights_to_radii
-from .constraints import PairBisectorConstraints, resolve_pair_bisector_constraints
+from .constraints import (
+    PairBisectorConstraints,
+    SeparatorObservations,
+    resolve_pair_bisector_constraints,
+    resolve_separator_observations,
+)
 from .model import (
     ExponentialBoundaryPenalty,
     FitModel,
@@ -25,6 +35,7 @@ from .active import (
 )
 from .problem import (
     PowerFitProblem,
+    SeparatorFitProblem,
     build_power_fit_problem,
     build_power_fit_result,
 )
@@ -41,7 +52,11 @@ from .report import (
     dumps_report_json,
     write_report_json,
 )
-from .solver import ConnectivityDiagnosticsError, fit_power_weights
+from .solver import (
+    ConnectivityDiagnosticsError,
+    fit_power_weights,
+    fit_weights_from_separators,
+)
 from .types import (
     AlgebraicEdgeDiagnostics,
     ConnectivityDiagnostics,
@@ -52,9 +67,15 @@ from .types import (
     PowerFitObjectiveBreakdown,
     PowerFitPredictions,
     PowerWeightFitResult,
+    SeparatorFitResult,
 )
 
 __all__ = [
+    'SeparatorObservations',
+    'resolve_separator_observations',
+    'SeparatorFitProblem',
+    'SeparatorFitResult',
+    'fit_weights_from_separators',
     'PairBisectorConstraints',
     'resolve_pair_bisector_constraints',
     'SquaredLoss',

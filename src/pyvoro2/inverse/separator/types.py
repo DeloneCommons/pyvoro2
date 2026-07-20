@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .constraints import PairBisectorConstraints
+from .constraints import SeparatorObservations
 
 
 def _plain_value(value: object) -> object:
@@ -204,8 +204,8 @@ class HardConstraintConflict:
 
 
 @dataclass(frozen=True, slots=True)
-class PowerWeightFitResult:
-    """Result of inverse fitting of power weights."""
+class SeparatorFitResult:
+    """Result of fitting power weights from separator observations."""
 
     status: str
     hard_feasible: bool
@@ -247,7 +247,7 @@ class PowerWeightFitResult:
 
     def to_records(
         self,
-        constraints: PairBisectorConstraints,
+        constraints: SeparatorObservations,
         *,
         use_ids: bool = False,
     ) -> tuple[dict[str, object], ...]:
@@ -305,10 +305,15 @@ class PowerWeightFitResult:
 
     def to_report(
         self,
-        constraints: PairBisectorConstraints,
+        constraints: SeparatorObservations,
         *,
         use_ids: bool = False,
     ) -> dict[str, object]:
         from .report import build_fit_report
 
         return build_fit_report(self, constraints, use_ids=use_ids)
+
+
+# Historical v0.6 name retained as an identity alias during v0.7.
+# Planned removal: v0.8.
+PowerWeightFitResult = SeparatorFitResult

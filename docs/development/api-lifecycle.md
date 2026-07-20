@@ -139,6 +139,15 @@ Required practice:
 - an extension beyond v0.7 requires an explicit release decision based on real
   downstream use.
 
+The current v0.7 tree implements the five accepted canonical core names as the
+primary class and function definitions and binds the historical names as
+identity aliases. The small `pyvoro2.inverse` surface is the preferred normal
+workflow; advanced and experimental separator objects remain explicit under
+`pyvoro2.inverse.separator`. Loading `pyvoro2.powerfit` emits one ordinary
+hidden-by-default `DeprecationWarning` naming the canonical replacements and
+the planned v0.8 removal. Plain and canonical imports emit no compatibility
+warning and do not load the compatibility package.
+
 ## Result schemas
 
 Result objects and exported record dictionaries are scientific interfaces.

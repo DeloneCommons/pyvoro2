@@ -54,10 +54,10 @@ def _validated_ids_array(ids: Sequence[int] | np.ndarray, n_points: int) -> np.n
 
 
 @dataclass(frozen=True, slots=True)
-class PairBisectorConstraints:
-    """Resolved pairwise separator constraints.
+class SeparatorObservations:
+    """Resolved pairwise separator observations.
 
-    This object is the stable boundary between downstream pair-selection logic
+    This object is the public boundary between downstream pair-selection logic
     and pyvoro2's inverse solver. Each row refers to a specific ordered pair
     ``(i, j, shift)`` where ``shift`` is the lattice image applied to site ``j``.
     """
@@ -133,9 +133,9 @@ class PairBisectorConstraints:
 
         m = int(self.i.shape[0])
         if self.i.shape != (m,) or self.j.shape != (m,):
-            raise ValueError('PairBisectorConstraints.i/j must have shape (m,)')
+            raise ValueError('SeparatorObservations.i/j must have shape (m,)')
         if self.shifts.ndim != 2 or self.shifts.shape[0] != m:
-            raise ValueError('PairBisectorConstraints.shifts must have shape (m, d)')
+            raise ValueError('SeparatorObservations.shifts must have shape (m, d)')
         for name in (
             'target',
             'confidence',
@@ -148,12 +148,12 @@ class PairBisectorConstraints:
         ):
             arr = getattr(self, name)
             if arr.shape != (m,):
-                raise ValueError(f'PairBisectorConstraints.{name} must have shape (m,)')
+                raise ValueError(f'SeparatorObservations.{name} must have shape (m,)')
         if self.delta.ndim != 2 or self.delta.shape[0] != m:
-            raise ValueError('PairBisectorConstraints.delta must have shape (m, d)')
+            raise ValueError('SeparatorObservations.delta must have shape (m, d)')
         if self.delta.shape[1] != self.shifts.shape[1]:
             raise ValueError(
-                'PairBisectorConstraints.delta and shifts must use the same dimension'
+                'SeparatorObservations.delta and shifts must use the same dimension'
             )
         if self.measurement not in ('fraction', 'position'):
             raise ValueError('measurement must be "fraction" or "position"')
@@ -169,22 +169,22 @@ class PairBisectorConstraints:
             arr = np.asarray(getattr(self, name))
             if not np.all(np.isfinite(arr)):
                 raise ValueError(
-                    f'PairBisectorConstraints.{name} must contain only finite values'
+                    f'SeparatorObservations.{name} must contain only finite values'
                 )
         if np.any(self.confidence < 0.0):
-            raise ValueError('PairBisectorConstraints.confidence must be non-negative')
+            raise ValueError('SeparatorObservations.confidence must be non-negative')
         if np.any(self.distance <= 0.0) or np.any(self.distance2 <= 0.0):
             raise ValueError(
-                'PairBisectorConstraints distances must be strictly positive'
+                'SeparatorObservations distances must be strictly positive'
             )
         if self.ids is not None:
             ids_arr = np.asarray(self.ids)
             if ids_arr.shape != (int(self.n_points),):
                 raise ValueError(
-                    'PairBisectorConstraints.ids must have shape (n_points,)'
+                    'SeparatorObservations.ids must have shape (n_points,)'
                 )
             if np.unique(ids_arr).size != int(self.n_points):
-                raise ValueError('PairBisectorConstraints.ids must be unique')
+                raise ValueError('SeparatorObservations.ids must be unique')
 
     @property
     def n_constraints(self) -> int:
@@ -233,13 +233,13 @@ class PairBisectorConstraints:
             )
         return tuple(rows)
 
-    def subset(self, mask: np.ndarray) -> PairBisectorConstraints:
+    def subset(self, mask: np.ndarray) -> SeparatorObservations:
         """Return a subset with row order preserved."""
 
         mask = np.asarray(mask, dtype=bool)
         if mask.shape != (self.n_constraints,):
             raise ValueError('mask must have shape (m,)')
-        return PairBisectorConstraints(
+        return SeparatorObservations(
             n_points=self.n_points,
             i=self.i[mask].copy(),
             j=self.j[mask].copy(),
@@ -259,7 +259,7 @@ class PairBisectorConstraints:
         )
 
 
-def resolve_pair_bisector_constraints(
+def resolve_separator_observations(
     points: np.ndarray,
     constraints: ConstraintInput,
     *,
@@ -271,8 +271,8 @@ def resolve_pair_bisector_constraints(
     image_search: int = 1,
     confidence: Sequence[float] | None = None,
     allow_empty: bool = False,
-) -> PairBisectorConstraints:
-    """Parse and resolve pairwise separator constraints.
+) -> SeparatorObservations:
+    """Parse and resolve pairwise separator observations.
 
     Args:
         points: Site coordinates with shape ``(n, d)`` where ``d`` is currently
@@ -344,7 +344,7 @@ def resolve_pair_bisector_constraints(
         zeros_f = np.zeros(0, dtype=np.float64)
         zeros_s = np.zeros((0, pts.shape[1]), dtype=np.int64)
         zeros_b = np.zeros(0, dtype=bool)
-        return PairBisectorConstraints(
+        return SeparatorObservations(
             n_points=int(pts.shape[0]),
             i=zeros_i,
             j=zeros_i.copy(),
@@ -379,7 +379,7 @@ def resolve_pair_bisector_constraints(
         target_position = target_arr.copy()
         target_fraction = target_position / d
 
-    return PairBisectorConstraints(
+    return SeparatorObservations(
         n_points=int(pts.shape[0]),
         i=np.asarray(i_idx, dtype=np.int64),
         j=np.asarray(j_idx, dtype=np.int64),
@@ -582,3 +582,9 @@ def shift_to_cart(shifts: np.ndarray, domain: DomainAny | None) -> np.ndarray:
     if sh.ndim != 2:
         raise ValueError('shifts must have shape (m, d)')
     return _geometry_for_dim(int(sh.shape[1]), domain).shift_to_cart(sh)
+
+
+# Historical v0.6 names retained as identity aliases during the bounded v0.7
+# compatibility period. Planned removal: v0.8.
+PairBisectorConstraints = SeparatorObservations
+resolve_pair_bisector_constraints = resolve_separator_observations

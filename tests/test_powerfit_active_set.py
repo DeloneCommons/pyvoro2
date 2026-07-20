@@ -343,7 +343,7 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
     )
     domain = Box(((-5.0, 15.0), (-5.0, 5.0), (-5.0, 5.0)))
 
-    def fake_fit_power_weights(points, constraints, **kwargs):
+    def fake_fit_weights_from_separators(points, constraints, **kwargs):
         if constraints.n_constraints == 3:
             weights = np.array([10.0, 12.0, 30.0, 28.0], dtype=float)
         else:
@@ -388,7 +388,11 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
             warnings=tuple(),
         )
 
-    monkeypatch.setattr(active_mod, 'fit_power_weights', fake_fit_power_weights)
+    monkeypatch.setattr(
+        active_mod,
+        'fit_weights_from_separators',
+        fake_fit_weights_from_separators,
+    )
     monkeypatch.setattr(active_mod, 'match_realized_pairs', fake_match_realized_pairs)
 
     res = active_mod.solve_self_consistent_power_weights(

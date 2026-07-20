@@ -30,10 +30,17 @@ and visualization.
 
 ## Separator fitting
 
-The current separator-based inverse API lives in `pyvoro2.powerfit` and is also
-partly re-exported from the top-level package for compatibility.
+The canonical fixed-observation workflow is deliberately small at
+`pyvoro2.inverse`; advanced separator-specific functionality lives at
+`pyvoro2.inverse.separator`.
 
-- [Power-fitting overview](powerfit/index.md)
+- [High-level inverse API](inverse/index.md)
+- [Advanced separator API](inverse/separator.md)
+
+The historical `pyvoro2.powerfit` package and broad top-level separator exports
+are deprecated compatibility routes for v0.7, planned for removal in v0.8.
+
+- [Compatibility overview](powerfit/index.md)
 - [Constraints and observations](powerfit/constraints.md)
 - [Objective models](powerfit/model.md)
 - [Solver and results](powerfit/solver.md)

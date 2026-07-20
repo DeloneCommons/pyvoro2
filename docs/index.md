@@ -142,29 +142,33 @@ result = pv.compute(points, domain=cell, return_face_shifts=True)
 ### 5) Fit weights from separator observations
 
 ```python
+import pyvoro2.inverse as inverse
+import pyvoro2.inverse.separator as separator
+
 points_pair = np.array([
     [0.0, 0.0, 0.0],
     [2.0, 0.0, 0.0],
 ])
 pair_box = pv.Box(((-5, 5), (-5, 5), (-5, 5)))
 
-observations = pv.resolve_pair_bisector_constraints(
+observations = inverse.resolve_separator_observations(
     points_pair,
     [(0, 1, 0.25)],
     measurement='fraction',
     domain=pair_box,
 )
 
-fit = pv.fit_power_weights(
+fit = inverse.fit_weights_from_separators(
     points_pair,
     observations,
-    model=pv.FitModel(mismatch=pv.SquaredLoss()),
+    model=separator.FitModel(mismatch=separator.SquaredLoss()),
 )
 ```
 
-`PairBisectorConstraints` is the current API name. The documentation uses
-**separator observations** for the mathematical concept and distinguishes the
-fixed-observation fit from subsequent realized-face checks.
+The small `pyvoro2.inverse` surface is the normal fixed-observation route.
+Advanced models, realized-boundary checks, reports, and the experimental
+active-set workflow are available explicitly from
+`pyvoro2.inverse.separator`.
 
 ## Numerical safety notes
 

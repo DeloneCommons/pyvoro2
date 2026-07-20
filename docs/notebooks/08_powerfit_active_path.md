@@ -7,6 +7,7 @@ This notebook focuses on the difference between **final-state** diagnostics and 
 ```python
 import numpy as np
 import pyvoro2 as pv
+import pyvoro2.inverse.separator as separator
 ```
 ## A chain example with an initially empty active set
 
@@ -18,13 +19,13 @@ points = np.array(
 )
 box = pv.Box(((-5, 5), (-5, 5), (-5, 5)))
 
-result = pv.solve_self_consistent_power_weights(
+result = separator.solve_self_consistent_power_weights(
     points,
     [(0, 1, 0.5), (1, 2, 0.5), (0, 2, 0.5)],
     measurement="fraction",
     domain=box,
     active0=np.array([False, False, False]),
-    options=pv.ActiveSetOptions(add_after=1, drop_after=1, max_iter=6),
+    options=separator.ActiveSetOptions(add_after=1, drop_after=1, max_iter=6),
     return_history=True,
     connectivity_check="diagnose",
     unaccounted_pair_check="diagnose",

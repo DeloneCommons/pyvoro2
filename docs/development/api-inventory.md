@@ -625,9 +625,9 @@ pyvoro2.viz3d.VizStyle, pyvoro2.viz3d.view_tessellation
 ```
 
 They also call `to_records(...)`, `to_report(...)`, and conflict record helpers.
-Notebook execution/output publication itself belongs to issue #20; this
-baseline only records the callable paths that issue #12 must keep working while
-the notebooks later migrate to preferred v0.7 imports.
+Notebook execution/output publication itself belongs to issue #20. This
+baseline records the callable paths that issue #12 preserves while the current
+source notebooks now use preferred v0.7 imports.
 
 No manuscript program or paper environment is stored in this repository. The
 paper-style numerical regression subset is therefore deferred to issue #15,
@@ -747,9 +747,15 @@ This ownership move retains the exact issue-#6 historical names, signatures,
 defaults, dataclass fields, `pyvoro2.powerfit.__all__`, reports, records, and
 top-level export set. Canonical class and function `__module__` values now name
 `pyvoro2.inverse.separator` modules because there is only one implementation.
-The issue-#12 terminology aliases, high-level `pyvoro2.inverse` convenience
-surface, deprecation warnings, and migration/removal presentation are not yet
-implemented.
+Issue #12 implements the accepted canonical terminology as primary class and
+function definitions. Historical names are identity aliases to those objects,
+so signatures, defaults, dataclass fields, `isinstance` behavior, numerical
+results, records, reports, and tested historical pickle globals continue to
+resolve through one implementation. The small `pyvoro2.inverse` convenience
+surface and the larger `pyvoro2.inverse.separator` advanced surface are now
+explicit. Loading `pyvoro2.powerfit` emits one ordinary hidden-by-default
+`DeprecationWarning` that points to the canonical namespaces and states the
+planned v0.8 removal.
 
 ## Accepted v0.7 contract decisions
 
@@ -867,9 +873,18 @@ transition.
 
 ### Preferred high-level separator API
 
-Issue #11 intentionally leaves `pyvoro2.inverse.__init__` minimal and does not
-implement this convenience surface. The exact aliases and implemented
-signatures are finalized by issue #12. The accepted preferred names are:
+Issue #12 implements this exact `pyvoro2.inverse.__all__`:
+
+```text
+SeparatorObservations
+resolve_separator_observations
+SeparatorFitResult
+fit_weights_from_separators
+weights_to_radii
+radii_to_weights
+```
+
+The accepted preferred names have these lifecycle assignments:
 
 | Name | Intended status | Meaning |
 |---|---|---|
@@ -881,7 +896,75 @@ signatures are finalized by issue #12. The accepted preferred names are:
 
 ### Advanced separator API
 
-Expected public but initially provisional surfaces include:
+`pyvoro2.inverse.separator.__all__` contains exactly the following 47 names:
+
+```text
+SeparatorObservations
+resolve_separator_observations
+SeparatorFitProblem
+SeparatorFitResult
+fit_weights_from_separators
+PairBisectorConstraints
+resolve_pair_bisector_constraints
+SquaredLoss
+HuberLoss
+Interval
+FixedValue
+SoftIntervalPenalty
+ExponentialBoundaryPenalty
+ReciprocalBoundaryPenalty
+L2Regularization
+FitModel
+AlgebraicEdgeDiagnostics
+ConstraintGraphDiagnostics
+ConnectivityDiagnostics
+ConnectivityDiagnosticsError
+HardConstraintConflictTerm
+HardConstraintConflict
+PowerFitBounds
+PowerFitPredictions
+PowerFitObjectiveBreakdown
+PowerFitProblem
+PowerWeightFitResult
+build_power_fit_problem
+build_power_fit_result
+RealizedPairDiagnostics
+UnaccountedRealizedPair
+UnaccountedRealizedPairError
+build_fit_report
+build_realized_report
+build_active_set_report
+dumps_report_json
+write_report_json
+ActiveSetOptions
+ActiveSetIteration
+ActiveSetPathSummary
+PairConstraintDiagnostics
+SelfConsistentPowerFitResult
+fit_power_weights
+match_realized_pairs
+solve_self_consistent_power_weights
+radii_to_weights
+weights_to_radii
+```
+
+The canonical core and neutral transforms have the statuses assigned above.
+The objective model, problem construction/evaluation, realization, reporting,
+and diagnostic objects are initially **provisional**. The active-set outer
+workflow and its options, iteration, path, diagnostic, and result objects are
+**experimental** and separator-specific.
+
+The exact v0.7 core identity map is:
+
+| Historical name | Canonical v0.7 name | Relationship and lifecycle |
+|---|---|---|
+| `PairBisectorConstraints` | `SeparatorObservations` | Identity alias; historical name compatibility-only through v0.7 |
+| `resolve_pair_bisector_constraints` | `resolve_separator_observations` | Identity alias; historical name compatibility-only through v0.7 |
+| `PowerFitProblem` | `SeparatorFitProblem` | Identity alias; historical name compatibility-only through v0.7 |
+| `PowerWeightFitResult` | `SeparatorFitResult` | Identity alias; historical name compatibility-only through v0.7 |
+| `fit_power_weights` | `fit_weights_from_separators` | Identity alias; historical name compatibility-only through v0.7 |
+
+The accepted provisional advanced surfaces include:
 
 - `SeparatorFitProblem` and problem-building/evaluation helpers;
 - objective model pieces such as squared/Huber losses, hard intervals,
@@ -892,9 +975,11 @@ Expected public but initially provisional surfaces include:
 
 The active-set outer workflow and its path/result types remain **experimental**.
 
-Issue #12 must produce an exact old-to-new name map. Historical
-names under `pyvoro2.powerfit` may be aliases to canonical classes or wrappers,
-but numerical implementations must not be duplicated.
+`pyvoro2.powerfit.__all__` remains the exact 42-name historical list recorded
+in the v0.6.3 baseline section. It deliberately does not export the canonical
+names and contains no implementation logic. The broad top-level historical
+separator set likewise remains unchanged, and none of the five new canonical
+names is added to top-level `pyvoro2`.
 
 ## Forward return contract
 
@@ -1049,9 +1134,9 @@ The following are API even when no dedicated Python class represents them:
 
 | Surface | v0.7 | Planned v0.8 action |
 |---|---|---|
-| `pyvoro2.powerfit` | Compatibility-only; optional `DeprecationWarning`; migration docs | Remove unless an explicit release decision extends it |
-| Broad top-level separator exports | Compatibility-only; migration docs | Remove from top-level |
-| `PairBisectorConstraints` and other historical names | Compatibility aliases | Remove or retain only if justified by real usage and documented explicitly |
+| `pyvoro2.powerfit` | Compatibility-only; loading it emits one hidden-by-default `DeprecationWarning` naming the canonical namespaces and v0.8 horizon | Remove unless an explicit release decision extends it |
+| Broad top-level separator exports | Compatibility-only; no invasive attribute wrappers during v0.7; documented migration path | Remove from top-level |
+| Five mapped historical core names | Compatibility-only identity aliases; no per-use warnings | Remove from canonical separator exports unless a later accepted release decision documents otherwise |
 | `PlanarComputeResult` | Compatibility alias to `TessellationResult` | Remove or reconsider after v0.7 downstream feedback |
 | Raw cell return | Available through `output='cells'` | Continue as explicit route unless a later decision removes it |
 | Planar `return_result=` | Compatibility-only | Remove after migration to `output=` |
@@ -1065,8 +1150,8 @@ The following are API even when no dedicated Python class represents them:
 - [ ] Stable `TessellationResult` fields and mutable contained values are
       documented.
 - [ ] Raw record keys used by compatibility tests are listed or referenced.
-- [ ] Preferred separator names and exact historical aliases are complete.
-- [ ] Active-set and optional sparse behavior are labelled experimental.
+- [x] Preferred separator names and exact historical aliases are complete.
+- [x] Active-set behavior is labelled experimental; optional sparse work remains conditional.
 - [ ] Default changes and scientific semantics appear in migration notes and
       release notes.
 - [ ] The chemvoro-shaped integration workflow uses only stable or deliberately
