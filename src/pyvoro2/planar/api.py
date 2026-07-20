@@ -16,7 +16,8 @@ from .._inputs import (
     coerce_point_array,
     validate_duplicate_check_mode,
 )
-from .._power_input import resolve_power_input
+from .._power_input import ResolvedPowerInput, resolve_power_input
+from ..result import TessellationResult, _build_tessellation_result
 from ._domain_geometry import geometry2d
 from ._edge_shifts2d import _add_periodic_edge_shifts_inplace
 from .diagnostics import (
@@ -27,7 +28,6 @@ from .diagnostics import (
 from .domains import Box, RectangularCell
 from .duplicates import duplicate_check as _duplicate_check
 from .normalize import normalize_edges, normalize_vertices
-from .result import PlanarComputeResult
 
 try:
     from .. import _core2d  # type: ignore[attr-defined]
@@ -39,6 +39,13 @@ except Exception as _e:  # pragma: no cover
 
 
 Domain2D = Box | RectangularCell
+
+
+class _DefaultOutput(str):
+    """String sentinel whose public signature representation is ``'result'``."""
+
+
+_DEFAULT_OUTPUT = _DefaultOutput('result')
 
 
 def _strip_internal_geometry_inplace(
@@ -113,6 +120,98 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, domain: Domain2D) -> None:
         )
 
 
+def _resolve_compute_output(
+    *,
+    output: str,
+    return_result: bool | None,
+    normalize: str,
+) -> Literal['result', 'cells']:
+    """Resolve preferred and compatibility planar output selectors."""
+
+    output_was_omitted = output is _DEFAULT_OUTPUT
+    if not isinstance(output, str) or output not in ('result', 'cells'):
+        raise ValueError('output must be one of: result, cells')
+    if normalize not in ('none', 'vertices', 'topology'):
+        raise ValueError('normalize must be one of: none, vertices, topology')
+
+    resolved: Literal['result', 'cells'] = (
+        'result' if output == 'result' else 'cells'
+    )
+    if return_result is not None:
+        warnings.warn(
+            'return_result= is deprecated; use output="result" or '
+            'output="cells" instead',
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        legacy_output: Literal['result', 'cells'] = (
+            'result' if return_result else 'cells'
+        )
+        if not output_was_omitted and resolved != legacy_output:
+            raise ValueError(
+                f'output={resolved!r} conflicts with '
+                f'return_result={return_result!r}'
+            )
+        if output_was_omitted:
+            resolved = legacy_output
+
+    if normalize != 'none':
+        if not output_was_omitted and resolved == 'cells':
+            raise ValueError(
+                'output="cells" cannot be combined with normalization; '
+                'use output="result"'
+            )
+        # Historical normalization requests forced structured output even when
+        # the compatibility-only return_result=False selector was explicit.
+        resolved = 'result'
+
+    return resolved
+
+
+def _finish_compute_output(
+    *,
+    output: Literal['result', 'cells'],
+    return_diagnostics: bool,
+    domain: Domain2D,
+    mode: Literal['standard', 'power'],
+    sites: np.ndarray,
+    ids: np.ndarray | None,
+    cells: list[dict[str, Any]],
+    power_input: ResolvedPowerInput,
+    diagnostics: TessellationDiagnostics | None,
+    normalized_vertices: object | None,
+    normalized_topology: object | None,
+    boundaries_available: bool,
+    periodic_shifts_available: bool,
+) -> (
+    TessellationResult
+    | list[dict[str, Any]]
+    | tuple[list[dict[str, Any]], TessellationDiagnostics]
+):
+    """Return structured output or the historical raw compatibility shape."""
+
+    if output == 'cells':
+        if return_diagnostics:
+            assert diagnostics is not None
+            return cells, diagnostics
+        return cells
+
+    return _build_tessellation_result(
+        dimension=2,
+        domain=domain,
+        mode=mode,
+        sites=sites,
+        ids=ids,
+        cells=cells,
+        power_input=power_input,
+        tessellation_diagnostics=diagnostics,
+        normalized_vertices=normalized_vertices,
+        normalized_topology=normalized_topology,
+        boundaries_available=boundaries_available,
+        periodic_shifts_available=periodic_shifts_available,
+    )
+
+
 def compute(
     points: Sequence[Sequence[float]] | np.ndarray,
     *,
@@ -138,7 +237,8 @@ def compute(
     repair_edge_shifts: bool = False,
     edge_shift_tol: float | None = None,
     return_diagnostics: bool = False,
-    return_result: bool = False,
+    output: Literal['result', 'cells'] = _DEFAULT_OUTPUT,
+    return_result: bool | None = None,
     normalize: Literal['none', 'vertices', 'topology'] = 'none',
     normalization_tol: float | None = None,
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'none',
@@ -150,7 +250,7 @@ def compute(
 ) -> (
     list[dict[str, Any]]
     | tuple[list[dict[str, Any]], TessellationDiagnostics]
-    | PlanarComputeResult
+    | TessellationResult
 ):
     """Compute planar Voronoi or power tessellation cells.
 
@@ -158,18 +258,22 @@ def compute(
       - :class:`~pyvoro2.planar.domains.Box`
       - :class:`~pyvoro2.planar.domains.RectangularCell`
 
-    Planar compute mirrors the 3D wrapper's diagnostics convenience path:
-    set ``return_diagnostics=True`` to also return a
-    :class:`~pyvoro2.planar.TessellationDiagnostics` object, and/or set
-    ``tessellation_check='warn'`` or ``'raise'`` to have common area and
-    reciprocity issues handled directly by the wrapper.
+    By default, planar compute returns one
+    :class:`~pyvoro2.TessellationResult`. Set ``output="cells"`` for the
+    historical raw cell list, or its historical ``(cells, diagnostics)`` tuple
+    when ``return_diagnostics=True``. Structured results always carry computed
+    diagnostics inside ``result.tessellation_diagnostics`` and never return a
+    tuple.
 
     Wrapper-level normalization convenience is also available via
     ``normalize='vertices'`` or ``'topology'``. Any request for normalized
-    output returns a :class:`~pyvoro2.planar.PlanarComputeResult`, as does
-    ``return_result=True``. The normalized structures intentionally carry their
-    own augmented cell copies, so the raw ``cells`` field can stay lightweight
-    even when internal geometry was needed for diagnostics or normalization.
+    output returns a :class:`~pyvoro2.TessellationResult`.
+    ``return_result=`` remains as a deprecated compatibility selector; its
+    default ``None`` means that no legacy selection was supplied. Passing
+    ``True`` or ``False`` emits :class:`DeprecationWarning`; use ``output=`` in
+    new code. The normalized structures intentionally carry their own augmented
+    cell copies, so the raw ``cells`` field can stay lightweight even when
+    internal geometry was needed for diagnostics or normalization.
 
     For periodic domains, diagnostics and normalization automatically compute
     temporary edge shifts and the required edge/vertex geometry internally,
@@ -197,6 +301,11 @@ def compute(
     ``weights`` and ``radii`` because neither representation has meaning there.
     """
 
+    resolved_output = _resolve_compute_output(
+        output=output,
+        return_result=return_result,
+        normalize=normalize,
+    )
     pts = coerce_point_array(points, name='points', dim=2)
     _warn_if_scale_suspicious(pts=pts, domain=domain)
     n = int(pts.shape[0])
@@ -214,9 +323,6 @@ def compute(
         raise ValueError(
             'tessellation_check must be one of: none, diagnose, warn, raise'
         )
-    if normalize not in ('none', 'vertices', 'topology'):
-        raise ValueError('normalize must be one of: none, vertices, topology')
-
     user_return_vertices = bool(return_vertices)
     user_return_adjacency = bool(return_adjacency)
     user_return_edges = bool(return_edges)
@@ -408,17 +514,21 @@ def compute(
         keep_edge_shifts=user_return_edge_shifts,
     )
 
-    if return_result or normalize != 'none':
-        return PlanarComputeResult(
-            cells=cells,
-            tessellation_diagnostics=diag,
-            normalized_vertices=normalized_vertices,
-            normalized_topology=normalized_topology,
-        )
-    if return_diagnostics:
-        assert diag is not None
-        return cells, diag
-    return cells
+    return _finish_compute_output(
+        output=resolved_output,
+        return_diagnostics=bool(return_diagnostics),
+        domain=domain,
+        mode=mode,
+        sites=pts,
+        ids=ids_user,
+        cells=cells,
+        power_input=power_input,
+        diagnostics=diag,
+        normalized_vertices=normalized_vertices,
+        normalized_topology=normalized_topology,
+        boundaries_available=user_return_edges,
+        periodic_shifts_available=user_return_edge_shifts,
+    )
 
 
 def locate(

@@ -113,7 +113,7 @@ nav:
           - Diagnostics: reference/planar/diagnostics.md
           - Normalization: reference/planar/normalize.md
           - Validation: reference/planar/validation.md
-          - Historical compute result: reference/planar/result.md
+          - Historical result alias: reference/planar/result.md
           - Edge properties: reference/edge_properties.md
           - Visualization (2D): reference/viz2d.md
       - Power fitting:

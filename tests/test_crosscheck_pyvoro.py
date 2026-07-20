@@ -57,6 +57,7 @@ def test_crosscheck_pyvoro_box_standard_volumes(fuzz_settings):
             block_size=block_size,
             return_faces=True,
             return_vertices=True,
+            output='cells',
         )
 
         # pyvoro expects plain python lists
@@ -109,7 +110,13 @@ def test_crosscheck_pyvoro_orthorhombic_periodic_if_supported(fuzz_settings):
         rng = _rng_for_run(seed, 4000 + run)
         pts = _sample_points(rng, 50, bounds)
 
-        cells2 = pv.compute(pts, domain=domain, mode='standard', block_size=block_size)
+        cells2 = pv.compute(
+            pts,
+            domain=domain,
+            mode='standard',
+            block_size=block_size,
+            output='cells',
+        )
         cells1 = compute_fn(
             pts.tolist(), limits, block_size, periodic=[True, True, True]
         )

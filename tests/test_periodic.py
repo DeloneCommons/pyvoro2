@@ -19,6 +19,7 @@ def test_periodic_standard_volume_conservation():
         pts,
         domain=cell,
         mode='standard',
+        output='cells',
         return_vertices=False,
         return_adjacency=False,
         return_faces=False,

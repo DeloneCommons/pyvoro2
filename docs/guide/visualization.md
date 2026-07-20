@@ -31,7 +31,7 @@ from pyvoro2.viz2d import plot_tessellation
 pts = np.array([[0.2, 0.2], [0.8, 0.25], [0.4, 0.8]], dtype=float)
 domain = pv2.RectangularCell(((0.0, 1.0), (0.0, 1.0)), periodic=(True, True))
 
-cells = pv2.compute(
+result = pv2.compute(
     pts,
     domain=domain,
     return_vertices=True,
@@ -39,7 +39,7 @@ cells = pv2.compute(
     return_edge_shifts=True,
 )
 
-fig, ax = plot_tessellation(cells, domain=domain, show_sites=True)
+fig, ax = plot_tessellation(result.cells, domain=domain, show_sites=True)
 ```
 
 The 2D helper returns `(fig, ax)` and is best suited for inspecting raw planar
@@ -58,7 +58,7 @@ from pyvoro2.viz3d import view_tessellation
 pts = np.random.default_rng(0).uniform(-1, 1, size=(20, 3))
 box = pv.Box(((-2, 2), (-2, 2), (-2, 2)))
 
-cells = pv.compute(
+result = pv.compute(
     pts,
     domain=box,
     mode='standard',
@@ -67,7 +67,7 @@ cells = pv.compute(
 )
 
 v = view_tessellation(
-    cells,
+    result.cells,
     domain=box,
     show_site_labels=True,
     show_axes=True,
@@ -106,7 +106,7 @@ from pyvoro2.viz3d import VizStyle
 
 style = VizStyle(site_radius=0.06, vertex_radius=0.03, edge_line_width=4.0)
 
-v = view_tessellation(cells, domain=box, style=style)
+v = view_tessellation(result.cells, domain=box, style=style)
 ```
 
 ## Periodic domains and “vertices outside the cell”

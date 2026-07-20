@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import warnings
 
 import numpy as np
 import pytest
@@ -197,6 +198,7 @@ def test_planar_compute_remaps_ids_and_adds_edge_shifts(fake_core) -> None:
         ids=[10, 20],
         return_edge_shifts=True,
         edge_shift_search=1,
+        output='cells',
     )
 
     assert fake_core.last_call is not None
@@ -227,6 +229,7 @@ def test_planar_compute_power_inserts_empty_cells(fake_core) -> None:
         mode='power',
         radii=np.array([1.0, 2.0]),
         include_empty=True,
+        output='cells',
     )
 
     assert fake_core.last_call is not None
@@ -290,6 +293,7 @@ def test_planar_compute_return_diagnostics(fake_core) -> None:
         pts,
         domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
         return_diagnostics=True,
+        output='cells',
         tessellation_check='diagnose',
     )
 
@@ -303,14 +307,16 @@ def test_planar_compute_return_diagnostics(fake_core) -> None:
 
 def test_planar_compute_return_result_carries_diagnostics(fake_core) -> None:
     pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
-    result = pv2.compute(
-        pts,
-        domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
-        return_result=True,
-        tessellation_check='diagnose',
-    )
+    with pytest.warns(DeprecationWarning, match='output') as caught:
+        result = pv2.compute(
+            pts,
+            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            return_result=True,
+            tessellation_check='diagnose',
+        )
 
     assert isinstance(result, pv2.PlanarComputeResult)
+    assert caught[0].filename == __file__
     assert result.has_tessellation_diagnostics is True
     assert result.require_tessellation_diagnostics().ok is True
     assert result.normalized_vertices is None
@@ -362,6 +368,8 @@ def test_planar_compute_normalize_topology_periodic_returns_result(
     assert set(result.cells[0].keys()) == {'id', 'area', 'site'}
     assert result.has_normalized_vertices is True
     assert result.has_normalized_topology is True
+    assert result.has_boundaries is False
+    assert result.has_periodic_shifts is False
     assert result.global_edges is not None
     diag = pv2.validate_normalized_topology(
         result.require_normalized_topology(),
@@ -376,7 +384,7 @@ def test_planar_compute_periodic_diagnostics_strip_internal_geometry(
     fake_core,
 ) -> None:
     pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
-    cells, diag = pv2.compute(
+    result = pv2.compute(
         pts,
         domain=pv2.RectangularCell(
             ((0.0, 1.0), (0.0, 1.0)),
@@ -393,9 +401,13 @@ def test_planar_compute_periodic_diagnostics_strip_internal_geometry(
     assert fake_core.last_call[0] == 'compute_box_standard'
     assert fake_core.last_call[1][-1] == (True, False, True)
 
-    assert 'vertices' not in cells[0]
-    assert 'adjacency' not in cells[0]
-    assert 'edges' not in cells[0]
+    assert isinstance(result, pv2.TessellationResult)
+    assert 'vertices' not in result.cells[0]
+    assert 'adjacency' not in result.cells[0]
+    assert 'edges' not in result.cells[0]
+    assert result.has_boundaries is False
+    assert result.has_periodic_shifts is False
+    diag = result.require_tessellation_diagnostics()
     assert diag.reciprocity_checked is True
     assert diag.ok_reciprocity is True
 
@@ -448,3 +460,118 @@ def test_planar_compute_invalid_normalize(fake_core) -> None:
             domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
             normalize='nope',  # type: ignore[arg-type]
         )
+
+
+def test_planar_compute_invalid_output_precedes_native_compute(fake_core) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    with pytest.raises(ValueError, match='output.*result.*cells'):
+        pv2.compute(
+            pts,
+            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            output='nope',  # type: ignore[arg-type]
+        )
+    assert fake_core.last_call is None
+
+
+def test_planar_return_result_false_selects_raw_with_warning(fake_core) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    with pytest.warns(DeprecationWarning, match='output'):
+        cells = pv2.compute(
+            pts,
+            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            return_result=False,
+        )
+    assert isinstance(cells, list)
+
+
+@pytest.mark.parametrize(
+    ('output', 'expected_type'),
+    (('result', pv2.TessellationResult), ('cells', list)),
+)
+def test_planar_return_result_none_follows_output_without_warning(
+    fake_core,
+    output: str,
+    expected_type: type,
+) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    with warnings.catch_warnings():
+        warnings.simplefilter('error', DeprecationWarning)
+        value = pv2.compute(
+            pts,
+            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            output=output,  # type: ignore[arg-type]
+            return_result=None,
+        )
+    assert isinstance(value, expected_type)
+
+
+@pytest.mark.parametrize(
+    ('output', 'return_result'),
+    (('result', False), ('cells', True)),
+)
+def test_planar_conflicting_explicit_selectors_raise(
+    fake_core,
+    output: str,
+    return_result: bool,
+) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    with pytest.warns(DeprecationWarning, match='output'):
+        with pytest.raises(ValueError, match='conflicts'):
+            pv2.compute(
+                pts,
+                domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+                output=output,  # type: ignore[arg-type]
+                return_result=return_result,
+            )
+    assert fake_core.last_call is None
+
+
+@pytest.mark.parametrize(
+    ('output', 'return_result', 'expected_type'),
+    (
+        ('result', True, pv2.TessellationResult),
+        ('cells', False, list),
+    ),
+)
+def test_planar_equivalent_explicit_selectors_are_accepted(
+    fake_core,
+    output: str,
+    return_result: bool,
+    expected_type: type,
+) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    with pytest.warns(DeprecationWarning, match='output'):
+        value = pv2.compute(
+            pts,
+            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            output=output,  # type: ignore[arg-type]
+            return_result=return_result,
+        )
+    assert isinstance(value, expected_type)
+
+
+def test_planar_legacy_false_with_normalization_still_returns_result(
+    fake_core,
+) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    with pytest.warns(DeprecationWarning, match='output'):
+        result = pv2.compute(
+            pts,
+            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            return_result=False,
+            normalize='vertices',
+        )
+    assert isinstance(result, pv2.TessellationResult)
+    assert result.has_normalized_vertices is True
+
+
+def test_planar_explicit_raw_output_rejects_normalization(fake_core) -> None:
+    pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
+    with pytest.raises(ValueError, match='output="cells".*normalization'):
+        pv2.compute(
+            pts,
+            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            output='cells',
+            normalize='vertices',
+        )
+    assert fake_core.last_call is None

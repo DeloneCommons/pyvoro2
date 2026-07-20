@@ -42,7 +42,7 @@ methods.
 | Inverse API | Separator fitting under `pyvoro2.powerfit` with broad top-level re-exports | Move ownership to `pyvoro2.inverse.separator`; keep a bounded v0.7 compatibility shim |
 | Downstream boundary | Rich records and reports exist, but some callers still need implementation knowledge | Support chemvoro through documented weights, IDs, geometry, and diagnostic contracts |
 
-## Current implementation: v0.6.3
+## Historical implementation baseline: v0.6.3
 
 ### Native backend and build layer
 
@@ -71,9 +71,10 @@ The top-level `pyvoro2` namespace is the 3D public surface.
 - `_face_shifts3d.py` reconstructs periodic image labels on realized faces.
 - `_cell_output.py` and related helpers shape backend output.
 
-The ordinary 3D compute path currently returns a list of Python cell records.
-Diagnostics, normalization, and annotations are requested through separate
-functions or compute options rather than through one universal result object.
+In the v0.6.3 baseline, the ordinary 3D compute path returned a list of Python
+cell records. Diagnostics, normalization, and annotations were requested
+through separate functions or compute options; that release had no universal
+result object. The current v0.7 behavior is described separately below.
 
 ### Planar forward layer (2D)
 
@@ -84,14 +85,14 @@ and operation code.
   `RectangularCell`.
 - `planar/api.py` implements planar `compute`, `locate`, and `ghost_cells`.
 - `planar/_edge_shifts2d.py` reconstructs periodic image labels on edges.
-- `planar/result.py` defines `PlanarComputeResult`, an optional structured
-  wrapper for raw cells, diagnostics, and normalized output.
+- `planar/result.py` defined `PlanarComputeResult`, a separate optional
+  structured wrapper for raw cells, diagnostics, and normalized output.
 - planar diagnostics, normalization, validation, and duplicate checks live in
   their corresponding modules.
 
-The planar API therefore already has a structured result path that the 3D API
-does not. The target architecture should align common result concepts without
-pretending that every backend capability is identical.
+The v0.6.3 planar API therefore had a structured result path that the 3D API
+did not. The current v0.7 tree described below aligns the common result concept
+without pretending that every backend capability is identical.
 
 ### Shared post-processing and scientific utilities
 
@@ -129,7 +130,7 @@ The package currently exposes much of this surface both through
 for existing users, but it creates a large accidental top-level stability
 surface.
 
-### Current data flows
+### v0.6.3 data flows
 
 #### 3D forward computation
 
@@ -242,11 +243,20 @@ raw-record divergence, while restoring owned read-only arrays and capability
 state. The builder does no native work and does not trigger diagnostics,
 normalization, or boundary annotation.
 
-This is the issue #9 data-contract layer only. Both public `compute(...)`
-functions still return their characterized v0.6.3 list/tuple variants by
-default; planar `return_result=` and the separate `PlanarComputeResult` also
-remain unchanged. Issue #10 owns `output=`, default-return migration, and the
-planar compatibility alias.
+Both public `compute(...)` functions now build through that shared path and
+return `TessellationResult` by default. `output='cells'` preserves the
+characterized raw list/diagnostics-tuple behavior without rerunning native
+computation or post-processing. Diagnostics computed directly or for a
+tessellation check are stored in the structured result. Planar normalization
+uses the same result and keeps internally requested temporary geometry out of
+the final raw-cell capabilities.
+
+`PlanarComputeResult` is an identity alias to `TessellationResult`.
+Planar `return_result=` remains compatibility-only, emits a deprecation warning,
+and delegates to the explicit `output=` selection rules. The historical
+normalization override for an explicitly false legacy selector is retained;
+conflicting explicit selectors and explicit raw output with normalization fail
+clearly.
 
 ## Why stabilization is needed
 
@@ -255,9 +265,10 @@ before new inverse families are added.
 
 ### Result asymmetry
 
-The 3D API normally returns raw records, while the planar API can return a
-`PlanarComputeResult`. Future inverse methods need common access to cells,
-measures, boundaries, periodic labels, and diagnostics in both dimensions.
+The v0.6.3 3D API normally returned raw records, while the planar API could
+return a separate `PlanarComputeResult`. The current v0.7 tree resolves this
+asymmetry through the common default result while retaining explicit raw
+compatibility output.
 
 ### Radius-first v0.6.3 forward input
 
@@ -372,11 +383,10 @@ The v0.7 line should provide one inspectable conceptual contract across 2D and
 - tessellation and normalization diagnostics.
 
 [ADR 0005](decisions/0005-tessellation-result-contract.md) selects one public
-`pyvoro2.TessellationResult` for both dimensions. The common class and private
-construction path now exist. The remaining issue #10 migration makes both
-`compute` functions return it by default and adds `output='cells'` as the raw
-compatibility route. The result keeps dimension-specific geometry explicit and
-must not compute unrequested expensive data merely to fill optional fields.
+`pyvoro2.TessellationResult` for both dimensions. The common class, private
+construction path, structured default, and `output='cells'` compatibility route
+now exist. The result keeps dimension-specific geometry explicit and does not
+compute unrequested expensive data merely to fill optional fields.
 
 The outer result should be structurally immutable where this is straightforward.
 Owned aligned arrays should be read-only when practical, but nested raw cell

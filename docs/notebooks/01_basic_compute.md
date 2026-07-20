@@ -10,13 +10,17 @@ the minimal code needed to reproduce it.
 We cover:
 - Voronoi cells in a non-periodic **bounding box** (`Box`)
 - Voronoi cells in a **triclinic periodic unit cell** (`PeriodicCell`)
-- Power/Laguerre tessellation (`mode='power'`) and the meaning of per-site radii
+- Power/Laguerre tessellation (`mode='power'`) and its weight/radius metadata
 - What geometry is returned (`vertices`, `faces`, `adjacency`)
 - Periodic face shifts (`adjacent_shift`) and basic diagnostics
 - Global enumeration utilities (`normalize_topology`) and per-face descriptors
 
 > Tip: If you are new to Voronoi terminology, the short conceptual background is in
 > the docs section [Concepts](../guide/concepts.md).
+
+`compute(...)` returns a `TessellationResult`. The result keeps the raw cell dictionaries in
+`result.cells` and also provides input-aligned measures, IDs, power metadata, diagnostics, and
+capability flags. The examples below keep that result object as the primary value.
 ```python
 import numpy as np
 from pprint import pprint
@@ -42,7 +46,7 @@ pts = np.array(
 
 box = Box(bounds=((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
 
-cells = compute(
+result = compute(
     pts,
     domain=box,
     mode='standard',
@@ -51,8 +55,8 @@ cells = compute(
     return_adjacency=False,  # keep output small for display
 )
 
-print(f'Total number of cells: {len(cells)}\n')
-pprint(cells[0])
+print(f'Total number of cells: {len(result.cells)}\n')
+pprint(result.cells[0])
 ```
 **Output**
 
@@ -104,7 +108,7 @@ pts_pbc = np.array(
     dtype=float,
 )
 
-cells_pbc = compute(
+periodic_result = compute(
     pts_pbc,
     domain=cell,
     mode='standard',
@@ -115,7 +119,7 @@ cells_pbc = compute(
 
 # In periodic mode, all Voronoi volumes should sum to the unit cell volume.
 cell_volume = abs(np.linalg.det(np.array(cell.vectors, dtype=float)))
-sum_vol = float(sum(c['volume'] for c in cells_pbc))
+sum_vol = float(periodic_result.cell_measures.sum())
 cell_volume, sum_vol
 ```
 **Output**
@@ -125,9 +129,10 @@ cell_volume, sum_vol
 ```
 ## Power/Laguerre tessellation (mode="power")
 
-A power (Laguerre) tessellation generalizes Voronoi cells by assigning each site a weight.
-Voro++ (and pyvoro2) expose this as a per-site **radius** $r_i$, which corresponds to a weight
-$w_i = r_i^2$ in the power distance.
+A power (Laguerre) tessellation generalizes Voronoi cells by assigning each site a mathematical
+weight. pyvoro2 accepts these through `weights=` and converts them to non-negative backend radii
+without changing the diagram. The result records `input_weights`, the exact `backend_radii`, and
+the common `representation_shift`; direct `radii=` input remains available when needed.
 
 Intuitively: increasing a site's radius tends to expand its cell at the expense of neighbors.
 Unlike standard Voronoi cells, **empty cells are possible** in power mode.
@@ -151,9 +156,9 @@ pts_pbc = np.array(
     dtype=float,
 )
 
-radii = np.array([0.0, 0.0, 2.0, 0.0], dtype=float)
+weights = np.array([0.0, 0.0, 4.0, 0.0], dtype=float)
 
-cells_std = compute(
+standard_result = compute(
     pts_pbc,
     domain=cell,
     mode='standard',
@@ -162,18 +167,20 @@ cells_std = compute(
     return_adjacency=False,
 )
 
-cells_pow = compute(
+power_result = compute(
     pts_pbc,
     domain=cell,
     mode='power',
-    radii=radii,
+    weights=weights,
     return_vertices=False,
     return_faces=False,
     return_adjacency=False,
 )
 
-vols_std = [c['volume'] for c in cells_std]
-vols_pow = [c['volume'] for c in cells_pow]
+# Measures and power metadata stay aligned with the original input order.
+vols_std = standard_result.cell_measures.tolist()
+vols_pow = power_result.cell_measures.tolist()
+assert np.array_equal(power_result.input_weights, weights)
 
 vols_std, vols_pow
 ```
@@ -191,7 +198,7 @@ vols_std, vols_pow
 ```
 ## Inspecting geometry: vertices, faces, adjacency
 
-`compute(...)` can return different levels of geometric detail. For downstream analysis, the most
+`compute(...)` can include different levels of geometry in `result.cells`. For downstream analysis, the most
 important pieces are:
 
 - `vertices`: coordinates of the cell vertices
@@ -199,9 +206,10 @@ important pieces are:
 - `adjacency`: per-vertex adjacency lists (optional)
 
 The cell dictionaries are designed to be plain data (NumPy arrays + Python lists), so you can
-serialize them or process them with your own code.
+serialize them or process them with your own code. The result's `has_boundaries` and
+`has_periodic_shifts` flags report whether the requested boundary data is available.
 ```python
-# Re-define the 0D box system (self-contained example)
+# Re-define the 3D box system (self-contained example)
 pts = np.array(
     [
         [0.0, 0.0, 0.0],
@@ -214,7 +222,7 @@ pts = np.array(
 
 box = Box(bounds=((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
 
-cells_full = compute(
+geometry_result = compute(
     pts,
     domain=box,
     mode='standard',
@@ -223,7 +231,8 @@ cells_full = compute(
     return_adjacency=True,
 )
 
-pprint(cells_full[0])
+assert geometry_result.has_boundaries
+pprint(geometry_result.cells[0])
 ```
 **Output**
 
@@ -264,7 +273,7 @@ cell_u = PeriodicCell(vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)
 pts_u = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
 radii_u = np.array([1.0, 2.0], dtype=float)
 
-cells_pow = compute(
+hidden_result = compute(
     pts_u,
     domain=cell_u,
     mode='power',
@@ -277,7 +286,7 @@ cells_pow = compute(
     face_shift_search=1,
 )
 
-[(int(c['id']), c.get('empty', False), float(c.get('volume', 0.0))) for c in cells_pow]
+[(int(c['id']), c.get('empty', False), float(c.get('volume', 0.0))) for c in hidden_result.cells]
 ```
 **Output**
 
@@ -291,11 +300,13 @@ with a **particular periodic image** of *j*. pyvoro2 can annotate each face with
 shift `adjacent_shift = (na, nb, nc)`.
 
 This section also shows how to request diagnostics when you want to actively validate a tessellation.
+Diagnostics are attached to the structured result and obtained with
+`result.require_tessellation_diagnostics()` rather than tuple unpacking.
 ```python
 cell_u = PeriodicCell(vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
 pts_u = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
 
-cells_std_u, diag_std_u = compute(
+diagnosed_result = compute(
     pts_u,
     domain=cell_u,
     mode='standard',
@@ -308,12 +319,14 @@ cells_std_u, diag_std_u = compute(
     return_diagnostics=True,
 )
 
+diagnostics = diagnosed_result.require_tessellation_diagnostics()
+
 # Inspect the face between the two sites across the x-boundary.
-c0 = next(c for c in cells_std_u if int(c['id']) == 0)
+c0 = next(c for c in diagnosed_result.cells if int(c['id']) == 0)
 idx = next(i for i, f in enumerate(c0['faces']) if int(f['adjacent_cell']) == 1)
 face01 = c0['faces'][idx]
 
-(diag_std_u.ok, diag_std_u.volume_ratio, diag_std_u.n_faces_orphan), face01
+(diagnostics.ok, diagnostics.volume_ratio, diagnostics.n_faces_orphan), face01
 ```
 **Output**
 
@@ -328,7 +341,7 @@ face01 = c0['faces'][idx]
 ```
 ## Normalization: global vertices / edges / faces
 
-When you compute cells, each cell has its own local vertex indexing. For graph and topology work,
+Each dictionary in `result.cells` has its own local vertex indexing. For graph and topology work,
 it is often helpful to build a **global** pool of vertices/edges/faces with stable IDs that are
 consistent across cells.
 
@@ -340,7 +353,7 @@ from pyvoro2 import normalize_topology
 cell_n = PeriodicCell(vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
 pts_n = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
 
-cells_n = compute(
+topology_result = compute(
     pts_n,
     domain=cell_n,
     mode='standard',
@@ -351,8 +364,11 @@ cells_n = compute(
     face_shift_search=1,
 )
 
+# This section operates repeatedly on raw records, so give that view a local name.
+topology_cells = topology_result.cells
+
 # Pick the periodic wrap face (0 -> 1 across x-wrap)
-c0 = next(c for c in cells_n if int(c['id']) == 0)
+c0 = next(c for c in topology_cells if int(c['id']) == 0)
 idx = next(
     i
     for i, f in enumerate(c0['faces'])
@@ -360,7 +376,7 @@ idx = next(
 )
 
 # Mutate in place so the original cell dictionaries gain global id fields.
-nt = normalize_topology(cells_n, domain=cell_n, copy_cells=False)
+nt = normalize_topology(topology_cells, domain=cell_n, copy_cells=False)
 
 n_global = (len(nt.global_vertices), len(nt.global_edges), len(nt.global_faces))
 
@@ -447,7 +463,7 @@ from pyvoro2 import annotate_face_properties
 cell_f = PeriodicCell(vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
 pts_f = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
 
-cells_f, diag_f = compute(
+face_result = compute(
     pts_f,
     domain=cell_f,
     mode='standard',
@@ -460,14 +476,16 @@ cells_f, diag_f = compute(
     return_diagnostics=True,
 )
 
-c0 = next(c for c in cells_f if int(c['id']) == 0)
+face_diagnostics = face_result.require_tessellation_diagnostics()
+face_cells = face_result.cells
+c0 = next(c for c in face_cells if int(c['id']) == 0)
 idx = next(
     i
     for i, f in enumerate(c0['faces'])
     if int(f['adjacent_cell']) == 1 and tuple(int(x) for x in f['adjacent_shift']) == (-1, 0, 0)
 )
 
-annotate_face_properties(cells_f, domain=cell_f, diagnostics=diag_f)
+annotate_face_properties(face_cells, domain=cell_f, diagnostics=face_diagnostics)
 f = c0['faces'][idx]
 {
     'centroid': f.get('centroid'),

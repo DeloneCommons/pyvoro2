@@ -29,6 +29,7 @@ def test_validate_tessellation_strict_passes_for_simple_periodic_case() -> None:
     cells = pyvoro2.compute(
         pts,
         domain=dom,
+        output='cells',
         return_vertices=True,
         return_faces=True,
         return_face_shifts=True,
@@ -46,6 +47,7 @@ def test_validate_tessellation_strict_detects_orphan_face_after_corruption() -> 
     cells = pyvoro2.compute(
         pts,
         domain=dom,
+        output='cells',
         return_vertices=True,
         return_faces=True,
         return_face_shifts=True,
@@ -83,6 +85,7 @@ def test_validate_tessellation_strict_passes_for_power_mode_periodic_case() -> N
         domain=dom,
         mode='power',
         radii=radii,
+        output='cells',
         return_vertices=True,
         return_faces=True,
         return_face_shifts=True,
@@ -100,6 +103,7 @@ def test_validate_tessellation_strict_passes_for_partial_periodic_case() -> None
     cells = pyvoro2.compute(
         pts,
         domain=dom,
+        output='cells',
         return_vertices=True,
         return_faces=True,
         return_face_shifts=True,
@@ -117,6 +121,7 @@ def test_validate_normalized_topology_strict_detects_vertex_shift_corruption() -
     cells = pyvoro2.compute(
         pts,
         domain=dom,
+        output='cells',
         return_vertices=True,
         return_faces=True,
         return_face_shifts=True,
@@ -147,6 +152,7 @@ def test_validate_normalized_topology_strict_detects_adjacent_shift_corruption()
     cells = pyvoro2.compute(
         pts,
         domain=dom,
+        output='cells',
         return_vertices=True,
         return_faces=True,
         return_face_shifts=True,

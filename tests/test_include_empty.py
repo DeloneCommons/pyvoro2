@@ -15,6 +15,7 @@ def test_include_empty_power_periodic_returns_all_ids():
         domain=cell,
         mode='power',
         radii=radii,
+        output='cells',
         return_vertices=True,
         return_faces=True,
         return_adjacency=False,

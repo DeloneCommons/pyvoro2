@@ -23,6 +23,7 @@ def test_orthorhombic_slab_face_shifts_have_zero_z_shift():
         pts,
         domain=domain,
         mode='standard',
+        output='cells',
         return_vertices=True,
         return_faces=True,
         return_face_shifts=True,

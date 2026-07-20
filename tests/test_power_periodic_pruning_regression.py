@@ -94,6 +94,7 @@ def test_power_periodic_pruning_regression_issue43():
         pts,
         domain=domain,
         mode='power',
+        output='cells',
         radii=radii,
         # Explicitly match the upstream repro harness (and the wrapper default).
         blocks=(1, 1, 1),

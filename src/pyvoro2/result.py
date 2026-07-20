@@ -75,9 +75,9 @@ class TessellationResult:
     """Dimension-neutral structured tessellation data.
 
     ``TessellationResult`` records common scientific output without erasing
-    dimension-specific geometry. Issue #9 introduces this data contract and
-    its private builder; the public ``compute`` return migration remains a
-    separate change.
+    dimension-specific geometry. It is the default return from both public
+    ``compute`` functions; callers that need historical raw records can select
+    ``output='cells'`` explicitly.
 
     Attributes:
         dimension: Explicit spatial dimension, either ``2`` or ``3``.
@@ -323,6 +323,29 @@ class TessellationResult:
         """Whether dimension-specific topology normalization is present."""
 
         return self.normalized_topology is not None
+
+    @property
+    def global_vertices(self) -> np.ndarray | None:
+        """Global planar vertices from the available normalized output.
+
+        This provisional convenience preserves the historical
+        ``PlanarComputeResult`` access pattern. It is ``None`` when no planar
+        normalization output is available.
+        """
+
+        if self.normalized_topology is not None:
+            return self.normalized_topology.global_vertices
+        if self.normalized_vertices is not None:
+            return self.normalized_vertices.global_vertices
+        return None
+
+    @property
+    def global_edges(self) -> list[dict[str, Any]] | None:
+        """Global planar edges when topology normalization is available."""
+
+        if self.normalized_topology is None:
+            return None
+        return self.normalized_topology.global_edges
 
     @property
     def has_boundaries(self) -> bool:

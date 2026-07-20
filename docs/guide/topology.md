@@ -24,7 +24,13 @@ pyvoro2 can annotate each face with:
 You enable this with `return_face_shifts=True`:
 
 ```python
-cells = pyvoro2.compute(points, domain=cell, return_faces=True, return_face_shifts=True)
+result = pyvoro2.compute(
+    points,
+    domain=cell,
+    return_faces=True,
+    return_face_shifts=True,
+)
+cells = result.cells
 ```
 
 For `PeriodicCell`, the shift is expressed in the $(a,b,c)$ lattice basis.
@@ -73,7 +79,9 @@ These utilities are most useful for periodic settings.
 ## Diagnostics: catching subtle issues early
 
 When building graphs, you typically want a few simple consistency checks.
-pyvoro2 provides `analyze_tessellation(...)`, and `compute(..., return_diagnostics=True)`.
+pyvoro2 provides `analyze_tessellation(...)`, and
+`compute(..., return_diagnostics=True)`. The latter stores diagnostics in the
+returned `TessellationResult`.
 
 Diagnostics can check, for example:
 

@@ -37,7 +37,7 @@ As an additional safety net, you can ask pyvoro2 to run a fast **Python-side**
 near-duplicate pre-check before entering the C++ layer:
 
 ```python
-cells = pyvoro2.compute(
+result = pyvoro2.compute(
     points,
     domain=cell,
     duplicate_check='raise',  # recommended ("warn" is diagnostic only)
@@ -52,20 +52,23 @@ If your points truly violate Voro++'s hard threshold, the process may still term
 
 ## 1) `compute(...)`: tessellate all sites
 
-`compute` computes the Voronoi (standard) or power/Laguerre (weighted) cell for each site.
+`compute` computes the Voronoi (standard) or power/Laguerre (weighted) cell for
+each site. It returns a `TessellationResult` by default in both dimensions.
 
 ### Standard Voronoi
 
 ```python
-cells = pyvoro2.compute(points, domain=box, mode='standard')
+result = pyvoro2.compute(points, domain=box, mode='standard')
 ```
 
-This is the classic “midplane” Voronoi construction.
+This is the classic “midplane” Voronoi construction. Raw cell dictionaries are
+available as `result.cells`; input-aligned measures and empty state are
+available as `result.cell_measures` and `result.empty_mask`.
 
 ### Power/Laguerre (weighted)
 
 ```python
-cells = pyvoro2.compute(
+result = pyvoro2.compute(
     points,
     domain=box,
     mode='power',
@@ -110,7 +113,7 @@ If your goal is a periodic neighbor graph, this image information is essential.
 Request it with:
 
 ```python
-cells = pyvoro2.compute(
+result = pyvoro2.compute(
     points,
     domain=cell,
     return_faces=True,
@@ -119,10 +122,34 @@ cells = pyvoro2.compute(
 )
 ```
 
-Each face can then include:
+`result.require_boundaries()` returns the faces aligned with original input
+order. Each face can include:
 
 - `adjacent_cell`: neighbor id
 - `adjacent_shift`: integer shift `(na, nb, nc)` describing which neighbor image produced the face
+
+### Raw-cell compatibility and migration
+
+Existing code that needs the historical raw return can keep it with one added
+keyword:
+
+```python
+cells = pyvoro2.compute(points, domain=box, output='cells')
+```
+
+With `output='cells'`, `return_diagnostics=True` retains the historical
+`(cells, diagnostics)` tuple. With the preferred structured output,
+diagnostics are stored in `result.tessellation_diagnostics` and the return is
+always one `TessellationResult`:
+
+```python
+result = pyvoro2.compute(
+    points,
+    domain=box,
+    return_diagnostics=True,
+)
+diagnostics = result.require_tessellation_diagnostics()
+```
 
 ## 2) `locate(...)`: assign query points to sites
 

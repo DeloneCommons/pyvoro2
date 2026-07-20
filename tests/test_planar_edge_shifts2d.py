@@ -110,6 +110,7 @@ def test_planar_power_shift_residual_handles_large_common_radius() -> None:
         domain=domain,
         mode='power',
         radii=np.array([1.0]),
+        output='cells',
         return_vertices=True,
         return_edges=True,
         return_edge_shifts=False,

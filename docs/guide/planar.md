@@ -33,7 +33,7 @@ pts = np.array([
     [0.5, 0.8],
 ], dtype=float)
 
-cells = pv2.compute(
+result = pv2.compute(
     pts,
     domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
     return_vertices=True,
@@ -41,7 +41,9 @@ cells = pv2.compute(
 )
 ```
 
-Raw planar cells are dimension-specific by design:
+The default return is the same `TessellationResult` class used in 3D. Its raw
+planar records are available as `result.cells` and remain dimension-specific by
+design:
 
 - `area` instead of `volume`,
 - `edges` instead of `faces`,
@@ -54,7 +56,7 @@ contract as the 3D `compute(...)` function:
 
 ```python
 weights = np.array([-0.1, 0.0, 0.2])
-cells = pv2.compute(
+result = pv2.compute(
     pts,
     domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
     mode='power',
@@ -94,7 +96,7 @@ cell = pv2.RectangularCell(
     periodic=(True, True),
 )
 
-cells = pv2.compute(
+result = pv2.compute(
     pts,
     domain=cell,
     return_vertices=True,
@@ -135,16 +137,18 @@ Planar `compute(...)` supports the same kind of post-compute convenience that
 3D users already expect, but specialized for 2D semantics:
 
 ```python
-cells, diag = pv2.compute(
+result = pv2.compute(
     pts,
     domain=cell,
     return_diagnostics=True,
 )
+diag = result.require_tessellation_diagnostics()
 ```
 
 For periodic domains, the wrapper automatically computes the temporary geometry
-needed for reciprocity checks and then strips it back out of the raw returned
-cells unless you explicitly requested it.
+needed for reciprocity checks and then strips it back out of `result.cells`
+unless you explicitly requested it. The result's boundary and periodic-shift
+capability flags describe only that final user-visible geometry.
 
 The same holds for normalization convenience:
 
@@ -157,15 +161,32 @@ result = pv2.compute(
 )
 ```
 
-This returns a `pv2.PlanarComputeResult` bundling:
+This returns the common `pv2.TessellationResult` bundling:
 
 - raw `cells`,
 - optional tessellation diagnostics,
 - optional normalized vertices,
 - optional normalized topology.
 
-This keeps the public API structured once the user wants more than a bare list
-of raw cells.
+`pv2.PlanarComputeResult` remains an identity alias to `TessellationResult` for
+compatibility. The deprecated `return_result: bool | None = None` selector uses
+`None` to mean “not supplied”; passing either boolean emits a deprecation
+warning. New code uses `output=`.
+
+Code that requires the historical raw return can select it explicitly:
+
+```python
+cells = pv2.compute(pts, domain=cell, output='cells')
+cells, diag = pv2.compute(
+    pts,
+    domain=cell,
+    output='cells',
+    return_diagnostics=True,
+)
+```
+
+`output='cells'` cannot be combined with normalization, because normalization
+is structured output rather than a raw-cell side effect.
 
 ## Planar normalization
 
@@ -186,7 +207,7 @@ For quick inspection, use the optional matplotlib helper:
 ```python
 from pyvoro2.planar import plot_tessellation
 
-fig, ax = plot_tessellation(cells, annotate_ids=True)
+fig, ax = plot_tessellation(result.cells, annotate_ids=True)
 ```
 
 Install it with:

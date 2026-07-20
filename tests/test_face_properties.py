@@ -27,6 +27,7 @@ def test_face_properties_standard_periodic_midface():
         pts,
         domain=cell,
         mode='standard',
+        output='cells',
         return_vertices=True,
         return_faces=True,
         return_adjacency=False,

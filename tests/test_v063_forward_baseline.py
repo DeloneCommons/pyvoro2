@@ -11,6 +11,7 @@ from dataclasses import fields
 import inspect
 
 import numpy as np
+import pytest
 
 import pyvoro2 as pv
 import pyvoro2.api as spatial_api
@@ -164,6 +165,7 @@ def test_spatial_compute_signature_and_defaults_are_characterized() -> None:
         ('repair_face_shifts', False),
         ('face_shift_tol', None),
         ('return_diagnostics', False),
+        ('output', 'result'),
         ('tessellation_check', 'none'),
         ('tessellation_require_reciprocity', None),
         ('tessellation_volume_tol_rel', 1e-8),
@@ -175,6 +177,9 @@ def test_spatial_compute_signature_and_defaults_are_characterized() -> None:
 
 def test_planar_compute_signature_and_defaults_are_characterized() -> None:
     defaults = _parameter_defaults(pv2.compute)
+    return_result = inspect.signature(pv2.compute).parameters['return_result']
+    assert return_result.annotation == 'bool | None'
+    assert return_result.default is None
     assert defaults[11] == ('weights', None)
     assert defaults[:11] + defaults[12:] == (
         ('points', REQUIRED),
@@ -199,7 +204,8 @@ def test_planar_compute_signature_and_defaults_are_characterized() -> None:
         ('repair_edge_shifts', False),
         ('edge_shift_tol', None),
         ('return_diagnostics', False),
-        ('return_result', False),
+        ('output', 'result'),
+        ('return_result', None),
         ('normalize', 'none'),
         ('normalization_tol', None),
         ('tessellation_check', 'none'),
@@ -894,15 +900,7 @@ def test_forward_result_and_diagnostic_fields_are_characterized() -> None:
             planar_normalize.NormalizedTopology,
             ('global_vertices', 'global_edges', 'cells'),
         ),
-        (
-            planar_result.PlanarComputeResult,
-            (
-                'cells',
-                'tessellation_diagnostics',
-                'normalized_vertices',
-                'normalized_topology',
-            ),
-        ),
+        (planar_result.PlanarComputeResult, _field_names(pv.TessellationResult)),
     )
     for dataclass_type, expected in expected_fields:
         assert _field_names(dataclass_type) == expected
@@ -912,16 +910,18 @@ def test_spatial_raw_return_variants_are_characterized() -> None:
     points = np.array([[0.25, 0.5, 0.5], [0.75, 0.5, 0.5]])
     domain = pv.Box(((0.0, 1.0), (0.0, 1.0), (0.0, 1.0)))
 
-    cells = pv.compute(points, domain=domain)
+    cells = pv.compute(points, domain=domain, output='cells')
     diagnosed_cells = pv.compute(
         points,
         domain=domain,
+        output='cells',
         tessellation_check='diagnose',
     )
     cells_with_diagnostics = pv.compute(
         points,
         domain=domain,
         return_diagnostics=True,
+        output='cells',
     )
 
     assert isinstance(cells, list)
@@ -936,23 +936,26 @@ def test_planar_raw_and_structured_return_variants_are_characterized() -> None:
     points = np.array([[0.25, 0.5], [0.75, 0.5]])
     domain = pv2.Box(((0.0, 1.0), (0.0, 1.0)))
 
-    cells = pv2.compute(points, domain=domain)
+    cells = pv2.compute(points, domain=domain, output='cells')
     diagnosed_cells = pv2.compute(
         points,
         domain=domain,
+        output='cells',
         tessellation_check='diagnose',
     )
     cells_with_diagnostics = pv2.compute(
         points,
         domain=domain,
         return_diagnostics=True,
+        output='cells',
     )
-    result = pv2.compute(
-        points,
-        domain=domain,
-        return_result=True,
-        return_diagnostics=True,
-    )
+    with pytest.warns(DeprecationWarning, match='output'):
+        result = pv2.compute(
+            points,
+            domain=domain,
+            return_result=True,
+            return_diagnostics=True,
+        )
     normalized_result = pv2.compute(
         points,
         domain=domain,
@@ -981,6 +984,7 @@ def test_raw_cell_keys_external_ids_and_order_are_characterized() -> None:
         points3,
         domain=pv.Box(((0.0, 1.0), (0.0, 1.0), (0.0, 1.0))),
         ids=[20, 10],
+        output='cells',
     )
     assert [cell['id'] for cell in cells3] == [20, 10]
     assert set(cells3[0]) == {
@@ -998,6 +1002,7 @@ def test_raw_cell_keys_external_ids_and_order_are_characterized() -> None:
         points2,
         domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
         ids=[20, 10],
+        output='cells',
     )
     assert [cell['id'] for cell in cells2] == [20, 10]
     assert set(cells2[0]) == {
@@ -1019,6 +1024,7 @@ def test_raw_optional_geometry_keys_are_omitted_when_disabled() -> None:
         return_vertices=False,
         return_adjacency=False,
         return_faces=False,
+        output='cells',
     )
     assert set(cells3[0]) == {'id', 'volume', 'site'}
 
@@ -1029,6 +1035,7 @@ def test_raw_optional_geometry_keys_are_omitted_when_disabled() -> None:
         return_vertices=False,
         return_adjacency=False,
         return_edges=False,
+        output='cells',
     )
     assert set(cells2[0]) == {'id', 'area', 'site'}
 
@@ -1041,6 +1048,7 @@ def test_standard_include_empty_is_a_noop_in_both_dimensions() -> None:
         'return_vertices': False,
         'return_adjacency': False,
         'return_faces': False,
+        'output': 'cells',
     }
     omitted3 = pv.compute(points3, include_empty=False, **common3)
     included3 = pv.compute(points3, include_empty=True, **common3)
@@ -1059,6 +1067,7 @@ def test_standard_include_empty_is_a_noop_in_both_dimensions() -> None:
         'return_vertices': False,
         'return_adjacency': False,
         'return_edges': False,
+        'output': 'cells',
     }
     omitted2 = pv2.compute(points2, include_empty=False, **common2)
     included2 = pv2.compute(points2, include_empty=True, **common2)
@@ -1081,6 +1090,7 @@ def test_hidden_power_cells_are_omitted_or_reinserted_in_both_dimensions() -> No
         'return_vertices': False,
         'return_adjacency': False,
         'return_faces': False,
+        'output': 'cells',
     }
     omitted3 = pv.compute(points3, include_empty=False, **common3)
     included3 = pv.compute(points3, include_empty=True, **common3)
@@ -1103,6 +1113,7 @@ def test_hidden_power_cells_are_omitted_or_reinserted_in_both_dimensions() -> No
         'return_vertices': False,
         'return_adjacency': False,
         'return_edges': False,
+        'output': 'cells',
     }
     omitted2 = pv2.compute(points2, include_empty=False, **common2)
     included2 = pv2.compute(points2, include_empty=True, **common2)

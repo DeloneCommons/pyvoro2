@@ -11,7 +11,9 @@ import numpy as np
 import pytest
 
 import pyvoro2 as pv
+import pyvoro2.api as api3d
 import pyvoro2.planar as pv2
+import pyvoro2.planar.result as planar_result
 from pyvoro2._power_input import ResolvedPowerInput, resolve_power_input
 from pyvoro2.result import _build_tessellation_result
 
@@ -58,7 +60,8 @@ def test_public_imports_are_the_identical_class() -> None:
     assert pv.TessellationResult is pv2.TessellationResult
     assert 'TessellationResult' in pv.__all__
     assert 'TessellationResult' in pv2.__all__
-    assert pv2.PlanarComputeResult is not pv.TessellationResult
+    assert pv2.PlanarComputeResult is pv.TessellationResult
+    assert planar_result.PlanarComputeResult is pv.TessellationResult
 
     public_fields = tuple(
         item.name for item in fields(pv.TessellationResult)
@@ -154,7 +157,7 @@ def test_real_raw_computations_align_by_external_id_not_cell_order(
     measure_key: str,
 ) -> None:
     ids = np.array([30, 10, 20], dtype=np.int64)
-    cells = compute(points, domain=domain, ids=ids)
+    cells = compute(points, domain=domain, ids=ids, output='cells')
     expected_measures = {
         int(cell['id']): float(cell[measure_key]) for cell in cells
     }
@@ -195,6 +198,85 @@ MATRIX_POINTS_3D = np.array(
     ]
 )
 MATRIX_WEIGHTS = np.array([-0.04, 0.0, 0.03, 0.07])
+
+
+@pytest.mark.parametrize(
+    ('dimension', 'compute', 'domain', 'points'),
+    (
+        (
+            2,
+            pv2.compute,
+            pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            MATRIX_POINTS_2D,
+        ),
+        (
+            3,
+            pv.compute,
+            pv.Box(((0.0, 1.0), (0.0, 1.0), (0.0, 1.0))),
+            MATRIX_POINTS_3D,
+        ),
+    ),
+    ids=('planar', 'spatial'),
+)
+def test_compute_defaults_to_common_structured_result(
+    dimension: int,
+    compute: Callable[..., Any],
+    domain: object,
+    points: np.ndarray,
+) -> None:
+    result = compute(points, domain=domain)
+
+    assert type(result) is pv.TessellationResult
+    assert result.dimension == dimension
+    assert result.domain is domain
+    assert result.mode == 'standard'
+    assert len(result.cells) == len(points)
+
+
+def test_spatial_invalid_output_precedes_native_compute(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unexpected_core() -> Any:
+        raise AssertionError('native core resolution must not be reached')
+
+    monkeypatch.setattr(api3d, '_require_core', unexpected_core)
+    with pytest.raises(ValueError, match='output.*result.*cells'):
+        pv.compute(
+            MATRIX_POINTS_3D,
+            domain=pv.Box(((0.0, 1.0), (0.0, 1.0), (0.0, 1.0))),
+            output='nope',  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.parametrize(
+    ('compute', 'domain', 'points'),
+    (
+        (
+            pv2.compute,
+            pv2.RectangularCell(
+                ((0.0, 1.0), (0.0, 1.0)), periodic=(True, True)
+            ),
+            np.array([[1.2, -0.8], [-0.3, 1.4]]),
+        ),
+        (
+            pv.compute,
+            pv.PeriodicCell(
+                ((1.0, 0.0, 0.0), (0.2, 1.0, 0.0), (0.1, 0.1, 1.0))
+            ),
+            np.array([[1.2, -0.8, 0.3], [-0.3, 1.4, 1.7]]),
+        ),
+    ),
+    ids=('planar', 'spatial'),
+)
+def test_periodic_results_keep_original_input_sites_and_ids(
+    compute: Callable[..., Any],
+    domain: object,
+    points: np.ndarray,
+) -> None:
+    result = compute(points, domain=domain, ids=[91, 37])
+
+    np.testing.assert_array_equal(result.sites, points)
+    np.testing.assert_array_equal(result.ids, [91, 37])
 
 
 @pytest.mark.parametrize(
@@ -297,39 +379,26 @@ def test_forward_result_matrix_covers_domains_modes_and_diagnostics(
     if weights is not None:
         compute_kwargs['weights'] = weights
 
-    cells, diagnostics = compute(
+    result = compute(
         points,
         domain=domain,
         ids=ids,
         mode=mode,
+        output='result',
         **compute_kwargs,
     )
-    cells.reverse()
-    power_input = resolve_power_input(
-        mode=mode,
-        weights=weights,
-        radii=None,
-        n=len(points),
-    )
-    result = _build(
-        dimension=dimension,
-        domain=domain,
-        mode=mode,
-        sites=points,
-        ids=ids,
-        cells=cells,
-        power_input=power_input,
-        tessellation_diagnostics=diagnostics,
-        boundaries_available=True,
-        periodic_shifts_available=shift_option is not None,
-    )
 
+    assert isinstance(result, pv.TessellationResult)
+    assert result.dimension == dimension
+    assert result.domain is domain
+    assert result.mode == mode
+    np.testing.assert_array_equal(result.sites, points)
     np.testing.assert_array_equal(result.ids, ids)
     np.testing.assert_array_equal(
         result.empty_mask, np.zeros(len(points), dtype=bool)
     )
     assert np.all(result.cell_measures > 0.0)
-    assert result.require_tessellation_diagnostics() is diagnostics
+    assert result.require_tessellation_diagnostics() is not None
     assert result.has_boundaries is True
     assert result.has_periodic_shifts is (shift_option is not None)
     boundaries = result.require_boundaries()
@@ -403,8 +472,12 @@ def test_omitted_and_explicit_hidden_power_cells_align_identically(
         'radii': radii,
         **geometry,
     }
-    omitted_cells = compute(points, include_empty=False, **common)
-    explicit_cells = compute(points, include_empty=True, **common)
+    omitted_cells = compute(
+        points, include_empty=False, output='cells', **common
+    )
+    explicit_cells = compute(
+        points, include_empty=True, output='cells', **common
+    )
 
     omitted = _build(
         dimension=dimension,
@@ -436,10 +509,75 @@ def test_omitted_and_explicit_hidden_power_cells_align_identically(
     )
 
 
+@pytest.mark.parametrize(
+    ('compute', 'domain', 'points', 'geometry'),
+    (
+        (
+            pv2.compute,
+            pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            np.array([[0.25, 0.5], [0.75, 0.5]]),
+            {
+                'return_vertices': False,
+                'return_adjacency': False,
+                'return_edges': False,
+            },
+        ),
+        (
+            pv.compute,
+            pv.Box(((0.0, 1.0), (0.0, 1.0), (0.0, 1.0))),
+            np.array([[0.25, 0.5, 0.5], [0.75, 0.5, 0.5]]),
+            {
+                'return_vertices': False,
+                'return_adjacency': False,
+                'return_faces': False,
+            },
+        ),
+    ),
+    ids=('planar', 'spatial'),
+)
+def test_structured_result_aligns_omitted_hidden_cells(
+    compute: Callable[..., Any],
+    domain: object,
+    points: np.ndarray,
+    geometry: dict[str, bool],
+) -> None:
+    result = compute(
+        points,
+        domain=domain,
+        ids=[20, 10],
+        mode='power',
+        radii=[1.0, 2.0],
+        include_empty=False,
+        **geometry,
+    )
+
+    assert isinstance(result, pv.TessellationResult)
+    np.testing.assert_array_equal(result.ids, [20, 10])
+    np.testing.assert_array_equal(result.empty_mask, [True, False])
+    assert result.cell_measures[0] == 0.0
+    assert [cell['id'] for cell in result.cells] == [10]
+    assert result.has_boundaries is False
+
+
+def test_spatial_tessellation_check_stores_computed_diagnostics() -> None:
+    points = np.array([[0.25, 0.5, 0.5], [0.75, 0.5, 0.5]])
+    result = pv.compute(
+        points,
+        domain=pv.Box(((0.0, 1.0), (0.0, 1.0), (0.0, 1.0))),
+        tessellation_check='diagnose',
+    )
+
+    assert isinstance(result, pv.TessellationResult)
+    assert result.has_tessellation_diagnostics is True
+    assert result.require_tessellation_diagnostics().ok is True
+
+
 def test_builder_rejects_duplicate_and_unknown_raw_cells() -> None:
     points = np.array([[0.25, 0.5], [0.75, 0.5]])
     domain = pv2.Box(((0.0, 1.0), (0.0, 1.0)))
-    cells = pv2.compute(points, domain=domain, ids=[20, 10])
+    cells = pv2.compute(
+        points, domain=domain, ids=[20, 10], output='cells'
+    )
 
     with pytest.raises(ValueError, match='duplicate raw cell ID'):
         _build(
@@ -480,6 +618,7 @@ def test_omitted_and_explicit_standard_empty_cells_align_identically() -> None:
         domain=domain,
         ids=ids,
         include_empty=False,
+        output='cells',
         **geometry,
     )
     explicit_cells = pv.compute(
@@ -487,6 +626,7 @@ def test_omitted_and_explicit_standard_empty_cells_align_identically() -> None:
         domain=domain,
         ids=ids,
         include_empty=True,
+        output='cells',
         **geometry,
     )
 
@@ -529,6 +669,7 @@ def test_available_boundaries_use_empty_collection_for_omitted_hidden_site() -> 
         mode='power',
         radii=radii,
         include_empty=False,
+        output='cells',
     )
     result = _build(
         dimension=2,
@@ -629,6 +770,7 @@ def test_boundary_access_rejects_removed_or_reclassified_nonempty_cell(
         points,
         domain=domain,
         mode=mode,
+        output='cells',
         **compute_kwargs,
     )
     result = _build(
@@ -664,18 +806,10 @@ def test_power_representation_metadata_is_preserved() -> None:
     resolved_weights = resolve_power_input(
         mode='power', weights=weights, radii=None, n=2
     )
-    weighted_cells = pv2.compute(
+    weighted = pv2.compute(
         points, domain=domain, mode='power', weights=weights
     )
-    weighted = _build(
-        dimension=2,
-        domain=domain,
-        mode='power',
-        sites=points,
-        cells=weighted_cells,
-        power_input=resolved_weights,
-        boundaries_available=True,
-    )
+    assert isinstance(weighted, pv.TessellationResult)
     np.testing.assert_array_equal(weighted.input_weights, weights)
     np.testing.assert_array_equal(
         weighted.backend_radii, resolved_weights.backend_radii
@@ -683,34 +817,16 @@ def test_power_representation_metadata_is_preserved() -> None:
     assert weighted.representation_shift == pytest.approx(0.25)
 
     radii = np.array([0.25, 0.75])
-    resolved_radii = resolve_power_input(
-        mode='power', weights=None, radii=radii, n=2
-    )
-    radius_cells = pv2.compute(
+    radius_based = pv2.compute(
         points, domain=domain, mode='power', radii=radii
     )
-    radius_based = _build(
-        dimension=2,
-        domain=domain,
-        mode='power',
-        sites=points,
-        cells=radius_cells,
-        power_input=resolved_radii,
-        boundaries_available=True,
-    )
+    assert isinstance(radius_based, pv.TessellationResult)
     assert radius_based.input_weights is None
     np.testing.assert_array_equal(radius_based.backend_radii, radii)
     assert radius_based.representation_shift is None
 
-    standard_cells = pv2.compute(points, domain=domain)
-    standard = _build(
-        dimension=2,
-        domain=domain,
-        mode='standard',
-        sites=points,
-        cells=standard_cells,
-        boundaries_available=True,
-    )
+    standard = pv2.compute(points, domain=domain)
+    assert isinstance(standard, pv.TessellationResult)
     assert standard.input_weights is None
     assert standard.backend_radii is None
     assert standard.representation_shift is None
@@ -726,7 +842,7 @@ def test_power_representation_metadata_is_preserved() -> None:
             domain=domain,
             mode='power',
             sites=points,
-            cells=weighted_cells,
+            cells=weighted.cells,
             power_input=inconsistent,
             boundaries_available=True,
         )
@@ -735,23 +851,12 @@ def test_power_representation_metadata_is_preserved() -> None:
 def test_optional_objects_and_capability_helpers_are_explicit() -> None:
     points = np.array([[0.25, 0.5], [0.75, 0.5]])
     domain = pv2.Box(((0.0, 1.0), (0.0, 1.0)))
-    old_result = pv2.compute(
+    result = pv2.compute(
         points,
         domain=domain,
-        return_result=True,
+        output='result',
         return_diagnostics=True,
         normalize='topology',
-    )
-    result = _build(
-        dimension=2,
-        domain=domain,
-        mode='standard',
-        sites=points,
-        cells=old_result.cells,
-        tessellation_diagnostics=old_result.tessellation_diagnostics,
-        normalized_vertices=old_result.normalized_vertices,
-        normalized_topology=old_result.normalized_topology,
-        boundaries_available=True,
     )
 
     assert result.has_tessellation_diagnostics is True
@@ -759,18 +864,12 @@ def test_optional_objects_and_capability_helpers_are_explicit() -> None:
     assert result.has_normalized_topology is True
     assert (
         result.require_tessellation_diagnostics()
-        is old_result.tessellation_diagnostics
+        is result.tessellation_diagnostics
     )
-    assert result.require_normalized_vertices() is old_result.normalized_vertices
-    assert result.require_normalized_topology() is old_result.normalized_topology
+    assert result.require_normalized_vertices() is result.normalized_vertices
+    assert result.require_normalized_topology() is result.normalized_topology
 
-    absent = _build(
-        dimension=2,
-        domain=domain,
-        mode='standard',
-        sites=points,
-        cells=pv2.compute(points, domain=domain, return_edges=False),
-    )
+    absent = pv2.compute(points, domain=domain, return_edges=False)
     assert absent.has_tessellation_diagnostics is False
     assert absent.has_normalized_vertices is False
     assert absent.has_normalized_topology is False
@@ -796,6 +895,7 @@ def test_periodic_shift_capability_is_explicit_and_boundaries_are_aligned() -> N
         domain=domain,
         ids=ids,
         return_edge_shifts=True,
+        output='cells',
     )
     cells.reverse()
     result = _build(
@@ -837,7 +937,12 @@ def test_owned_arrays_are_read_only_and_raw_cells_remain_shared_mutable() -> Non
     weights = np.array([-0.25, 0.75])
     domain = pv2.Box(((0.0, 1.0), (0.0, 1.0)))
     cells = pv2.compute(
-        sites, domain=domain, ids=ids, mode='power', weights=weights
+        sites,
+        domain=domain,
+        ids=ids,
+        mode='power',
+        weights=weights,
+        output='cells',
     )
     power_input = resolve_power_input(
         mode='power', weights=weights, radii=None, n=2
@@ -906,6 +1011,7 @@ def test_deepcopy_and_pickle_restore_read_only_arrays_and_capabilities() -> None
         mode='power',
         weights=weights,
         return_edge_shifts=True,
+        output='cells',
     )
     result = _build(
         dimension=2,
@@ -962,7 +1068,7 @@ def test_empty_input_shapes_and_available_but_empty_capabilities() -> None:
         ),
     ):
         sites = np.empty((0, dimension))
-        cells = compute(sites, domain=domain, ids=[])
+        cells = compute(sites, domain=domain, ids=[], output='cells')
         result = _build(
             dimension=dimension,
             domain=domain,

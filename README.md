@@ -58,10 +58,10 @@ from pyvoro2.viz3d import view_tessellation
 
 points = np.random.default_rng(0).uniform(-1.5, 1.5, size=(10, 3))
 box = pv.Box(((-2, 2), (-2, 2), (-2, 2)))
-cells = pv.compute(points, domain=box, mode='standard')
+result = pv.compute(points, domain=box, mode='standard')
 
 view_tessellation(
-    cells,
+    result.cells,
     domain=box,
     show_vertices=False,
 )
@@ -103,7 +103,7 @@ The forward `compute(...)` APIs accept mathematical power weights directly:
 ```python
 weights = np.linspace(-0.2, 0.2, len(points))
 
-cells = pv.compute(
+result = pv.compute(
     points,
     domain=box,
     mode='power',
@@ -138,8 +138,9 @@ cell = pv.PeriodicCell(
     )
 )
 
-cells = pv.compute(points, domain=cell, return_face_shifts=True)
+result = pv.compute(points, domain=cell, return_face_shifts=True)
 
+# result.require_boundaries() returns faces aligned with input-site order.
 # Each face can include:
 #   adjacent_cell  (neighbor site id)
 #   adjacent_shift (which periodic image produced the face)
@@ -185,7 +186,7 @@ unusual units.
 A Python-side near-duplicate precheck can run before the native call:
 
 ```python
-cells = pv.compute(points, domain=cell, duplicate_check='raise')
+result = pv.compute(points, domain=cell, duplicate_check='raise')
 ```
 
 For stricter post-hoc checks, see:

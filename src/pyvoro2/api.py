@@ -19,13 +19,14 @@ from ._inputs import (
 )
 from ._domain_geometry import geometry3d
 from ._face_shifts3d import _add_periodic_face_shifts_inplace
-from ._power_input import resolve_power_input
+from ._power_input import ResolvedPowerInput, resolve_power_input
 from .duplicates import duplicate_check as _duplicate_check
 from .diagnostics import (
     TessellationDiagnostics,
     TessellationError,
     analyze_tessellation,
 )
+from .result import TessellationResult, _build_tessellation_result
 
 # The compiled C++ extension is required for geometry operations.
 #
@@ -168,6 +169,55 @@ def _add_empty_cells_inplace(
     cells.sort(key=lambda cc: int(cc.get('id', 0)))
 
 
+def _validate_output(output: str) -> Literal['result', 'cells']:
+    """Validate and resolve the public compute output selector."""
+
+    if not isinstance(output, str) or output not in ('result', 'cells'):
+        raise ValueError('output must be one of: result, cells')
+    return output  # type: ignore[return-value]
+
+
+def _finish_compute_output(
+    *,
+    output: Literal['result', 'cells'],
+    return_diagnostics: bool,
+    dimension: Literal[3],
+    domain: Box | OrthorhombicCell | PeriodicCell,
+    mode: Literal['standard', 'power'],
+    sites: np.ndarray,
+    ids: np.ndarray | None,
+    cells: list[dict[str, Any]],
+    power_input: ResolvedPowerInput,
+    diagnostics: TessellationDiagnostics | None,
+    boundaries_available: bool,
+    periodic_shifts_available: bool,
+) -> (
+    TessellationResult
+    | list[dict[str, Any]]
+    | tuple[list[dict[str, Any]], TessellationDiagnostics]
+):
+    """Return structured output or the historical raw compatibility shape."""
+
+    if output == 'cells':
+        if return_diagnostics:
+            assert diagnostics is not None
+            return cells, diagnostics
+        return cells
+
+    return _build_tessellation_result(
+        dimension=dimension,
+        domain=domain,
+        mode=mode,
+        sites=sites,
+        ids=ids,
+        cells=cells,
+        power_input=power_input,
+        tessellation_diagnostics=diagnostics,
+        boundaries_available=boundaries_available,
+        periodic_shifts_available=periodic_shifts_available,
+    )
+
+
 def compute(
     points: Sequence[Sequence[float]] | np.ndarray,
     *,
@@ -193,13 +243,18 @@ def compute(
     repair_face_shifts: bool = False,
     face_shift_tol: float | None = None,
     return_diagnostics: bool = False,
+    output: Literal['result', 'cells'] = 'result',
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'none',
     tessellation_require_reciprocity: bool | None = None,
     tessellation_volume_tol_rel: float = 1e-8,
     tessellation_volume_tol_abs: float = 1e-12,
     tessellation_plane_offset_tol: float | None = None,
     tessellation_plane_angle_tol: float | None = None,
-) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], TessellationDiagnostics]:
+) -> (
+    TessellationResult
+    | list[dict[str, Any]]
+    | tuple[list[dict[str, Any]], TessellationDiagnostics]
+):
     """Compute Voronoi tessellation cells.
 
     Supported domains:
@@ -286,12 +341,19 @@ def compute(
             the face-shift plane residual check. If None, a conservative default is
             used.
 
+        output: ``"result"`` (the default) returns one
+            :class:`~pyvoro2.TessellationResult`. ``"cells"`` selects the
+            historical raw list, or the historical ``(cells, diagnostics)``
+            tuple when ``return_diagnostics=True``.
+
     Returns:
-        List of cell dictionaries.
+        A :class:`~pyvoro2.TessellationResult` by default. The explicit
+        ``output="cells"`` compatibility route returns raw cell dictionaries.
 
     Raises:
         ValueError: If inputs are inconsistent or an unknown mode is provided.
     """
+    resolved_output = _validate_output(output)
     pts = coerce_point_array(points, name='points', dim=3)
     _warn_if_scale_suspicious(pts=pts, domain=domain)
     n = int(pts.shape[0])
@@ -443,10 +505,20 @@ def compute(
                         raise TessellationError(msg, diag)
                     warnings.warn(msg, stacklevel=2)
 
-        if return_diagnostics:
-            assert diag is not None
-            return cells, diag
-        return cells
+        return _finish_compute_output(
+            output=resolved_output,
+            return_diagnostics=bool(return_diagnostics),
+            dimension=3,
+            domain=domain,
+            mode=mode,
+            sites=pts,
+            ids=ids_user,
+            cells=cells,
+            power_input=power_input,
+            diagnostics=diag,
+            boundaries_available=bool(return_faces),
+            periodic_shifts_available=bool(return_face_shifts),
+        )
 
     # --- PeriodicCell (triclinic) ---
     #
@@ -574,11 +646,20 @@ def compute(
                     raise TessellationError(msg, diag)
                 warnings.warn(msg, stacklevel=2)
 
-    if return_diagnostics:
-        assert diag is not None
-        return cells, diag
-
-    return cells
+    return _finish_compute_output(
+        output=resolved_output,
+        return_diagnostics=bool(return_diagnostics),
+        dimension=3,
+        domain=domain,
+        mode=mode,
+        sites=pts,
+        ids=ids_user,
+        cells=cells,
+        power_input=power_input,
+        diagnostics=diag,
+        boundaries_available=bool(return_faces),
+        periodic_shifts_available=bool(return_face_shifts),
+    )
 
 
 def locate(

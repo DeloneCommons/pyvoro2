@@ -7,7 +7,7 @@ pyvoro2 includes a small **optional** helper module, `pyvoro2.viz3d`, for intera
 in notebooks. It is meant for exploration and debugging:
 
 - draw the domain wireframe (box or unit cell),
-- draw cell wireframes from the `vertices`/`faces` output,
+- draw cell wireframes from the `vertices`/`faces` records in `result.cells`,
 - optionally draw labeled sites and (global) vertices.
 
 Install the extra dependency with:
@@ -24,6 +24,9 @@ pip install py3Dmol
 
 > These helpers are intentionally lightweight. For publication-quality rendering you will usually
 > want a dedicated 3D pipeline.
+
+The examples keep the `TessellationResult` returned by `pv.compute(...)` as the primary object.
+The visualization helper consumes raw geometry records, so those calls receive `result.cells`.
 ```python
 import numpy as np
 import pyvoro2 as pv
@@ -34,20 +37,22 @@ rng = np.random.default_rng(0)
 ```
 ## 1) Non-periodic box
 
-In a non-periodic `Box`, all returned vertices are inside the domain boundary.
+In a non-periodic `Box`, all returned vertices are inside the domain boundary. The result's
+`has_boundaries` flag confirms that face geometry was requested and retained.
 ```python
 points = rng.uniform(-1.0, 1.0, size=(15, 3))
 box = pv.Box(((-2, 2), (-2, 2), (-2, 2)))
 
-cells = pv.compute(
+result = pv.compute(
     points,
     domain=box,
     return_vertices=True,
     return_faces=True,
 )
+assert result.has_boundaries
 
 view_tessellation(
-    cells,
+    result.cells,
     domain=box,
     show_vertices=False,  # start simple
 )
@@ -508,7 +513,7 @@ style = VizStyle(
 )
 
 view_tessellation(
-    cells,
+    result.cells,
     domain=box,
     style=style,
     show_vertices=True,
@@ -1034,7 +1039,8 @@ In periodic tessellations it is normal for some cell vertices to lie outside the
 This does **not** mean the tessellation is wrong: it is a consequence of representing a periodic
 polyhedron in Cartesian space.
 
-In the next cell we show a random configuration in a tilted triclinic cell.
+In the next cell we show a random configuration in a tilted triclinic cell. The structured result
+also records that periodic face shifts are available for downstream inspection.
 ```python
 cell = pv.PeriodicCell(
     vectors=((10.0, 0.0, 0.0), (2.0, 9.0, 0.0), (1.0, 0.5, 8.0)),
@@ -1043,16 +1049,17 @@ cell = pv.PeriodicCell(
 
 points_p = rng.random((20, 3))  # arbitrary Cartesian points
 
-cells_p = pv.compute(
+periodic_result = pv.compute(
     points_p,
     domain=cell,
     return_vertices=True,
     return_faces=True,
     return_face_shifts=True,
 )
+assert periodic_result.has_boundaries and periodic_result.has_periodic_shifts
 
 view_tessellation(
-    cells_p,
+    periodic_result.cells,
     domain=cell,
     show_vertices=False,
 )
@@ -1939,7 +1946,7 @@ If `wrap_cells=True`, each cell geometry is translated by an integer lattice vec
 site lies inside the primary unit-cell parallelepiped. This is purely a visualization convenience.
 ```python
 view_tessellation(
-    cells_p,
+    periodic_result.cells,
     domain=cell,
     wrap_cells=True,
     show_vertices=False,
@@ -2832,7 +2839,7 @@ wireframe geometry for the currently shown cells.
 ```python
 from pyvoro2 import normalize_vertices
 
-nv = normalize_vertices(cells_p, domain=cell)
+nv = normalize_vertices(periodic_result.cells, domain=cell)
 
 view_tessellation(
     nv,

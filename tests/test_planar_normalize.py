@@ -21,6 +21,7 @@ def _periodic_cells() -> tuple[list[dict], pv2.RectangularCell]:
         return_vertices=True,
         return_edges=True,
         return_edge_shifts=True,
+        output='cells',
     )
     return cells, domain
 
@@ -28,7 +29,13 @@ def _periodic_cells() -> tuple[list[dict], pv2.RectangularCell]:
 def test_planar_normalize_vertices_box() -> None:
     pts = np.array([[0.25, 0.5], [0.75, 0.5]], dtype=float)
     box = pv2.Box(((0.0, 1.0), (0.0, 1.0)))
-    cells = pv2.compute(pts, domain=box, return_vertices=True, return_edges=True)
+    cells = pv2.compute(
+        pts,
+        domain=box,
+        return_vertices=True,
+        return_edges=True,
+        output='cells',
+    )
 
     nv = pv2.normalize_vertices(cells, domain=box)
 
@@ -56,7 +63,13 @@ def test_planar_normalize_topology_periodic_ok() -> None:
 def test_planar_normalize_vertices_requires_edge_shifts_in_periodic_domains() -> None:
     pts = np.array([[0.2, 0.2], [0.8, 0.25], [0.4, 0.8]], dtype=float)
     domain = pv2.RectangularCell(((0.0, 1.0), (0.0, 1.0)), periodic=(True, True))
-    cells = pv2.compute(pts, domain=domain, return_vertices=True, return_edges=True)
+    cells = pv2.compute(
+        pts,
+        domain=domain,
+        return_vertices=True,
+        return_edges=True,
+        output='cells',
+    )
 
     with pytest.raises(ValueError, match='return_edge_shifts=True'):
         pv2.normalize_vertices(cells, domain=domain)

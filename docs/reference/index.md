@@ -26,7 +26,7 @@ and visualization.
 - [Planar overview](planar/index.md)
 - [Planar API](planar/api.md)
 - [Common tessellation result](result.md)
-- [Historical planar compute result](planar/result.md)
+- [Historical planar result alias](planar/result.md)
 
 ## Separator fitting
 

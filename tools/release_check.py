@@ -51,13 +51,15 @@ def _smoke_test_wheel() -> None:
             "import pyvoro2 as pv; "
             "import pyvoro2.planar as pv2; "
             "pts3 = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float); "
-            "cells3 = pv.compute(pts3, domain=pv.Box(((-5.0, 5.0), (-5.0, 5.0), "
+            "result3 = pv.compute(pts3, domain=pv.Box(((-5.0, 5.0), (-5.0, 5.0), "
             "(-5.0, 5.0))), mode='standard'); "
-            "assert len(cells3) == 2; "
+            "assert isinstance(result3, pv.TessellationResult); "
+            "assert len(result3.cells) == 2; "
             "pts2 = np.array([[0.25, 0.5], [0.75, 0.5]], dtype=float); "
-            "cells2 = pv2.compute(pts2, domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))), "
+            "result2 = pv2.compute(pts2, domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))), "
             "return_edges=True); "
-            "assert len(cells2) == 2"
+            "assert isinstance(result2, pv.TessellationResult); "
+            "assert len(result2.cells) == 2"
         )
         _run(str(python), '-c', smoke)
 

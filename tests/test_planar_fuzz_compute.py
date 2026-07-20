@@ -49,6 +49,7 @@ def test_fuzz_planar_compute_box_standard_with_diagnostics(fuzz_settings) -> Non
             pts,
             domain=domain,
             mode='standard',
+            output='cells',
             return_diagnostics=True,
         )
 
@@ -75,6 +76,7 @@ def test_fuzz_planar_compute_periodic_with_convenience_diagnostics(
             pts,
             domain=domain,
             mode='standard',
+            output='cells',
             return_vertices=False,
             return_adjacency=False,
             return_edges=False,
@@ -106,6 +108,7 @@ def test_fuzz_planar_compute_periodic_power_with_diagnostics(
             domain=domain,
             mode='power',
             radii=radii,
+            output='cells',
             include_empty=True,
             return_vertices=False,
             return_adjacency=False,

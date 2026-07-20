@@ -397,7 +397,7 @@ view_tessellation(
 )
 ```
 
-### Current forward return matrix
+### Characterized v0.6.3 forward return matrix
 
 | Namespace/request | v0.6.3 return |
 |---|---|
@@ -715,7 +715,17 @@ together for later `TessellationResult` construction. It imports only the
 neutral transform and input-validation helpers. The resolved radii feed native
 2D, 3D box/orthorhombic, and 3D triclinic power calls, as well as periodic
 edge/face shift inference. `locate(...)` and `ghost_cells(...)` signatures are
-unchanged. Canonical inverse ownership and the public structured result remain
+unchanged.
+
+Issues #9 and #10 implement and wire the public structured result. Both
+`compute(...)` functions expose keyword-only `output='result'|'cells'` and
+return `TessellationResult` by default. The shared builder receives the final
+user-visible raw cells and the exact resolved power input without repeating
+native computation, diagnostics, normalization, or annotation. The explicit
+raw route preserves the factual v0.6.3 list/tuple behavior above.
+`PlanarComputeResult` is the identical class object as `TessellationResult`.
+Explicit planar `return_result=` use emits `DeprecationWarning` and is resolved
+through the compatibility matrix below. Canonical inverse ownership remains
 assigned to later issues; this status note does not alter the factual v0.6.3
 baseline.
 
@@ -741,9 +751,9 @@ See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 | Surface | Intended status | Notes |
 |---|---|---|
 | Domain classes and domain geometry semantics | Stable | Mature bounded and periodic behavior; capability differences remain explicit by dimension. |
-| `pyvoro2.compute` and `pyvoro2.planar.compute` | Stable | Direct weight/radius keyword behavior is implemented and tested; the structured default remains assigned to the result/output issues. |
+| `pyvoro2.compute` and `pyvoro2.planar.compute` | Stable | Direct weight/radius behavior, the common structured default, and explicit raw compatibility output are implemented and tested. |
 | `weights=` and `radii=` mathematical meaning | Stable | Mode-specific rejection/exclusivity, one global representation shift, finite and representable conversion, and empty-cell behavior are part of the contract. |
-| `pyvoro2.TessellationResult` core contract | Stable candidate | The shared class and private construction path are implemented by issue #9; public compute wiring and the default/output migration remain assigned to issue #10. |
+| `pyvoro2.TessellationResult` core contract | Stable candidate | The shared class, private construction path, and both public compute integrations are implemented by issues #9 and #10. |
 | Detailed optional result conveniences and raw geometry views | Provisional | Refine through implementation and chemvoro-shaped validation. |
 | `pyvoro2.inverse` preferred high-level separator workflow | Stable candidate | Main observations/fit entry point should be suitable for chemvoro at release. |
 | `pyvoro2.inverse.separator` advanced problem and operator views | Provisional | Public for research use, but likely to evolve before prescribed measures and mixed problems. |
@@ -825,7 +835,7 @@ transition.
 | Domains | `Box`, `RectangularCell` | Stable |
 | Operations | `compute`, `locate`, `ghost_cells` | Stable |
 | Structured result | `TessellationResult` re-export | Stable candidate |
-| Historical result name | `PlanarComputeResult` | Still a separate compatibility class after issue #9; issue #10 owns the alias migration, with removal or reconsideration planned for v0.8 |
+| Historical result name | `PlanarComputeResult` | Compatibility-only identity alias to `TessellationResult`, with removal or reconsideration planned for v0.8 |
 | Diagnostics and validation | Planar tessellation and normalization diagnostics | Stable unless the baseline audit identifies schema details needing provisional status |
 | Duplicate handling and annotations | `duplicate_check`, `annotate_edge_properties` | Stable candidates |
 | Normalization | Planar normalization helpers and result objects | Stable or provisional per detailed baseline audit |
@@ -867,7 +877,7 @@ but numerical implementations must not be duplicated.
 
 ### Implemented common data contract
 
-Issue #9 implements one frozen, slotted `TessellationResult` class and exports
+Issues #9 and #10 implement one frozen, slotted `TessellationResult` class and export
 the identical class object as both `pyvoro2.TessellationResult` and
 `pyvoro2.planar.TessellationResult`. Its private shared builder aligns cells by
 final external ID, represents omitted empty cells explicitly in aligned
@@ -904,6 +914,7 @@ integration validates the exact access vocabulary:
 | `has_boundaries`, `has_periodic_shifts` | Provisional | Report explicit builder capabilities, including available-but-empty geometry. |
 | `require_tessellation_diagnostics()`, `require_normalized_vertices()`, `require_normalized_topology()` | Provisional | Return optional objects or raise a clear `ValueError`. |
 | `require_boundaries()` | Provisional | Return input-order-aligned edge/face collections, using an empty collection for hidden sites, or raise when boundaries were unavailable. |
+| `global_vertices`, `global_edges` | Provisional compatibility conveniences | Forward to available planar normalized objects, preserving the historical `PlanarComputeResult` access pattern; otherwise `None`. |
 
 The outer object prevents field replacement. Its aligned arrays are copies and
 are non-writeable, so construction never marks caller-owned arrays read-only.
@@ -926,18 +937,17 @@ and pickle round trips preserve the exact existing snapshot state rather than
 revalidating it against later permitted raw-record mutation; reconstructed
 arrays remain owned and read-only, and capability state is preserved.
 
-### Pending preferred compute route — issue #10
+### Preferred compute route
 
 ```python
 result = pyvoro2.compute(..., output='result')
 result = pyvoro2.planar.compute(..., output='result')
 ```
 
-This is the accepted v0.7 preferred route, but it is not implemented by issue
-#9. Issue #10 owns both `output=` and the default-return migration. Until that
-issue lands, both `compute()` functions retain their characterized raw return
-behavior, planar `return_result=` is unchanged, and `PlanarComputeResult`
-remains a distinct class rather than an alias.
+Omitting `output` is equivalent to `output='result'`. Structured output is
+always one `TessellationResult`, never a tuple. Diagnostics computed because of
+`return_diagnostics=True` or `tessellation_check='diagnose'|'warn'|'raise'`
+are stored in `result.tessellation_diagnostics`.
 
 ### Raw compatibility route
 
@@ -946,10 +956,34 @@ cells = pyvoro2.compute(..., output='cells')
 cells = pyvoro2.planar.compute(..., output='cells')
 ```
 
-Issue #10 will add this explicit raw route while preserving the established
-list/tuple behavior. After issue #9 alone, the characterized raw list/tuple
-behavior is still the current default and neither compute signature includes
-`output=`.
+This route preserves the established list/tuple behavior. Without
+`return_diagnostics=True` it returns only the raw list, including when a
+tessellation check computed diagnostics internally. With
+`return_diagnostics=True` it returns `(cells, diagnostics)`. Raw record schemas,
+ordering, external IDs, requested geometry, and numerical behavior remain the
+characterized baseline.
+
+### Planar compatibility selector matrix
+
+The public compatibility parameter is `return_result: bool | None = None`.
+`None` means that the selector was omitted and follows the `output=` contract.
+Passing either boolean emits `DeprecationWarning`; `output=` is the replacement.
+
+| Planar selection | Result |
+|---|---|
+| both selectors omitted | `TessellationResult` |
+| `return_result=None` | same as omitted; no deprecation warning |
+| `output='result'` | `TessellationResult` |
+| `output='cells'` | historical raw list/tuple route |
+| `return_result=True`, `output` omitted | `TessellationResult` |
+| explicit `return_result=False`, `output` omitted, no normalization | historical raw list/tuple route |
+| explicit `return_result=False`, `output` omitted, normalization requested | `TessellationResult`, preserving the historical normalization override |
+| equivalent explicit `output` and `return_result` | requested route, plus warning |
+| conflicting explicit `output` and `return_result` | `ValueError`, plus warning |
+| explicit `output='cells'` with normalization | `ValueError` |
+
+`PlanarComputeResult` from both `pyvoro2.planar` and
+`pyvoro2.planar.result` is an identity alias to `pyvoro2.TessellationResult`.
 
 ## Scientifically meaningful semantics to inventory explicitly
 
@@ -996,7 +1030,7 @@ The following are API even when no dedicated Python class represents them:
 | Broad top-level separator exports | Compatibility-only; migration docs | Remove from top-level |
 | `PairBisectorConstraints` and other historical names | Compatibility aliases | Remove or retain only if justified by real usage and documented explicitly |
 | `PlanarComputeResult` | Compatibility alias to `TessellationResult` | Remove or reconsider after v0.7 downstream feedback |
-| Raw default return | Available through `output='cells'` | Continue as explicit route unless a later decision removes it |
+| Raw cell return | Available through `output='cells'` | Continue as explicit route unless a later decision removes it |
 | Planar `return_result=` | Compatibility-only | Remove after migration to `output=` |
 
 ## Final release review checklist
@@ -1004,7 +1038,7 @@ The following are API even when no dedicated Python class represents them:
 - [ ] Every preferred public import is listed with a lifecycle category.
 - [ ] Every compatibility alias has a replacement and removal horizon.
 - [ ] `__all__` matches the intended namespace policy.
-- [ ] Forward output modes and diagnostic combinations are characterized.
+- [x] Forward output modes and diagnostic combinations are characterized.
 - [ ] Stable `TessellationResult` fields and mutable contained values are
       documented.
 - [ ] Raw record keys used by compatibility tests are listed or referenced.

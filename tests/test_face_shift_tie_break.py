@@ -84,6 +84,7 @@ def test_spatial_power_shift_residual_handles_large_common_radius() -> None:
         domain=domain,
         mode='power',
         radii=np.array([1.0]),
+        output='cells',
         return_vertices=True,
         return_faces=True,
         return_face_shifts=False,

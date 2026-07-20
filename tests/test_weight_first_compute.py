@@ -195,6 +195,8 @@ def _case_id(case: ForwardCase) -> str:
 
 
 def _cells_and_diagnostics(result: Any) -> tuple[list[dict[str, Any]], Any | None]:
+    if isinstance(result, pv.TessellationResult):
+        return result.cells, result.tessellation_diagnostics
     if isinstance(result, tuple):
         cells, diagnostics = result
         return cells, diagnostics

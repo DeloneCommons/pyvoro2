@@ -21,7 +21,13 @@ def _periodic_sample() -> tuple[np.ndarray, pv2.RectangularCell]:
 def test_planar_analyze_tessellation_box_smoke() -> None:
     pts = np.array([[0.25, 0.5], [0.75, 0.5]], dtype=float)
     box = pv2.Box(((0.0, 1.0), (0.0, 1.0)))
-    cells = pv2.compute(pts, domain=box, return_vertices=True, return_edges=True)
+    cells = pv2.compute(
+        pts,
+        domain=box,
+        return_vertices=True,
+        return_edges=True,
+        output='cells',
+    )
 
     diag = pv2.analyze_tessellation(cells, box)
 
@@ -33,7 +39,13 @@ def test_planar_analyze_tessellation_box_smoke() -> None:
 
 def test_planar_analyze_tessellation_reports_missing_edge_shifts() -> None:
     pts, domain = _periodic_sample()
-    cells = pv2.compute(pts, domain=domain, return_vertices=True, return_edges=True)
+    cells = pv2.compute(
+        pts,
+        domain=domain,
+        return_vertices=True,
+        return_edges=True,
+        output='cells',
+    )
 
     diag = pv2.analyze_tessellation(cells, domain)
 
@@ -50,6 +62,7 @@ def test_planar_periodic_hidden_adjacency_is_resolved() -> None:
         return_vertices=True,
         return_edges=True,
         return_edge_shifts=True,
+        output='cells',
     )
 
     assert all(
@@ -73,6 +86,7 @@ def test_planar_partially_periodic_walls_remain_negative() -> None:
         return_vertices=True,
         return_edges=True,
         return_edge_shifts=True,
+        output='cells',
     )
 
     assert any(
@@ -85,7 +99,13 @@ def test_planar_partially_periodic_walls_remain_negative() -> None:
 def test_planar_validate_tessellation_strict_raises_on_area_gap() -> None:
     pts = np.array([[0.25, 0.5], [0.75, 0.5]], dtype=float)
     box = pv2.Box(((0.0, 1.0), (0.0, 1.0)))
-    cells = pv2.compute(pts, domain=box, return_vertices=True, return_edges=True)
+    cells = pv2.compute(
+        pts,
+        domain=box,
+        return_vertices=True,
+        return_edges=True,
+        output='cells',
+    )
     broken = cells[:1]
 
     with pytest.raises(pv2.TessellationError):
@@ -101,6 +121,7 @@ def test_planar_compute_periodic_diagnostics_auto_enable_edge_shifts() -> None:
         return_adjacency=False,
         return_edges=False,
         return_diagnostics=True,
+        output='cells',
     )
 
     assert all(set(cell.keys()) == {'id', 'area', 'site'} for cell in cells)
@@ -117,6 +138,7 @@ def test_planar_compute_tessellation_check_raise_uses_internal_shifts() -> None:
         return_vertices=False,
         return_adjacency=False,
         return_edges=False,
+        output='cells',
         tessellation_check='raise',
     )
 

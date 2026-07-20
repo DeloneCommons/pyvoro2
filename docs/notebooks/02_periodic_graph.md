@@ -18,8 +18,8 @@ pyvoro2 can annotate each face with an integer lattice shift:
 - `adjacent_shift = (na, nb, nc)`: which periodic image produced the face
 
 This notebook shows a minimal workflow:
-1. compute a periodic tessellation in a triclinic cell,
-2. extract graph edges `(i, j, shift)`,
+1. compute a periodic tessellation as a `TessellationResult`,
+2. inspect its metadata and extract graph edges `(i, j, shift)` from `result.cells`,
 3. canonicalize edges into an undirected contact list.
 ```python
 import numpy as np
@@ -35,7 +35,7 @@ cell = pv.PeriodicCell(
     origin=(0.0, 0.0, 0.0),
 )
 
-cells = pv.compute(
+result = pv.compute(
     points,
     domain=cell,
     return_faces=True,
@@ -43,7 +43,11 @@ cells = pv.compute(
     return_face_shifts=True,  # <-- adds `adjacent_shift` to each face
     face_shift_search=2,
 )
-len(cells)
+
+# The structured result records which optional geometry was requested.
+assert result.dimension == 3 and result.mode == 'standard'
+assert result.has_boundaries and result.has_periodic_shifts
+len(result.cells)
 ```
 **Output**
 
@@ -56,10 +60,11 @@ For a well-formed periodic tessellation, face shifts should be **reciprocal**:
 if cell *i* has a face to neighbor *j* with shift *s*, then cell *j* should have the
 corresponding face back to *i* with shift `-s`.
 
-Let's inspect one example face.
+Let's inspect one example face. The result stays primary; we descend into `result.cells` only for
+the raw face records needed by the graph algorithm.
 ```python
 # Pick a cell and show its first non-boundary face
-c0 = next(c for c in cells if int(c['id']) == 0)
+c0 = next(c for c in result.cells if int(c['id']) == 0)
 f0 = next(f for f in c0['faces'] if int(f.get('adjacent_cell', -1)) >= 0)
 
 (i, j, shift) = (int(c0['id']), int(f0['adjacent_cell']), tuple(int(x) for x in f0['adjacent_shift']))
@@ -86,7 +91,7 @@ Below we build both.
 ```python
 # 1) Directed edges from faces
 directed = []
-for c in cells:
+for c in result.cells:
     i = int(c['id'])
     for f in c.get('faces', []):
         j = int(f.get('adjacent_cell', -1))
@@ -156,6 +161,7 @@ adj[0][:10]
 ```
 ## Notes
 
+- `result.ids` preserves the site IDs in original input order; raw cell-list position is not an ID contract.
 - For `OrthorhombicCell` with only partial periodicity, shifts on non-periodic axes are always zero.
 - If you plan to compute a graph repeatedly (e.g., for many frames), consider:
   - keeping your inputs in a consistent wrapped form, and

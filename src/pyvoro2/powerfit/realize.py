@@ -348,6 +348,7 @@ def _compute_3d_cells(
         return_face_shifts=bool(periodic),
         include_empty=True,
         return_diagnostics=return_tessellation_diagnostics,
+        output='cells',
         tessellation_check=tessellation_check,
     )
     if return_tessellation_diagnostics:
@@ -387,6 +388,7 @@ def _compute_planar_cells(
         return_adjacency=False,
         return_edge_shifts=bool(periodic),
         include_empty=True,
+        output='cells',
     )
 
     if return_boundary_measure:

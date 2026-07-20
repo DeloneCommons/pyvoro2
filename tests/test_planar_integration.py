@@ -14,13 +14,15 @@ import pyvoro2.planar as pv2
 
 def test_planar_compute_standard_smoke() -> None:
     pts = np.array([[0.25, 0.5], [0.75, 0.5]], dtype=float)
-    cells = pv2.compute(
+    result = pv2.compute(
         pts,
         domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
         return_vertices=True,
         return_edges=True,
     )
+    cells = result.cells
 
+    assert isinstance(result, pv2.TessellationResult)
     assert len(cells) == 2
     assert {int(cell['id']) for cell in cells} == {0, 1}
     assert all('area' in cell for cell in cells)
@@ -53,11 +55,12 @@ def test_planar_ghost_cells_standard_smoke() -> None:
 
 def test_planar_compute_return_result_only_smoke() -> None:
     pts = np.array([[0.25, 0.5], [0.75, 0.5]], dtype=float)
-    result = pv2.compute(
-        pts,
-        domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
-        return_result=True,
-    )
+    with pytest.warns(DeprecationWarning, match='output'):
+        result = pv2.compute(
+            pts,
+            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            return_result=True,
+        )
 
     assert isinstance(result, pv2.PlanarComputeResult)
     assert result.tessellation_diagnostics is None
@@ -148,7 +151,7 @@ def test_planar_compute_result_topology_periodic_smoke() -> None:
 def test_planar_compute_power_smoke() -> None:
     pts = np.array([[0.25, 0.5], [0.75, 0.5]], dtype=float)
     radii = np.array([0.1, 0.12], dtype=float)
-    cells = pv2.compute(
+    result = pv2.compute(
         pts,
         domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
         mode='power',
@@ -157,7 +160,9 @@ def test_planar_compute_power_smoke() -> None:
         return_vertices=True,
         return_edges=True,
     )
+    cells = result.cells
 
+    assert isinstance(result, pv2.TessellationResult)
     assert len(cells) == 2
     assert all('area' in cell for cell in cells)
 

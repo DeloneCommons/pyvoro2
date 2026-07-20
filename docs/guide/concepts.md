@@ -39,7 +39,7 @@ A boundary between two neighboring sites lies on their perpendicular bisector.
 In pyvoro2, use:
 
 ```python
-cells = compute(points, domain=domain, mode='standard')
+result = compute(points, domain=domain, mode='standard')
 ```
 
 ## Power/Laguerre tessellation
@@ -69,7 +69,7 @@ accept positive, zero, and negative finite weights directly when the required
 common-shift conversion remains finite and representable:
 
 ```python
-cells = compute(
+result = compute(
     points,
     domain=domain,
     mode='power',

@@ -10,8 +10,8 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 - A frozen, dimension-neutral `TessellationResult` data contract shared by the
   spatial and planar namespaces, with input-aligned read-only arrays, explicit
-  optional-geometry capabilities, and a private common builder. Public
-  `compute()` defaults and raw returns are unchanged pending issue #10.
+  optional-geometry capabilities, provisional planar normalization
+  conveniences, and a private common builder.
 - Direct mathematical `weights=` input for spatial and planar
   `compute(..., mode='power')`, using one common global representation shift
   before the existing native radius-based calls while retaining `radii=` in
@@ -28,6 +28,19 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Spatial and planar `compute(...)` now return `TessellationResult` by default;
+  `output='result'` selects it explicitly and `output='cells'` preserves the
+  historical raw list or `(cells, diagnostics)` tuple as a one-line migration
+  for v0.6.3 callers. Structured diagnostics are stored inside the single
+  result object, including diagnostics computed for `tessellation_check`.
+- `PlanarComputeResult` is now a compatibility-only identity alias to
+  `TessellationResult`. The planar compatibility selector now has the truthful
+  signature `return_result: bool | None = None`, where `None` means omitted and
+  either boolean emits `DeprecationWarning`; equivalent selectors are accepted,
+  conflicting selectors raise `ValueError`, and explicit raw output cannot be
+  combined with normalization.
+- Migrated the published compute notebooks and both distribution smoke tests to
+  exercise the structured result contract directly.
 - Documented the Voro++ radical/power dynamic-range limitation: finite backend
   radii or a successful weight conversion do not guarantee numerical resolution
   when absolute squared radii or genuine weight ranges dwarf squared geometric
