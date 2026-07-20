@@ -42,7 +42,7 @@ from .normalize import (
     normalize_topology,
 )
 from ._weight_transforms import radii_to_weights, weights_to_radii
-from .powerfit import (
+from .inverse.separator import (
     PairBisectorConstraints,
     resolve_pair_bisector_constraints,
     SquaredLoss,
@@ -78,6 +78,21 @@ from .powerfit import (
     match_realized_pairs,
     solve_self_consistent_power_weights,
 )
+
+
+def __getattr__(name: str) -> object:
+    """Resolve historical package attributes without eager compatibility imports."""
+    if name == 'powerfit':
+        from importlib import import_module
+
+        return import_module('.powerfit', __name__)
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
+
+
+def __dir__() -> list[str]:
+    """Include the lazy historical namespace in interactive discovery."""
+    return sorted({*globals(), 'powerfit'})
+
 
 __all__ = [
     'Box',

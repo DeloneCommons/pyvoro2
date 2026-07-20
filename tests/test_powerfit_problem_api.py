@@ -2,7 +2,7 @@ import numpy as np
 
 
 def test_build_power_fit_problem_exposes_resolved_numeric_problem():
-    from pyvoro2.powerfit import (
+    from pyvoro2.inverse.separator import (
         build_power_fit_problem,
         resolve_pair_bisector_constraints,
     )
@@ -24,7 +24,7 @@ def test_build_power_fit_problem_exposes_resolved_numeric_problem():
 
 
 def test_build_power_fit_problem_reports_advisory_anchors_for_disconnected_case():
-    from pyvoro2.powerfit import (
+    from pyvoro2.inverse.separator import (
         build_power_fit_problem,
         resolve_pair_bisector_constraints,
     )
@@ -45,7 +45,7 @@ def test_build_power_fit_problem_reports_advisory_anchors_for_disconnected_case(
 
 
 def test_problem_definition_objects_are_read_only():
-    from pyvoro2.powerfit import (
+    from pyvoro2.inverse.separator import (
         FitModel,
         Interval,
         build_power_fit_problem,
@@ -71,7 +71,7 @@ def test_problem_definition_objects_are_read_only():
 
 
 def test_build_power_fit_result_round_trips_native_weights_and_reports_objective():
-    from pyvoro2.powerfit import (
+    from pyvoro2.inverse.separator import (
         build_power_fit_problem,
         build_power_fit_result,
         fit_power_weights,
@@ -96,7 +96,7 @@ def test_build_power_fit_result_round_trips_native_weights_and_reports_objective
 
 
 def test_build_power_fit_result_can_package_imperfect_external_weights():
-    from pyvoro2.powerfit import (
+    from pyvoro2.inverse.separator import (
         FitModel,
         Interval,
         build_power_fit_problem,
@@ -130,7 +130,7 @@ def test_build_power_fit_result_can_package_imperfect_external_weights():
 
 
 def test_fit_report_includes_objective_breakdown_and_status_detail():
-    from pyvoro2.powerfit import (
+    from pyvoro2.inverse.separator import (
         FitModel,
         Interval,
         build_fit_report,

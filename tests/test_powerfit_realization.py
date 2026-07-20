@@ -2,8 +2,8 @@ import numpy as np
 
 
 def test_match_realized_pairs_flags_unrealized_constraints():
-    from pyvoro2 import (
-        Box,
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         FitModel,
         Interval,
         fit_power_weights,
@@ -42,8 +42,8 @@ def test_match_realized_pairs_flags_unrealized_constraints():
 
 
 def test_match_realized_pairs_reports_boundary_measure_when_requested():
-    from pyvoro2 import (
-        Box,
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         fit_power_weights,
         match_realized_pairs,
         resolve_pair_bisector_constraints,
@@ -73,8 +73,8 @@ def test_match_realized_pairs_reports_boundary_measure_when_requested():
 
 
 def test_match_realized_pairs_can_return_tessellation_diagnostics():
-    from pyvoro2 import (
-        Box,
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         fit_power_weights,
         match_realized_pairs,
         resolve_pair_bisector_constraints,
@@ -103,8 +103,8 @@ def test_match_realized_pairs_can_return_tessellation_diagnostics():
 
 
 def test_match_realized_pairs_reports_periodic_wrong_shift():
-    from pyvoro2 import (
-        PeriodicCell,
+    from pyvoro2 import PeriodicCell
+    from pyvoro2.inverse.separator import (
         fit_power_weights,
         match_realized_pairs,
         resolve_pair_bisector_constraints,
@@ -136,7 +136,11 @@ def test_match_realized_pairs_reports_periodic_wrong_shift():
 
 
 def test_realized_pair_diagnostics_export_records():
-    from pyvoro2 import Box, match_realized_pairs, resolve_pair_bisector_constraints
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
+        match_realized_pairs,
+        resolve_pair_bisector_constraints,
+    )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     box = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
@@ -161,7 +165,7 @@ def test_realized_pair_diagnostics_export_records():
 
 def test_match_realized_pairs_supports_planar_measure_and_diag() -> None:
     import pyvoro2.planar as pv2
-    from pyvoro2 import (
+    from pyvoro2.inverse.separator import (
         fit_power_weights,
         match_realized_pairs,
         resolve_pair_bisector_constraints,
@@ -196,7 +200,7 @@ def test_match_realized_pairs_supports_planar_measure_and_diag() -> None:
 
 def test_match_realized_pairs_supports_planar_periodic_wrong_shift() -> None:
     import pyvoro2.planar as pv2
-    from pyvoro2 import (
+    from pyvoro2.inverse.separator import (
         fit_power_weights,
         match_realized_pairs,
         resolve_pair_bisector_constraints,
@@ -228,8 +232,8 @@ def test_match_realized_pairs_supports_planar_periodic_wrong_shift() -> None:
 
 
 def test_match_realized_pairs_reports_unaccounted_realized_pairs_in_3d():
-    from pyvoro2 import (
-        Box,
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         fit_power_weights,
         match_realized_pairs,
         resolve_pair_bisector_constraints,
@@ -270,7 +274,7 @@ def test_match_realized_pairs_reports_unaccounted_realized_pairs_in_3d():
 def test_match_realized_pairs_reports_unaccounted_realized_pairs_in_planar_box(
 ) -> None:
     import pyvoro2.planar as pv2
-    from pyvoro2 import (
+    from pyvoro2.inverse.separator import (
         fit_power_weights,
         match_realized_pairs,
         resolve_pair_bisector_constraints,

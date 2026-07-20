@@ -28,6 +28,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Moved physical ownership of the existing separator-fitting implementation to
+  `pyvoro2.inverse.separator`. Historical names, top-level exports, and all
+  `pyvoro2.powerfit` module routes remain unchanged one-way compatibility
+  imports; the terminology and high-level inverse API migration remain deferred.
 - Spatial and planar `compute(...)` now return `TessellationResult` by default;
   `output='result'` selects it explicitly and `output='cells'` preserves the
   historical raw list or `(cells, diagnostics)` tuple as a one-line migration
@@ -59,6 +63,9 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Restored the historical top-level `pyvoro2.powerfit` package attribute
+  through lazy resolution, without eagerly importing the compatibility package
+  or adding it to `pyvoro2.__all__`.
 - Improved numerical stability of periodic 2D edge-shift and 3D face-shift
   reconstruction for large backend-resolvable power inputs.
 - Standard spatial and planar `compute(...)` calls now reject `radii=` rather

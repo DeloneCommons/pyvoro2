@@ -2,7 +2,8 @@ import numpy as np
 
 
 def test_self_consistent_solver_drops_unrealized_pair():
-    from pyvoro2 import Box, solve_self_consistent_power_weights
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import solve_self_consistent_power_weights
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
@@ -40,7 +41,11 @@ def test_self_consistent_solver_drops_unrealized_pair():
 
 
 def test_self_consistent_solver_can_start_from_empty_active_set():
-    from pyvoro2 import ActiveSetOptions, Box, solve_self_consistent_power_weights
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
+        ActiveSetOptions,
+        solve_self_consistent_power_weights,
+    )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     domain = Box(((-5, 5), (-5, 5), (-5, 5)))
@@ -60,7 +65,11 @@ def test_self_consistent_solver_can_start_from_empty_active_set():
 
 
 def test_self_consistent_solver_respects_add_hysteresis_from_empty_start():
-    from pyvoro2 import ActiveSetOptions, Box, solve_self_consistent_power_weights
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
+        ActiveSetOptions,
+        solve_self_consistent_power_weights,
+    )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     domain = Box(((-5, 5), (-5, 5), (-5, 5)))
@@ -84,7 +93,11 @@ def test_self_consistent_solver_respects_add_hysteresis_from_empty_start():
 
 
 def test_self_consistent_solver_under_relaxation_records_nonzero_weight_step():
-    from pyvoro2 import ActiveSetOptions, Box, solve_self_consistent_power_weights
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
+        ActiveSetOptions,
+        solve_self_consistent_power_weights,
+    )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     domain = Box(((-5, 5), (-5, 5), (-5, 5)))
@@ -112,9 +125,9 @@ def test_self_consistent_solver_under_relaxation_records_nonzero_weight_step():
 
 
 def test_self_consistent_solver_reports_realized_other_shift_for_periodic_pair():
-    from pyvoro2 import (
+    from pyvoro2 import PeriodicCell
+    from pyvoro2.inverse.separator import (
         ActiveSetOptions,
-        PeriodicCell,
         solve_self_consistent_power_weights,
     )
 
@@ -139,9 +152,10 @@ def test_self_consistent_solver_reports_realized_other_shift_for_periodic_pair()
 
 
 def test_self_consistent_solver_detects_active_mask_cycle(monkeypatch):
-    import pyvoro2.powerfit.active as active_mod
-    from pyvoro2 import ActiveSetOptions, Box
-    from pyvoro2.powerfit.realize import RealizedPairDiagnostics
+    import pyvoro2.inverse.separator.active as active_mod
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import ActiveSetOptions
+    from pyvoro2.inverse.separator.realize import RealizedPairDiagnostics
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
@@ -191,9 +205,9 @@ def test_self_consistent_solver_detects_active_mask_cycle(monkeypatch):
 
 
 def test_self_consistent_result_exports_records_with_ids():
-    from pyvoro2 import (
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         ActiveSetOptions,
-        Box,
         FitModel,
         Interval,
         solve_self_consistent_power_weights,
@@ -225,7 +239,7 @@ def test_self_consistent_result_exports_records_with_ids():
 
 def test_self_consistent_solver_supports_planar_box() -> None:
     import pyvoro2.planar as pv2
-    from pyvoro2 import solve_self_consistent_power_weights
+    from pyvoro2.inverse.separator import solve_self_consistent_power_weights
 
     pts = np.array(
         [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]],
@@ -255,7 +269,10 @@ def test_self_consistent_solver_supports_planar_box() -> None:
 
 def test_self_consistent_solver_supports_planar_periodic_wrong_shift() -> None:
     import pyvoro2.planar as pv2
-    from pyvoro2 import ActiveSetOptions, solve_self_consistent_power_weights
+    from pyvoro2.inverse.separator import (
+        ActiveSetOptions,
+        solve_self_consistent_power_weights,
+    )
 
     cell = pv2.RectangularCell(((0.0, 1.0), (0.0, 1.0)), periodic=(True, True))
     pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
@@ -278,9 +295,9 @@ def test_self_consistent_solver_supports_planar_periodic_wrong_shift() -> None:
 
 
 def test_self_consistent_solver_reports_active_connectivity_and_unaccounted_pairs():
-    from pyvoro2 import (
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         ActiveSetOptions,
-        Box,
         solve_self_consistent_power_weights,
     )
 
@@ -314,11 +331,11 @@ def test_self_consistent_solver_reports_active_connectivity_and_unaccounted_pair
 def test_self_consistent_solver_preserves_active_component_offsets_on_final_refit(
     monkeypatch,
 ):
-    import pyvoro2.powerfit.active as active_mod
-    from pyvoro2 import ActiveSetOptions, Box
-    from pyvoro2.powerfit.realize import RealizedPairDiagnostics
-    from pyvoro2.powerfit.transforms import weights_to_radii
-    from pyvoro2.powerfit.types import PowerWeightFitResult
+    import pyvoro2.inverse.separator.active as active_mod
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import ActiveSetOptions, weights_to_radii
+    from pyvoro2.inverse.separator.realize import RealizedPairDiagnostics
+    from pyvoro2.inverse.separator.types import PowerWeightFitResult
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [10.0, 0.0, 0.0], [12.0, 0.0, 0.0]],
@@ -391,7 +408,11 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
 
 
 def test_self_consistent_solver_reports_transient_path_disconnectivity():
-    from pyvoro2 import ActiveSetOptions, Box, solve_self_consistent_power_weights
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
+        ActiveSetOptions,
+        solve_self_consistent_power_weights,
+    )
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
@@ -436,9 +457,10 @@ def test_self_consistent_solver_reports_transient_path_disconnectivity():
 def test_self_consistent_solver_tracks_transient_unaccounted_pairs(
     monkeypatch,
 ):
-    import pyvoro2.powerfit.active as active_mod
-    from pyvoro2 import ActiveSetOptions, Box
-    from pyvoro2.powerfit.realize import (
+    import pyvoro2.inverse.separator.active as active_mod
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import ActiveSetOptions
+    from pyvoro2.inverse.separator.realize import (
         RealizedPairDiagnostics,
         UnaccountedRealizedPair,
     )

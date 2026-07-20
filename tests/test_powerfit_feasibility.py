@@ -2,7 +2,7 @@ import numpy as np
 
 
 def test_infeasible_hard_constraints_return_conflict_witness():
-    from pyvoro2 import FixedValue, FitModel, fit_power_weights
+    from pyvoro2.inverse.separator import FixedValue, FitModel, fit_power_weights
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0]],
@@ -33,7 +33,7 @@ def test_infeasible_hard_constraints_return_conflict_witness():
 
 
 def test_feasible_fit_has_no_conflict_witness():
-    from pyvoro2 import FitModel, Interval, fit_power_weights
+    from pyvoro2.inverse.separator import FitModel, Interval, fit_power_weights
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     res = fit_power_weights(
@@ -51,7 +51,7 @@ def test_feasible_fit_has_no_conflict_witness():
 
 
 def test_conflict_and_fit_records_are_exportable():
-    from pyvoro2 import (
+    from pyvoro2.inverse.separator import (
         FixedValue,
         FitModel,
         fit_power_weights,

@@ -3,8 +3,8 @@ import numpy as np
 
 
 def test_fit_report_exports_nested_plain_python_payload():
-    from pyvoro2 import (
-        Box,
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         FixedValue,
         FitModel,
         build_fit_report,
@@ -46,9 +46,9 @@ def test_fit_report_exports_nested_plain_python_payload():
 
 
 def test_active_set_report_collects_nested_diagnostics_and_history():
-    from pyvoro2 import (
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         ActiveSetOptions,
-        Box,
         FitModel,
         Interval,
         build_active_set_report,
@@ -94,8 +94,8 @@ def test_active_set_report_collects_nested_diagnostics_and_history():
 
 
 def test_report_json_helpers_roundtrip_plain_report(tmp_path):
-    from pyvoro2 import (
-        Box,
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         FixedValue,
         FitModel,
         build_fit_report,
@@ -140,7 +140,7 @@ def test_report_json_helpers_roundtrip_plain_report(tmp_path):
 
 def test_active_set_report_supports_planar_tessellation_diagnostics() -> None:
     import pyvoro2.planar as pv2
-    from pyvoro2 import (
+    from pyvoro2.inverse.separator import (
         ActiveSetOptions,
         FitModel,
         Interval,
@@ -178,7 +178,7 @@ def test_active_set_report_supports_planar_tessellation_diagnostics() -> None:
 
 
 def test_fit_report_includes_edge_diagnostics_and_algebraic_rows():
-    from pyvoro2 import (
+    from pyvoro2.inverse.separator import (
         build_fit_report,
         fit_power_weights,
         resolve_pair_bisector_constraints,
@@ -208,7 +208,7 @@ def test_fit_report_includes_edge_diagnostics_and_algebraic_rows():
 
 
 def test_fit_report_includes_connectivity_diagnostics():
-    from pyvoro2 import (
+    from pyvoro2.inverse.separator import (
         build_fit_report,
         fit_power_weights,
         resolve_pair_bisector_constraints,
@@ -242,8 +242,8 @@ def test_fit_report_includes_connectivity_diagnostics():
 
 
 def test_realized_report_includes_unaccounted_pairs_and_warnings():
-    from pyvoro2 import (
-        Box,
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         build_realized_report,
         fit_power_weights,
         match_realized_pairs,
@@ -284,9 +284,9 @@ def test_realized_report_includes_unaccounted_pairs_and_warnings():
 
 
 def test_active_set_report_uses_final_active_subset_and_top_level_connectivity():
-    from pyvoro2 import (
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         ActiveSetOptions,
-        Box,
         build_active_set_report,
         solve_self_consistent_power_weights,
     )
@@ -324,9 +324,9 @@ def test_active_set_report_uses_final_active_subset_and_top_level_connectivity()
 
 
 def test_active_set_report_includes_transient_path_summary_fields():
-    from pyvoro2 import (
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
         ActiveSetOptions,
-        Box,
         build_active_set_report,
         solve_self_consistent_power_weights,
     )

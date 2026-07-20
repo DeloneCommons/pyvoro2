@@ -111,9 +111,9 @@ packages independently of inverse fitting.
 
 ### Separator-based inverse layer
 
-The current inverse implementation lives in `pyvoro2.powerfit`.
+The v0.6.3 inverse implementation lived in `pyvoro2.powerfit`.
 
-| Module | Current responsibility |
+| Module | v0.6.3 responsibility |
 |---|---|
 | `constraints.py` | Resolve pair indices, periodic shifts, connector geometry, target values, and confidence weights. |
 | `model.py` | Define mismatch losses, hard feasible sets, soft penalties, and regularization. |
@@ -125,7 +125,7 @@ The current inverse implementation lives in `pyvoro2.powerfit`.
 | `transforms.py` | Convert between weights and backend-compatible radii. |
 | `types.py` | Shared public dataclasses. |
 
-The package currently exposes much of this surface both through
+That package exposed much of this surface both through
 `pyvoro2.powerfit` and by top-level re-export from `pyvoro2`. That is convenient
 for existing users, but it creates a large accidental top-level stability
 surface.
@@ -203,6 +203,33 @@ pyvoro2.powerfit compatibility exports ----+
 forward power-input resolution ------------+
 ```
 
+### Canonical separator implementation ownership
+
+The current v0.7 tree physically owns every separator-fitting implementation
+module under `pyvoro2.inverse.separator`: observation resolution, objective
+models, problem construction, fixed-observation solving, realization matching,
+active-set refinement, reports, and result dataclasses. Those modules import
+only canonical siblings or neutral/shared `pyvoro2` providers. In particular,
+no module under `pyvoro2.inverse` imports `pyvoro2.powerfit`.
+
+`pyvoro2.powerfit` and its historical direct submodules are now explicit
+forwarding shims. Their exports are the same class and function objects as the
+canonical modules; the shims contain no numerical formulas, solver paths,
+report builders, or duplicate dataclasses. Broad historical top-level exports
+also bind directly to `pyvoro2.inverse.separator`, so importing the canonical
+package does not load the compatibility namespace. The neutral transform
+implementation remains in `pyvoro2._weight_transforms`.
+
+The historical `pyvoro2.powerfit` package attribute is resolved lazily on
+first access. Plain `import pyvoro2` and canonical-only imports therefore do
+not load the compatibility package, while existing `pv.powerfit` calls still
+receive the historical module. The attribute remains outside `pyvoro2.__all__`.
+
+Issue #11 changes ownership only. `pyvoro2.inverse.separator` therefore exposes
+the existing historical names, while `pyvoro2.inverse` itself remains minimal.
+The terminology aliases, preferred high-level convenience surface,
+deprecation behavior, and migration policy are deferred to issue #12.
+
 ### Direct weight-first forward input
 
 The spatial and planar `compute(...)` functions now accept direct mathematical
@@ -217,8 +244,8 @@ Both forward wrappers pass the resolved backend radii to every native power
 call and to periodic face/edge image-shift reconstruction. Issue #8 completed
 the forward-input part of WP-02 without adding weights to `locate(...)` or
 `ghost_cells(...)` and without changing raw returns. It also left the common
-result object to issue #9. Separator ownership remains assigned to the later
-canonical inverse work package.
+result object to issue #9. Issue #11 subsequently completed the physical
+separator-ownership move without changing solver behavior.
 
 ### Common forward result data contract
 
@@ -279,9 +306,11 @@ current v0.7 development tree resolves that baseline limitation for both
 
 ### Separator-specific public organization
 
-The current `powerfit` surface grew around one observation family. Prescribed
+The v0.6.3 `powerfit` surface grew around one observation family. Prescribed
 cell measures should not be implemented as a second unrelated module with its
 own geometry parsing, gauge policy, result vocabulary, and failure reporting.
+The current v0.7 tree resolves physical ownership under
+`pyvoro2.inverse.separator`; the terminology migration remains separate.
 
 ### Ambiguous gauge language for disconnected observations
 
@@ -402,6 +431,12 @@ the first observation family. `pyvoro2.powerfit` becomes a thin
 compatibility-only shim during v0.7 and is planned for removal in v0.8. Broad
 separator-specific top-level exports follow the same transition schedule.
 
+The physical ownership and one-way shim direction are implemented in the
+current tree. The canonical separator package still uses the historical names,
+and the high-level `pyvoro2.inverse` convenience surface is intentionally not
+present yet. Issue #12 owns the preferred names, aliases, warnings, and
+migration-facing surface below.
+
 The separator workflow should be described using the following concepts:
 
 - separator observations;
@@ -412,8 +447,9 @@ The separator workflow should be described using the following concepts:
 - realized-boundary diagnostics;
 - optional realization-aware refinement.
 
-Historical names such as `PairBisectorConstraints` remain compatibility aliases
-in v0.7. New documentation prefers `SeparatorObservations`,
+Historical names such as `PairBisectorConstraints` are retained unchanged by
+issue #11 and become compatibility aliases as part of issue #12. After that
+terminology work, new documentation will prefer `SeparatorObservations`,
 `SeparatorFitResult`, and `fit_weights_from_separators`. Compatibility code
 imports from the canonical namespace; canonical code never imports from
 `powerfit`.

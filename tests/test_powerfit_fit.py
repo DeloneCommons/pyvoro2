@@ -3,7 +3,7 @@ import pytest
 
 
 def test_fit_power_weights_fraction_two_points_analytic():
-    from pyvoro2 import fit_power_weights
+    from pyvoro2.inverse.separator import fit_power_weights
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     res = fit_power_weights(pts, [(0, 1, 0.25)], measurement='fraction')
@@ -15,7 +15,10 @@ def test_fit_power_weights_fraction_two_points_analytic():
 
 
 def test_fit_result_exposes_algebraic_edge_diagnostics():
-    from pyvoro2 import fit_power_weights, resolve_pair_bisector_constraints
+    from pyvoro2.inverse.separator import (
+        fit_power_weights,
+        resolve_pair_bisector_constraints,
+    )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     res = fit_power_weights(pts, [(0, 1, 0.25)], measurement='fraction')
@@ -46,7 +49,7 @@ def test_fit_result_exposes_algebraic_edge_diagnostics():
 
 
 def test_fit_power_weights_fraction_allows_values_outside_segment():
-    from pyvoro2 import fit_power_weights
+    from pyvoro2.inverse.separator import fit_power_weights
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     res = fit_power_weights(pts, [(0, 1, 1.2)], measurement='fraction')
@@ -56,7 +59,7 @@ def test_fit_power_weights_fraction_allows_values_outside_segment():
 
 
 def test_fit_power_weights_fraction_hard_interval_clips_prediction():
-    from pyvoro2 import FitModel, Interval, fit_power_weights
+    from pyvoro2.inverse.separator import FitModel, Interval, fit_power_weights
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     res = fit_power_weights(
@@ -73,7 +76,7 @@ def test_fit_power_weights_fraction_hard_interval_clips_prediction():
 
 
 def test_r_min_sets_minimum_radius_via_weight_shift():
-    from pyvoro2 import fit_power_weights
+    from pyvoro2.inverse.separator import fit_power_weights
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     res = fit_power_weights(pts, [(0, 1, 0.25)], measurement='fraction', r_min=1.0)
@@ -84,7 +87,7 @@ def test_r_min_sets_minimum_radius_via_weight_shift():
 
 
 def test_fit_power_weights_rejects_nonfinite_r_min_before_returning_result():
-    from pyvoro2 import fit_power_weights
+    from pyvoro2.inverse.separator import fit_power_weights
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
 
@@ -98,7 +101,11 @@ def test_fit_power_weights_rejects_nonfinite_r_min_before_returning_result():
 
 
 def test_soft_interval_penalty_prefers_inside_interval():
-    from pyvoro2 import FitModel, SoftIntervalPenalty, fit_power_weights
+    from pyvoro2.inverse.separator import (
+        FitModel,
+        SoftIntervalPenalty,
+        fit_power_weights,
+    )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
 
@@ -118,7 +125,7 @@ def test_soft_interval_penalty_prefers_inside_interval():
 
 
 def test_exponential_boundary_penalty_pushes_away_from_boundary():
-    from pyvoro2 import (
+    from pyvoro2.inverse.separator import (
         ExponentialBoundaryPenalty,
         FitModel,
         Interval,
@@ -161,7 +168,7 @@ def test_exponential_boundary_penalty_pushes_away_from_boundary():
 
 
 def test_position_measurement_uses_absolute_position_space():
-    from pyvoro2 import fit_power_weights
+    from pyvoro2.inverse.separator import fit_power_weights
 
     pts = np.array([[0.0, 0.0, 0.0], [4.0, 0.0, 0.0]], dtype=float)
     res = fit_power_weights(pts, [(0, 1, 1.0)], measurement='position')
@@ -172,7 +179,7 @@ def test_position_measurement_uses_absolute_position_space():
 
 
 def test_infeasible_hard_constraints_are_reported():
-    from pyvoro2 import FixedValue, FitModel, fit_power_weights
+    from pyvoro2.inverse.separator import FixedValue, FitModel, fit_power_weights
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0]],
@@ -195,7 +202,7 @@ def test_infeasible_hard_constraints_are_reported():
 
 
 def test_huber_loss_is_available_as_an_alternative_mismatch():
-    from pyvoro2 import FitModel, HuberLoss, fit_power_weights
+    from pyvoro2.inverse.separator import FitModel, HuberLoss, fit_power_weights
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     res = fit_power_weights(
@@ -213,7 +220,7 @@ def test_huber_loss_is_available_as_an_alternative_mismatch():
 
 
 def test_fit_power_weights_accepts_explicit_weight_shift_for_radii():
-    from pyvoro2 import fit_power_weights
+    from pyvoro2.inverse.separator import fit_power_weights
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     res = fit_power_weights(
@@ -229,7 +236,7 @@ def test_fit_power_weights_accepts_explicit_weight_shift_for_radii():
 
 
 def test_disconnected_components_use_mean_zero_gauge_and_connectivity_diagnostics():
-    from pyvoro2 import fit_power_weights
+    from pyvoro2.inverse.separator import fit_power_weights
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [10.0, 0.0, 0.0], [12.0, 0.0, 0.0]],
@@ -252,7 +259,11 @@ def test_disconnected_components_use_mean_zero_gauge_and_connectivity_diagnostic
 
 
 def test_disconnected_components_can_align_to_zero_strength_reference_means():
-    from pyvoro2 import FitModel, L2Regularization, fit_power_weights
+    from pyvoro2.inverse.separator import (
+        FitModel,
+        L2Regularization,
+        fit_power_weights,
+    )
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [10.0, 0.0, 0.0], [12.0, 0.0, 0.0]],
@@ -281,7 +292,10 @@ def test_disconnected_components_can_align_to_zero_strength_reference_means():
 
 
 def test_fit_power_weights_can_raise_connectivity_diagnostics():
-    from pyvoro2 import ConnectivityDiagnosticsError, fit_power_weights
+    from pyvoro2.inverse.separator import (
+        ConnectivityDiagnosticsError,
+        fit_power_weights,
+    )
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [10.0, 0.0, 0.0], [12.0, 0.0, 0.0]],

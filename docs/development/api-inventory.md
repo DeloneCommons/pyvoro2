@@ -725,9 +725,31 @@ native computation, diagnostics, normalization, or annotation. The explicit
 raw route preserves the factual v0.6.3 list/tuple behavior above.
 `PlanarComputeResult` is the identical class object as `TessellationResult`.
 Explicit planar `return_result=` use emits `DeprecationWarning` and is resolved
-through the compatibility matrix below. Canonical inverse ownership remains
-assigned to later issues; this status note does not alter the factual v0.6.3
-baseline.
+through the compatibility matrix below.
+
+Issue #11 now makes `pyvoro2.inverse.separator` the physical owner of the
+existing separator implementation. Its `active`, `constraints`, `model`,
+`problem`, `realize`, `report`, `solver`, and `types` modules contain the sole
+implementations. Canonical modules import only canonical siblings and
+neutral/shared `pyvoro2` modules. `pyvoro2.powerfit` and all characterized
+historical direct submodules forward explicitly to those canonical objects;
+top-level historical separator exports also bind directly to the canonical
+package. The weight/radius formulas remain solely in
+`pyvoro2._weight_transforms`, including through the historical
+`pyvoro2.powerfit.transforms` route.
+
+Plain `import pyvoro2 as pv` retains the historical `pv.powerfit` attribute
+through lazy module-level attribute resolution. The compatibility package is
+not loaded until that attribute is accessed, and `powerfit` is deliberately not
+added to `pyvoro2.__all__`.
+
+This ownership move retains the exact issue-#6 historical names, signatures,
+defaults, dataclass fields, `pyvoro2.powerfit.__all__`, reports, records, and
+top-level export set. Canonical class and function `__module__` values now name
+`pyvoro2.inverse.separator` modules because there is only one implementation.
+The issue-#12 terminology aliases, high-level `pyvoro2.inverse` convenience
+surface, deprecation warnings, and migration/removal presentation are not yet
+implemented.
 
 ## Accepted v0.7 contract decisions
 
@@ -845,8 +867,9 @@ transition.
 
 ### Preferred high-level separator API
 
-The exact implemented signatures are finalized during the namespace issue. The
-accepted preferred names are:
+Issue #11 intentionally leaves `pyvoro2.inverse.__init__` minimal and does not
+implement this convenience surface. The exact aliases and implemented
+signatures are finalized by issue #12. The accepted preferred names are:
 
 | Name | Intended status | Meaning |
 |---|---|---|
@@ -869,7 +892,7 @@ Expected public but initially provisional surfaces include:
 
 The active-set outer workflow and its path/result types remain **experimental**.
 
-The implementation issue must produce an exact old-to-new name map. Historical
+Issue #12 must produce an exact old-to-new name map. Historical
 names under `pyvoro2.powerfit` may be aliases to canonical classes or wrappers,
 but numerical implementations must not be duplicated.
 

@@ -13,9 +13,9 @@ import pytest
 
 import pyvoro2 as pv
 import pyvoro2._weight_transforms as neutral_transforms
+import pyvoro2.inverse.separator.active as separator_active
+import pyvoro2.inverse.separator.problem as separator_problem
 import pyvoro2.powerfit as powerfit
-import pyvoro2.powerfit.active as powerfit_active
-import pyvoro2.powerfit.problem as powerfit_problem
 import pyvoro2.powerfit.transforms as compatibility_transforms
 
 
@@ -73,8 +73,8 @@ def test_all_public_and_compatibility_routes_share_function_objects() -> None:
 @pytest.mark.parametrize(
     ('module', 'source_name'),
     (
-        (powerfit_problem, 'problem.py'),
-        (powerfit_active, 'active.py'),
+        (separator_problem, 'problem.py'),
+        (separator_active, 'active.py'),
     ),
 )
 def test_separator_modules_import_neutral_transform_directly(
@@ -85,11 +85,13 @@ def test_separator_modules_import_neutral_transform_directly(
 
     direct_imports = {
         (node.level, node.module, alias.name)
-        for node in ast.walk(_parsed(PACKAGE_ROOT / 'powerfit' / source_name))
+        for node in ast.walk(
+            _parsed(PACKAGE_ROOT / 'inverse' / 'separator' / source_name)
+        )
         if isinstance(node, ast.ImportFrom)
         for alias in node.names
     }
-    assert (2, '_weight_transforms', 'weights_to_radii') in direct_imports
+    assert (3, '_weight_transforms', 'weights_to_radii') in direct_imports
     assert not any(
         module_name == 'transforms' or module_name.endswith('.transforms')
         for _, module_name, _ in direct_imports
