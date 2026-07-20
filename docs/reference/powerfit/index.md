@@ -14,5 +14,10 @@
 | `PowerWeightFitResult` | `SeparatorFitResult` |
 | `fit_power_weights` | `fit_weights_from_separators` |
 
+Because `PowerWeightFitResult` is an identity alias, its instances also expose
+the v0.7 layered result properties. The new provisional view type names are
+exported only by `pyvoro2.inverse.separator`; they do not broaden the historical
+`pyvoro2.powerfit.__all__` surface.
+
 ::: pyvoro2.powerfit
 :::

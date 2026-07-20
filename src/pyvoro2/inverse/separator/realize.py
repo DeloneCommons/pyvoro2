@@ -97,6 +97,33 @@ class UnaccountedRealizedPairError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
+class RequestedImageMatchView:
+    """Requested-pair and periodic-image matching results.
+
+    Arrays are shared with the owning :class:`RealizedPairDiagnostics`.
+    """
+
+    any_realization: np.ndarray
+    same_requested_shift: np.ndarray
+    another_periodic_shift: np.ndarray
+    realized_shifts: tuple[tuple[ShiftTuple, ...], ...]
+    unrealized_observation_indices: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RealizedGeometryView:
+    """Optional realized geometry and tessellation-wide diagnostics."""
+
+    endpoint_i_empty: np.ndarray
+    endpoint_j_empty: np.ndarray
+    boundary_measure: np.ndarray | None
+    cells: list[dict[str, Any]] | None
+    tessellation_diagnostics: TessellationDiagnosticsAny | None
+    realized_but_unaccounted_pairs: tuple[UnaccountedRealizedPair, ...]
+    warnings: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class RealizedPairDiagnostics:
     """Diagnostics for matching candidate constraints to realized boundaries."""
 
@@ -112,6 +139,32 @@ class RealizedPairDiagnostics:
     tessellation_diagnostics: TessellationDiagnosticsAny | None
     unaccounted_pairs: tuple[UnaccountedRealizedPair, ...] = ()
     warnings: tuple[str, ...] = ()
+
+    @property
+    def requested_image_matching(self) -> RequestedImageMatchView:
+        """Return requested-pair and periodic-image matching diagnostics."""
+
+        return RequestedImageMatchView(
+            any_realization=self.realized,
+            same_requested_shift=self.realized_same_shift,
+            another_periodic_shift=self.realized_other_shift,
+            realized_shifts=self.realized_shifts,
+            unrealized_observation_indices=self.unrealized,
+        )
+
+    @property
+    def geometry(self) -> RealizedGeometryView:
+        """Return optional boundary/cell geometry and tessellation diagnostics."""
+
+        return RealizedGeometryView(
+            endpoint_i_empty=self.endpoint_i_empty,
+            endpoint_j_empty=self.endpoint_j_empty,
+            boundary_measure=self.boundary_measure,
+            cells=self.cells,
+            tessellation_diagnostics=self.tessellation_diagnostics,
+            realized_but_unaccounted_pairs=self.unaccounted_pairs,
+            warnings=self.warnings,
+        )
 
     def to_records(
         self,

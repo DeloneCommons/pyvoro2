@@ -199,6 +199,27 @@ class PairConstraintDiagnostics:
 
 
 @dataclass(frozen=True, slots=True)
+class ActiveSetTerminationView:
+    """Termination state of the experimental active-set outer loop."""
+
+    status: str
+    converged: bool
+    n_outer_iter: int
+    cycle_length: int | None
+    warnings: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ActiveSetPathView:
+    """Final active state and optional outer-loop path diagnostics."""
+
+    active_mask: np.ndarray
+    marginal_constraint_indices: tuple[int, ...]
+    history: tuple[ActiveSetIteration, ...] | None
+    summary: ActiveSetPathSummary | None
+
+
+@dataclass(frozen=True, slots=True)
 class SelfConsistentPowerFitResult:
     constraints: SeparatorObservations
     fit: SeparatorFitResult
@@ -225,6 +246,47 @@ class SelfConsistentPowerFitResult:
     path_summary: ActiveSetPathSummary | None = None
     warnings: tuple[str, ...] = ()
     connectivity: ConnectivityDiagnostics | None = None
+
+    @property
+    def inner_fit(self) -> SeparatorFitResult:
+        """Return the final fixed-observation inner fit."""
+
+        return self.fit
+
+    @property
+    def final_realization(self) -> RealizedPairDiagnostics:
+        """Return realization diagnostics for the final fitted state."""
+
+        return self.realized
+
+    @property
+    def candidate_diagnostics(self) -> PairConstraintDiagnostics:
+        """Return final diagnostics over every candidate observation."""
+
+        return self.diagnostics
+
+    @property
+    def outer_termination(self) -> ActiveSetTerminationView:
+        """Return termination metadata for the experimental outer loop."""
+
+        return ActiveSetTerminationView(
+            status=self.termination,
+            converged=self.converged,
+            n_outer_iter=self.n_outer_iter,
+            cycle_length=self.cycle_length,
+            warnings=self.warnings,
+        )
+
+    @property
+    def path(self) -> ActiveSetPathView:
+        """Return the final active state and optional path history."""
+
+        return ActiveSetPathView(
+            active_mask=self.active_mask,
+            marginal_constraint_indices=self.marginal_constraints,
+            history=self.history,
+            summary=self.path_summary,
+        )
 
     def to_records(self, *, use_ids: bool = False) -> tuple[dict[str, object], ...]:
         """Return one plain-Python record per candidate pair."""
@@ -758,17 +820,14 @@ def _active_alignment_components(
     model: FitModel,
 ) -> list[list[int]]:
     problem = build_power_fit_problem(constraints, model=model)
-    return [
-        list(component)
-        for component in problem.connectivity.effective_graph.connected_components
-    ]
+    return problem._model_coupling_components()
 
 
 def _self_consistent_gauge_policy_description() -> str:
     return (
-        'each connected active effective component is aligned to the previous '
-        'iterate; the first iterate falls back to the standalone component-mean '
-        'gauge'
+        'each active model-coupling component is aligned to the previous '
+        'iterate; the first iterate falls back to the standalone solver and '
+        'component-alignment conventions'
     )
 
 

@@ -22,7 +22,11 @@ from .problem import (
     build_power_fit_problem,
     build_power_fit_result,
 )
-from .types import ConnectivityDiagnostics, SeparatorFitResult
+from .types import (
+    ConnectivityDiagnostics,
+    SeparatorFitResult,
+    _bind_originating_observations,
+)
 
 
 class ConnectivityDiagnosticsError(ValueError):
@@ -202,7 +206,7 @@ def _fit_power_weights_resolved(
             ),
             objective_breakdown=None,
         )
-        return result
+        return _bind_originating_observations(result, constraints)
 
     if m == 0:
         if lam > 0.0:
@@ -234,7 +238,8 @@ def _fit_power_weights_resolved(
             weight_shift=weight_shift,
         )
         if connectivity is None:
-            return replace(result, connectivity=None)
+            result = replace(result, connectivity=None)
+            return _bind_originating_observations(result, constraints)
         return result
 
     weights = np.zeros(n, dtype=np.float64)
@@ -346,11 +351,12 @@ def _fit_power_weights_resolved(
             weight_shift=weight_shift,
         )
         if connectivity is None:
-            return replace(result, connectivity=None)
+            result = replace(result, connectivity=None)
+            return _bind_originating_observations(result, constraints)
         return result
     except (np.linalg.LinAlgError, FloatingPointError, _NumericalFailure) as exc:
         warnings_list.append(f'numerical solver failure: {exc}')
-        return SeparatorFitResult(
+        result = SeparatorFitResult(
             status='numerical_failure',
             status_detail=str(exc),
             hard_feasible=True,
@@ -378,6 +384,7 @@ def _fit_power_weights_resolved(
             ),
             objective_breakdown=None,
         )
+        return _bind_originating_observations(result, constraints)
 
 
 def _solve_component_analytic(

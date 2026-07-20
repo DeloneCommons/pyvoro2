@@ -527,6 +527,13 @@ The primary containers have the following exact dataclass fields:
 | `PairConstraintDiagnostics` | `site_i`, `site_j`, `shift`, `target`, `confidence`, `predicted`, `predicted_fraction`, `predicted_position`, `residuals`, `active`, `realized`, `realized_same_shift`, `realized_other_shift`, `realized_shifts`, `endpoint_i_empty`, `endpoint_j_empty`, `boundary_measure`, `toggle_count`, `realized_toggle_count`, `first_realized_iter`, `last_realized_iter`, `marginal`, `status` |
 | `SelfConsistentPowerFitResult` | `constraints`, `fit`, `realized`, `diagnostics`, `active_mask`, `n_outer_iter`, `converged`, `termination`, `cycle_length`, `marginal_constraints`, `rms_residual_all`, `max_residual_all`, `tessellation_diagnostics`, `history`, `path_summary`, `warnings`, `connectivity` |
 
+`PowerFitProblem.offset_identifying_constraint_mask` retains its historical
+field name and values for numerical compatibility. It is the model-coupling
+mask used to decompose solver subproblems: positive-confidence rows are
+included, and hard restrictions or penalties make their affected rows part of
+the same numerical subproblem. It is not the informative observation mask and
+does not claim data identification or unique objective selection.
+
 Supporting fields are exact as follows:
 
 | Type | Fields |
@@ -549,6 +556,51 @@ The public inverse dataclasses are generally frozen and slotted.
 into read-only arrays. `PowerWeightFitResult`, realization diagnostics, and
 active-set result containers do not deep-freeze every contained array; callers
 must not infer deep immutability from the frozen outer dataclass.
+
+Issue #13 preserves those exact dataclass fields and adds the following
+provisional, non-copying access paths:
+
+| Layer | Access path | Existing data exposed |
+|---|---|---|
+| Fitted state | `SeparatorFitResult.state` | `weights` as `mathematical_weights`, backend `radii`, and compatibility `weight_shift` as `global_representation_shift` |
+| Identification | `SeparatorFitResult.identification` | informative positive-confidence components, global-gauge identification (`False` for separator data), observational component-offset identification, conservative objective selection, component-alignment policy, sites isolated in the informative graph as `unconstrained_sites`, and `connectivity` (whose compatibility `unconstrained_points` remains candidate-based) |
+| Observations | `SeparatorFitResult.observation_view(observations)` | measurement targets, confidence from the supplied resolved observations, predictions in all existing forms, residuals/summaries, and requested shifts; the supplied set must be the originating or a fully equivalent resolved set |
+| Objective | `SeparatorFitResult.objective` | existing `objective_breakdown` object |
+| Algebraic diagnostics | `SeparatorFitResult.algebraic` | existing `edge_diagnostics` and `connectivity` objects; no graph-operator representation |
+| Fixed solver termination | `SeparatorFitResult.solver_termination` | status/detail, backend, iterations, convergence, hard feasibility, conflict, and warnings |
+| Requested-image matching | `RealizedPairDiagnostics.requested_image_matching` | any/same-shift/other-shift realization, realized shifts, and unrealized indices |
+| Realized geometry | `RealizedPairDiagnostics.geometry` | empty endpoints, optional boundary measure/cells/tessellation diagnostics, unaccounted pairs, and warnings |
+| Active-set organization | `SelfConsistentPowerFitResult.inner_fit`, `.final_realization`, `.candidate_diagnostics`, `.outer_termination`, `.path` | existing final objects, outer termination, active mask, marginals, history, and path summary |
+
+The canonical `component_alignment_policy` view value is the same stored string
+as compatibility-facing `ConnectivityDiagnostics.gauge_policy`; only the access
+name is clarified. `global_representation_shift` is the compatibility
+`weight_shift` value used for backend-radius conversion: it selects a backend
+representation within the global geometric gauge, is distinct from independent
+component offsets, and is not information recovered from observations. All
+array-valued views share the arrays already owned by their result or
+resolved-observation source.
+
+The connectivity `effective_graph` and `active_effective_graph` contain only
+positive-confidence rows. The corresponding `*_identified_by_data` fields are
+true exactly when their informative graph is connected. The compatibility
+field `offsets_identified_in_objective` is conservative: it is true when the
+relevant informative graph is connected or positive L2 regularization
+guarantees selection of otherwise free offsets. Hard restrictions and scalar
+penalties do not make these fields true. An exact hard equality can fix an
+offset in a particular problem, but that separate constraint-identifiability
+case is outside the current view rather than generalized prematurely.
+
+The private originating-observation association used by `observation_view(...)`
+survives shallow and deep copying, pickle round trips, and
+`dataclasses.replace(...)`. It is an init-only implementation detail rather
+than an additional public dataclass field. To let `dataclasses.replace(...)`
+carry it, `inspect.signature(SeparatorFitResult)` includes the optional private
+keyword-only parameter `_originating_observations_init=None`; every established
+public parameter, default, positional call, and `dataclasses.fields(...)` entry
+is unchanged. Results constructed directly through the existing public field
+arguments, without that association, cannot safely combine unknown observation
+metadata with fitted predictions, so the accessor raises `ValueError`.
 
 The generated reference also documents these result/problem conveniences:
 
@@ -582,7 +634,10 @@ labels where the relevant container has `ids`.
 
 Measurement-space `residual` and algebraic `z_obs - z_fit` are distinct.
 Periodic shifts are integer tuples of the resolved dimension. A confidence-zero
-row remains in candidate records but does not identify an effective graph edge.
+row remains in candidate records but never identifies an informative graph
+edge. Configured hard restrictions or penalties may still constrain the row's
+predicted separator value; that model coupling is separate from observational
+identification.
 
 ### Current inverse report schemas
 
@@ -608,6 +663,17 @@ Active history rows contain `iteration`, `n_active`, `n_realized`, `n_added`,
 records contain all `ActiveSetPathSummary` fields. Tessellation report records
 provide dimension-neutral measure/boundary keys plus the corresponding 2D
 area/edge or 3D volume/face aliases.
+
+Issue #13 does not add, remove, or rename report keys. Existing fit report
+state keys (`weights`, `radii`, `weight_shift`), `connectivity`, observation
+records/summaries, `objective_breakdown`, `edge_diagnostics`, and solver
+summary/conflict/warnings correspond respectively to the state,
+identification, observations, objective, algebraic, and solver layers.
+Realized `records`/`unrealized` describe requested-image matching, while
+unaccounted pairs, optional record geometry, and tessellation diagnostics
+describe realized geometry. Active `fit`, `realized`, `diagnostics`, `summary`,
+`history`, and `path_summary` describe the final inner fit, final realization,
+per-candidate diagnostics, outer termination, and active-set path.
 
 ### Calls exercised by repository examples
 
@@ -757,6 +823,20 @@ explicit. Loading `pyvoro2.powerfit` emits one ordinary hidden-by-default
 `DeprecationWarning` that points to the canonical namespaces and states the
 planned v0.8 removal.
 
+Issue #13 adds provisional layered views to the existing fixed-fit,
+realization, and experimental active-set result objects. It does not change
+their dataclass fields, established public constructor parameters, numerical
+values, records, report schemas, hard-conflict witnesses, or compatibility
+aliases. `SeparatorFitResult` has the documented optional private keyword-only
+init-only parameter used to retain observation identity through
+`dataclasses.replace(...)`. Reports now read the established values through the
+same public layers where this is non-breaking. The new view type names are
+exported only from
+`pyvoro2.inverse.separator`; the small `pyvoro2.inverse` and historical
+`pyvoro2.powerfit` export sets remain unchanged. Public incidence, Laplacian,
+right-hand-side, conversion, sparse-execution, and operator representation
+remain deferred to issue #14.
+
 ## Accepted v0.7 contract decisions
 
 The following boundaries are already accepted:
@@ -890,13 +970,13 @@ The accepted preferred names have these lifecycle assignments:
 |---|---|---|
 | `SeparatorObservations` | Stable candidate | Resolved pairwise separator observations, including periodic image labels and confidence. |
 | `resolve_separator_observations` | Stable candidate | Validate and resolve raw separator observations against sites and domain. |
-| `SeparatorFitResult` | Stable candidate | Fitted state, observation residuals, identification metadata, and solver status. |
+| `SeparatorFitResult` | Stable candidate | Existing flat fit contract plus layered state, observation, identification, objective, algebraic, and fixed-solver access. |
 | `fit_weights_from_separators` | Stable candidate | Preferred fixed-observation fit entry point. |
 | `weights_to_radii`, `radii_to_weights` | Stable re-export where useful | Same neutral transforms as top-level pyvoro2. |
 
 ### Advanced separator API
 
-`pyvoro2.inverse.separator.__all__` contains exactly the following 47 names:
+`pyvoro2.inverse.separator.__all__` contains exactly the following 56 names:
 
 ```text
 SeparatorObservations
@@ -904,6 +984,11 @@ resolve_separator_observations
 SeparatorFitProblem
 SeparatorFitResult
 fit_weights_from_separators
+SeparatorFitStateView
+SeparatorIdentificationView
+SeparatorObservationView
+SeparatorAlgebraicView
+SeparatorSolverTerminationView
 PairBisectorConstraints
 resolve_pair_bisector_constraints
 SquaredLoss
@@ -928,6 +1013,8 @@ PowerFitProblem
 PowerWeightFitResult
 build_power_fit_problem
 build_power_fit_result
+RequestedImageMatchView
+RealizedGeometryView
 RealizedPairDiagnostics
 UnaccountedRealizedPair
 UnaccountedRealizedPairError
@@ -939,6 +1026,8 @@ write_report_json
 ActiveSetOptions
 ActiveSetIteration
 ActiveSetPathSummary
+ActiveSetTerminationView
+ActiveSetPathView
 PairConstraintDiagnostics
 SelfConsistentPowerFitResult
 fit_power_weights
@@ -949,10 +1038,11 @@ weights_to_radii
 ```
 
 The canonical core and neutral transforms have the statuses assigned above.
-The objective model, problem construction/evaluation, realization, reporting,
-and diagnostic objects are initially **provisional**. The active-set outer
-workflow and its options, iteration, path, diagnostic, and result objects are
-**experimental** and separator-specific.
+The objective model, problem construction/evaluation, fixed-fit and realization
+view types, realization, reporting, and diagnostic objects are initially
+**provisional**. The active-set outer workflow and its options, termination/path
+views, iteration, path, diagnostic, and result objects are **experimental** and
+separator-specific.
 
 The exact v0.7 core identity map is:
 
@@ -971,6 +1061,7 @@ The accepted provisional advanced surfaces include:
   penalties, and regularization;
 - graph, connectivity, incidence, Laplacian, and objective-breakdown views;
 - result packaging for externally computed weights;
+- layered fixed-fit and realization views that reference existing result data;
 - realization matching and record/report builders.
 
 The active-set outer workflow and its path/result types remain **experimental**.
@@ -1123,7 +1214,10 @@ The following are API even when no dedicated Python class represents them:
 - external IDs remain attached to original sites;
 - periodic neighbor shifts identify the realized image and are not silently
   replaced by a nearest image;
-- zero-confidence separator rows do not identify weight differences;
+- zero-confidence separator rows do not identify weight differences or enter
+  the informative observation graph; hard restrictions and penalties may
+  constrain their predicted values but remain separate from data
+  identification;
 - algebraic fit does not imply realized-boundary support;
 - empty/hidden cells are represented deterministically according to the chosen
   output route;

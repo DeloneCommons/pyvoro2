@@ -31,6 +31,7 @@ from .types import (
     PowerFitObjectiveBreakdown,
     PowerFitPredictions,
     SeparatorFitResult,
+    _bind_originating_observations,
     _readonly_array,
 )
 
@@ -58,7 +59,14 @@ class _DifferenceEdge:
 
 @dataclass(frozen=True, slots=True)
 class SeparatorFitProblem:
-    """Resolved fixed-observation separator fit problem."""
+    """Resolved fixed-observation separator fit problem.
+
+    ``offset_identifying_constraint_mask`` is the historical public name for
+    the row mask used to decompose the numerical problem.  It includes rows
+    touched by hard restrictions or penalties because those terms can couple
+    solver variables.  The mask does not claim that those rows identify
+    offsets from separator data or select them uniquely.
+    """
 
     constraints: SeparatorObservations
     model: FitModel
@@ -127,13 +135,26 @@ class SeparatorFitProblem:
     def confidence(self) -> np.ndarray:
         return np.asarray(self.constraints.confidence, dtype=np.float64)
 
+    def _model_coupling_components(self) -> list[list[int]]:
+        mask = np.asarray(self.offset_identifying_constraint_mask, dtype=bool)
+        return _connected_components(
+            int(self.constraints.n_points),
+            self.constraints.i[mask],
+            self.constraints.j[mask],
+        )
+
     @property
     def suggested_anchor_indices(self) -> tuple[int, ...]:
-        if self.connectivity.offsets_identified_in_objective:
+        components = self._model_coupling_components()
+        if (
+            float(self.regularization_strength) > 0.0
+            or int(self.constraints.n_points) <= 1
+            or len(components) == 1
+        ):
             return tuple()
         return tuple(
             int(component[0])
-            for component in self.connectivity.effective_graph.connected_components
+            for component in components
             if component
         )
 
@@ -180,15 +201,16 @@ class SeparatorFitProblem:
         """Apply the standalone component gauge convention to candidate weights."""
 
         w = _validated_weight_vector(self, weights)
-        if self.connectivity.offsets_identified_in_objective:
+        components = self._model_coupling_components()
+        if (
+            float(self.regularization_strength) > 0.0
+            or int(self.constraints.n_points) <= 1
+            or len(components) == 1
+        ):
             return w.copy()
-        comps = [
-            list(component)
-            for component in self.connectivity.effective_graph.connected_components
-        ]
         return _apply_component_mean_gauge(
             w,
-            comps,
+            components,
             reference=(
                 None
                 if self.model.regularization.reference is None
@@ -232,7 +254,7 @@ def build_power_fit_problem(
     connectivity = _build_fit_connectivity_diagnostics(
         constraints,
         model=model,
-        gauge_policy=_standalone_gauge_policy_description(model.regularization),
+        gauge_policy=_standalone_gauge_policy_description(model),
     )
     alpha = np.asarray(geom.alpha, dtype=np.float64)
     beta = np.asarray(geom.beta, dtype=np.float64)
@@ -248,7 +270,7 @@ def build_power_fit_problem(
         edge_weight=edge_weight,
         regularization_strength=float(model.regularization.strength),
         regularization_reference=reg_ref,
-        offset_identifying_constraint_mask=_offset_identifying_constraint_mask(
+        offset_identifying_constraint_mask=_model_coupling_constraint_mask(
             constraints,
             model,
         ),
@@ -301,7 +323,7 @@ def build_power_fit_result(
     )
     rms = float(np.sqrt(np.mean(residuals * residuals))) if residuals.size else 0.0
     mx = float(np.max(np.abs(residuals))) if residuals.size else 0.0
-    return SeparatorFitResult(
+    result = SeparatorFitResult(
         status=status,
         status_detail=status_detail,
         hard_feasible=bool(problem.hard_feasible),
@@ -326,6 +348,7 @@ def build_power_fit_result(
         edge_diagnostics=edge_diagnostics,
         objective_breakdown=objective_breakdown,
     )
+    return _bind_originating_observations(result, problem.constraints)
 
 
 def _validated_weight_vector(
@@ -584,14 +607,31 @@ def _regularization_reference(reg: L2Regularization, n: int) -> np.ndarray:
     return np.asarray(w0, dtype=np.float64)
 
 
-def _offset_identifying_constraint_mask(
+def _informative_observation_mask(
+    constraints: SeparatorObservations,
+) -> np.ndarray:
+    return np.asarray(constraints.confidence > 0.0, dtype=bool)
+
+
+def _model_coupling_constraint_mask(
     constraints: SeparatorObservations,
     model: FitModel,
 ) -> np.ndarray:
-    mask = np.asarray(constraints.confidence > 0.0, dtype=bool)
+    mask = _informative_observation_mask(constraints)
     if model.feasible is not None or len(model.penalties) > 0:
         mask = np.ones(constraints.n_constraints, dtype=bool)
     return mask
+
+
+def _component_offsets_selected_by_objective(model: FitModel) -> bool:
+    """Return whether a supported extra objective guarantees offset selection.
+
+    Positive L2 regularization is strictly convex in every site weight.  The
+    supported scalar penalties are deliberately not classified as uniquely
+    selecting component offsets: they may have zero strength or flat regions.
+    """
+
+    return float(model.regularization.strength) > 0.0
 
 
 def _apply_component_mean_gauge(
@@ -615,13 +655,25 @@ def _apply_component_mean_gauge(
     return aligned
 
 
-def _standalone_gauge_policy_description(reg: L2Regularization) -> str:
+def _standalone_gauge_policy_description(model: FitModel) -> str:
+    reg = model.regularization
+    if float(reg.strength) > 0.0:
+        if reg.reference is not None:
+            return (
+                'positive L2 regularization selects weights relative to the '
+                'supplied reference'
+            )
+        return 'positive L2 regularization selects weights relative to zero'
     if reg.reference is not None:
         return (
-            'each effective component is shifted so its mean matches the '
-            'reference mean on that component'
+            'disconnected model-coupling components are shifted so each mean '
+            'matches its reference mean; within-component solver conventions '
+            'are retained'
         )
-    return 'each effective component is centered to mean zero'
+    return (
+        'disconnected model-coupling components are centered to mean zero; '
+        'within-component solver conventions are retained'
+    )
 
 
 def _connected_components(
@@ -712,7 +764,7 @@ def _build_fit_connectivity_diagnostics(
         constraints.j,
         n_constraints=constraints.n_constraints,
     )
-    effective_mask = _offset_identifying_constraint_mask(constraints, model)
+    effective_mask = _informative_observation_mask(constraints)
     effective_graph = _graph_diagnostics(
         n,
         constraints.i[effective_mask],
@@ -732,9 +784,9 @@ def _build_fit_connectivity_diagnostics(
         )
     if np.any(~effective_mask):
         messages.append(
-            'zero-confidence candidate rows do not identify pair differences '
-            'in the current objective and are ignored for '
-            'connectivity/gauge diagnostics'
+            'zero-confidence candidate rows are excluded from the informative '
+            'observation graph and data-identification diagnostics; model '
+            'restrictions and penalties are assessed separately'
         )
     if effective_graph.n_components > 1:
         messages.append(
@@ -751,7 +803,7 @@ def _build_fit_connectivity_diagnostics(
         active_offsets_identified_by_data=None,
         offsets_identified_in_objective=bool(
             effective_graph.fully_connected
-            or float(model.regularization.strength) > 0.0
+            or _component_offsets_selected_by_objective(model)
         ),
         gauge_policy=gauge_policy,
         messages=tuple(messages),
@@ -776,7 +828,7 @@ def _build_active_set_connectivity_diagnostics(
         constraints.j,
         n_constraints=constraints.n_constraints,
     )
-    effective_mask = _offset_identifying_constraint_mask(constraints, model)
+    effective_mask = _informative_observation_mask(constraints)
     effective_graph = _graph_diagnostics(
         n,
         constraints.i[effective_mask],
@@ -791,10 +843,7 @@ def _build_active_set_connectivity_diagnostics(
         active_constraints.j,
         n_constraints=active_constraints.n_constraints,
     )
-    active_effective_mask = _offset_identifying_constraint_mask(
-        active_constraints,
-        model,
-    )
+    active_effective_mask = _informative_observation_mask(active_constraints)
     active_effective_graph = _graph_diagnostics(
         n,
         active_constraints.i[active_effective_mask],
@@ -814,9 +863,9 @@ def _build_active_set_connectivity_diagnostics(
         )
     if np.any(~effective_mask):
         messages.append(
-            'zero-confidence candidate rows do not identify pair differences '
-            'in the current objective and are ignored for '
-            'connectivity/gauge diagnostics'
+            'zero-confidence candidate rows are excluded from the informative '
+            'observation graph and data-identification diagnostics; model '
+            'restrictions and penalties are assessed separately'
         )
     if effective_graph.n_components > 1:
         messages.append(
@@ -830,9 +879,10 @@ def _build_active_set_connectivity_diagnostics(
         )
     if np.any(mask) and np.any(~active_effective_mask):
         messages.append(
-            'zero-confidence active rows do not identify pair differences in '
-            'the current objective and are ignored for active-component gauge '
-            'alignment'
+            'zero-confidence active rows are excluded from the active '
+            'informative observation graph and data-identification '
+            'diagnostics; model restrictions and penalties are assessed '
+            'separately'
         )
     if active_effective_graph.n_components > 1:
         messages.append(
@@ -854,7 +904,7 @@ def _build_active_set_connectivity_diagnostics(
         ),
         offsets_identified_in_objective=bool(
             active_effective_graph.fully_connected
-            or float(model.regularization.strength) > 0.0
+            or _component_offsets_selected_by_objective(model)
         ),
         gauge_policy=gauge_policy,
         messages=tuple(messages),

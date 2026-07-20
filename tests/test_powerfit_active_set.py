@@ -202,6 +202,9 @@ def test_self_consistent_solver_detects_active_mask_cycle(monkeypatch):
     assert res.cycle_length == 2
     assert set(res.marginal_constraints) == {0, 1}
     assert res.diagnostics.status == ('cycle_member', 'cycle_member')
+    assert res.outer_termination.status == 'cycle_detected'
+    assert res.outer_termination.cycle_length == 2
+    assert res.path.marginal_constraint_indices == res.marginal_constraints
 
 
 def test_self_consistent_result_exports_records_with_ids():

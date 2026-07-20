@@ -8,6 +8,20 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Added
 
+- Layered, non-copying separator result views for fitted state/backend
+  representation, identification and component alignment, observation-space
+  fit, objective and algebraic diagnostics, fixed-solver termination,
+  requested-image realization, optional realized geometry, and experimental
+  active-set termination/path data. Observation views are bound to their
+  originating resolved inputs and reject unrelated pair, confidence, or
+  geometry data, including after copying, pickle reconstruction, or
+  `dataclasses.replace()`. Identification views use the informative observation
+  graph induced only by positive-confidence rows. Hard restrictions and scalar
+  penalties may constrain component offsets but do not make them identified by
+  separator data; only positive L2 regularization is currently reported as
+  guaranteed objective selection of otherwise free component offsets.
+  Existing flat fields, record/report schemas, conflict witnesses, and
+  compatibility routes remain intact.
 - Canonical separator names and a deliberately small `pyvoro2.inverse` surface
   for resolving separator observations, fitting weights, inspecting fit
   results, and converting weights/radii; advanced separator objects remain at

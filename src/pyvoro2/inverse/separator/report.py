@@ -251,7 +251,7 @@ def _edge_diagnostics_record(
     result: SeparatorFitResult,
     constraints: SeparatorObservations,
 ) -> dict[str, object]:
-    diagnostics = result.edge_diagnostics
+    diagnostics = result.algebraic.edge_diagnostics
     if diagnostics is None:
         from .problem import _edge_diagnostics_for_result
 
@@ -293,20 +293,23 @@ def build_fit_report(
     """Return a JSON-friendly report for a low-level fit result."""
 
     ids = constraints.ids if use_ids else None
+    state = result.state
+    identification = result.identification
+    termination = result.solver_termination
     return {
         'kind': 'power_weight_fit',
         'summary': {
-            'status': result.status,
+            'status': termination.status,
             'is_optimal': bool(result.is_optimal),
             'is_infeasible': bool(result.is_infeasible),
-            'hard_feasible': bool(result.hard_feasible),
-            'solver': result.solver,
+            'hard_feasible': bool(termination.hard_feasible),
+            'solver': termination.backend,
             'measurement': result.measurement,
             'n_constraints': int(constraints.n_constraints),
             'n_points': int(constraints.n_points),
-            'converged': bool(result.converged),
-            'status_detail': result.status_detail,
-            'n_iter': int(result.n_iter),
+            'converged': bool(termination.converged),
+            'status_detail': termination.status_detail,
+            'n_iter': int(termination.n_iter),
             'rms_residual': (
                 None if result.rms_residual is None else float(result.rms_residual)
             ),
@@ -321,19 +324,30 @@ def build_fit_report(
         'fit_records': list(result.to_records(constraints, use_ids=use_ids)),
         'edge_diagnostics': _edge_diagnostics_record(result, constraints),
         'objective_breakdown': _objective_breakdown_record(
-            result.objective_breakdown
+            result.objective
         ),
-        'weights': None if result.weights is None else result.weights.tolist(),
-        'radii': None if result.radii is None else result.radii.tolist(),
+        'weights': (
+            None
+            if state.mathematical_weights is None
+            else state.mathematical_weights.tolist()
+        ),
+        'radii': (
+            None if state.backend_radii is None else state.backend_radii.tolist()
+        ),
         'weight_shift': (
-            None if result.weight_shift is None else float(result.weight_shift)
+            None
+            if state.global_representation_shift is None
+            else float(state.global_representation_shift)
         ),
         'used_shifts': [
             tuple(int(v) for v in shift_row) for shift_row in result.used_shifts
         ],
-        'warnings': list(result.warnings),
-        'conflict': _conflict_record(result.conflict, ids=ids),
-        'connectivity': _connectivity_record(result.connectivity, ids=ids),
+        'warnings': list(termination.warnings),
+        'conflict': _conflict_record(termination.conflict, ids=ids),
+        'connectivity': _connectivity_record(
+            identification.connectivity,
+            ids=ids,
+        ),
     }
 
 
@@ -346,22 +360,30 @@ def build_realized_report(
     """Return a JSON-friendly report for realized-face matching."""
 
     ids = constraints.ids if use_ids else None
+    matching = diagnostics.requested_image_matching
+    geometry = diagnostics.geometry
     return {
         'kind': 'realized_pair_diagnostics',
         'summary': {
             'n_constraints': int(constraints.n_constraints),
-            'n_realized': int(np.count_nonzero(diagnostics.realized)),
-            'n_same_shift': int(np.count_nonzero(diagnostics.realized_same_shift)),
-            'n_other_shift': int(np.count_nonzero(diagnostics.realized_other_shift)),
-            'n_unrealized': int(len(diagnostics.unrealized)),
-            'n_unaccounted_pairs': int(len(diagnostics.unaccounted_pairs)),
+            'n_realized': int(np.count_nonzero(matching.any_realization)),
+            'n_same_shift': int(np.count_nonzero(matching.same_requested_shift)),
+            'n_other_shift': int(
+                np.count_nonzero(matching.another_periodic_shift)
+            ),
+            'n_unrealized': int(len(matching.unrealized_observation_indices)),
+            'n_unaccounted_pairs': int(
+                len(geometry.realized_but_unaccounted_pairs)
+            ),
         },
         'records': list(diagnostics.to_records(constraints, use_ids=use_ids)),
-        'unrealized': [int(idx) for idx in diagnostics.unrealized],
+        'unrealized': [
+            int(idx) for idx in matching.unrealized_observation_indices
+        ],
         'unaccounted_pairs': list(diagnostics.unaccounted_records(ids=ids)),
-        'warnings': list(diagnostics.warnings),
+        'warnings': list(geometry.warnings),
         'tessellation_diagnostics': _tessellation_record(
-            diagnostics.tessellation_diagnostics
+            geometry.tessellation_diagnostics
         ),
     }
 
@@ -381,10 +403,15 @@ def build_active_set_report(
             'build_active_set_report expects a SelfConsistentPowerFitResult'
         )
 
+    inner_fit = result.inner_fit
+    final_realization = result.final_realization
+    outer_termination = result.outer_termination
+    path = result.path
+
     history_rows: list[dict[str, object]] | None = None
-    if result.history is not None:
+    if path.history is not None:
         history_rows = []
-        for row in result.history:
+        for row in path.history:
             history_rows.append(
                 {
                     'iteration': int(row.iteration),
@@ -424,45 +451,53 @@ def build_active_set_report(
             )
 
     diagnostic_rows = list(result.to_records(use_ids=use_ids))
-    marginal_rows = [diagnostic_rows[int(idx)] for idx in result.marginal_constraints]
+    marginal_rows = [
+        diagnostic_rows[int(idx)] for idx in path.marginal_constraint_indices
+    ]
 
     return {
         'kind': 'self_consistent_power_fit',
         'summary': {
-            'termination': result.termination,
-            'converged': bool(result.converged),
-            'n_outer_iter': int(result.n_outer_iter),
+            'termination': outer_termination.status,
+            'converged': bool(outer_termination.converged),
+            'n_outer_iter': int(outer_termination.n_outer_iter),
             'cycle_length': (
-                None if result.cycle_length is None else int(result.cycle_length)
+                None
+                if outer_termination.cycle_length is None
+                else int(outer_termination.cycle_length)
             ),
             'n_constraints': int(result.constraints.n_constraints),
-            'n_active_final': int(np.count_nonzero(result.active_mask)),
-            'n_realized_final': int(np.count_nonzero(result.realized.realized)),
+            'n_active_final': int(np.count_nonzero(path.active_mask)),
+            'n_realized_final': int(
+                np.count_nonzero(
+                    final_realization.requested_image_matching.any_realization
+                )
+            ),
             'rms_residual_all': float(result.rms_residual_all),
             'max_residual_all': float(result.max_residual_all),
             'marginal_constraint_indices': [
-                int(idx) for idx in result.marginal_constraints
+                int(idx) for idx in path.marginal_constraint_indices
             ],
         },
         'constraints': list(result.constraints.to_records(use_ids=use_ids)),
         'fit': build_fit_report(
-            result.fit,
-            result.constraints.subset(result.active_mask),
+            inner_fit,
+            result.constraints.subset(path.active_mask),
             use_ids=use_ids,
         ),
         'realized': build_realized_report(
-            result.realized,
+            final_realization,
             result.constraints,
             use_ids=use_ids,
         ),
         'diagnostics': diagnostic_rows,
         'marginal_records': marginal_rows,
         'history': history_rows,
-        'path_summary': _path_summary_record(result.path_summary),
+        'path_summary': _path_summary_record(path.summary),
         'tessellation_diagnostics': _tessellation_record(
             result.tessellation_diagnostics
         ),
-        'warnings': list(result.warnings),
+        'warnings': list(outer_termination.warnings),
         'connectivity': _connectivity_record(
             result.connectivity,
             ids=(result.constraints.ids if use_ids else None),

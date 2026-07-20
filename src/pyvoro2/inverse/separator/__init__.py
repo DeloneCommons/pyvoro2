@@ -26,9 +26,11 @@ from .model import (
     SquaredLoss,
 )
 from .active import (
+    ActiveSetPathView,
     ActiveSetIteration,
     ActiveSetOptions,
     ActiveSetPathSummary,
+    ActiveSetTerminationView,
     PairConstraintDiagnostics,
     SelfConsistentPowerFitResult,
     solve_self_consistent_power_weights,
@@ -40,7 +42,9 @@ from .problem import (
     build_power_fit_result,
 )
 from .realize import (
+    RealizedGeometryView,
     RealizedPairDiagnostics,
+    RequestedImageMatchView,
     UnaccountedRealizedPair,
     UnaccountedRealizedPairError,
     match_realized_pairs,
@@ -67,7 +71,12 @@ from .types import (
     PowerFitObjectiveBreakdown,
     PowerFitPredictions,
     PowerWeightFitResult,
+    SeparatorAlgebraicView,
     SeparatorFitResult,
+    SeparatorFitStateView,
+    SeparatorIdentificationView,
+    SeparatorObservationView,
+    SeparatorSolverTerminationView,
 )
 
 __all__ = [
@@ -76,6 +85,11 @@ __all__ = [
     'SeparatorFitProblem',
     'SeparatorFitResult',
     'fit_weights_from_separators',
+    'SeparatorFitStateView',
+    'SeparatorIdentificationView',
+    'SeparatorObservationView',
+    'SeparatorAlgebraicView',
+    'SeparatorSolverTerminationView',
     'PairBisectorConstraints',
     'resolve_pair_bisector_constraints',
     'SquaredLoss',
@@ -100,6 +114,8 @@ __all__ = [
     'PowerWeightFitResult',
     'build_power_fit_problem',
     'build_power_fit_result',
+    'RequestedImageMatchView',
+    'RealizedGeometryView',
     'RealizedPairDiagnostics',
     'UnaccountedRealizedPair',
     'UnaccountedRealizedPairError',
@@ -111,6 +127,8 @@ __all__ = [
     'ActiveSetOptions',
     'ActiveSetIteration',
     'ActiveSetPathSummary',
+    'ActiveSetTerminationView',
+    'ActiveSetPathView',
     'PairConstraintDiagnostics',
     'SelfConsistentPowerFitResult',
     'fit_power_weights',

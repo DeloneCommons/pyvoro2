@@ -30,6 +30,17 @@ CANONICAL_NAMES = (
     'SeparatorFitResult',
     'fit_weights_from_separators',
 )
+LAYERED_VIEW_NAMES = (
+    'SeparatorFitStateView',
+    'SeparatorIdentificationView',
+    'SeparatorObservationView',
+    'SeparatorAlgebraicView',
+    'SeparatorSolverTerminationView',
+    'RequestedImageMatchView',
+    'RealizedGeometryView',
+    'ActiveSetTerminationView',
+    'ActiveSetPathView',
+)
 HIGH_LEVEL_NAMES = (
     'SeparatorObservations',
     'resolve_separator_observations',
@@ -62,11 +73,16 @@ def test_exact_canonical_package_exports() -> None:
         powerfit = importlib.import_module('pyvoro2.powerfit')
 
     assert tuple(separator.__all__[:5]) == CANONICAL_NAMES
-    assert set(separator.__all__) == set(powerfit.__all__) | set(CANONICAL_NAMES)
+    assert set(separator.__all__) == (
+        set(powerfit.__all__) | set(CANONICAL_NAMES) | set(LAYERED_VIEW_NAMES)
+    )
     assert len(separator.__all__) == len(set(separator.__all__))
     for canonical_name in CANONICAL_NAMES:
         assert canonical_name not in powerfit.__all__
         assert not hasattr(powerfit, canonical_name)
+    for view_name in LAYERED_VIEW_NAMES:
+        assert view_name not in powerfit.__all__
+        assert not hasattr(powerfit, view_name)
 
 
 def test_historical_names_are_identity_aliases_with_canonical_introspection() -> None:

@@ -142,6 +142,88 @@ The result contains:
 - solver/termination metadata including optional `status_detail`,
 - and explicit infeasibility reporting for contradictory hard constraints.
 
+### Read a fit through its scientific layers
+
+`SeparatorFitResult` keeps all existing flat fields and adds lightweight
+layered views. The views reference existing arrays; they do not copy fitted or
+observation data.
+
+```python
+state = fit.state
+print(state.mathematical_weights)
+print(state.backend_radii, state.global_representation_shift)
+
+observation_fit = fit.observation_view(observations)
+print(observation_fit.targets, observation_fit.confidence)
+print(observation_fit.predictions, observation_fit.residuals)
+
+identification = fit.identification
+print(identification.effective_observation_components)
+print(identification.relative_component_offsets_identified_by_data)
+print(identification.component_offsets_selected_by_objective)
+print(identification.component_alignment_policy)
+
+termination = fit.solver_termination
+print(termination.status, termination.backend, termination.converged)
+```
+
+The identification view always reports
+`global_geometric_gauge_identified_by_data == False`: separator differences do
+not identify one common additive constant. The informative observation graph
+contains only positive-confidence separator rows. Its connected components are
+reported by `effective_observation_components`, and
+`relative_component_offsets_identified_by_data` is true exactly when this graph
+is connected. A positive L2 regularization term guarantees selection of
+otherwise free component offsets and is reported by
+`component_offsets_selected_by_objective`. Other supported scalar penalties are
+not classified as selecting offsets because they may have flat regions or zero
+strength.
+
+`identification.unconstrained_sites` reports sites isolated in that informative
+graph. This can differ from the compatibility diagnostic
+`fit.connectivity.unconstrained_points`, which retains its candidate-graph
+meaning. A site mentioned only by zero-confidence rows is candidate-connected
+but observationally unconstrained. Hard restrictions and penalties apply
+independently of mismatch confidence and may constrain or bound offsets, but
+they are not separator-observation data and never add informative graph edges.
+An exact hard equality may fix an offset in a particular model; the current
+identification view deliberately does not attempt to summarize that separate
+constraint-identifiability question.
+
+With `connectivity_check='none'`, connectivity-derived identification values
+are `None`; accessing the view does not rebuild diagnostics that the caller
+disabled.
+
+The state view uses `global_representation_shift` for the common shift used to
+form non-negative backend radii. This backend representation choice selects a
+representative within the global geometric gauge; it is distinct from
+independent component offsets and is not information recovered from separator
+observations. The compatibility flat field `fit.weight_shift` has exactly this
+meaning. Likewise, the compatibility field
+`fit.connectivity.gauge_policy` contains the same string as the canonical
+`component_alignment_policy`, despite its historical name.
+
+The complete mapping is:
+
+| Scientific layer | Canonical access | Existing flat fields or objects |
+|---|---|---|
+| Fitted state and backend representation | `fit.state` | `weights`, `radii`, `weight_shift` |
+| Identification and component alignment | `fit.identification` | `connectivity` and its effective components, offset flags, effective-graph isolated sites, and `gauge_policy` |
+| Observation-space fit | `fit.observation_view(observations)` | `measurement`, `target`, `predicted*`, `residuals`, residual summaries, `used_shifts`; confidence comes from `observations` |
+| Objective contributions | `fit.objective` | `objective_breakdown` |
+| Algebraic diagnostics | `fit.algebraic` | `edge_diagnostics`, `connectivity` |
+| Fixed-solver termination | `fit.solver_termination` | `status`, `status_detail`, `solver`, `n_iter`, `converged`, `hard_feasible`, `conflict`, `warnings` |
+| Requested-image matching and realized geometry | `realized.requested_image_matching`, `realized.geometry` | all `RealizedPairDiagnostics` fields |
+| Experimental outer-loop termination and path | `result.outer_termination`, `result.path` | active-set termination fields, `active_mask`, `marginal_constraints`, `history`, `path_summary` |
+
+The observation accessor accepts the originating resolved observations or an
+independently resolved set with the same complete contents. It validates pair
+indices, confidence, targets, requested shifts, and resolved geometry before
+presenting observation-owned arrays beside the fit predictions. Its private
+source binding survives shallow copies, deep copies, pickle round trips, and
+`dataclasses.replace(...)`; a directly constructed result without source
+observations cannot safely provide this view and raises `ValueError`.
+
 For example, if hard interval or equality restrictions cannot all hold
 simultaneously, the fit returns:
 
@@ -211,21 +293,31 @@ raises `ValueError`; it does not clip or substitute a fallback value.
 
 One common shift of every weight is the geometric gauge of the complete power
 diagram. Disconnected observation graphs introduce an additional and different
-ambiguity: each effective component can be shifted independently without
+ambiguity: each informative component can be shifted independently without
 changing its observed separator equations, but relative shifts between
 components can change the complete realized tessellation.
 
 The current solver therefore chooses and reports a component-alignment policy:
 
-- standalone fits center each disconnected effective component to mean zero;
-- if a zero-strength regularization reference is supplied, each component is
-  aligned to the reference mean on that component;
+- the numerical decomposition follows a model-coupling mask that includes
+  positive-confidence rows and rows touched by hard restrictions or penalties;
+- without positive regularization or a supplied reference, disconnected
+  model-coupling components are centered to mean zero;
+- if a zero-strength regularization reference is supplied, disconnected
+  model-coupling components are aligned to the reference mean;
+- positive L2 regularization selects weights relative to its zero or supplied
+  reference;
 - `connectivity_check='none'|'diagnose'|'warn'|'raise'` controls whether the
-  unidentified component offsets are reported, warned about, or raised.
+  observationally unidentified component offsets are reported, warned about,
+  or raised.
 
-These component offsets are conventions or prior information, not values
-identified by the disconnected separator observations. Inspect realization
-results when cross-component competition matters.
+The model-coupling mask is exposed under the historical problem-field name
+`offset_identifying_constraint_mask`; despite that name, it is a solver
+decomposition detail and is not an identifiability claim. Hard restrictions may
+bound offsets, and penalties or numerical conventions may choose a returned
+representative without guaranteeing a unique optimum. None of those values is
+information identified by disconnected separator observations. Inspect
+realization results when cross-component competition matters.
 
 Connectivity is computed on the graph of **site unknowns**, not on a graph of
 periodic images. A periodic shift changes the geometry of one observation row
@@ -262,6 +354,21 @@ This returns purely geometric diagnostics:
 - any realized unordered site pairs that were absent from the candidate set,
   exposed through `unaccounted_pairs`,
 - and optional tessellation-wide diagnostics.
+
+Realization remains an explicit, separate computation. Read periodic-image
+matching and optional geometry independently:
+
+```python
+matching = realized.requested_image_matching
+print(matching.any_realization, matching.same_requested_shift)
+print(matching.another_periodic_shift, matching.realized_shifts)
+
+geometry = realized.geometry
+print(geometry.endpoint_i_empty, geometry.endpoint_j_empty)
+print(geometry.boundary_measure, geometry.tessellation_diagnostics)
+```
+
+The fit result never computes or owns a tessellation automatically.
 
 ## Optional: refine the active set
 
@@ -338,6 +445,21 @@ Useful fields include:
 - `result.marginal_constraints`: indices of toggling / cycle / wrong-shift
   pairs.
 
+The layered aliases make the inner/outer boundary explicit:
+
+```python
+final_inner_fit = result.inner_fit
+final_realization = result.final_realization
+candidate_diagnostics = result.candidate_diagnostics
+outer_termination = result.outer_termination
+path = result.path
+```
+
+`path.active_mask`, `path.marginal_constraint_indices`, `path.history`, and
+`path.summary` share the existing active-set result data. The outer termination
+is experimental and does not change the exact fixed-observation meaning of
+`final_inner_fit`.
+
 Transient path diagnostics are intentionally **inspectable** rather than
 noisy: final-state `connectivity_check=` / `unaccounted_pair_check=` policies
 still control warnings or exceptions, while `result.path_summary` and
@@ -392,6 +514,20 @@ solve_report = separator.build_active_set_report(result, use_ids=True)
 These report bundles stay plain-Python and JSON-friendly. They are useful when
 a downstream package wants a complete diagnostic payload for logging, caching,
 or UI work without manually unpacking NumPy-heavy result objects.
+
+Existing report sections map to the same layers without changing report keys:
+
+| Report section | Layer |
+|---|---|
+| fit `weights`, `radii`, `weight_shift` | state |
+| fit `connectivity` | identification and graph context for algebraic diagnostics |
+| fit `constraints`, `fit_records`, and residual summaries in `summary` | observations |
+| fit `objective_breakdown` | objective |
+| fit `edge_diagnostics` | algebraic diagnostics |
+| fit `summary`, `conflict`, and `warnings` | fixed solver termination |
+| realized `records`, `unrealized` | requested-image matching |
+| realized `unaccounted_pairs`, `tessellation_diagnostics`, and optional values in `records` | realized geometry |
+| active-set `fit`, `realized`, `diagnostics`, `summary`, `history`, and `path_summary` | final inner fit, final realization, candidate diagnostics, outer termination, and active-set path |
 
 To serialize them directly:
 
