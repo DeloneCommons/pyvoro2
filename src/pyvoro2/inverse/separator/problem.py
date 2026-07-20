@@ -21,6 +21,10 @@ from .model import (
     SoftIntervalPenalty,
     SquaredLoss,
 )
+from .operators import (
+    SeparatorObservationGraphView,
+    SeparatorQuadraticOperatorView,
+)
 from .types import (
     AlgebraicEdgeDiagnostics,
     ConnectivityDiagnostics,
@@ -134,6 +138,77 @@ class SeparatorFitProblem:
     @property
     def confidence(self) -> np.ndarray:
         return np.asarray(self.constraints.confidence, dtype=np.float64)
+
+    @property
+    def observation_graph(self) -> SeparatorObservationGraphView:
+        """Return the oriented observation multigraph and its row data.
+
+        Every resolved observation remains a distinct incidence column.  The
+        view shares the problem's established read-only arrays; only the
+        derived positive-confidence mask is newly allocated.
+        """
+
+        informative_mask = _readonly_array(
+            self.constraints.confidence > 0.0,
+            dtype=bool,
+        )
+        return SeparatorObservationGraphView(
+            n_sites=int(self.constraints.n_points),
+            site_i=self.constraints.i,
+            site_j=self.constraints.j,
+            observation_indices=self.constraints.input_index,
+            requested_shifts=self.constraints.shifts,
+            alpha=self.alpha,
+            beta=self.beta,
+            z_obs=self.z_obs,
+            rho=self.edge_weight,
+            informative_mask=informative_mask,
+            connectivity=self.connectivity,
+        )
+
+    @property
+    def quadratic_operator(self) -> SeparatorQuadraticOperatorView:
+        """Return the exact fixed least-squares normal operator.
+
+        This view is intentionally limited to ``SquaredLoss`` models without
+        scalar penalties.  Hard restrictions may coexist, but they remain in
+        ``bounds`` and are not folded into the unconstrained normal equation.
+        """
+
+        if not isinstance(self.model.mismatch, SquaredLoss):
+            raise ValueError(
+                'quadratic_operator is available only for SquaredLoss models'
+            )
+        if self.model.penalties:
+            raise ValueError(
+                'quadratic_operator is unavailable when scalar penalties are '
+                'present because one fixed normal system does not represent '
+                'the full objective'
+            )
+
+        graph = self.observation_graph
+        observation_rhs = np.zeros(int(self.constraints.n_points), dtype=np.float64)
+        edge_rhs = self.edge_weight * self.z_obs
+        np.add.at(observation_rhs, self.constraints.i, edge_rhs)
+        np.add.at(observation_rhs, self.constraints.j, -edge_rhs)
+        regularized_rhs = observation_rhs + (
+            float(self.regularization_strength) * self.regularization_reference
+        )
+        return SeparatorQuadraticOperatorView(
+            observation_graph=graph,
+            observation_rhs=_readonly_array(
+                observation_rhs,
+                dtype=np.float64,
+            ),
+            regularized_normal_rhs=_readonly_array(
+                regularized_rhs,
+                dtype=np.float64,
+            ),
+            regularization_strength=float(self.regularization_strength),
+            regularization_reference=self.regularization_reference,
+            bounds=self.bounds,
+            has_hard_constraints=self.model.feasible is not None,
+        )
 
     def _model_coupling_components(self) -> list[list[int]]:
         mask = np.asarray(self.offset_identifying_constraint_mask, dtype=bool)

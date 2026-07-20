@@ -41,6 +41,10 @@ from .problem import (
     build_power_fit_problem,
     build_power_fit_result,
 )
+from .operators import (
+    SeparatorObservationGraphView,
+    SeparatorQuadraticOperatorView,
+)
 from .realize import (
     RealizedGeometryView,
     RealizedPairDiagnostics,
@@ -90,6 +94,8 @@ __all__ = [
     'SeparatorObservationView',
     'SeparatorAlgebraicView',
     'SeparatorSolverTerminationView',
+    'SeparatorObservationGraphView',
+    'SeparatorQuadraticOperatorView',
     'PairBisectorConstraints',
     'resolve_pair_bisector_constraints',
     'SquaredLoss',

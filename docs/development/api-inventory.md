@@ -572,6 +572,30 @@ provisional, non-copying access paths:
 | Realized geometry | `RealizedPairDiagnostics.geometry` | empty endpoints, optional boundary measure/cells/tessellation diagnostics, unaccounted pairs, and warnings |
 | Active-set organization | `SelfConsistentPowerFitResult.inner_fit`, `.final_realization`, `.candidate_diagnostics`, `.outer_termination`, `.path` | existing final objects, outer termination, active mask, marginals, history, and path summary |
 
+Issue #14 preserves the exact `SeparatorFitProblem` dataclass fields and adds
+two provisional computed properties:
+
+| Mathematical layer | Access path | Contract |
+|---|---|---|
+| Observation multigraph | `SeparatorFitProblem.observation_graph` | `SeparatorObservationGraphView` with site count, distinct observation rows, oriented endpoints, input indices, requested shifts, shared `alpha`, `beta`, `z_obs`, and `rho` arrays, a positive-confidence informative mask, existing connectivity, and dense/optional-SciPy incidence conversion |
+| Quadratic normal operator | `SeparatorFitProblem.quadratic_operator` | `SeparatorQuadraticOperatorView` with matrix-free and dense/optional-SciPy observation Laplacian and L2-regularized normal operators, `observation_rhs`, `regularized_normal_rhs`, regularization data, hard-bound metadata, and component/nullity interpretation |
+
+The incidence matrix has shape `(n_sites, n_observations)` and column `r`
+equal to `+1` at `site_i[r]` and `-1` at `site_j[r]`. Every resolved row is a
+column, including repeats, periodic parallel observations, and zero-confidence
+rows. The latter have `informative_mask[r] == False` and `rho[r] == 0`, so they
+do not connect informative components or contribute to the observation
+Laplacian and right-hand side.
+
+The quadratic view is available only for `SquaredLoss` with no scalar
+penalties. Optional L2 regularization is included exactly. Hard interval or
+equality restrictions may coexist but remain visible through `problem.bounds`;
+the view reports that unconstrained normal equations do not characterize a
+constrained fit in general. Huber mismatch and models with scalar penalties
+retain the graph view but reject `quadratic_operator` rather than presenting a
+partial system as the full objective. Sparse conversion imports SciPy lazily;
+SciPy is neither a runtime dependency nor a solver backend in issue #14.
+
 The canonical `component_alignment_policy` view value is the same stored string
 as compatibility-facing `ConnectivityDiagnostics.gauge_policy`; only the access
 name is clarified. `global_representation_shift` is the compatibility
@@ -608,6 +632,8 @@ The generated reference also documents these result/problem conveniences:
 PairBisectorConstraints.pair_labels(*, use_ids=False)
 PairBisectorConstraints.to_records(*, use_ids=False)
 PairBisectorConstraints.subset(mask)
+PowerFitProblem.observation_graph
+PowerFitProblem.quadratic_operator
 PowerFitProblem.canonicalize_gauge(weights)
 RealizedPairDiagnostics.to_records(constraints, *, use_ids=False)
 RealizedPairDiagnostics.unaccounted_records(*, ids=None)
@@ -833,9 +859,10 @@ init-only parameter used to retain observation identity through
 same public layers where this is non-breaking. The new view type names are
 exported only from
 `pyvoro2.inverse.separator`; the small `pyvoro2.inverse` and historical
-`pyvoro2.powerfit` export sets remain unchanged. Public incidence, Laplacian,
-right-hand-side, conversion, sparse-execution, and operator representation
-remain deferred to issue #14.
+`pyvoro2.powerfit` export sets remain unchanged. Issue #14 adds the two
+problem-owned provisional graph/operator views described above. Dense NumPy
+and optional lazy SciPy conversion are public inspection paths; sparse solver
+execution and backend selection remain deferred to conditional issue #17.
 
 ## Accepted v0.7 contract decisions
 
@@ -976,7 +1003,7 @@ The accepted preferred names have these lifecycle assignments:
 
 ### Advanced separator API
 
-`pyvoro2.inverse.separator.__all__` contains exactly the following 56 names:
+`pyvoro2.inverse.separator.__all__` contains exactly the following 58 names:
 
 ```text
 SeparatorObservations
@@ -989,6 +1016,8 @@ SeparatorIdentificationView
 SeparatorObservationView
 SeparatorAlgebraicView
 SeparatorSolverTerminationView
+SeparatorObservationGraphView
+SeparatorQuadraticOperatorView
 PairBisectorConstraints
 resolve_pair_bisector_constraints
 SquaredLoss
@@ -1057,6 +1086,9 @@ The exact v0.7 core identity map is:
 The accepted provisional advanced surfaces include:
 
 - `SeparatorFitProblem` and problem-building/evaluation helpers;
+- problem-owned `SeparatorObservationGraphView` and
+  `SeparatorQuadraticOperatorView`, including dense NumPy and optional lazy
+  SciPy conversions but no sparse solver execution;
 - objective model pieces such as squared/Huber losses, hard intervals,
   penalties, and regularization;
 - graph, connectivity, incidence, Laplacian, and objective-breakdown views;

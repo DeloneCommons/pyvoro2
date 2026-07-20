@@ -65,8 +65,54 @@ gauge. It is distinct from independent offsets between disconnected observation
 components and is not inferred from observations.
 `component_alignment_policy` is the canonical access to the policy string also
 stored under the historical compatibility name `ConnectivityDiagnostics.gauge_policy`.
-Public incidence, Laplacian, and normal-operator representations are not part
-of these views.
+
+## Problem-owned graph and quadratic views
+
+`SeparatorFitProblem` owns two additional provisional inspection views. They do
+not change its dataclass fields or bind the problem into a fit result.
+
+| Problem access | Public view | Main contents |
+|---|---|---|
+| `.observation_graph` | `SeparatorObservationGraphView` | `n_sites`, `n_observations`, `site_i`, `site_j`, `observation_indices`, `requested_shifts`, `alpha`, `beta`, `z_obs`, `rho`, `informative_mask`, components/connectivity, and incidence conversion |
+| `.quadratic_operator` | `SeparatorQuadraticOperatorView` | `observation_rhs`, `regularized_normal_rhs`, regularization/reference, hard-constraint metadata, matrix-free products, dense/optional-sparse matrices, and nullity/gauge metadata |
+
+For `m` observation rows and `n` sites, `graph.incidence_dense()` returns
+`B.shape == (n, m)`. Column `r` is `+1` at `site_i[r]` and `-1` at
+`site_j[r]`, so `B.T @ weights` gives the oriented fitted differences. The
+column order is the resolved observation row order;
+`graph.observation_indices` retains the originating input indices. Repeated
+rows and rows for different periodic images are never collapsed.
+
+The informative mask is true only for positive-confidence separator rows.
+Zero-confidence rows remain in every row array and in `B`, but have `rho == 0`,
+contribute nothing to the operators or right-hand sides, and do not connect
+informative components. Isolated sites are therefore singleton informative
+components.
+
+The explicit operator names distinguish
+
+```text
+L_obs = B @ diag(rho) @ B.T
+b_obs = B @ (rho * z_obs)
+A     = L_obs + regularization_strength * I
+b     = b_obs + regularization_strength * regularization_reference
+```
+
+Use `observation_laplacian_matvec(...)` and
+`regularized_normal_matvec(...)` for matrix-free application,
+`observation_laplacian_dense()` and
+`regularized_normal_matrix_dense()` for NumPy matrices, and the corresponding
+`*_sparse(format=...)` methods for optional SciPy conversion. SciPy is imported
+lazily; requesting sparse conversion without it raises an actionable
+`ImportError`. These conversions do not select or run a sparse solver.
+
+`quadratic_operator` is available only for `SquaredLoss` with no scalar
+penalties. Optional L2 regularization is represented exactly. Hard interval or
+equality restrictions may coexist, but remain in `problem.bounds`; when they
+are present, `normal_equations_characterize_fit` is false because a constrained
+optimum need not satisfy the unconstrained equation. Huber mismatch and models
+with scalar penalties retain `observation_graph` but reject
+`quadratic_operator`.
 
 ::: pyvoro2.inverse.separator
 :::

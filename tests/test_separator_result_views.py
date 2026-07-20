@@ -664,6 +664,8 @@ def test_view_exports_are_canonical_only_and_high_level_surface_stays_small() ->
         'SeparatorObservationView',
         'SeparatorAlgebraicView',
         'SeparatorSolverTerminationView',
+        'SeparatorObservationGraphView',
+        'SeparatorQuadraticOperatorView',
         'RequestedImageMatchView',
         'RealizedGeometryView',
         'ActiveSetTerminationView',
@@ -698,7 +700,7 @@ def test_separator_all_matches_the_api_inventory() -> None:
     inventory = inventory_path.read_text(encoding='utf-8')
     marker = (
         '`pyvoro2.inverse.separator.__all__` contains exactly the following '
-        '56 names:\n\n```text\n'
+        '58 names:\n\n```text\n'
     )
     exported_block = inventory.split(marker, maxsplit=1)[1].split(
         '\n```',

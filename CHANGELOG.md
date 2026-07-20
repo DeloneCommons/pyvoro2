@@ -8,6 +8,17 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Added
 
+- Provisional problem-owned `SeparatorObservationGraphView` and
+  `SeparatorQuadraticOperatorView` access from `SeparatorFitProblem`. The views
+  expose the oriented observation multigraph, dense NumPy and optional lazy
+  SciPy incidence/Laplacian conversions, implied difference targets, effective
+  edge weights, informative components, matrix-free products, observation and
+  L2-regularized right-hand sides, and nullspace/gauge metadata. Repeated,
+  periodic-parallel, and zero-confidence rows retain their observation-column
+  identity. The fixed normal system is available only for squared mismatch
+  without scalar penalties; hard bounds remain separate and are explicitly
+  reported as constrained semantics. Solver execution and package dependencies
+  are unchanged.
 - Layered, non-copying separator result views for fitted state/backend
   representation, identification and component alignment, observation-space
   fit, objective and algebraic diagnostics, fixed-solver termination,

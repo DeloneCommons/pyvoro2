@@ -462,18 +462,32 @@ imports from `powerfit`.
 ### Inspectable algebraic operators
 
 The separator quadratic problem has incidence and weighted-Laplacian structure.
-The public diagnostic contract should expose the ingredients without forcing one
-sparse-matrix dependency:
+Issue #14 implements the public inspection contract through two provisional,
+problem-owned views:
 
-- oriented observation endpoints;
-- edge targets and edge weights;
-- connected components;
-- gauge/component-offset basis or policy;
-- right-hand side and Laplacian/operator metadata;
-- conversion helpers to dense NumPy and optional SciPy forms.
+- `SeparatorFitProblem.observation_graph` exposes the oriented observation
+  multigraph, row identity and periodic shifts, affine coefficients, implied
+  difference targets, effective edge weights, positive-confidence informative
+  mask, and existing connectivity/identification diagnostics;
+- `SeparatorFitProblem.quadratic_operator` exposes observation and
+  L2-regularized right-hand sides, matrix-free products, dense NumPy matrices,
+  optional lazy SciPy conversions, and component/nullspace metadata.
 
-SciPy may provide an optional sparse execution path. It should not be the only
-way to inspect the mathematical problem.
+The incidence shape is `(n_sites, n_observations)`, with `+1` at the first
+endpoint and `-1` at the second endpoint of each observation column. Repeated
+rows and periodic parallel observations are not collapsed. Zero-confidence
+rows remain columns but have zero effective weight and do not connect the
+informative graph.
+
+The quadratic view is conservative: it is available for `SquaredLoss` with
+optional L2 regularization and no scalar penalties. Hard bounds remain separate
+and the view explicitly distinguishes an unconstrained normal equation from a
+constrained optimum. Huber mismatch and scalar-penalty models retain graph
+inspection but do not expose a misleading fixed normal system.
+
+SciPy is imported only when sparse conversion is requested and is not a runtime
+dependency. The dense solver remains unchanged. Sparse execution, automatic
+backend selection, and performance policy belong to conditional issue #17.
 
 ### Layered inverse result contract
 

@@ -36,6 +36,8 @@ LAYERED_VIEW_NAMES = (
     'SeparatorObservationView',
     'SeparatorAlgebraicView',
     'SeparatorSolverTerminationView',
+    'SeparatorObservationGraphView',
+    'SeparatorQuadraticOperatorView',
     'RequestedImageMatchView',
     'RealizedGeometryView',
     'ActiveSetTerminationView',

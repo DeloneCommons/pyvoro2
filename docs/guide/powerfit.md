@@ -325,6 +325,109 @@ and of realized-boundary matching, but it does not create an additional fitted
 unknown. Interpenetrating periodic nets therefore remain disconnected unless an
 observation actually couples their site indices.
 
+### Inspect the observation graph and quadratic normal operator
+
+Advanced workflows can inspect the fixed-observation mathematics directly from
+the public problem. The graph and operator views are provisional and are
+exported only from `pyvoro2.inverse.separator`.
+
+```python
+import numpy as np
+import pyvoro2.inverse as inverse
+import pyvoro2.inverse.separator as separator
+
+points = np.array(
+    [[0.0, 0.0], [2.0, 0.0], [5.0, 0.0]],
+    dtype=float,
+)
+observations = inverse.resolve_separator_observations(
+    points,
+    [(0, 1, 0.20), (1, 2, 0.70), (0, 2, 0.40)],
+    confidence=[1.0, 0.5, 2.0],
+)
+model = separator.FitModel(
+    regularization=separator.L2Regularization(
+        strength=0.25,
+        reference=np.array([1.0, -1.0, 2.0]),
+    )
+)
+problem = separator.build_power_fit_problem(observations, model=model)
+
+graph = problem.observation_graph
+operator = problem.quadratic_operator
+B = graph.incidence_dense()
+L_obs = operator.observation_laplacian_dense()
+A = operator.regularized_normal_matrix_dense()
+b_obs = operator.observation_rhs
+b = operator.regularized_normal_rhs
+
+fit = inverse.fit_weights_from_separators(
+    points,
+    observations,
+    model=model,
+    connectivity_check='diagnose',
+)
+assert np.allclose(B.T @ fit.weights, problem.predict_difference(fit.weights))
+assert np.allclose(
+    graph.beta + graph.alpha * (B.T @ fit.weights),
+    fit.predicted,
+)
+assert np.allclose(A @ fit.weights, b)
+
+# Optional conversion only; SciPy is not needed above or by the dense solver.
+try:
+    B_sparse = graph.incidence_sparse(format='csc')
+    L_obs_sparse = operator.observation_laplacian_sparse(format='csr')
+except ImportError:
+    B_sparse = L_obs_sparse = None
+```
+
+For `n` sites and `m` observations, `B.shape == (n, m)`. Column `r` has
+`+1` at `graph.site_i[r]` and `-1` at `graph.site_j[r]`, hence
+`B.T @ weights == weights[site_i] - weights[site_j]`. Every observation remains
+a column: repeated measurements and observations for different periodic images
+of the same site pair are not deduplicated. `graph.observation_indices` maps
+those columns back to the resolved input indices, while
+`graph.requested_shifts` retains image identity.
+
+The view names the two systems separately:
+
+$$
+L_{\mathrm{obs}}=B\operatorname{diag}(\rho)B^\mathsf{T},
+\qquad
+b_{\mathrm{obs}}=B(\rho z^{\mathrm{obs}}),
+$$
+
+and, for L2 strength $\lambda$ and reference $w^{\mathrm{ref}}$,
+
+$$
+A=L_{\mathrm{obs}}+\lambda I,
+\qquad
+b=b_{\mathrm{obs}}+\lambda w^{\mathrm{ref}}.
+$$
+
+There is no extra factor of two. Zero-confidence rows stay in `B` and in all
+row-facing arrays, but their informative mask is false and `rho` is zero, so
+they add nothing to $L_{\mathrm{obs}}$ or $b_{\mathrm{obs}}$ and do not connect
+informative components.
+
+Without positive L2 regularization, the observation-Laplacian nullity is the
+number of informative components, including isolated sites. One common null
+direction is global geometric gauge; additional component constants are
+unidentified offsets that can affect the complete realized diagram. Positive
+L2 regularization removes those null directions from `A`, but it does not make
+the separator observations themselves connected or observationally identify
+the offsets.
+
+The fixed normal system is available only for `SquaredLoss` with no scalar
+penalties. Huber mismatch and scalar-penalty models still expose
+`problem.observation_graph`, but `problem.quadratic_operator` raises
+`ValueError` rather than claiming to represent their full objective. Hard
+interval or equality restrictions may coexist with the quadratic view; they
+remain separately visible through `problem.bounds`, and
+`operator.normal_equations_characterize_fit` is false because a constrained
+optimum need not solve the unconstrained normal equation.
+
 ## Step 4: check geometric realization
 
 A requested pairwise separator is not automatically a realized face in the full

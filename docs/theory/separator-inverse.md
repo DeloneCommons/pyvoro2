@@ -104,6 +104,11 @@ Only observations with positive confidence contribute to the objective and
 identify differences. These observations define the **effective observation
 graph**.
 
+A zero-confidence observation is still a distinct row of the resolved data and
+a distinct column of the full incidence matrix. Its effective weight is zero,
+however, so it contributes neither to the Laplacian nor to its right-hand side
+and cannot connect effective components.
+
 Within one connected effective component, all relative weights are determined
 by exact compatible data. One additive constant per component remains
 unobserved. When the effective graph is connected, that constant is exactly the
@@ -165,6 +170,30 @@ two useful diagnostics:
 They are related through \(\alpha_r\), but they are not numerically
 interchangeable and should not share an ambiguous summary name.
 
+With L2 strength \(\lambda\ge 0\) and reference
+\(w^{\mathrm{ref}}\), add
+
+\[
+\frac{\lambda}{2}\lVert w-w^{\mathrm{ref}}\rVert_2^2
+\]
+
+under the one-half objective convention used above. The regularized normal
+system is
+
+\[
+Aw=b,
+\qquad
+A=L+\lambda I,
+\qquad
+b=BRz^{\mathrm{obs}}+\lambda w^{\mathrm{ref}}.
+\]
+
+Writing both objective terms without one-half factors gives the same system,
+because the common gradient factor cancels. Positive L2 regularization removes
+the component-constant null directions from \(A\), but it does not connect the
+observation graph or turn prior-selected component offsets into information
+identified by the separator data.
+
 ## Robust losses and regularization
 
 The graph structure does not depend on squared loss. Convex edge-separable
@@ -176,6 +205,13 @@ unidentified component alignments. It also adds information to the estimation
 problem. A solution selected by a reference or penalty should therefore be
 reported as such, rather than described as uniquely identified by the separator
 observations alone.
+
+A single fixed normal system represents squared measurement mismatch plus
+optional L2 regularization. Hard intervals and equalities restrict its feasible
+set but do not change the quadratic objective matrix; their constrained optimum
+need not satisfy the unconstrained normal equation. Huber mismatch and
+additional scalar penalties are not, in general, represented by the same fixed
+Laplacian system.
 
 ## Hard interval and equality restrictions
 
