@@ -1,4 +1,27 @@
 import numpy as np
+import pytest
+
+
+def test_self_consistent_solver_rejects_sparse_inner_backend():
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import solve_self_consistent_power_weights
+
+    points = np.array(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+        dtype=float,
+    )
+    domain = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
+
+    with pytest.raises(
+        ValueError,
+        match='fit_solver must be auto, analytic, or admm',
+    ):
+        solve_self_consistent_power_weights(
+            points,
+            [(0, 1, 0.5)],
+            domain=domain,
+            fit_solver='sparse',
+        )
 
 
 def test_self_consistent_solver_drops_unrealized_pair():

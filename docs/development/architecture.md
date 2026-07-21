@@ -485,9 +485,14 @@ and the view explicitly distinguishes an unconstrained normal equation from a
 constrained optimum. Huber mismatch and scalar-penalty models retain graph
 inspection but do not expose a misleading fixed normal system.
 
-SciPy is imported only when sparse conversion is requested and is not a runtime
-dependency. The dense solver remains unchanged. Sparse execution, automatic
-backend selection, and performance policy belong to conditional issue #17.
+SciPy is imported only when sparse conversion or explicit sparse solving is
+requested and is not a runtime dependency. Issue #17 reuses the same quadratic
+operator for `solver='sparse'`, removes one gauge anchor per unregularized
+effective component, and performs a SciPy sparse-direct solve. The default
+`solver='auto'` remains dense; v0.7 deliberately has no automatic size
+threshold. Sparse execution is limited to the primary fixed-observation
+quadratic path and does not extend ADMM, the active-set outer loop, or dynamic
+workflows.
 
 ### Layered inverse result contract
 

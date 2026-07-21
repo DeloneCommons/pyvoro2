@@ -104,7 +104,16 @@ Use `observation_laplacian_matvec(...)` and
 `regularized_normal_matrix_dense()` for NumPy matrices, and the corresponding
 `*_sparse(format=...)` methods for optional SciPy conversion. SciPy is imported
 lazily; requesting sparse conversion without it raises an actionable
-`ImportError`. These conversions do not select or run a sparse solver.
+`ImportError`. Matrix conversion alone does not select a solver.
+
+The primary fixed quadratic fit additionally accepts `solver='sparse'` for an
+optional SciPy sparse-direct solve. `solver='auto'` and `solver='analytic'`
+retain the dense NumPy quadratic path; v0.7 does not choose a sparse backend
+automatically. `SeparatorFitResult.solver` and
+`SeparatorFitResult.solver_termination.backend` report the path actually
+selected. Sparse execution is limited to unconstrained `SquaredLoss` with
+optional L2 regularization and no scalar penalties. It is not exposed through
+the experimental active-set outer solver or other inverse branches.
 
 `quadratic_operator` is available only for `SquaredLoss` with no scalar
 penalties. Optional L2 regularization is represented exactly. Hard interval or

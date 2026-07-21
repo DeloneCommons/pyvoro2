@@ -270,6 +270,8 @@ class SeparatorQuadraticOperatorView:
         incidence = graph.incidence_sparse(format='csc')
         edge_weights = sparse.diags(graph.rho, format='csc')
         matrix = incidence @ edge_weights @ incidence.T
+        matrix.sum_duplicates()
+        matrix.eliminate_zeros()
         return matrix.asformat(format)
 
     def regularized_normal_matrix_sparse(

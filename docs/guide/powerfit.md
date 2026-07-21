@@ -130,6 +130,36 @@ fit = inverse.fit_weights_from_separators(
 )
 ```
 
+For squared-loss static fits, the default `solver='auto'` continues to choose
+the NumPy dense direct path. Select the optional SciPy sparse-direct path
+explicitly when the fixed observation graph is large and local:
+
+```bash
+python -m pip install "pyvoro2[sparse]"
+```
+
+```python
+sparse_fit = inverse.fit_weights_from_separators(
+    points,
+    observations,
+    solver='sparse',
+)
+print(sparse_fit.solver_termination.backend)  # sparse
+```
+
+`solver='analytic'` explicitly selects the dense quadratic path. There is no
+automatic size threshold in v0.7: `auto` remains dense for compatibility and
+predictable dependency behavior. Sparse execution supports `SquaredLoss` with
+optional L2 regularization and no scalar penalties or hard restrictions.
+Huber mismatch, hard constraints, and scalar-penalty models continue to use the
+existing ADMM path and reject `solver='sparse'`.
+
+The sparse path changes only matrix storage and direct linear algebra. It uses
+the same observation rows, periodic image labels, effective graph, component
+anchors, and final component-alignment policy as the dense path. The returned
+backend is inspectable through both `fit.solver` and
+`fit.solver_termination.backend`.
+
 The result contains:
 
 - fitted `weights` and shifted `radii`,
@@ -374,7 +404,7 @@ assert np.allclose(
 )
 assert np.allclose(A @ fit.weights, b)
 
-# Optional conversion only; SciPy is not needed above or by the dense solver.
+# Optional conversion; SciPy is also used by solver='sparse'.
 try:
     B_sparse = graph.incidence_sparse(format='csc')
     L_obs_sparse = operator.observation_laplacian_sparse(format='csr')
@@ -418,6 +448,15 @@ unidentified offsets that can affect the complete realized diagram. Positive
 L2 regularization removes those null directions from `A`, but it does not make
 the separator observations themselves connected or observationally identify
 the offsets.
+
+The repository benchmark harness
+`benchmarks/benchmark_sparse_separator.py` covers small dense-favorable and
+medium/large molecular-shaped locality graphs, including disconnected static
+components. It records dense/sparse assembly, direct-solve and complete-fit
+times, matrix storage, and numerical agreement. This scalability support is
+for large **static** geometries. It does not provide trajectory processing, MD
+frame reuse, prepared solvers across changing frames, parallel tessellation,
+GPU/distributed execution, or scalable all-pairs observation construction.
 
 The fixed normal system is available only for `SquaredLoss` with no scalar
 penalties. Huber mismatch and scalar-penalty models still expose

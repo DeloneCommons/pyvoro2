@@ -52,6 +52,8 @@ REQUIRED_SDIST_SUFFIXES = {
     'src/pyvoro2/powerfit/solver.py',
     'src/pyvoro2/powerfit/transforms.py',
     'src/pyvoro2/powerfit/types.py',
+    'benchmarks/README.md',
+    'benchmarks/benchmark_sparse_separator.py',
     'notebooks/01_basic_compute.ipynb',
     'notebooks/02_periodic_graph.ipynb',
     'notebooks/03_locate_and_ghost.ipynb',

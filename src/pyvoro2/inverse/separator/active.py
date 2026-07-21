@@ -337,6 +337,8 @@ def solve_self_consistent_power_weights(
     pts = np.asarray(points, dtype=float)
     if pts.ndim != 2 or pts.shape[1] <= 0:
         raise ValueError('points must have shape (n, d) with d >= 1')
+    if fit_solver not in ('auto', 'analytic', 'admm'):
+        raise ValueError('fit_solver must be auto, analytic, or admm')
     if connectivity_check not in ('none', 'diagnose', 'warn', 'raise'):
         raise ValueError(
             'connectivity_check must be none, diagnose, warn, or raise'

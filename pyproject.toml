@@ -46,9 +46,11 @@ Issues = 'https://github.com/DeloneCommons/pyvoro2/issues'
 
 
 [project.optional-dependencies]
-test = ['pytest']
+sparse = ['scipy>=1.8']
+test = ['pytest', 'scipy>=1.8']
 dev = [
   'pytest',
+  'scipy>=1.8',
   'flake8',
   'build',
   'twine',
@@ -81,6 +83,7 @@ all = [
   'mkdocs-section-index>=0.3.9',
   'matplotlib',
   'py3Dmol',
+  'scipy>=1.8',
   'tomli; python_version < "3.11"',
 ]
 

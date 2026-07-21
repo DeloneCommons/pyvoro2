@@ -240,6 +240,8 @@ pip install pyvoro2
 
 Optional extras:
 
+- `pyvoro2[sparse]` for optional SciPy sparse-direct static quadratic
+  separator fitting;
 - `pyvoro2[viz]` for 3D `py3Dmol` and 2D plotting;
 - `pyvoro2[viz2d]` for 2D matplotlib plotting only;
 - `pyvoro2[all]` for the full local notebook, docs, lint, test, and release

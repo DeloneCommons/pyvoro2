@@ -101,7 +101,7 @@ python -m pip install -e ".[all]"
 Fast checks for ordinary Python/documentation changes:
 
 ```bash
-flake8 src tests tools
+flake8 src tests tools benchmarks
 pytest -q
 python tools/export_notebooks.py --check
 python tools/gen_readme.py --check

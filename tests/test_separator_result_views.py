@@ -507,14 +507,16 @@ def test_canonical_and_historical_result_paths_share_view_types() -> None:
         solver='admm',
     )
 
-    assert type(canonical.state) is type(historical.state)
-    assert type(canonical.identification) is type(historical.identification)
-    assert type(canonical.observation_view(observations)) is type(
-        historical.observation_view(observations)
+    assert canonical.state.__class__ is historical.state.__class__
+    assert canonical.identification.__class__ is (
+        historical.identification.__class__
     )
-    assert type(canonical.algebraic) is type(historical.algebraic)
-    assert type(canonical.solver_termination) is type(
-        historical.solver_termination
+    assert canonical.observation_view(observations).__class__ is (
+        historical.observation_view(observations).__class__
+    )
+    assert canonical.algebraic.__class__ is historical.algebraic.__class__
+    assert canonical.solver_termination.__class__ is (
+        historical.solver_termination.__class__
     )
     np.testing.assert_array_equal(canonical.weights, historical.weights)
     assert canonical.identification == historical.identification

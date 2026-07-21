@@ -861,8 +861,14 @@ exported only from
 `pyvoro2.inverse.separator`; the small `pyvoro2.inverse` and historical
 `pyvoro2.powerfit` export sets remain unchanged. Issue #14 adds the two
 problem-owned provisional graph/operator views described above. Dense NumPy
-and optional lazy SciPy conversion are public inspection paths; sparse solver
-execution and backend selection remain deferred to conditional issue #17.
+and optional lazy SciPy conversion are public inspection paths. Issue #17 adds
+`solver='sparse'` to the existing fixed-fit selector for the primary
+unconstrained `SquaredLoss` workflow, including optional L2 regularization.
+`solver='auto'` remains dense, so no automatic size policy or SciPy dependency
+is introduced. The existing `SeparatorFitResult.solver` flat field and
+`solver_termination.backend` view report `sparse` when that path is used.
+Huber mismatch, hard restrictions, scalar penalties, and experimental
+active-set refinement do not claim sparse support.
 
 ## Accepted v0.7 contract decisions
 
@@ -893,7 +899,7 @@ See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 | `pyvoro2.inverse` preferred high-level separator workflow | Stable candidate | Main observations/fit entry point should be suitable for chemvoro at release. |
 | `pyvoro2.inverse.separator` advanced problem and operator views | Provisional | Public for research use, but likely to evolve before prescribed measures and mixed problems. |
 | Realization-aware active-set API | Experimental | Practical outer algorithm; no universal convergence claim. |
-| Optional sparse quadratic backend | Experimental if shipped | Backend selection and performance policy remain conditional. |
+| Optional sparse quadratic backend | Experimental | Explicit `solver='sparse'` uses optional SciPy direct solving for the primary static quadratic fit; `auto` remains dense and unsupported branches reject sparse selection. |
 | `pyvoro2.powerfit` | Compatibility-only and deprecated | One-way shim during v0.7; planned removal in v0.8. |
 | Broad separator-specific exports from top-level `pyvoro2` | Compatibility-only and deprecated | New code imports from `pyvoro2.inverse`; planned removal in v0.8. |
 | Native extension and solver-internal modules | Internal | No compatibility guarantee. |
@@ -1088,7 +1094,8 @@ The accepted provisional advanced surfaces include:
 - `SeparatorFitProblem` and problem-building/evaluation helpers;
 - problem-owned `SeparatorObservationGraphView` and
   `SeparatorQuadraticOperatorView`, including dense NumPy and optional lazy
-  SciPy conversions but no sparse solver execution;
+  SciPy conversions; the explicit sparse solver consumes this operator through
+  the separate fixed-fit entry point;
 - objective model pieces such as squared/Huber losses, hard intervals,
   penalties, and regularization;
 - graph, connectivity, incidence, Laplacian, and objective-breakdown views;

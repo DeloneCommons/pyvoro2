@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import replace
 from typing import Literal
 
@@ -19,6 +20,7 @@ from .problem import (
     _mismatch_derivatives,
     _penalty_derivatives,
     _requires_admm,
+    SeparatorFitProblem,
     build_power_fit_problem,
     build_power_fit_result,
 )
@@ -62,14 +64,20 @@ def fit_weights_from_separators(
     model: FitModel | None = None,
     r_min: float = 0.0,
     weight_shift: float | None = None,
-    solver: Literal['auto', 'analytic', 'admm'] = 'auto',
+    solver: Literal['auto', 'analytic', 'sparse', 'admm'] = 'auto',
     max_iter: int = 2000,
     rho: float = 1.0,
     tol_abs: float = 1e-6,
     tol_rel: float = 1e-5,
     connectivity_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'warn',
 ) -> SeparatorFitResult:
-    """Fit power weights from resolved pairwise separator observations."""
+    """Fit power weights from resolved pairwise separator observations.
+
+    ``solver='auto'`` keeps the dense analytic quadratic default and selects
+    ADMM only when the model requires it.  ``solver='sparse'`` explicitly uses
+    optional SciPy sparse-direct solving for unconstrained squared loss with
+    optional L2 regularization.
+    """
 
     pts = np.asarray(points, dtype=float)
     if pts.ndim != 2 or pts.shape[1] <= 0:
@@ -123,7 +131,7 @@ def _fit_power_weights_resolved(
     model: FitModel,
     r_min: float,
     weight_shift: float | None,
-    solver: Literal['auto', 'analytic', 'admm'],
+    solver: Literal['auto', 'analytic', 'sparse', 'admm'],
     max_iter: int,
     rho: float,
     tol_abs: float,
@@ -158,12 +166,12 @@ def _fit_power_weights_resolved(
         solver_eff = 'analytic' if not nonquadratic else 'admm'
     else:
         solver_eff = solver
-    if solver_eff not in ('analytic', 'admm'):
-        raise ValueError('solver must be auto, analytic, or admm')
-    if solver_eff == 'analytic' and nonquadratic:
+    if solver_eff not in ('analytic', 'sparse', 'admm'):
+        raise ValueError('solver must be auto, analytic, sparse, or admm')
+    if solver_eff in ('analytic', 'sparse') and nonquadratic:
         raise ValueError(
-            'analytic solver cannot be used with hard constraints '
-            'or non-quadratic penalties'
+            f'{solver_eff} solver cannot be used with hard constraints, '
+            'non-quadratic mismatch, or scalar penalties'
         )
 
     connectivity = None if connectivity_check == 'none' else problem.connectivity
@@ -252,80 +260,89 @@ def _fit_power_weights_resolved(
     )
 
     try:
-        for nodes in comps:
-            idx_nodes = np.asarray(nodes, dtype=np.int64)
-            if idx_nodes.size <= 1:
-                if lam > 0.0 and idx_nodes.size == 1:
-                    weights[idx_nodes[0]] = (
-                        problem.regularization_reference[idx_nodes[0]]
-                    )
-                continue
+        if solver_eff == 'sparse':
+            weights = _solve_sparse_quadratic_problem(
+                problem,
+                components=comps,
+            )
+            n_iter_max = 1
+        else:
+            for nodes in comps:
+                idx_nodes = np.asarray(nodes, dtype=np.int64)
+                if idx_nodes.size <= 1:
+                    if lam > 0.0 and idx_nodes.size == 1:
+                        weights[idx_nodes[0]] = (
+                            problem.regularization_reference[idx_nodes[0]]
+                        )
+                    continue
 
-            node_set = set(nodes)
-            mask = problem.offset_identifying_constraint_mask & np.fromiter(
-                (
-                    (int(i) in node_set) and (int(j) in node_set)
-                    for i, j in zip(constraints.i, constraints.j)
-                ),
-                dtype=bool,
-                count=m,
-            )
-            local_index = {int(node): k for k, node in enumerate(nodes)}
-            ii = np.array(
-                [local_index[int(i)] for i in constraints.i[mask]],
-                dtype=np.int64,
-            )
-            jj = np.array(
-                [local_index[int(j)] for j in constraints.j[mask]],
-                dtype=np.int64,
-            )
-            alpha_c = problem.alpha[mask]
-            beta_c = problem.beta[mask]
-            target_c = problem.measurement_target[mask]
-            conf_c = constraints.confidence[mask]
-            w0_c = problem.regularization_reference[idx_nodes]
-            if solver_eff == 'analytic':
-                w_c = _solve_component_analytic(
-                    ii,
-                    jj,
-                    problem.edge_weight[mask],
-                    problem.z_obs[mask],
-                    w0_c,
-                    lam,
-                )
-                iters = 1
-                conv = True
-            else:
-                w_c, iters, conv = _solve_component_admm(
-                    ii,
-                    jj,
-                    alpha_c,
-                    beta_c,
-                    target_c,
-                    conf_c,
-                    w0_c,
-                    model=model,
-                    lambda_regularize=lam,
-                    rho=rho,
-                    max_iter=max_iter,
-                    tol_abs=tol_abs,
-                    tol_rel=tol_rel,
-                    y_lo=(
-                        None
-                        if problem.bounds.measurement_lower is None
-                        else problem.bounds.measurement_lower[mask]
+                node_set = set(nodes)
+                mask = problem.offset_identifying_constraint_mask & np.fromiter(
+                    (
+                        (int(i) in node_set) and (int(j) in node_set)
+                        for i, j in zip(constraints.i, constraints.j)
                     ),
-                    y_hi=(
-                        None
-                        if problem.bounds.measurement_upper is None
-                        else problem.bounds.measurement_upper[mask]
-                    ),
+                    dtype=bool,
+                    count=m,
                 )
-            if not np.all(np.isfinite(w_c)):
-                raise _NumericalFailure('component solver returned non-finite weights')
-            weights[idx_nodes] = w_c
-            converged_all = converged_all and conv
-            n_iter_max = max(n_iter_max, iters)
+                local_index = {int(node): k for k, node in enumerate(nodes)}
+                ii = np.array(
+                    [local_index[int(i)] for i in constraints.i[mask]],
+                    dtype=np.int64,
+                )
+                jj = np.array(
+                    [local_index[int(j)] for j in constraints.j[mask]],
+                    dtype=np.int64,
+                )
+                alpha_c = problem.alpha[mask]
+                beta_c = problem.beta[mask]
+                target_c = problem.measurement_target[mask]
+                conf_c = constraints.confidence[mask]
+                w0_c = problem.regularization_reference[idx_nodes]
+                if solver_eff == 'analytic':
+                    w_c = _solve_component_analytic(
+                        ii,
+                        jj,
+                        problem.edge_weight[mask],
+                        problem.z_obs[mask],
+                        w0_c,
+                        lam,
+                    )
+                    iters = 1
+                    conv = True
+                else:
+                    w_c, iters, conv = _solve_component_admm(
+                        ii,
+                        jj,
+                        alpha_c,
+                        beta_c,
+                        target_c,
+                        conf_c,
+                        w0_c,
+                        model=model,
+                        lambda_regularize=lam,
+                        rho=rho,
+                        max_iter=max_iter,
+                        tol_abs=tol_abs,
+                        tol_rel=tol_rel,
+                        y_lo=(
+                            None
+                            if problem.bounds.measurement_lower is None
+                            else problem.bounds.measurement_lower[mask]
+                        ),
+                        y_hi=(
+                            None
+                            if problem.bounds.measurement_upper is None
+                            else problem.bounds.measurement_upper[mask]
+                        ),
+                    )
+                if not np.all(np.isfinite(w_c)):
+                    raise _NumericalFailure(
+                        'component solver returned non-finite weights'
+                    )
+                weights[idx_nodes] = w_c
+                converged_all = converged_all and conv
+                n_iter_max = max(n_iter_max, iters)
 
         if not np.all(np.isfinite(weights)):
             raise _NumericalFailure('assembled weight vector is non-finite')
@@ -385,6 +402,66 @@ def _fit_power_weights_resolved(
             objective_breakdown=None,
         )
         return _bind_originating_observations(result, constraints)
+
+
+def _scipy_sparse_direct_solver():
+    """Load the optional SciPy sparse-direct implementation lazily."""
+
+    try:
+        from scipy.sparse.linalg import MatrixRankWarning, spsolve
+    except ImportError as exc:
+        raise ImportError(
+            "solver='sparse' requires SciPy; install pyvoro2[sparse] or scipy, "
+            "or use solver='auto'/'analytic' for the dense NumPy path"
+        ) from exc
+    return spsolve, MatrixRankWarning
+
+
+def _solve_sparse_quadratic_problem(
+    problem: SeparatorFitProblem,
+    *,
+    components: list[list[int]],
+) -> np.ndarray:
+    """Solve the public quadratic operator with component gauge anchors."""
+
+    operator = problem.quadratic_operator
+    n_sites = int(problem.constraints.n_points)
+    rhs = np.asarray(operator.regularized_normal_rhs, dtype=np.float64)
+    regularized = float(problem.regularization_strength) > 0.0
+
+    if regularized:
+        free = np.arange(n_sites, dtype=np.int64)
+    else:
+        anchored = np.zeros(n_sites, dtype=bool)
+        for component in components:
+            if component:
+                anchored[int(component[0])] = True
+        free = np.flatnonzero(~anchored)
+
+    sparse_solver, rank_warning = _scipy_sparse_direct_solver()
+
+    weights = np.zeros(n_sites, dtype=np.float64)
+    if free.size == 0:
+        return weights
+
+    matrix = operator.regularized_normal_matrix_sparse(format='csc')
+    reduced = matrix[free, :][:, free]
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', rank_warning)
+            solution = sparse_solver(reduced, rhs[free])
+    except rank_warning as exc:
+        raise _NumericalFailure(
+            'sparse quadratic system is numerically singular'
+        ) from exc
+    except RuntimeError as exc:
+        raise _NumericalFailure(f'sparse direct solve failed: {exc}') from exc
+
+    solution = np.asarray(solution, dtype=np.float64).reshape(free.size)
+    if not np.all(np.isfinite(solution)):
+        raise _NumericalFailure('quadratic solve produced non-finite weights')
+    weights[free] = solution
+    return weights
 
 
 def _solve_component_analytic(

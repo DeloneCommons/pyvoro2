@@ -47,8 +47,10 @@ def _smoke_test_wheel() -> None:
         python = env_dir / bindir / 'python'
         _run(str(python), '-m', 'pip', 'install', str(wheel))
         smoke = (
+            "import sys; "
             "import numpy as np; "
             "import pyvoro2 as pv; "
+            "import pyvoro2.inverse as inverse; "
             "import pyvoro2.planar as pv2; "
             "pts3 = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float); "
             "result3 = pv.compute(pts3, domain=pv.Box(((-5.0, 5.0), (-5.0, 5.0), "
@@ -59,7 +61,12 @@ def _smoke_test_wheel() -> None:
             "result2 = pv2.compute(pts2, domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))), "
             "return_edges=True); "
             "assert isinstance(result2, pv.TessellationResult); "
-            "assert len(result2.cells) == 2"
+            "assert len(result2.cells) == 2; "
+            "fit = inverse.fit_weights_from_separators("
+            "pts2, [(0, 1, 0.25)], connectivity_check='diagnose'); "
+            "assert fit.status == 'optimal'; "
+            "assert fit.solver == 'analytic'; "
+            "assert 'scipy' not in sys.modules"
         )
         _run(str(python), '-c', smoke)
 
@@ -87,7 +94,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    _run('flake8', 'src', 'tests', 'tools')
+    _run('flake8', 'src', 'tests', 'tools', 'benchmarks')
     _run(sys.executable, 'tools/check_notebooks.py')
     _run(sys.executable, 'tools/export_notebooks.py', '--check')
     _run(sys.executable, 'tools/gen_readme.py', '--check')

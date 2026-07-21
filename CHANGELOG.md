@@ -8,6 +8,15 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Added
 
+- An experimental optional SciPy sparse-direct execution path for the primary
+  static quadratic separator fit. Explicit `solver='sparse'` reuses the public
+  quadratic operator, applies the established per-component gauge handling,
+  and reports `sparse` through existing solver metadata. The default `auto`
+  path remains dense, SciPy remains optional, unsupported ADMM/hard/penalty
+  branches and the active-set outer workflow reject sparse selection, and
+  deterministic benchmark assets record
+  dense/sparse assembly, solve time, matrix storage, and numerical agreement on
+  molecular-shaped connected and disconnected locality graphs.
 - Provisional problem-owned `SeparatorObservationGraphView` and
   `SeparatorQuadraticOperatorView` access from `SeparatorFitProblem`. The views
   expose the oriented observation multigraph, dense NumPy and optional lazy
