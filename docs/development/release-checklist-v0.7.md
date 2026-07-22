@@ -21,50 +21,54 @@ items remain unchecked until the maintainer approves and performs them.
 
 ## 2. Local deterministic qualification
 
-- [ ] A fresh editable environment installs successfully with `.[all]`.
-- [ ] `python tools/release_check.py` passes.
-- [ ] The deterministic test suite and explicit lint checks pass independently.
-- [ ] The preferred chemvoro-shaped and paper-regression workflows pass.
+- [x] A fresh editable environment installs successfully with `.[all]`.
+- [x] `python tools/release_check.py` passes.
+- [x] The deterministic test suite and explicit lint checks pass independently.
+- [x] The preferred chemvoro-shaped and paper-regression workflows pass.
 
 ## 3. Optional, fuzz, and cross-check qualification
 
-- [ ] `pytest -m fuzz --fuzz-n 100` passes.
-- [ ] The optional `pyvoro` cross-check passes, or its unavailability is
+- [x] `pytest -m fuzz --fuzz-n 100` passes.
+- [x] The optional `pyvoro` cross-check passes, or its unavailability is
       recorded without being reported as a passed gate.
+
+No compatible `pyvoro` installation was available in the CPython 3.13
+qualification environment. The optional comparison is unavailable, not
+passed, and is not a release blocker.
 
 ## 4. Notebook and generated-file synchronization
 
-- [ ] Committed notebooks pass clean-kernel validation.
-- [ ] Notebook exports and the generated README are synchronized.
+- [x] Committed notebooks pass clean-kernel validation.
+- [x] Notebook exports and the generated README are synchronized.
 
 ## 5. Strict documentation validation
 
-- [ ] `mkdocs build --strict` passes with current release-candidate metadata.
+- [x] `mkdocs build --strict` passes with current release-candidate metadata.
 
 ## 6. Source distribution and wheel validation
 
-- [ ] The sdist and local wheel build successfully at version 0.7.0.
-- [ ] Twine metadata and `tools/check_dist.py` content checks pass for every
+- [x] The sdist and local wheel build successfully at version 0.7.0.
+- [x] Twine metadata and `tools/check_dist.py` content checks pass for every
       artifact.
-- [ ] Artifact contents, filenames, metadata, sizes, and hashes are recorded;
+- [x] Artifact contents, filenames, metadata, sizes, and hashes are recorded;
       caches, local files, secrets, and unintended build products are absent.
-- [ ] The sdist produces a functional wheel in a fresh source-build
+- [x] The sdist produces a functional wheel in a fresh source-build
       environment.
 
 ## 7. Clean wheel installation without SciPy
 
-- [ ] A fresh environment installs the wheel with ordinary runtime
+- [x] A fresh environment installs the wheel with ordinary runtime
       dependencies only, without SciPy.
-- [ ] Version/import, lazy-native-load, 2D/3D forward, separator-fit, preferred
+- [x] Version/import, lazy-native-load, 2D/3D forward, separator-fit, preferred
       import, compatibility import, and deprecation-warning smoke checks pass.
 
 ## 8. Sparse installation and sparse-contract validation
 
-- [ ] A second fresh environment with SciPy passes the sparse solver tests and
+- [x] A second fresh environment with SciPy passes the sparse solver tests and
       the preferred paper regression workflow with explicit sparse reporting.
-- [ ] Dense/sparse agreement, unsupported-branch rejection, disconnected
+- [x] Dense/sparse agreement, unsupported-branch rejection, disconnected
       component gauges, and lazy optional-SciPy import behavior are verified.
-- [ ] The static benchmark suite and the sparse-only `large_knn` case pass;
+- [x] The static benchmark suite and the sparse-only `large_knn` case pass;
       instrumentation confirms that the large case does not allocate a dense
       global normal matrix.
 
@@ -78,13 +82,13 @@ items remain unchecked until the maintainer approves and performs them.
 
 ## 10. Release metadata and changelog preparation
 
-- [ ] The single-source package version is 0.7.0 and built metadata agrees.
-- [ ] The accumulated changes are a coherent dated `[0.7.0]` section beneath a
+- [x] The single-source package version is 0.7.0 and built metadata agrees.
+- [x] The accumulated changes are a coherent dated `[0.7.0]` section beneath a
       fresh empty `[Unreleased]` section.
-- [ ] README, guides, inventory, examples, benchmark scope, and changelog agree
+- [x] README, guides, inventory, examples, benchmark scope, and changelog agree
       on preferred APIs, compatibility routes, v0.8 removals, lifecycle status,
       and the static sparse boundary.
-- [ ] The v0.7 plan remains Active and its Outcome does not claim publication.
+- [x] The v0.7 plan remains Active and its Outcome does not claim publication.
 
 ## 11. Maintainer review
 
