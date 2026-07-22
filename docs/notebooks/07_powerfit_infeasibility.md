@@ -27,41 +27,41 @@ points = np.array(
 )
 ids = np.array([10, 11, 12], dtype=int)
 raw_observations = [
-    (0, 1, 0.0),
-    (1, 2, 0.0),
-    (0, 2, 0.0),
+    (10, 11, 0.0),
+    (11, 12, 0.0),
+    (10, 12, 0.0),
 ]
-```
-```python
-fit = inverse.fit_weights_from_separators(
+observations = inverse.resolve_separator_observations(
     points,
     raw_observations,
     measurement="position",
     ids=ids,
+    index_mode="id",
+)
+```
+```python
+fit = inverse.fit_weights_from_separators(
+    points,
+    observations,
     model=separator.FitModel(feasible=separator.FixedValue(0.0)),
     solver="admm",
 )
+termination = fit.solver_termination
 
-fit.status, fit.hard_feasible, fit.is_infeasible
+termination.status, termination.hard_feasible, fit.is_infeasible
 ```
 ## 2) Inspect the contradiction witness
 ```python
 fit.conflicting_constraint_indices
 ```
 ```python
-fit.conflict.message
+termination.conflict.message
 ```
 ```python
-fit.conflict.to_records(ids=ids)
+termination.conflict.to_records(ids=ids)
 ```
 ## 3) Export the same information through the report helper
 ```python
-observations = inverse.resolve_separator_observations(
-    points,
-    raw_observations,
-    measurement="position",
-    ids=ids,
-)
 fit_report = fit.to_report(observations, use_ids=True)
 fit_report["conflict"]
 ```

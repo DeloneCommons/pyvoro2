@@ -31,6 +31,80 @@ The fixed-observation inverse fit and the geometric realization check answer
 different questions. For the API-independent derivation, see
 [Inverse fitting from separator observations](../theory/separator-inverse.md).
 
+## Canonical downstream integration
+
+The repository-owned `examples/chemvoro_workflow.py` script is the canonical
+chemistry-neutral downstream example. It uses only preferred v0.7 imports and
+keeps application metadata outside pyvoro2 in an external-ID-keyed sidecar:
+
+```python
+import numpy as np
+import pyvoro2 as pv
+import pyvoro2.inverse as inverse
+import pyvoro2.inverse.separator as separator
+
+points = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]])
+site_ids = np.array([205, 101], dtype=int)
+metadata_by_id = {
+    205: {'label': 'left-site', 'source_row': 0},
+    101: {'label': 'right-site', 'source_row': 1},
+}
+cell = pv.PeriodicCell(
+    vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+)
+
+observations = inverse.resolve_separator_observations(
+    points,
+    [(205, 101, 0.5, (-1, 0, 0))],
+    ids=site_ids,
+    index_mode='id',
+    domain=cell,
+    image='given_only',
+)
+fit = inverse.fit_weights_from_separators(
+    points,
+    observations,
+    connectivity_check='diagnose',
+)
+weights = fit.state.mathematical_weights
+
+result = pv.compute(
+    points,
+    domain=cell,
+    ids=site_ids,
+    mode='power',
+    weights=weights,
+    include_empty=True,
+    return_faces=True,
+    return_face_shifts=True,
+)
+boundaries_by_input = result.require_boundaries()
+
+realized = separator.match_realized_pairs(
+    points,
+    domain=cell,
+    weights=weights,
+    constraints=observations,
+)
+fit_rows = fit.to_records(observations, use_ids=True)
+fit_report = fit.to_report(observations, use_ids=True)
+```
+
+`result.ids`, `result.cell_measures`, `result.empty_mask`, and the collections
+returned by `require_boundaries()` share input-site order. A downstream package
+can therefore build its own ID-labelled rows with an explicit
+`None if empty else measure` policy without reading raw backend order. Boundary
+records preserve external neighbor IDs and `adjacent_shift`; fit and
+realization records use external IDs when `use_ids=True`.
+
+Inspect `fit.identification` before comparing fitted state across observation
+components. `fit.state.global_representation_shift` records only the common
+backend representation shift; it is not a fitted physical quantity. The
+complete executable example also demonstrates same-image and wrong-image
+realization reporting and JSON-friendly report export. The public deterministic
+paper-style ladder is in `examples/paper_regressions.py`; both scripts and their
+run instructions are described in `examples/README.md`.
+
 ## Geometry of one pair
 
 For a pair of sites `i` and `j`, choose one specific image `q_j` of site `j`.
@@ -477,13 +551,18 @@ neighbors.
 realized = separator.match_realized_pairs(
     points,
     domain=box,
-    radii=fit.radii,
+    weights=fit.state.mathematical_weights,
     constraints=observations,
     return_boundary_measure=True,
     return_tessellation_diagnostics=True,
     unaccounted_pair_check='warn',
 )
 ```
+
+`weights=` is the preferred realization input. `radii=` remains accepted as a
+backend-compatible representation route; supply exactly one. The common shift
+used to form radii is a geometric representation choice, not another fitted
+scientific variable.
 
 This returns purely geometric diagnostics:
 
@@ -763,7 +842,11 @@ freeze an open-ended callback API for arbitrary user-defined objectives.
 
 ## Worked example notebooks
 
-Three focused notebooks complement the guide:
+Four focused notebooks complement the guide:
+
+- [`04_powerfit`](../notebooks/04_powerfit.md) presents the canonical
+  external-ID, weight-first periodic workflow and then introduces advanced
+  objective and active-set features.
 
 - [`06_powerfit_reports`](../notebooks/06_powerfit_reports.md)
   shows how to export low-level fits, realized-pair diagnostics, and

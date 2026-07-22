@@ -205,7 +205,7 @@ pytest -q
 Run lint and generated-file checks:
 
 ```bash
-flake8 src tests tools benchmarks
+flake8 src tests tools benchmarks examples
 python tools/export_notebooks.py --check
 python tools/gen_readme.py --check
 ```

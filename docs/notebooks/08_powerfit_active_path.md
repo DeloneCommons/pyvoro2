@@ -30,14 +30,16 @@ result = separator.solve_self_consistent_power_weights(
     connectivity_check="diagnose",
     unaccounted_pair_check="diagnose",
 )
+outer = result.outer_termination
+path = result.path
 
-print("termination:", result.termination)
-print("final active mask:", result.active_mask)
+print("termination:", outer.status)
+print("final active mask:", path.active_mask)
 print("final active graph components:", result.connectivity.active_graph.n_components)
-print("path summary:", result.path_summary)
+print("path summary:", path.summary)
 ```
 ```python
-for row in result.history:
+for row in path.history:
     print(row)
 ```
 Notice the distinction between `n_active_fit` (the mask that actually generated the current iterate) and `n_active` (the post-toggle mask used for the next iterate). This lets downstream code say whether disconnectivity happened **during** optimization, not just in the final answer.

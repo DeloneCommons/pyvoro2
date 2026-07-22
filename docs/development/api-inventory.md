@@ -870,6 +870,17 @@ is introduced. The existing `SeparatorFitResult.solver` flat field and
 Huber mismatch, hard restrictions, scalar penalties, and experimental
 active-set refinement do not claim sparse support.
 
+Issue #15 adds the repository-owned preferred-API integration and regression
+assets used to validate this contract. The provisional
+`match_realized_pairs(...)` interface now accepts exactly one of mathematical
+`weights=` (preferred) or backend-compatible `radii=`. Existing radius calls
+remain compatible. Weight input follows the same validated common-shift
+conversion as forward `compute(...)`; the shift remains representation
+metadata rather than an inverse observation result. The integration workflow
+resolves observations and exports records by external ID, retains arbitrary
+downstream metadata in an ID-keyed sidecar, consumes structured forward arrays
+and aligned boundaries, and never relies on raw backend record order.
+
 ## Accepted v0.7 contract decisions
 
 The following boundaries are already accepted:
@@ -1102,6 +1113,11 @@ The accepted provisional advanced surfaces include:
 - result packaging for externally computed weights;
 - layered fixed-fit and realization views that reference existing result data;
 - realization matching and record/report builders.
+
+The realization matcher accepts weight-first and radius-representation inputs
+as mutually exclusive routes. New workflows use fitted mathematical weights;
+the radius route remains available for compatibility with existing advanced
+callers.
 
 The active-set outer workflow and its path/result types remain **experimental**.
 

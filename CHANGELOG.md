@@ -8,6 +8,14 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Added
 
+- A repository-owned, chemistry-neutral downstream integration workflow and
+  compact paper-style regression ladder. The preferred-API examples preserve
+  external IDs and an ID-keyed metadata sidecar, fit and forward-compute from
+  mathematical weights, inspect aligned structured cells, empty state,
+  periodic boundaries, realization and active-set diagnostics, export
+  ID-labelled records/reports, and reuse deterministic molecular-shaped
+  locality inputs across a CI-scale sparse case and the optional large static
+  benchmark.
 - An experimental optional SciPy sparse-direct execution path for the primary
   static quadratic separator fit. Explicit `solver='sparse'` reuses the public
   quadratic operator, applies the established per-component gauge handling,
@@ -67,6 +75,12 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Added preferred mathematical `weights=` input to the provisional
+  `match_realized_pairs(...)` API while retaining the existing mutually
+  exclusive `radii=` route. Inverse notebooks now use the canonical namespace,
+  layered diagnostics, external-ID observation records where relevant, and
+  weight-first forward/realization calls; their execution and stored-output
+  publication remain assigned to issue #20.
 - Made the five historical separator core names identity aliases to canonical
   primary definitions. `pyvoro2.powerfit` remains a one-way compatibility-only
   package for v0.7 and now emits a hidden-by-default `DeprecationWarning` that

@@ -19,7 +19,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install .[dev]
       - name: Lint
-        run: flake8 src tests tools benchmarks
+        run: flake8 src tests tools benchmarks examples
       - name: Check notebook exports
         run: python tools/export_notebooks.py --check
       - name: Check README sync

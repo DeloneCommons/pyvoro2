@@ -115,6 +115,12 @@ selected. Sparse execution is limited to unconstrained `SquaredLoss` with
 optional L2 regularization and no scalar penalties. It is not exposed through
 the experimental active-set outer solver or other inverse branches.
 
+`match_realized_pairs(...)` accepts exactly one of mathematical `weights=` or
+backend-compatible `radii=`. The weight-first route is preferred and uses the
+same global representation conversion as forward `compute(...)`; the selected
+shift is not a scientific inverse result. Existing radius-based calls remain
+compatible.
+
 `quadratic_operator` is available only for `SquaredLoss` with no scalar
 penalties. Optional L2 regularization is represented exactly. Hard interval or
 equality restrictions may coexist, but remain in `problem.bounds`; when they

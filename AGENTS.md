@@ -68,6 +68,8 @@ inconsistent.
   ownership to `src/pyvoro2/inverse/separator/` and leaves `powerfit` as a
   compatibility shim.
 - `tests/`: deterministic tests plus opt-in fuzz and cross-check groups.
+- `examples/`: repository-owned preferred-API workflows and deterministic
+  public regression inputs.
 - `notebooks/`: source notebooks.
 - `docs/notebooks/`: generated notebook exports; do not edit directly.
 - `docs/guide/`: task-oriented documentation for the current API.
@@ -101,7 +103,7 @@ python -m pip install -e ".[all]"
 Fast checks for ordinary Python/documentation changes:
 
 ```bash
-flake8 src tests tools benchmarks
+flake8 src tests tools benchmarks examples
 pytest -q
 python tools/export_notebooks.py --check
 python tools/gen_readme.py --check

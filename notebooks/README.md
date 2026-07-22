@@ -19,8 +19,10 @@ Included notebooks:
 - `01_basic_compute.ipynb` — basic 3D tessellation usage.
 - `02_periodic_graph.ipynb` — periodic topology and neighbor-graph workflows.
 - `03_locate_and_ghost.ipynb` — point-location and ghost-cell queries.
-- `04_powerfit.ipynb` — core power-fitting workflow.
+- `04_powerfit.ipynb` — canonical external-ID, weight-first periodic workflow
+  plus advanced separator fitting.
 - `05_visualization.ipynb` — optional 2D/3D visualization helpers.
-- `06_powerfit_reports.ipynb` — report/export surfaces for powerfit.
+- `06_powerfit_reports.ipynb` — preferred report/export and weight-first
+  realization surfaces.
 - `07_powerfit_infeasibility.ipynb` — infeasibility witnesses and reporting.
 - `08_powerfit_active_path.ipynb` — active-set path diagnostics.

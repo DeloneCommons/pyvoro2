@@ -94,7 +94,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    _run('flake8', 'src', 'tests', 'tools', 'benchmarks')
+    _run('flake8', 'src', 'tests', 'tools', 'benchmarks', 'examples')
     _run(sys.executable, 'tools/check_notebooks.py')
     _run(sys.executable, 'tools/export_notebooks.py', '--check')
     _run(sys.executable, 'tools/gen_readme.py', '--check')

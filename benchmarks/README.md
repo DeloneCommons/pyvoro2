@@ -5,6 +5,12 @@ on deterministic, molecular-shaped k-nearest-neighbor graphs. It measures
 matrix assembly, direct solve time, complete public-fit time, matrix storage,
 and gauge-invariant dense/sparse agreement.
 
+The generated coordinates, external IDs, locality rows, and compatible target
+weights come from `examples/static_separator_cases.py`. The same generator
+drives the 32-site CI-scale downstream regression in
+`examples/paper_regressions.py`, so correctness and optional scaling runs use
+one deterministic input definition without making tests depend on timing.
+
 Install the optional backend and run the complete suite from the repository
 root:
 
@@ -17,6 +23,12 @@ Use repeated `--case` options for a subset. The small, medium, and disconnected
 cases execute both backends. The large case deliberately avoids allocating the
 dense matrix; its output still reports the full dense operator's
 `8 * n_sites**2` byte storage estimate and the sparse normal-equation residual.
+
+For the larger optional static-only workflow case without the other timings:
+
+```bash
+python benchmarks/benchmark_sparse_separator.py --case large_knn --repeat 1
+```
 
 ## Recorded issue-#17 evidence
 

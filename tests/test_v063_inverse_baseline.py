@@ -396,8 +396,9 @@ def test_inverse_entrypoint_signatures_and_defaults_are_characterized() -> None:
     assert _parameter_defaults(powerfit.match_realized_pairs) == (
         ('points', REQUIRED),
         ('domain', REQUIRED),
-        ('radii', REQUIRED),
         ('constraints', REQUIRED),
+        ('weights', None),
+        ('radii', None),
         ('return_boundary_measure', False),
         ('return_cells', False),
         ('return_tessellation_diagnostics', False),

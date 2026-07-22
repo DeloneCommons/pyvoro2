@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass
 import gc
 import json
 from pathlib import Path
+import sys
 from time import perf_counter
 from typing import Callable, TypeVar
 
@@ -15,6 +16,12 @@ import numpy as np
 
 import pyvoro2.inverse as inverse
 import pyvoro2.inverse.separator as separator
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from examples.static_separator_cases import molecular_locality_inputs  # noqa: E402
 
 
 T = TypeVar('T')
@@ -57,75 +64,22 @@ CASES = (
 )
 
 
-def _molecular_chain_points(n_sites: int, components: int) -> np.ndarray:
-    """Return deterministic wavy-chain coordinates separated by component."""
-
-    counts = np.full(components, n_sites // components, dtype=np.int64)
-    counts[: n_sites % components] += 1
-    blocks: list[np.ndarray] = []
-    for component, count in enumerate(counts.tolist()):
-        t = np.arange(count, dtype=np.float64)
-        block = np.column_stack(
-            (
-                0.20 * t,
-                np.sin(0.31 * t),
-                np.cos(0.17 * t),
-            )
-        )
-        block[:, 1] += 100.0 * component
-        blocks.append(block)
-    return np.vstack(blocks)
-
-
-def _knn_pairs(
-    points: np.ndarray,
-    neighbors: int,
-    components: int,
-) -> list[tuple[int, int]]:
-    from scipy.spatial import cKDTree
-
-    n_sites = int(points.shape[0])
-    counts = np.full(components, n_sites // components, dtype=np.int64)
-    counts[: n_sites % components] += 1
-    pairs: set[tuple[int, int]] = set()
-    start = 0
-    for count in counts.tolist():
-        stop = start + count
-        block = points[start:stop]
-        k = min(int(neighbors) + 1, count)
-        _, local_neighbors = cKDTree(block).query(block, k=k)
-        local_neighbors = np.asarray(local_neighbors, dtype=np.int64)
-        if local_neighbors.ndim == 1:
-            local_neighbors = local_neighbors[:, None]
-        for local_i, row in enumerate(local_neighbors):
-            for local_j in row.tolist():
-                if local_i == local_j:
-                    continue
-                i = start + local_i
-                j = start + int(local_j)
-                pairs.add((min(i, j), max(i, j)))
-        start = stop
-    return sorted(pairs)
-
-
 def _static_problem(case: BenchmarkCase):
-    points = _molecular_chain_points(case.n_sites, case.components)
-    pairs = _knn_pairs(points, case.neighbors, case.components)
-    reference_weights = 0.01 * np.sin(
-        0.07 * np.arange(case.n_sites, dtype=np.float64)
+    inputs = molecular_locality_inputs(
+        case.n_sites,
+        neighbors=case.neighbors,
+        n_components=case.components,
+        target_perturbation=2.0e-3,
     )
-    rows: list[tuple[int, int, float]] = []
-    for row_index, (i, j) in enumerate(pairs):
-        delta = points[j] - points[i]
-        distance2 = float(np.dot(delta, delta))
-        fraction = 0.5 + (
-            reference_weights[i] - reference_weights[j]
-        ) / (2.0 * distance2)
-        fraction += 2.0e-3 * np.sin(0.13 * row_index)
-        rows.append((i, j, float(fraction)))
-    observations = inverse.resolve_separator_observations(points, rows)
+    observations = inverse.resolve_separator_observations(
+        inputs.points,
+        inputs.observations,
+        ids=inputs.ids,
+        index_mode='id',
+        confidence=inputs.confidence,
+    )
     problem = separator.build_power_fit_problem(observations)
-    return points, observations, problem
+    return inputs.points, observations, problem
 
 
 def _best_time(call: Callable[[], T], repeat: int) -> tuple[T, float]:

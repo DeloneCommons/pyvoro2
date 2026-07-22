@@ -14,11 +14,13 @@ The repository source notebooks are:
 - `notebooks/01_basic_compute.ipynb`
 - `notebooks/02_periodic_graph.ipynb`
 - `notebooks/03_locate_and_ghost.ipynb`
-- `notebooks/04_powerfit.ipynb`
+- `notebooks/04_powerfit.ipynb` — canonical external-ID, weight-first periodic
+  inverse workflow plus advanced fitting
 - `notebooks/05_visualization.ipynb`
-- `notebooks/06_powerfit_reports.ipynb`
-- `notebooks/07_powerfit_infeasibility.ipynb`
-- `notebooks/08_powerfit_active_path.ipynb`
+- `notebooks/06_powerfit_reports.ipynb` — ID-labelled records and reports
+- `notebooks/07_powerfit_infeasibility.ipynb` — contradiction witnesses
+- `notebooks/08_powerfit_active_path.ipynb` — experimental outer-loop path
+  diagnostics
 
 ## Published notebook pages
 

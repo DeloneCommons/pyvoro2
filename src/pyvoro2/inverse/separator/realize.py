@@ -232,8 +232,9 @@ def match_realized_pairs(
     points: np.ndarray,
     *,
     domain: DomainAny,
-    radii: np.ndarray,
     constraints: SeparatorObservations,
+    weights: np.ndarray | None = None,
+    radii: np.ndarray | None = None,
     return_boundary_measure: bool = False,
     return_cells: bool = False,
     return_tessellation_diagnostics: bool = False,
@@ -244,7 +245,8 @@ def match_realized_pairs(
 
     The matching is purely geometric: each requested ordered pair ``(i, j, shift)``
     is checked against the set of realized cell boundaries in the power
-    tessellation, including explicit periodic image shifts.
+    tessellation, including explicit periodic image shifts. Supply exactly one
+    of mathematical ``weights`` (preferred) or backend-compatible ``radii``.
     """
 
     pts = np.asarray(points, dtype=float)
@@ -265,6 +267,7 @@ def match_realized_pairs(
         cells, tessellation_diagnostics, periodic = _compute_planar_cells(
             pts,
             domain=domain,
+            weights=weights,
             radii=radii,
             return_boundary_measure=return_boundary_measure,
             return_tessellation_diagnostics=return_tessellation_diagnostics,
@@ -277,6 +280,7 @@ def match_realized_pairs(
         cells, tessellation_diagnostics, periodic = _compute_3d_cells(
             pts,
             domain=domain,
+            weights=weights,
             radii=radii,
             return_boundary_measure=return_boundary_measure,
             return_tessellation_diagnostics=return_tessellation_diagnostics,
@@ -378,7 +382,8 @@ def _compute_3d_cells(
     points: np.ndarray,
     *,
     domain: DomainAny,
-    radii: np.ndarray,
+    weights: np.ndarray | None,
+    radii: np.ndarray | None,
     return_boundary_measure: bool,
     return_tessellation_diagnostics: bool,
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'],
@@ -394,7 +399,8 @@ def _compute_3d_cells(
         points,
         domain=domain,
         mode='power',
-        radii=np.asarray(radii, dtype=float),
+        weights=weights,
+        radii=radii,
         return_vertices=True,
         return_faces=True,
         return_adjacency=False,
@@ -419,7 +425,8 @@ def _compute_planar_cells(
     points: np.ndarray,
     *,
     domain: DomainAny,
-    radii: np.ndarray,
+    weights: np.ndarray | None,
+    radii: np.ndarray | None,
     return_boundary_measure: bool,
     return_tessellation_diagnostics: bool,
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'],
@@ -435,7 +442,8 @@ def _compute_planar_cells(
         points,
         domain=domain,
         mode='power',
-        radii=np.asarray(radii, dtype=float),
+        weights=weights,
+        radii=radii,
         return_vertices=True,
         return_edges=True,
         return_adjacency=False,

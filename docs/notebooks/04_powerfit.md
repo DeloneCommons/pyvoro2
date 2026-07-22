@@ -5,10 +5,11 @@
 
 This notebook shows the new math-oriented inverse API in `pyvoro2`:
 
-1. resolve separator observations,
-2. fit power weights under a configurable model,
-3. match realized pairs in the resulting power tessellation,
-4. run the self-consistent active-set solver.
+1. keep downstream metadata in an external-ID sidecar,
+2. resolve periodic separator observations and fit mathematical weights,
+3. compute and inspect a structured power tessellation from those weights,
+4. match requested periodic images, and
+5. run the experimental self-consistent active-set solver.
 ```python
 import numpy as np
 
@@ -16,29 +17,48 @@ import pyvoro2 as pv
 import pyvoro2.inverse as inverse
 import pyvoro2.inverse.separator as separator
 ```
-## 1) Resolve and fit a simple two-site constraint
+## 1) Resolve and fit periodic observations by external ID
 
 A raw constraint tuple is `(i, j, value[, shift])`, where `value` is
-interpreted in either fraction-space or absolute position-space.
+interpreted in either fraction-space or absolute position-space. Domain-
+specific metadata remains downstream in an explicit ID-keyed sidecar.
 ```python
-points = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-box = pv.Box(((-5, 5), (-5, 5), (-5, 5)))
+points = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
+site_ids = np.array([205, 101], dtype=int)
+metadata_by_id = {
+    205: {'label': 'left-site', 'source_row': 0},
+    101: {'label': 'right-site', 'source_row': 1},
+}
+cell = pv.PeriodicCell(
+    vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+)
 
 observations = inverse.resolve_separator_observations(
     points,
-    [(0, 1, 0.25)],
+    [
+        (205, 101, 0.5, (-1, 0, 0)),
+        (205, 101, 0.5, (0, 0, 0)),
+        (205, 101, 0.5, (1, 0, 0)),
+    ],
+    ids=site_ids,
+    index_mode='id',
     measurement='fraction',
-    domain=box,
+    domain=cell,
+    image='given_only',
 )
 
-fit = inverse.fit_weights_from_separators(points, observations)
+fit = inverse.fit_weights_from_separators(
+    points, observations, connectivity_check='diagnose'
+)
+state = fit.state
+observation_fit = fit.observation_view(observations)
+identification = fit.identification
 
-print('weights:', fit.weights)
-print('radii:', fit.radii)
-print('predicted fraction:', fit.predicted_fraction)
-print('predicted position:', fit.predicted_position)
-print('status:', fit.status)
-print('weight shift:', fit.weight_shift)
+print('mathematical weights:', state.mathematical_weights)
+print('predicted fractions:', observation_fit.predicted_fraction)
+print('global representation shift:', state.global_representation_shift)
+print('observation components:', identification.effective_observation_components)
+print('component alignment:', identification.component_alignment_policy)
 ```
 ## 2) Add hard feasibility and a near-boundary penalty
 
@@ -58,8 +78,11 @@ model = separator.FitModel(
     ),
 )
 
+simple_points = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
+box = pv.Box(((-5, 5), (-5, 5), (-5, 5)))
+
 fit_penalized = inverse.fit_weights_from_separators(
-    points,
+    simple_points,
     [(0, 1, 1e-3)],
     measurement='fraction',
     domain=box,
@@ -69,24 +92,56 @@ fit_penalized = inverse.fit_weights_from_separators(
 
 print('predicted fraction with penalty:', fit_penalized.predicted_fraction[0])
 ```
-## 3) Match realized pairs after fitting
+## 3) Compute structured cells and match requested images
 
-Requested pairwise separators do not automatically become realized faces
-in the full power tessellation.
+The forward call consumes fitted mathematical weights directly. Cell measures,
+empty state, and boundary collections are aligned with the input IDs rather
+than raw backend order. Requested separator rows are then checked without
+silently replacing their periodic images.
 ```python
+tessellation = pv.compute(
+    points,
+    domain=cell,
+    ids=site_ids,
+    mode='power',
+    weights=state.mathematical_weights,
+    include_empty=True,
+    return_vertices=True,
+    return_adjacency=False,
+    return_faces=True,
+    return_face_shifts=True,
+)
+boundaries = tessellation.require_boundaries()
+site_records = [
+    {
+        'site_id': int(site_id),
+        'metadata': metadata_by_id[int(site_id)],
+        'empty': bool(tessellation.empty_mask[position]),
+        'cell_measure': (
+            None
+            if tessellation.empty_mask[position]
+            else float(tessellation.cell_measures[position])
+        ),
+        'boundary_count': len(boundaries[position]),
+    }
+    for position, site_id in enumerate(tessellation.ids)
+]
+
 realized = separator.match_realized_pairs(
     points,
-    domain=box,
-    radii=fit.radii,
+    domain=cell,
+    weights=state.mathematical_weights,
     constraints=observations,
     return_boundary_measure=True,
     return_tessellation_diagnostics=True,
 )
 
-print('realized:', realized.realized)
-print('same shift:', realized.realized_same_shift)
-print('boundary measure:', realized.boundary_measure)
-print('tessellation ok:', realized.tessellation_diagnostics.ok)
+print('sites:', site_records)
+print('same requested shift:', realized.requested_image_matching.same_requested_shift)
+print('another shift:', realized.requested_image_matching.another_periodic_shift)
+print('boundary measure:', realized.geometry.boundary_measure)
+print('tessellation ok:', realized.geometry.tessellation_diagnostics.ok)
+print('ID-labelled fit records:', fit.to_records(observations, use_ids=True))
 ```
 ## 4) Self-consistent active-set refinement
 
@@ -108,13 +163,15 @@ result = separator.solve_self_consistent_power_weights(
     return_history=True,
     return_boundary_measure=True,
 )
+outer = result.outer_termination
+path = result.path
+candidate_diagnostics = result.candidate_diagnostics
 
-print('termination:', result.termination)
-print('active mask:', result.active_mask)
-print('constraint status:', result.diagnostics.status)
-print('marginal constraints:', result.marginal_constraints)
-
-print('path summary:', result.path_summary)
+print('termination:', outer.status)
+print('active mask:', path.active_mask)
+print('constraint status:', candidate_diagnostics.status)
+print('marginal constraints:', path.marginal_constraint_indices)
+print('path summary:', path.summary)
 ```
 ## Disconnected path example
 
@@ -137,8 +194,9 @@ result_path = separator.solve_self_consistent_power_weights(
     connectivity_check='diagnose',
     unaccounted_pair_check='diagnose',
 )
+path = result_path.path
 
 print('final active graph components:', result_path.connectivity.active_graph.n_components)
-print('path summary:', result_path.path_summary)
-print('first history row:', result_path.history[0])
+print('path summary:', path.summary)
+print('first history row:', path.history[0])
 ```

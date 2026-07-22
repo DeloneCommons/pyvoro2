@@ -71,7 +71,7 @@ fit_report["weight_shift"]
 realized = separator.match_realized_pairs(
     points,
     domain=box,
-    radii=fit.radii,
+    weights=fit.state.mathematical_weights,
     constraints=observations,
     return_boundary_measure=True,
     return_tessellation_diagnostics=True,
