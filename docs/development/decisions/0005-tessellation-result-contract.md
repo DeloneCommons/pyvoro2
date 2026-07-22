@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-17
+- **Refined by:** [ADR 0006 — v0.8 cleanup release](0006-v0.8-cleanup-release.md)
 - **Related plan:** [v0.7 development plan](../plans/v0.7.md)
 
 ## Context
@@ -36,7 +37,7 @@ The explicit return selector is:
 
 ```python
 compute(..., output='result')  # preferred; default
-compute(..., output='cells')   # compatibility raw route
+compute(..., output='cells')   # explicit raw-output route
 ```
 
 The implementation may use an internal sentinel while migrating older keyword
@@ -64,7 +65,7 @@ The precise full list of stable and provisional fields is maintained in the
 normalization types remain explicit; a common class does not imply false
 capability parity.
 
-### Raw compatibility behavior
+### Raw-output behavior
 
 For v0.7:
 
@@ -74,7 +75,11 @@ For v0.7:
   historical tuple route;
 - `PlanarComputeResult` becomes a compatibility alias to
   `TessellationResult`;
-- migration documentation explains the new default and raw compatibility path.
+- migration documentation explains the new default and raw-output path.
+
+Although `output='cells'` was introduced as the direct migration path from the
+historical default, ADR 0006 retains it as a supported explicit low-level mode
+rather than scheduling it for automatic removal with the v0.7-only shims.
 
 `TessellationResult` should not implement list-like mutation or pretend to be a
 `list`. Callers that need raw records use `result.cells` or `output='cells'`.

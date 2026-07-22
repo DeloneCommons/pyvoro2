@@ -585,6 +585,6 @@ def shift_to_cart(shifts: np.ndarray, domain: DomainAny | None) -> np.ndarray:
 
 
 # Historical v0.6 names retained as identity aliases during the bounded v0.7
-# compatibility period. Planned removal: v0.8.
+# compatibility period. Removal release: v0.8.
 PairBisectorConstraints = SeparatorObservations
 resolve_pair_bisector_constraints = resolve_separator_observations

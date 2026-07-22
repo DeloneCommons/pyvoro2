@@ -21,8 +21,9 @@ tessellations:
 - the forward core computes standard Voronoi and power/Laguerre diagrams;
 - the implemented inverse layer fits power weights from pairwise separator
   observations;
-- prescribed cell measures and mixed inverse problems are later extensions,
-  not separate one-off solvers.
+- v0.8 is a feature-free cleanup and compatibility-removal release;
+- prescribed cell measures begin in v0.9 and mixed separator-plus-measure
+  problems in v0.10, not as unrelated one-off solvers.
 
 The v0.7 development line is stabilizing the forward/result contract and the
 separator inverse API. ADR 0004 and ADR 0005 fix the canonical inverse namespace
@@ -50,8 +51,9 @@ Use the following order when sources disagree:
    behavior.
 8. GitHub issues define concrete work and current progress.
 
-A draft plan is not implementation approval. Surface choices not covered by an
-accepted ADR, active issue, or inventory entry and wait for maintainer direction.
+A draft plan is not implementation approval. Do not invent surface choices that
+are not covered by an accepted ADR, active issue, or inventory entry; wait for
+maintainer direction.
 
 Update the relevant documentation when a change makes any of these sources
 inconsistent.
@@ -64,9 +66,9 @@ inconsistent.
 - `src/pyvoro2/`: 3D forward API, shared utilities, diagnostics, topology,
   visualization, and public package exports.
 - `src/pyvoro2/planar/`: explicit 2D API and planar result/diagnostic layer.
-- `src/pyvoro2/powerfit/`: current v0.6.3 separator implementation; v0.7 moves
-  ownership to `src/pyvoro2/inverse/separator/` and leaves `powerfit` as a
-  compatibility shim.
+- `src/pyvoro2/inverse/separator/`: canonical separator implementation.
+- `src/pyvoro2/powerfit/`: v0.7 compatibility-only shim; ADR 0006 removes it
+  in v0.8.
 - `tests/`: deterministic tests plus opt-in fuzz and cross-check groups.
 - `examples/`: repository-owned preferred-API workflows and deterministic
   public regression inputs.
@@ -161,9 +163,9 @@ Preserve these unless an accepted decision record supersedes them:
    prescribed-volume or mixed solver as an unrelated utility.
 7. **Failures should be inspectable.** Prefer structured status, diagnostics,
    and witnesses over silent fallback or a bare convergence exception.
-8. **Compatibility is deliberate and bounded.** Public renames require
-   aliases/adapters, migration documentation, tests, a removal horizon, and
-   release-note coverage.
+8. **Compatibility is deliberate and bounded.** v0.7 provides the documented
+   transition paths; ADR 0006 removes compatibility-only inverse and planar
+   routes in v0.8 rather than extending them indefinitely.
 9. **One forward result, explicit capability differences.** v0.7 uses one
    `TessellationResult` in both dimensions without pretending that every
    optional geometry or normalization capability is shared.
@@ -252,8 +254,8 @@ shifts, or normalization:
 
 ## Inverse changes
 
-For changes under the current `powerfit/` implementation or the canonical
-`inverse/` namespace:
+For changes under the canonical `inverse/` namespace or the v0.7-only
+`powerfit/` compatibility package:
 
 - keep measurement-space and algebraic edge-space quantities distinct;
 - preserve confidence-zero/effective-graph semantics;
@@ -277,6 +279,8 @@ In brief:
   responsibility;
 - release plans define scope and gates; issues track progress;
 - the roadmap uses version-level outcomes, not private “Stage 0/1” labels;
+- v0.8 is cleanup-only, v0.9 is prescribed measures, and v0.10 is mixed
+  separator-plus-measure fitting;
 - the changelog records completed user-visible changes;
 - use `separator observation` in explanatory prose and historical API names
   only where code requires them;

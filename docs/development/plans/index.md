@@ -25,6 +25,16 @@ documentation in [#16](https://github.com/DeloneCommons/pyvoro2/issues/16) and
 release qualification in
 [#18](https://github.com/DeloneCommons/pyvoro2/issues/18).
 
+## Next draft plan
+
+| Plan | Status | Target | Purpose |
+|---|---|---|---|
+| [v0.8 cleanup and compatibility removal](v0.8.md) | Draft | v0.8.0 | Remove the bounded v0.7 compatibility layer, reorganize tests and private helpers, and resolve deferred maintenance findings without adding features. |
+
+The v0.8 draft is intentionally inactive until v0.7.0 is released and its
+milestone and issue set are approved. Prescribed cell measures move to v0.9 and
+mixed separator-plus-measure work to v0.10.
+
 ## Plan lifecycle
 
 - **Draft** — scope and design are being reviewed, or activation mechanics remain.

@@ -191,7 +191,7 @@ def _finish_compute_output(
     | list[dict[str, Any]]
     | tuple[list[dict[str, Any]], TessellationDiagnostics]
 ):
-    """Return structured output or the historical raw compatibility shape."""
+    """Return structured output or the explicit raw output shape."""
 
     if output == 'cells':
         if return_diagnostics:
@@ -263,7 +263,7 @@ def compute(
 
     By default, planar compute returns one
     :class:`~pyvoro2.TessellationResult`. Set ``output="cells"`` for the
-    historical raw cell list, or its historical ``(cells, diagnostics)`` tuple
+    explicit raw cell list, or ``(cells, diagnostics)``
     when ``return_diagnostics=True``. Structured results always carry computed
     diagnostics inside ``result.tessellation_diagnostics`` and never return a
     tuple.

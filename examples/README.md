@@ -37,3 +37,5 @@ The large optional static scaling case remains in
 `benchmarks/benchmark_sparse_separator.py`; see `benchmarks/README.md`. These
 assets do not claim trajectory processing, repeated-frame throughput, warm
 starts, all-pairs scaling, parallel tessellation, or GPU/distributed execution.
+
+The import ownership and lifecycle used by these scripts are summarized in `docs/guide/choosing-api.md`; v0.6.3 callers should use `docs/guide/migration-v0.7.md`.

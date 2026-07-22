@@ -76,8 +76,8 @@ class TessellationResult:
 
     ``TessellationResult`` records common scientific output without erasing
     dimension-specific geometry. It is the default return from both public
-    ``compute`` functions; callers that need historical raw records can select
-    ``output='cells'`` explicitly.
+    ``compute`` functions; callers that deliberately need raw cell dictionaries
+    can select ``output='cells'`` explicitly.
 
     Attributes:
         dimension: Explicit spatial dimension, either ``2`` or ``3``.
@@ -117,7 +117,7 @@ class TessellationResult:
     inconsistency error. Normalization and diagnostic objects retain their own
     dimension-specific mutability contracts.
 
-    Direct construction is supported. The constructor validates raw-cell IDs,
+    Direct construction is provisional. The constructor validates raw-cell IDs,
     measures, empty state, representation metadata, and capability metadata
     against the aligned fields rather than repairing inconsistent input. The
     private keyword-only ``_boundaries_available`` and

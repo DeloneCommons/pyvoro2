@@ -1240,5 +1240,5 @@ def _penalty_derivatives(
 
 
 # Historical v0.6 name retained as an identity alias during v0.7.
-# Planned removal: v0.8.
+# Removal release: v0.8.
 PowerFitProblem = SeparatorFitProblem

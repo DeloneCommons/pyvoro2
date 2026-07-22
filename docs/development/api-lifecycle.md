@@ -1,8 +1,9 @@
 # API lifecycle and compatibility
 
 This policy defines what pyvoro2 means by a stable, provisional, experimental,
-compatibility-only, or internal interface. It applies not only to Python imports
-and signatures, but also to defaults, result schemas, documented record keys,
+compatibility-only, deprecated, or internal interface. It applies not only to
+Python imports and signatures, but also to defaults, result schemas, documented
+record keys,
 units, orientation conventions, and scientifically meaningful semantics.
 
 The policy is intentionally stronger than “the name still imports.” Numerical
@@ -16,6 +17,7 @@ and geometric meaning are part of the API.
 | Provisional | Public API undergoing downstream validation | Deliberate pre-1.0 refinement is possible with migration guidance |
 | Experimental | Opt-in research functionality | Scope and limitations are explicit; schemas and algorithms may evolve |
 | Compatibility-only | Older public paths retained during migration | Kept working and tested, but not presented as the preferred entry point |
+| Deprecated | Transition marker applied to a public surface with a replacement | Removal or incompatible change follows the documented horizon |
 | Internal | Implementation details | No compatibility guarantee |
 
 ### Stable
@@ -49,15 +51,19 @@ A compatibility surface exists to keep older callers working while new code is
 directed to a preferred API. It is tested, but documentation may contain only a
 migration summary rather than full new-user guidance.
 
+### Deprecated
+
+Deprecation is a transition state that can accompany a stable, provisional, or
+compatibility-only surface. A deprecated surface must have a replacement, a
+migration path, and a removal or review horizon. In v0.7 the deprecated routes
+are also compatibility-only.
+
 ### Internal
 
 Internal modules and names are not covered by compatibility promises. A leading
 underscore is one signal, but the decisive criterion is whether a name is
 included in public documentation or exports.
 
-Deprecation is a transition state rather than a separate maturity category. A
-stable or compatibility-only surface may be deprecated when a replacement and
-migration path are available.
 
 ## The v0.7 stabilization release
 
@@ -67,7 +73,7 @@ v0.7.0 is intended to establish a credible stable/provisional boundary for:
 - forward standard and power computation;
 - direct weight-first power computation;
 - one common `TessellationResult` contract for spatial and planar compute;
-- explicit raw compatibility output through `output='cells'`;
+- explicit raw output through `output='cells'`;
 - the canonical separator-observation workflow under `pyvoro2.inverse`;
 - global gauge and disconnected-component-offset reporting;
 - a bounded v0.7 compatibility period for `pyvoro2.powerfit`, broad top-level
@@ -76,9 +82,11 @@ v0.7.0 is intended to establish a credible stable/provisional boundary for:
 The [v0.7 API inventory](api-inventory.md) is maintained throughout
 implementation and finalized before the release candidate. This policy defines
 the categories; the inventory assigns them to concrete names, return routes,
-record schemas, defaults, and scientific semantics. Future prescribed-measure
-and mixed solvers may remain experimental without weakening the stable forward
-and separator core.
+record schemas, defaults, and scientific semantics. The v0.8 cleanup release
+removes the bounded compatibility layer. Prescribed cell measures move to v0.9
+and mixed separator-plus-measure fitting to v0.10;
+those solvers may remain experimental without weakening the stable forward and
+separator core.
 
 v0.7.0 is not the same promise as 1.0. It is a stabilization release designed to
 support real downstream integration and to expose remaining rough edges before
@@ -127,8 +135,10 @@ migration path whenever possible.
 
 ADR 0004 establishes `pyvoro2.inverse` as the canonical namespace and
 `pyvoro2.inverse.separator` as the owner of separator implementation.
-`pyvoro2.powerfit` and broad top-level separator exports are
-compatibility-only and deprecated for v0.7, with planned removal in v0.8.
+`pyvoro2.powerfit`, broad top-level separator exports, historical separator
+aliases, `PlanarComputeResult`, and planar `return_result=` are
+compatibility-only and deprecated for v0.7. ADR 0006 schedules their removal in
+v0.8.
 
 Required practice:
 
@@ -136,8 +146,8 @@ Required practice:
 - old imports delegate one-way to the canonical implementation;
 - every historical name has a documented replacement and removal horizon;
 - compatibility code does not duplicate numerical logic;
-- an extension beyond v0.7 requires an explicit release decision based on real
-  downstream use.
+- the v0.7 compatibility layer is removed in v0.8; no usage-based extension is
+  planned.
 
 The current v0.7 tree implements the five accepted canonical core names as the
 primary class and function definitions and binds the historical names as
@@ -145,7 +155,7 @@ identity aliases. The small `pyvoro2.inverse` surface is the preferred normal
 workflow; advanced and experimental separator objects remain explicit under
 `pyvoro2.inverse.separator`. Loading `pyvoro2.powerfit` emits one ordinary
 hidden-by-default `DeprecationWarning` naming the canonical replacements and
-the planned v0.8 removal. Plain and canonical imports emit no compatibility
+the fixed v0.8 removal. Plain and canonical imports emit no compatibility
 warning and do not load the compatibility package.
 
 ## Result schemas
@@ -192,7 +202,8 @@ However, the following are semantic and require explicit review:
 
 ## Experimental inverse methods
 
-A prescribed-measure or mixed solver can be released experimentally when:
+A prescribed-measure solver in v0.9 or mixed solver in v0.10 can be released
+experimentally when:
 
 - supported domains are explicit;
 - target validation is implemented;

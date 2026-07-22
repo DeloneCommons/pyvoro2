@@ -24,3 +24,5 @@ New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the
 [development workflow](../development-workflow.md). Do not create a record for
 every small implementation choice.
+
+- [0006 — v0.8 is a cleanup-only compatibility-removal release](0006-v0.8-cleanup-release.md)

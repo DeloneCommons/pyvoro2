@@ -16,9 +16,9 @@ developing a coherent inverse weighted-tessellation layer.
 
 The sequencing rule is:
 
-> Stabilize shared forward geometry and results first; express the implemented
-> separator method through that contract; validate it in downstream use; only
-> then add prescribed-measure and mixed inverse methods.
+> Stabilize shared forward geometry and separator fitting, remove the bounded
+> transition architecture, then add prescribed-measure and mixed inverse
+> methods as separate releases.
 
 ## v0.7 — Forward and separator API stabilization
 
@@ -28,34 +28,57 @@ contract.
 Target outcomes:
 
 - one dimension-neutral `TessellationResult` returned by default in 2D and 3D,
-  with explicit capability differences and raw compatibility output;
+  with explicit capability differences and raw `output='cells'` access;
 - direct forward power computation from mathematical weights;
 - stable association among sites, external IDs, and output cells;
 - canonical inverse ownership under `pyvoro2.inverse.separator` and
   math-aligned separator terminology;
-- a bounded v0.7 compatibility period for existing `pyvoro2.powerfit` and broad
-  top-level separator imports;
+- one bounded compatibility release for `pyvoro2.powerfit`, broad top-level
+  separator imports, historical separator aliases, and planar result selectors;
 - explicit global gauge and disconnected-component-offset semantics;
-- inspectable graph, incidence, and Laplacian problem data without requiring one
-  sparse-matrix dependency as the public representation;
+- inspectable graph, incidence, and Laplacian problem data without making SciPy
+  a runtime dependency;
 - separator results that distinguish state, observations, algebraic structure,
   realization, and solver diagnostics;
-- migration documentation and an explicit API lifecycle inventory;
-- paper-style and chemvoro-shaped integration validation.
-
-A sparse quadratic execution path is desirable only when benchmarks justify its
-performance and dependency cost. It is not part of the core compatibility
-promise by default.
+- an optional explicit SciPy sparse-direct path for large static quadratic
+  locality graphs, with dense execution retained;
+- migration documentation, a finalized lifecycle inventory, and
+  paper-/chemvoro-shaped integration validation.
 
 The detailed scope, dependencies, decisions, and release gates are in the
 [v0.7 development plan](../development/plans/v0.7.md).
 
-## v0.8 — Prescribed cell measures
+## v0.8 — Cleanup and compatibility removal
 
-The next inverse family targets fixed sites and domain, unknown power weights,
-and prescribed cell areas in 2D or volumes in 3D. v0.8 is also the planned
-removal release for the v0.7 `pyvoro2.powerfit` and broad top-level separator
-compatibility paths, unless an explicit release decision extends the transition.
+v0.8 is intentionally a **feature-free maintenance release**. It cleans the
+architecture established in v0.7 before a second inverse observation family is
+added.
+
+Target outcomes:
+
+- remove `pyvoro2.powerfit`, broad top-level separator exports, historical
+  separator aliases, `PlanarComputeResult`, planar `return_result=`, and other
+  compatibility-only routes that are not useful current API;
+- reorganize the flat test suite into responsibility-based subdirectories;
+- move root private Python helpers into `pyvoro2._internal`, without renaming
+  compiled `_core` and `_core2d` extensions or adding a public `core` namespace;
+- resolve non-critical consistency and maintenance findings deferred from the
+  v0.7 final audit;
+- preserve stable v0.7 numerical behavior and canonical public workflows;
+- simplify reference navigation, distribution checks, imports, and regression
+  ownership after compatibility removal.
+
+The removal decision is based on clean architecture and usability, not on
+preserving hypothetical historical callers. `output='cells'` remains an
+explicit useful raw-data mode unless a separate future decision changes it.
+
+See the draft [v0.8 cleanup plan](../development/plans/v0.8.md) and
+[ADR 0006](../development/decisions/0006-v0.8-cleanup-release.md).
+
+## v0.9 — Prescribed cell measures
+
+The second inverse family targets fixed sites and domain, unknown power weights,
+and prescribed cell areas in 2D or volumes in 3D.
 
 Expected development order:
 
@@ -74,10 +97,10 @@ The first public prescribed-measure solver should remain experimental until it
 recovers generated diagrams modulo global gauge across representative cases and
 returns structured diagnostics for failure.
 
-## v0.9 — Mixed inverse problems
+## v0.10 — Mixed inverse problems
 
-The mixed-problem line combines observation families without creating unrelated
-solver APIs.
+The mixed-problem line combines real observation families without creating
+unrelated solver APIs.
 
 The first mixed problem should support:
 
@@ -90,10 +113,8 @@ The first mixed problem should support:
 - a separate final realization report.
 
 Only after separator and measure implementations both exist should a generic
-public observation-block protocol be finalized.
-
-Moving sites remains a separate later unknown family, not an option hidden in
-the first mixed solver.
+public observation-block protocol be finalized. Moving sites remains a separate
+later unknown family, not an option hidden in the first mixed solver.
 
 ## 1.0 — Stable research-software contract and JOSS readiness
 
@@ -102,10 +123,10 @@ visible development history.
 
 Expected gates:
 
-- public API inventory and lifecycle audit;
+- public API inventory and lifecycle audit after v0.8 cleanup;
 - forward and separator contracts validated by downstream use;
+- prescribed-measure and mixed experimental boundaries documented honestly;
 - complete install, test, documentation, notebook, and release path;
-- migration and deprecation status reviewed;
 - examples and benchmarks suitable for reviewers;
 - research-impact and reproducibility documentation;
 - maintained issue, decision, plan, and release history showing iterative
@@ -127,6 +148,8 @@ Possible later workstreams include:
 - regular-triangulation and dual diagnostics;
 - optional solver backend plugins;
 - bounded site-coordinate optimization;
+- trajectory-scale and parallel tessellation workflows after profiling and
+  ownership analysis;
 - anisotropic or non-Euclidean models when a concrete research project requires
   them.
 
@@ -141,8 +164,9 @@ These directions are not commitments for 1.0.
 - GPU acceleration;
 - site motion in the first mixed solver;
 - planar oblique-periodic support solely for API symmetry;
-- indefinite preservation of historical inverse namespaces after the documented
-  v0.7 transition.
+- trajectory, repeated-frame, or parallel APIs before the post-1.0 design work
+  is activated;
+- preservation of historical inverse namespaces after v0.7.
 
 ## Planning responsibilities
 

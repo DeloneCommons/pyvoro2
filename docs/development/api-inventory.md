@@ -1,35 +1,34 @@
 # v0.7 public API inventory
 
-- **Status:** v0.6.3 baseline characterized; v0.7 target inventory remains living
+- **Status:** Finalized for v0.7.0 release qualification; maintainer-approved 2026-07-22
 - **Baseline:** v0.6.3
 - **Target:** v0.7.0
 - **Baseline audit:** [issue #6](https://github.com/DeloneCommons/pyvoro2/issues/6), completed 2026-07-18
 - **Policy:** [API lifecycle and compatibility](api-lifecycle.md)
 - **Plan:** [v0.7 development plan](plans/v0.7.md)
 
-This inventory records the intended lifecycle status of public imports, return
-routes, record schemas, defaults, and scientific semantics for v0.7. It is a
-release artifact, not a retrospective document to be written after the release.
+This inventory is the authoritative v0.7 lifecycle contract for public imports,
+return routes, record schemas, defaults, and scientific semantics. It has been
+checked against the current source, tests, documentation, executed notebooks,
+and downstream-shaped regression assets. Release qualification must verify that
+the packaged artifacts preserve this contract.
 
-The initial categories below guide implementation. They must be checked against
-actual code, tests, documentation, and downstream integration before v0.7.0 is
-published.
-
-## How to maintain this inventory
+## How to maintain this inventory after finalization
 
 For every v0.7 issue that changes public behavior:
 
 1. update the relevant row or section in the same change;
 2. distinguish the v0.6.3 baseline from the intended v0.7 state;
-3. record aliases, deprecations, and planned removal releases;
+3. record aliases, deprecations, and their removal releases;
 4. include defaults, result fields, record keys, units, and periodic conventions
    when they carry scientific meaning;
 5. leave uncertain new surfaces **provisional** rather than omitting them;
 6. do not mark a surface **stable** until its tests and documentation define the
    contract clearly.
 
-The release review must verify that `__all__`, docstrings, guides, reference
-pages, migration notes, and this inventory agree.
+Issue #16 finalizes the classifications below. Release review must verify that
+`__all__`, docstrings, guides, reference pages, migration notes, and this
+inventory remain synchronized.
 
 ## Factual v0.6.3 baseline
 
@@ -847,7 +846,7 @@ resolve through one implementation. The small `pyvoro2.inverse` convenience
 surface and the larger `pyvoro2.inverse.separator` advanced surface are now
 explicit. Loading `pyvoro2.powerfit` emits one ordinary hidden-by-default
 `DeprecationWarning` that points to the canonical namespaces and states the
-planned v0.8 removal.
+v0.8 removal fixed by ADR 0006.
 
 Issue #13 adds provisional layered views to the existing fixed-fit,
 realization, and experimental active-set result objects. It does not change
@@ -888,10 +887,10 @@ The following boundaries are already accepted:
 - `pyvoro2.inverse` is the canonical inverse namespace;
 - separator implementation is owned by `pyvoro2.inverse.separator`;
 - `pyvoro2.powerfit` and broad top-level separator exports are
-  compatibility-only for v0.7, with planned removal in v0.8;
+  compatibility-only for v0.7, with removal in v0.8;
 - both forward `compute(...)` functions return
   `pyvoro2.TessellationResult` by default;
-- `output='cells'` is the explicit raw compatibility route;
+- `output='cells'` is the explicit supported raw-output route;
 - `PlanarComputeResult` is a compatibility alias during v0.7;
 - deep immutability of nested raw records is not part of the v0.7 contract.
 
@@ -900,39 +899,54 @@ See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 
 ## Lifecycle summary for the preferred v0.7 API
 
-| Surface | Intended status | Notes |
+| Surface | v0.7 status | Notes |
 |---|---|---|
 | Domain classes and domain geometry semantics | Stable | Mature bounded and periodic behavior; capability differences remain explicit by dimension. |
-| `pyvoro2.compute` and `pyvoro2.planar.compute` | Stable | Direct weight/radius behavior, the common structured default, and explicit raw compatibility output are implemented and tested. |
+| `pyvoro2.compute` and `pyvoro2.planar.compute` | Stable | Direct weight/radius behavior, the common structured default, and explicit raw output are implemented and tested. |
 | `weights=` and `radii=` mathematical meaning | Stable | Mode-specific rejection/exclusivity, one global representation shift, finite and representable conversion, and empty-cell behavior are part of the contract. |
-| `pyvoro2.TessellationResult` core contract | Stable candidate | The shared class, private construction path, and both public compute integrations are implemented by issues #9 and #10. |
+| `pyvoro2.TessellationResult` core contract | Stable | The shared class, private construction path, and both public compute integrations are implemented by issues #9 and #10. |
 | Detailed optional result conveniences and raw geometry views | Provisional | Refine through implementation and chemvoro-shaped validation. |
-| `pyvoro2.inverse` preferred high-level separator workflow | Stable candidate | Main observations/fit entry point should be suitable for chemvoro at release. |
-| `pyvoro2.inverse.separator` advanced problem and operator views | Provisional | Public for research use, but likely to evolve before prescribed measures and mixed problems. |
+| `pyvoro2.inverse` preferred high-level separator workflow | Stable | Validated normal observations/fit entry point for applications and chemvoro-shaped workflows. |
+| `pyvoro2.inverse.separator` advanced problem and operator views | Provisional | Public for research use, but may evolve before v0.9 prescribed measures and v0.10 mixed problems. |
 | Realization-aware active-set API | Experimental | Practical outer algorithm; no universal convergence claim. |
-| Optional sparse quadratic backend | Experimental | Explicit `solver='sparse'` uses optional SciPy direct solving for the primary static quadratic fit; `auto` remains dense and unsupported branches reject sparse selection. |
-| `pyvoro2.powerfit` | Compatibility-only and deprecated | One-way shim during v0.7; planned removal in v0.8. |
-| Broad separator-specific exports from top-level `pyvoro2` | Compatibility-only and deprecated | New code imports from `pyvoro2.inverse`; planned removal in v0.8. |
+| Optional sparse quadratic backend | Provisional | Explicit `solver='sparse'` is validated for the primary static quadratic fit; `auto` remains dense and unsupported branches reject sparse selection. |
+| `pyvoro2.powerfit` | Compatibility-only and deprecated | One-way shim during v0.7; removed in v0.8. |
+| Broad separator-specific exports from top-level `pyvoro2` | Compatibility-only and deprecated | New code imports from `pyvoro2.inverse`; removed in v0.8. |
 | Native extension and solver-internal modules | Internal | No compatibility guarantee. |
 
-“Stable candidate” means that the release intends to make the surface stable,
-but final approval occurs only after implementation, tests, documentation, and
-downstream validation are complete.
+### Documented module-route status
+
+Objects imported from these documented modules retain the lifecycle status
+assigned above. The module route itself has the following status:
+
+| Module route | v0.7 status |
+|---|---|
+| `pyvoro2.api`, `domains`, `diagnostics`, `duplicates`, `face_properties`, `normalize`, `validation` | Stable |
+| `pyvoro2.edge_properties` | Stable for its documented annotation helper |
+| `pyvoro2.result` | Stable module route for `TessellationResult`; direct construction remains provisional |
+| `pyvoro2.viz2d`, `pyvoro2.viz3d` | Provisional optional conveniences |
+| `pyvoro2.planar.api`, `domains`, `diagnostics`, `duplicates`, `normalize`, `validation` | Stable |
+| `pyvoro2.planar.result` | Compatibility-only and deprecated because it exposes `PlanarComputeResult`; removed in v0.8 |
+| `pyvoro2.inverse` | Stable high-level route |
+| `pyvoro2.inverse.separator` and its non-active submodules | Mixed route: stable high-level core names, provisional advanced objects, and compatibility-only historical aliases |
+| `pyvoro2.inverse.separator.active` | Experimental |
+| `pyvoro2.powerfit` and its direct submodules | Compatibility-only and deprecated; removed in v0.8 |
+| underscore-prefixed Python helpers and native `_core`/`_core2d` extensions | Internal |
 
 ## Spatial forward namespace: `pyvoro2`
 
-### Stable baseline and v0.7 candidates
+### Stable v0.7 surface
 
-| Group | Names / behavior | v0.7 intent |
+| Group | Names / behavior | v0.7 status |
 |---|---|---|
 | Domains | `Box`, `OrthorhombicCell`, `PeriodicCell` | Stable |
 | Operations | `compute`, `locate`, `ghost_cells` | Stable |
-| Structured result | `TessellationResult` | Stable candidate |
+| Structured result | `TessellationResult` | Stable |
 | Weight transforms | `weights_to_radii`, `radii_to_weights` | Stable; neutral implementation requires finite inputs and finite representable results |
-| Tessellation diagnostics | `TessellationDiagnostics`, `TessellationIssue`, `TessellationError`, `analyze_tessellation`, `validate_tessellation` | Stable unless the baseline audit identifies undocumented schema details |
+| Tessellation diagnostics | `TessellationDiagnostics`, `TessellationIssue`, `TessellationError`, `analyze_tessellation`, `validate_tessellation` | Stable |
 | Duplicate handling | `DuplicatePair`, `DuplicateError`, `duplicate_check` | Stable |
-| Geometry annotations | `annotate_face_properties` | Stable candidate |
-| Normalization | `NormalizedVertices`, `NormalizedTopology`, normalization and validation helpers | Stable or provisional per detailed baseline audit |
+| Geometry annotations | `annotate_face_properties` | Stable |
+| Normalization | `NormalizedVertices`, `NormalizedTopology`, normalization and validation helpers | Stable |
 | Package metadata | `__version__`, `planar` | Stable |
 
 ### Compatibility-only top-level inverse names
@@ -977,20 +991,19 @@ match_realized_pairs
 solve_self_consistent_power_weights
 ```
 
-Planned removal: v0.8, unless a later accepted release decision extends the
-transition.
+Removal: v0.8, fixed by ADR 0006.
 
 ## Planar namespace: `pyvoro2.planar`
 
-| Group | Names / behavior | v0.7 intent |
+| Group | Names / behavior | v0.7 status |
 |---|---|---|
 | Domains | `Box`, `RectangularCell` | Stable |
 | Operations | `compute`, `locate`, `ghost_cells` | Stable |
-| Structured result | `TessellationResult` re-export | Stable candidate |
-| Historical result name | `PlanarComputeResult` | Compatibility-only identity alias to `TessellationResult`, with removal or reconsideration planned for v0.8 |
-| Diagnostics and validation | Planar tessellation and normalization diagnostics | Stable unless the baseline audit identifies schema details needing provisional status |
-| Duplicate handling and annotations | `duplicate_check`, `annotate_edge_properties` | Stable candidates |
-| Normalization | Planar normalization helpers and result objects | Stable or provisional per detailed baseline audit |
+| Structured result | `TessellationResult` re-export | Stable |
+| Historical result name | `PlanarComputeResult` | Compatibility-only and deprecated identity alias to `TessellationResult`; removed in v0.8 |
+| Diagnostics and validation | Planar tessellation and normalization diagnostics | Stable |
+| Duplicate handling and annotations | `duplicate_check`, `annotate_edge_properties` | Stable |
+| Normalization | Planar normalization helpers and result objects | Stable |
 | Visualization | `plot_tessellation` | Provisional optional convenience |
 
 ## Canonical inverse namespace: `pyvoro2.inverse`
@@ -1008,14 +1021,14 @@ weights_to_radii
 radii_to_weights
 ```
 
-The accepted preferred names have these lifecycle assignments:
+The preferred names have these final lifecycle assignments:
 
-| Name | Intended status | Meaning |
+| Name | v0.7 status | Meaning |
 |---|---|---|
-| `SeparatorObservations` | Stable candidate | Resolved pairwise separator observations, including periodic image labels and confidence. |
-| `resolve_separator_observations` | Stable candidate | Validate and resolve raw separator observations against sites and domain. |
-| `SeparatorFitResult` | Stable candidate | Existing flat fit contract plus layered state, observation, identification, objective, algebraic, and fixed-solver access. |
-| `fit_weights_from_separators` | Stable candidate | Preferred fixed-observation fit entry point. |
+| `SeparatorObservations` | Stable | Resolved pairwise separator observations, including periodic image labels and confidence. |
+| `resolve_separator_observations` | Stable | Validate and resolve raw separator observations against sites and domain. |
+| `SeparatorFitResult` | Stable | Existing flat fit contract plus layered state, observation, identification, objective, algebraic, and fixed-solver access. |
+| `fit_weights_from_separators` | Stable | Preferred fixed-observation fit entry point. |
 | `weights_to_radii`, `radii_to_weights` | Stable re-export where useful | Same neutral transforms as top-level pyvoro2. |
 
 ### Advanced separator API
@@ -1090,7 +1103,7 @@ view types, realization, reporting, and diagnostic objects are initially
 views, iteration, path, diagnostic, and result objects are **experimental** and
 separator-specific.
 
-The exact v0.7 core identity map is:
+The exact v0.7 compatibility identity map is:
 
 | Historical name | Canonical v0.7 name | Relationship and lifecycle |
 |---|---|---|
@@ -1120,6 +1133,9 @@ the radius route remains available for compatibility with existing advanced
 callers.
 
 The active-set outer workflow and its path/result types remain **experimental**.
+The explicit SciPy sparse quadratic backend is **provisional**: it is supported
+for large static sparse quadratic graphs but does not extend to Huber, hard,
+penalty, or active-set branches.
 
 `pyvoro2.powerfit.__all__` remains the exact 42-name historical list recorded
 in the v0.6.3 baseline section. It deliberately does not export the canonical
@@ -1138,27 +1154,26 @@ final external ID, represents omitted empty cells explicitly in aligned
 arrays, and does not invoke native computation, diagnostics, normalization, or
 boundary annotation.
 
-The stable-candidate fields are exact:
+The stable fields are exact:
 
 | Field | Lifecycle | Semantics |
 |---|---|---|
-| `dimension` | Stable candidate | Explicit `2` or `3`. |
-| `domain` | Stable candidate | Validated domain used by the computation. |
-| `mode` | Stable candidate | `"standard"` or `"power"`. |
-| `sites` | Stable candidate | Read-only owned `(n, dimension)` copy of validated input coordinates in original input order. |
-| `ids` | Stable candidate | Read-only owned `(n,)` external-ID array in original input order; omitted IDs become `np.arange(n, dtype=np.int64)`. |
-| `cells` | Stable candidate | Exact supplied raw-cell list after ID remapping; the list, dictionaries, and nested records are not copied or frozen. |
-| `cell_measures` | Stable candidate | Read-only owned `(n,)` construction-time snapshot of areas or volumes aligned with input order; hidden cells are zero. |
-| `empty_mask` | Stable candidate | Read-only owned boolean `(n,)` construction-time snapshot aligned with input order, including raw records omitted by `include_empty=False`. |
-| `input_weights` | Stable candidate | Read-only owned mathematical input weights for weight-first power input; otherwise `None`. |
-| `backend_radii` | Stable candidate | Read-only owned exact native power radii; `None` in standard mode. |
-| `representation_shift` | Stable candidate | Finite common additive shift for weight-first conversion; `None` for standard or direct-radius input. |
-| `tessellation_diagnostics` | Stable candidate | Existing dimension-specific diagnostics when computed; otherwise `None`. |
-| `normalized_vertices` | Stable candidate | Existing dimension-specific vertex normalization when computed; otherwise `None`. |
-| `normalized_topology` | Stable candidate | Existing dimension-specific topology normalization when computed; otherwise `None`. |
+| `dimension` | Stable | Explicit `2` or `3`. |
+| `domain` | Stable | Validated domain used by the computation. |
+| `mode` | Stable | `"standard"` or `"power"`. |
+| `sites` | Stable | Read-only owned `(n, dimension)` copy of validated input coordinates in original input order. |
+| `ids` | Stable | Read-only owned `(n,)` external-ID array in original input order; omitted IDs become `np.arange(n, dtype=np.int64)`. |
+| `cells` | Stable | Exact supplied raw-cell list after ID remapping; the list, dictionaries, and nested records are not copied or frozen. |
+| `cell_measures` | Stable | Read-only owned `(n,)` construction-time snapshot of areas or volumes aligned with input order; hidden cells are zero. |
+| `empty_mask` | Stable | Read-only owned boolean `(n,)` construction-time snapshot aligned with input order, including raw records omitted by `include_empty=False`. |
+| `input_weights` | Stable | Read-only owned mathematical input weights for weight-first power input; otherwise `None`. |
+| `backend_radii` | Stable | Read-only owned exact native power radii; `None` in standard mode. |
+| `representation_shift` | Stable | Finite common additive shift for weight-first conversion; `None` for standard or direct-radius input. |
+| `tessellation_diagnostics` | Stable | Existing dimension-specific diagnostics when computed; otherwise `None`. |
+| `normalized_vertices` | Stable | Existing dimension-specific vertex normalization when computed; otherwise `None`. |
+| `normalized_topology` | Stable | Existing dimension-specific topology normalization when computed; otherwise `None`. |
 
-The following small convenience surface is **provisional** while downstream
-integration validates the exact access vocabulary:
+The following convenience surface remains **provisional**:
 
 | Convenience | Lifecycle | Semantics |
 |---|---|---|
@@ -1180,7 +1195,7 @@ fields and raises if mutation made them inconsistent with the recorded
 snapshots or capabilities. An empty cell cannot contain realized edge or face
 records; both omitted and explicitly empty boundary collections remain valid.
 
-Direct dataclass construction is supported and validates raw IDs, measures,
+Direct dataclass construction is **provisional** and validates raw IDs, measures,
 empty state, representation metadata, and capability metadata against the
 aligned fields. Weight-first metadata must satisfy the shared exact
 weight/shift-to-radius transform. Boundary and periodic-shift availability are
@@ -1203,7 +1218,7 @@ always one `TessellationResult`, never a tuple. Diagnostics computed because of
 `return_diagnostics=True` or `tessellation_check='diagnose'|'warn'|'raise'`
 are stored in `result.tessellation_diagnostics`.
 
-### Raw compatibility route
+### Raw output route
 
 ```python
 cells = pyvoro2.compute(..., output='cells')
@@ -1279,30 +1294,30 @@ The following are API even when no dedicated Python class represents them:
 - error/status behavior for infeasibility and wrong-image realization is part of
   the public scientific contract.
 
-## Deprecation and removal schedule
+## Deprecation and fixed removal schedule
 
-| Surface | v0.7 | Planned v0.8 action |
+| Surface | v0.7 | v0.8 action |
 |---|---|---|
-| `pyvoro2.powerfit` | Compatibility-only; loading it emits one hidden-by-default `DeprecationWarning` naming the canonical namespaces and v0.8 horizon | Remove unless an explicit release decision extends it |
+| `pyvoro2.powerfit` | Compatibility-only and deprecated; loading it emits one hidden-by-default `DeprecationWarning` naming the canonical namespaces and v0.8 horizon | Remove |
 | Broad top-level separator exports | Compatibility-only; no invasive attribute wrappers during v0.7; documented migration path | Remove from top-level |
-| Five mapped historical core names | Compatibility-only identity aliases; no per-use warnings | Remove from canonical separator exports unless a later accepted release decision documents otherwise |
-| `PlanarComputeResult` | Compatibility alias to `TessellationResult` | Remove or reconsider after v0.7 downstream feedback |
+| Five mapped historical core names | Compatibility-only and deprecated identity aliases; no per-use warnings | Remove from canonical separator exports |
+| `PlanarComputeResult` | Compatibility-only and deprecated alias to `TessellationResult` | Remove |
 | Raw cell return | Available through `output='cells'` | Continue as explicit route unless a later decision removes it |
-| Planar `return_result=` | Compatibility-only | Remove after migration to `output=` |
+| Planar `return_result=` | Compatibility-only and deprecated | Remove |
 
 ## Final release review checklist
 
-- [ ] Every preferred public import is listed with a lifecycle category.
-- [ ] Every compatibility alias has a replacement and removal horizon.
-- [ ] `__all__` matches the intended namespace policy.
+- [x] Every preferred public import is listed with a lifecycle category.
+- [x] Every compatibility alias has a replacement and removal horizon.
+- [x] `__all__` matches the intended namespace policy.
 - [x] Forward output modes and diagnostic combinations are characterized.
-- [ ] Stable `TessellationResult` fields and mutable contained values are
+- [x] Stable `TessellationResult` fields and mutable contained values are
       documented.
-- [ ] Raw record keys used by compatibility tests are listed or referenced.
+- [x] Raw record keys used by compatibility tests are listed or referenced.
 - [x] Preferred separator names and exact historical aliases are complete.
-- [x] Active-set behavior is labelled experimental; optional sparse work remains conditional.
-- [ ] Default changes and scientific semantics appear in migration notes and
+- [x] Active-set behavior is labelled experimental; the included sparse quadratic backend is labelled provisional and narrowly scoped.
+- [x] Default changes and scientific semantics appear in migration notes and
       release notes.
-- [ ] The chemvoro-shaped integration workflow uses only stable or deliberately
+- [x] The chemvoro-shaped integration workflow uses only stable or deliberately
       provisional public surfaces.
-- [ ] The maintainer approves the final inventory before the release candidate.
+- [x] The maintainer approved the final inventory on 2026-07-22.

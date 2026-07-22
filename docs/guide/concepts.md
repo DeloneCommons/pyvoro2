@@ -2,7 +2,8 @@
 
 This guide introduces the geometric objects needed to use pyvoro2. Precise
 mathematical definitions and invariants are collected in
-[Power diagrams](../theory/power-diagrams.md).
+[Power diagrams](../theory/power-diagrams.md). The
+[glossary](glossary.md) collects the package vocabulary used below.
 
 ## Sites, domains, and cells
 
@@ -160,7 +161,7 @@ It uses **boundary measure** for:
 - face area in 3D.
 
 This shared vocabulary is useful for code that supports both dimensions and for
-future inverse fitting from prescribed cell measures.
+prescribed-measure inverse fitting planned for v0.9.
 
 ## Algebraic separators and realized boundaries
 

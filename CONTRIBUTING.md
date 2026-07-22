@@ -61,20 +61,48 @@ activation, scope changes, release review, and archival rules.
 
 ## Development environment
 
-pyvoro2 requires Python 3.10 or newer and a working C++ build toolchain when it
-is built from source. A normal editable development install is:
+pyvoro2 requires Python 3.10 or newer and a native source-build toolchain.
+These tools compile the two extension modules; they are not Python runtime
+dependencies.
+
+| Platform | Required source-build tools |
+|---|---|
+| Linux | GCC or Clang with C++17 support, Python development headers, CMake 3.20+; Ninja recommended |
+| macOS | Xcode Command Line Tools, CMake 3.20+; Ninja recommended |
+| Windows | Visual Studio 2022 Build Tools with **Desktop development with C++**, CMake 3.20+; Ninja recommended |
+
+Create a clean environment and install the complete contributor stack:
 
 ```bash
+python -m venv .venv
+
+# Linux/macOS
+source .venv/bin/activate
+
+# Windows PowerShell
+# .venv\Scripts\Activate.ps1
+
 python -m pip install --upgrade pip
 python -m pip install -e ".[all]"
 ```
 
-The `all` extra installs the test, lint, documentation, notebook, visualization,
-and release-check dependencies. Platform-specific CMake/Ninja installation may
-still be needed when no suitable compiler toolchain is already available.
+The normal command uses PEP 517 build isolation and obtains
+`scikit-build-core`, `pybind11`, and the build-time NumPy headers declared in
+`pyproject.toml`. In a controlled offline environment, install those declared
+build requirements into the environment first and use
+`--no-build-isolation`; do not add them to pyvoro2 runtime dependencies merely
+to simplify local bootstrapping.
+
+Verify the editable build before changing code:
+
+```bash
+python -c "import pyvoro2, pyvoro2.planar, pyvoro2.inverse; print(pyvoro2.__version__)"
+pytest -q tests/test_smoke.py tests/test_lazy_core_import.py tests/test_planar_lazy_core_import.py
+```
 
 For a wheel-core plus repository-source workflow, see `tools/README.md` and
-`tools/install_wheel_overlay.py`.
+`tools/install_wheel_overlay.py`. The documented release path still requires a
+normal clean source build and installation from built artifacts.
 
 ## Repository conventions
 
@@ -135,10 +163,11 @@ In particular:
   internal surfaces.
 
 `pyvoro2.inverse` is the canonical v0.7 inverse namespace. The current
-`pyvoro2.powerfit` package and broad top-level separator exports remain as
-compatibility-only paths for v0.7 and are planned for removal in v0.8. New work
-must place numerical ownership under `pyvoro2.inverse.separator` and document
-migration explicitly.
+`pyvoro2.powerfit`, broad top-level separator exports, historical separator
+aliases, `PlanarComputeResult`, and planar `return_result=` remain
+compatibility-only paths for v0.7 and are removed in the feature-free v0.8
+cleanup release. New work must place numerical ownership under
+`pyvoro2.inverse.separator` and document migration explicitly.
 
 ## Planning substantial changes
 

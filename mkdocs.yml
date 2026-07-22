@@ -53,12 +53,15 @@ extra_css:
 nav:
   - Home: index.md
   - User guide:
+      - Choosing an API: guide/choosing-api.md
       - Concepts: guide/concepts.md
+      - Glossary: guide/glossary.md
       - Domains (3D): guide/domains.md
       - Planar (2D): guide/planar.md
       - Operations: guide/operations.md
       - Topology and graphs: guide/topology.md
       - Separator fitting: guide/powerfit.md
+      - Migrating from v0.6.3: guide/migration-v0.7.md
       - Visualization: guide/visualization.md
       - Notebooks: guide/notebooks.md
   - Theory:
@@ -71,6 +74,7 @@ nav:
       - Development plans:
           - Overview: development/plans/index.md
           - v0.7 plan: development/plans/v0.7.md
+          - v0.8 draft cleanup plan: development/plans/v0.8.md
           - Plan template: development/plans/template.md
           - Archive: development/plans/archive/index.md
       - Documentation conventions: development/documentation-conventions.md
@@ -84,6 +88,7 @@ nav:
           - Compatibility-first evolution: development/decisions/0003-compatibility-first-evolution.md
           - Canonical inverse namespace: development/decisions/0004-canonical-inverse-namespace.md
           - Common tessellation result: development/decisions/0005-tessellation-result-contract.md
+          - v0.8 cleanup release: development/decisions/0006-v0.8-cleanup-release.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

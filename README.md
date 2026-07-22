@@ -11,7 +11,11 @@
 and power/Laguerre tessellations**, with particular support for periodic
 topology and inverse fitting of power weights from partial geometric data.
 
-The current public release provides:
+> **Development documentation:** this site tracks the unreleased v0.7
+> development tree. The published v0.6.3 release remains the manuscript
+> baseline and does not yet provide every API shown here.
+
+The current v0.7 development tree provides:
 
 - standard Voronoi tessellations;
 - power/Laguerre tessellations directly from mathematical weights, with the
@@ -25,8 +29,9 @@ The current public release provides:
   optional realization-aware active-set loop.
 
 The package is evolving toward a stable architecture for **forward and inverse
-weighted tessellations**. Prescribed cell measures and mixed inverse problems
-are planned extensions; they are not part of the current release.
+weighted tessellations**. v0.8 is a cleanup-only compatibility-removal release.
+Prescribed cell measures move to v0.9 and mixed separator-plus-measure fitting
+to v0.10; none of those later capabilities is part of v0.7.
 
 pyvoro2 is designed to be explicit and predictable:
 
@@ -224,18 +229,21 @@ of the Python-side contracts needed in scientific workflows. pyvoro2 adds:
 
 | Section | What it contains |
 |---|---|
+| [Choosing an API](https://delonecommons.github.io/pyvoro2/guide/choosing-api/) | Preferred forward and inverse entry points, lifecycle status, result layers, and the static scalability contract. |
 | [Concepts](https://delonecommons.github.io/pyvoro2/guide/concepts/) | A concise user introduction to Voronoi and power/Laguerre tessellations. |
+| [Glossary](https://delonecommons.github.io/pyvoro2/guide/glossary/) | Power weights, backend radii, gauge, separator observations, realization, and active-set terminology. |
 | [Domains (3D)](https://delonecommons.github.io/pyvoro2/guide/domains/) | `Box`, `OrthorhombicCell`, and `PeriodicCell`. |
 | [Planar (2D)](https://delonecommons.github.io/pyvoro2/guide/planar/) | The planar namespace, rectangular periodicity, diagnostics, normalization, and plotting. |
 | [Operations](https://delonecommons.github.io/pyvoro2/guide/operations/) | Forward tessellation, owner lookup, and ghost-cell workflows. |
 | [Topology and graphs](https://delonecommons.github.io/pyvoro2/guide/topology/) | Periodic image-labelled adjacency and normalized topology. |
 | [Separator fitting](https://delonecommons.github.io/pyvoro2/guide/powerfit/) | Current inverse API, result diagnostics, realization matching, and active-set refinement. |
+| [v0.7 migration](https://delonecommons.github.io/pyvoro2/guide/migration-v0.7/) | Exact v0.6.3-to-v0.7 changes and the fixed v0.8 removal horizon. |
 | [Theory](https://delonecommons.github.io/pyvoro2/theory/) | API-independent definitions of power diagrams, weights, gauge, and separator inversion. |
 | [Development](https://delonecommons.github.io/pyvoro2/development/) | Architecture, workflow, documentation conventions, release plans, API lifecycle, and decision records. |
 | [Visualization](https://delonecommons.github.io/pyvoro2/guide/visualization/) | Optional `py3Dmol` and `matplotlib` helpers. |
 | [Examples](https://delonecommons.github.io/pyvoro2/guide/notebooks/) | Executable notebook workflows. |
 | [API reference](https://delonecommons.github.io/pyvoro2/reference/) | Exact signatures and docstring reference for spatial, planar, and separator-fitting APIs. |
-| [Roadmap](https://delonecommons.github.io/pyvoro2/project/roadmap/) | Version-level outcomes for v0.7, prescribed measures, mixed fitting, 1.0, and future research. |
+| [Roadmap](https://delonecommons.github.io/pyvoro2/project/roadmap/) | v0.7 stabilization, v0.8 cleanup, v0.9 prescribed measures, v0.10 mixed fitting, 1.0, and future research. |
 
 ## Installation
 
@@ -254,18 +262,29 @@ Optional extras:
 - `pyvoro2[all]` for the full local notebook, docs, lint, test, and release
   validation stack.
 
-To build from source, a C++ compiler and Python development headers are
-required:
+Source builds require Python 3.10+, a C++17 compiler, CMake 3.20 or newer,
+and Python development headers. Ninja is recommended because the build backend
+uses CMake efficiently with it. Typical toolchains are GCC or Clang on Linux,
+Xcode Command Line Tools on macOS, and Visual Studio Build Tools with the
+"Desktop development with C++" workload on Windows. These are source-build
+requirements, not pyvoro2 runtime dependencies.
+
+For an editable runtime-only build:
 
 ```bash
-pip install -e .
+python -m pip install --upgrade pip
+python -m pip install -e .
 ```
 
-For local repository development:
+For local repository development and all validation tools:
 
 ```bash
-pip install -e ".[all]"
+python -m pip install --upgrade pip
+python -m pip install -e ".[all]"
 ```
+
+See [Contributing](https://github.com/DeloneCommons/pyvoro2/blob/main/CONTRIBUTING.md)
+for platform notes and clean-environment verification.
 
 ## Testing
 
@@ -297,8 +316,9 @@ python tools/release_check.py
 
 pyvoro2 is currently **beta**. The public v0.6.3 release is the archived
 baseline for the separator-inverse manuscript. The v0.7 development line is
-stabilizing the common forward/result contract and preferred separator API
-before new inverse families are implemented. The
+finalizing the common forward/result contract and preferred separator API.
+v0.8 removes the bounded compatibility layer before new inverse families begin
+in v0.9. The
 [v0.7 development plan](https://delonecommons.github.io/pyvoro2/development/plans/v0.7/) records the active scope,
 accepted decisions, validation, and release criteria.
 

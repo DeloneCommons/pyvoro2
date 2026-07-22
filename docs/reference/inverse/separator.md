@@ -8,8 +8,14 @@ The fixed-observation fit is distinct from realization-aware active-set
 refinement. The active-set API is experimental and separator-specific; it is a
 practical outer algorithm without a universal convergence guarantee.
 
-Historical names remain identity aliases during v0.7 and are planned for
-removal in v0.8. New code should use the canonical five-name map documented in
+Most advanced model, problem, operator, report, realization, and layered-view
+objects on this page are **provisional**. Active-set refinement is
+**experimental**. The optional explicit sparse quadratic backend is
+**provisional** and is limited to the static squared-loss branch documented
+below.
+
+Historical names remain identity aliases during v0.7 and will be removed in
+v0.8. New code should use the canonical five-name map documented in
 the [compatibility reference](../powerfit/index.md).
 
 ## Layered result access

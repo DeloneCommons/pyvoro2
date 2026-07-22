@@ -4,6 +4,9 @@ The API reference is generated from the docstrings in the current source tree.
 Use it when you need exact signatures, parameters, return fields, or exception
 behavior. For task-oriented examples, begin with the [user guide](../guide/concepts.md);
 for mathematical interpretation, see the [theory section](../theory/index.md).
+Lifecycle classifications are authoritative in the
+[v0.7 API inventory](../development/api-inventory.md); the concise user-facing
+summary is in [Choosing an API](../guide/choosing-api.md).
 
 ## Spatial API (3D)
 
@@ -38,7 +41,7 @@ The canonical fixed-observation workflow is deliberately small at
 - [Advanced separator API](inverse/separator.md)
 
 The historical `pyvoro2.powerfit` package and broad top-level separator exports
-are deprecated compatibility routes for v0.7, planned for removal in v0.8.
+are deprecated compatibility routes for v0.7 and will be removed in v0.8.
 
 - [Compatibility overview](powerfit/index.md)
 - [Constraints and observations](powerfit/constraints.md)

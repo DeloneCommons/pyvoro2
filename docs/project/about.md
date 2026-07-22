@@ -17,8 +17,8 @@ Its implemented inverse layer fits power weights from selected pairwise
 separator observations, reports compatibility, identifiability, and
 hard-constraint feasibility, and separates algebraic fitting from
 realized-boundary checks.
-Prescribed cell measures and mixed inverse problems are roadmap items rather
-than current release claims.
+Prescribed cell measures are planned for v0.9 and mixed separator-plus-measure
+problems for v0.10; neither is part of the current v0.7 implementation.
 
 ## What is Voro++?
 
@@ -71,10 +71,10 @@ The forward core remains independently useful. A user does not need the inverse
 layer to compute cells, measures, boundaries, or periodic neighbor graphs.
 
 The inverse layer answers a different question: given fixed sites and partial
-geometric observations, which power weights reconcile those observations? The
-current method uses pairwise separator positions. Future methods are intended to
-reuse the same geometry and result contract for prescribed cell measures and
-mixed data.
+geometric observations, which power weights reconcile those observations?
+The current method uses pairwise separator positions. The v0.9
+prescribed-measure work and v0.10 mixed work are intended to reuse the same
+geometry and result contract.
 
 The mathematical distinction between weights, backend radii, global gauge,
 disconnected observation offsets, and realized boundaries is described in the
@@ -123,16 +123,18 @@ for the development workflow.
 
 ## Design and roadmap
 
+- [Choosing an API](../guide/choosing-api.md) summarizes preferred namespaces,
+  lifecycle status, result layers, and the static scalability contract.
 - [Development workflow](../development/development-workflow.md) defines how
   plans, decisions, issues, implementation, changelog entries, and releases fit
   together.
 - [v0.7 development plan](../development/plans/v0.7.md) records the active
   release scope, accepted decisions, work packages, validation, and release
   gates.
-- [Architecture](../development/architecture.md) describes the current v0.6.3
-  implementation and target v0.7 responsibilities.
+- [Architecture](../development/architecture.md) describes the implemented
+  v0.7 architecture and the accepted v0.8-v0.10 extension sequence.
 - [API lifecycle](../development/api-lifecycle.md) defines stability and
   compatibility.
 - [Decision records](../development/decisions/index.md) explain durable choices.
-- [Roadmap](roadmap.md) describes version-level direction toward prescribed
-  measures, mixed problems, 1.0, and future research.
+- [Roadmap](roadmap.md) records v0.8 cleanup, v0.9 prescribed measures, v0.10
+  mixed problems, 1.0, and future research.

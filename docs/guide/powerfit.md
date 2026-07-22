@@ -31,6 +31,19 @@ The fixed-observation inverse fit and the geometric realization check answer
 different questions. For the API-independent derivation, see
 [Inverse fitting from separator observations](../theory/separator-inverse.md).
 
+For namespace selection and lifecycle status, begin with
+[Choosing an API](choosing-api.md). The [glossary](glossary.md) defines gauge,
+component offsets, representation shift, realized face, and active set. Users
+migrating from v0.6.3 should also read the
+[v0.7 migration guide](migration-v0.7.md).
+
+The v0.7 high-level resolver, observation container, fit result, fit entry
+point, and neutral transforms are **stable**. Advanced models, problem and
+operator views, report/realization helpers, and layered convenience views are
+**provisional**. Active-set refinement is **experimental**. The optional
+explicit sparse quadratic backend is **provisional** and supports large static
+sparse observation graphs only.
+
 ## Canonical downstream integration
 
 The repository-owned `examples/chemvoro_workflow.py` script is the canonical
@@ -247,6 +260,29 @@ The result contains:
 - and explicit infeasibility reporting for contradictory hard constraints.
 
 ### Read a fit through its scientific layers
+
+The layers are deliberately one-directional rather than one monolithic result:
+
+```text
+resolved observations + sites
+            |
+            v
+fixed-observation fit
+    |-- fitted state and identification
+    |-- observation predictions and objective
+    |-- graph and operator diagnostics
+    `-- fixed-solver termination
+            |
+            v  (explicit forward realization request)
+realized geometry and requested-image matching
+            |
+            v  (experimental outer loop only)
+active-set path and outer termination
+```
+
+A small algebraic residual does not imply that the requested pair is a realized
+face. Realization and the active-set path are therefore separate objects and
+separate lifecycle layers.
 
 `SeparatorFitResult` keeps all existing flat fields and adds lightweight
 layered views. The views reference existing arrays; they do not copy fitted or
@@ -811,7 +847,7 @@ observations and generic boundary measure rather than chemistry-specific or
 
 The historical `pyvoro2.powerfit` package, broad top-level separator exports,
 and the five historical core names remain deprecated compatibility routes for
-v0.7. They are planned for removal in v0.8. See the
+v0.7. They will be removed in v0.8. See the
 [compatibility reference](../reference/powerfit/index.md),
 [architecture](../development/architecture.md), and
 [API lifecycle](../development/api-lifecycle.md).

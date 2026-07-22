@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-07-17
 - **Related plan:** [v0.7 development plan](../plans/v0.7.md)
+- **Refined by:** [ADR 0006 — v0.8 cleanup release](0006-v0.8-cleanup-release.md)
 
 ## Context
 
@@ -82,9 +83,8 @@ For v0.7:
   which is hidden by default by Python;
 - migration documentation shows the preferred replacements.
 
-The planned removal release is v0.8. The removal may be delayed only by an
-explicit release decision based on real downstream use; it is not an indefinite
-promise.
+The removal release is v0.8. ADR 0006 makes that boundary final and extends the
+cleanup to the other compatibility-only inverse and planar transition surfaces.
 
 The compatibility layer should contain imports, aliases, and narrowly necessary
 wrappers only. It must not duplicate solver logic.

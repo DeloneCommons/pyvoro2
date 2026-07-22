@@ -22,7 +22,7 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   ID-labelled records/reports, and reuse deterministic molecular-shaped
   locality inputs across a CI-scale sparse case and the optional large static
   benchmark.
-- An experimental optional SciPy sparse-direct execution path for the primary
+- A provisional optional SciPy sparse-direct execution path for the primary
   static quadratic separator fit. Explicit `solver='sparse'` reuses the public
   quadratic operator, applies the established per-component gauge handling,
   and reports `sparse` through existing solver metadata. The default `auto`
@@ -72,12 +72,14 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - `AGENTS.md` with repository boundaries, generated-file rules, validation commands, and numerical/architectural invariants for agent-assisted development.
 - `CONTRIBUTING.md` with the development workflow plus compact support, governance, and private security-reporting guidance suitable for the current single-maintainer project.
 - New theory documentation for power diagrams, power weights versus backend radii, global gauge versus disconnected-component offsets, and the separator-based inverse problem.
-- New development documentation covering the current v0.6.3 architecture, the target v0.7 layering, API lifecycle categories, compatibility policy, and initial architecture decision records.
+- New development documentation covering the current v0.6.3 architecture, the implemented v0.7 layering, API lifecycle categories, compatibility policy, and initial architecture decision records.
 - A top-level API-reference overview linking the spatial, planar, and separator-fitting reference sections.
 - Development workflow and documentation-convention policies that define plan, decision, issue, changelog, release, and archival responsibilities for maintainers and coding agents.
-- A release-plan framework with an index, reusable template, and detailed draft v0.7 forward/separator stabilization plan.
+- A release-plan framework with an index, reusable template, the active v0.7 forward/separator stabilization plan, and a draft cleanup-only v0.8 plan.
 - Accepted decision records for the canonical `pyvoro2.inverse.separator` ownership model and one common spatial/planar `TessellationResult` contract.
-- A maintained v0.7 API inventory covering preferred, provisional, experimental, compatibility-only, and internal surfaces plus the planned v0.8 removal horizon for historical inverse imports.
+- A finalized maintainer-approved v0.7 API inventory covering stable, provisional, experimental, compatibility-only, deprecated, and internal surfaces plus the fixed v0.8 removal horizon for historical inverse imports.
+- User-facing “Choosing an API”, v0.6.3-to-v0.7 migration, lifecycle-status, result-layer, and glossary documentation that distinguishes the stable high-level inverse path, provisional advanced separator access, experimental active-set workflow, and compatibility-only historical imports.
+- Accepted ADR 0006 and a draft v0.8 plan defining v0.8 as a feature-free cleanup release: remove the v0.7 shims and aliases, reorganize the flat tests and private Python helpers, then introduce prescribed cell measures in v0.9 and mixed separator-plus-measure fitting in v0.10.
 
 ### Changed
 
@@ -90,12 +92,13 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - Made the five historical separator core names identity aliases to canonical
   primary definitions. `pyvoro2.powerfit` remains a one-way compatibility-only
   package for v0.7 and now emits a hidden-by-default `DeprecationWarning` that
-  points to the canonical namespaces and planned v0.8 removal; broad historical
+  points to the canonical namespaces and fixed v0.8 removal; broad historical
   top-level exports remain available without adding canonical names there.
 - Moved physical ownership of the existing separator-fitting implementation to
   `pyvoro2.inverse.separator`. Historical names, top-level exports, and all
   `pyvoro2.powerfit` module routes remain unchanged one-way compatibility
-  imports; the terminology and high-level inverse API migration remain deferred.
+  imports; the canonical terminology and migration path are now documented
+  explicitly.
 - Spatial and planar `compute(...)` now return `TessellationResult` by default;
   `output='result'` selects it explicitly and `output='cells'` preserves the
   historical raw list or `(cells, diagnostics)` tuple as a one-line migration
@@ -117,10 +120,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   module while preserving the unchanged top-level and `pyvoro2.powerfit`
   helper routes.
 - Reframed the public project documentation around forward and inverse weighted tessellations while keeping prescribed-measure and mixed solvers clearly marked as future work.
-- Replaced internal numbered-stage language with a version-oriented roadmap for v0.7, prescribed cell measures, mixed inverse problems, 1.0, and future research.
+- Replaced internal numbered-stage language with a version-oriented roadmap for v0.7 stabilization, v0.8 cleanup, v0.9 prescribed cell measures, v0.10 mixed inverse problems, 1.0, and future research.
 - Updated the concepts and power-fitting guides to distinguish mathematical weights from backend radii, global gauge from unidentified component offsets, and algebraic fitting from geometric realization.
 - Reworked the theory pages into a more readable mathematical narrative and made the AI-assistance note independent of specific model versions.
-- Clarified current-versus-planned language across architecture and policy pages, then resolved the v0.7 namespace and result decisions: canonical inverse ownership moves to `pyvoro2.inverse.separator`, while both forward namespaces target one structured default result with an explicit raw compatibility route.
+- Clarified current-versus-planned language across architecture and policy pages, then resolved the v0.7 namespace and result decisions: canonical inverse ownership moves to `pyvoro2.inverse.separator`, while both forward namespaces target one structured default result with an explicit raw-output route.
 - Revised the v0.7 plan into an implementation-ready issue sequence with pragmatic immutability guidance, bounded compatibility policy, downstream validation gates, and issue-scoped coding-agent handoff rules.
 - Deferred theory-figure and literature synchronization to a non-blocking follow-up issue after the manuscript reaches its final public form.
 - Updated the source-distribution content check for the new root, reference, workflow, and release-planning documentation files.

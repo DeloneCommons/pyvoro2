@@ -2,7 +2,7 @@
 
 !!! warning "Deprecated in v0.7"
     `pyvoro2.powerfit` is retained only for historical imports during v0.7 and
-    is planned for removal in v0.8. Use `pyvoro2.inverse` for the normal
+    will be removed in v0.8. Use `pyvoro2.inverse` for the normal
     fixed-observation workflow or `pyvoro2.inverse.separator` for advanced
     separator-specific functionality.
 

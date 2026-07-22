@@ -29,10 +29,10 @@ The generated documentation pages are:
 - [01 basic compute](../notebooks/01_basic_compute.md)
 - [02 periodic graph](../notebooks/02_periodic_graph.md)
 - [03 locate and ghost cells](../notebooks/03_locate_and_ghost.md)
-- [04 powerfit workflow](../notebooks/04_powerfit.md)
+- [04 separator-fitting workflow](../notebooks/04_powerfit.md)
 - [05 visualization](../notebooks/05_visualization.md)
-- [06 powerfit reports](../notebooks/06_powerfit_reports.md)
-- [07 powerfit infeasibility](../notebooks/07_powerfit_infeasibility.md)
+- [06 separator-fit reports](../notebooks/06_powerfit_reports.md)
+- [07 separator-fit infeasibility](../notebooks/07_powerfit_infeasibility.md)
 - [08 active-set path diagnostics](../notebooks/08_powerfit_active_path.md)
 
 ## Install the notebook tools

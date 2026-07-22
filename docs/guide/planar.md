@@ -168,12 +168,14 @@ This returns the common `pv2.TessellationResult` bundling:
 - optional normalized vertices,
 - optional normalized topology.
 
-`pv2.PlanarComputeResult` remains an identity alias to `TessellationResult` for
-compatibility. The deprecated `return_result: bool | None = None` selector uses
-`None` to mean “not supplied”; passing either boolean emits a deprecation
-warning. New code uses `output=`.
+`pv2.PlanarComputeResult` remains a compatibility-only identity alias to
+`TessellationResult` during v0.7. The deprecated
+`return_result: bool | None = None` selector uses `None` to mean “not supplied”;
+passing either boolean emits a deprecation warning. Both transition surfaces are
+removed in v0.8. New code uses `TessellationResult` and `output=`.
 
-Code that requires the historical raw return can select it explicitly:
+Code that deliberately needs raw cell dictionaries can select the explicit
+low-level output mode:
 
 ```python
 cells = pv2.compute(pts, domain=cell, output='cells')
@@ -222,9 +224,12 @@ or install both 2D and 3D visualization helpers with:
 pip install "pyvoro2[viz]"
 ```
 
-## Planar power fitting
+## Planar separator fitting
 
-The generic pairwise-separator `powerfit` API now supports planar domains too.
+The canonical separator inverse API supports planar domains as well as 3D
+domains. Use `pyvoro2.inverse` for the normal fixed-observation workflow and
+`pyvoro2.inverse.separator` for advanced models, realization diagnostics, and
+the experimental active-set outer loop.
 The solver vocabulary is shared between 2D and 3D; what changes is the meaning
 of the realized boundary measure:
 
@@ -234,3 +239,6 @@ of the realized boundary measure:
 The current planar domain restriction still applies here: rectangular periodic
 cells are supported, but there is no planar oblique-periodic `PeriodicCell`
 yet.
+
+
+See [Choosing an API](choosing-api.md) and [Separator fitting](powerfit.md) for the canonical imports and lifecycle status.

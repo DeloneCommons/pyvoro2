@@ -197,7 +197,7 @@ def _finish_compute_output(
     | list[dict[str, Any]]
     | tuple[list[dict[str, Any]], TessellationDiagnostics]
 ):
-    """Return structured output or the historical raw compatibility shape."""
+    """Return structured output or the explicit raw output shape."""
 
     if output == 'cells':
         if return_diagnostics:
@@ -308,7 +308,7 @@ def compute(
             and ``radii`` is an error in power mode. Standard mode rejects both
             arguments.
         radii: Per-point non-negative backend radii for ``mode='power'``, with
-            length units. This compatibility representation is not unique and
+            length units. This backend representation is not unique and
             should not be interpreted as physical radii. Radii are rejected in
             standard mode. Finite values do not guarantee a numerically
             resolvable native tessellation. Voro++ evaluates radical geometry
@@ -344,12 +344,13 @@ def compute(
 
         output: ``"result"`` (the default) returns one
             :class:`~pyvoro2.TessellationResult`. ``"cells"`` selects the
-            historical raw list, or the historical ``(cells, diagnostics)``
-            tuple when ``return_diagnostics=True``.
+            explicit raw cell list, or ``(cells, diagnostics)`` when
+            ``return_diagnostics=True``.
 
     Returns:
         A :class:`~pyvoro2.TessellationResult` by default. The explicit
-        ``output="cells"`` compatibility route returns raw cell dictionaries.
+        ``output="cells"`` route returns raw cell dictionaries and is a
+        supported low-level output mode.
 
     Raises:
         ValueError: If inputs are inconsistent or an unknown mode is provided.

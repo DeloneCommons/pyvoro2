@@ -128,17 +128,19 @@ order. Each face can include:
 - `adjacent_cell`: neighbor id
 - `adjacent_shift`: integer shift `(na, nb, nc)` describing which neighbor image produced the face
 
-### Raw-cell compatibility and migration
+### Structured and raw cell output
 
-Existing code that needs the historical raw return can keep it with one added
-keyword:
+The structured result is the normal path. Code that deliberately needs the raw
+cell dictionaries can select the explicit low-level output mode:
 
 ```python
 cells = pyvoro2.compute(points, domain=box, output='cells')
 ```
 
-With `output='cells'`, `return_diagnostics=True` retains the historical
-`(cells, diagnostics)` tuple. With the preferred structured output,
+`output='cells'` is a supported current output mode and is retained in v0.8; it
+is not part of the compatibility-removal list. With this mode,
+`return_diagnostics=True` returns `(cells, diagnostics)`. With the preferred
+structured output,
 diagnostics are stored in `result.tessellation_diagnostics` and the return is
 always one `TessellationResult`:
 

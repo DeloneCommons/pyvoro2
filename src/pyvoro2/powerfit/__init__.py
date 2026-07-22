@@ -52,7 +52,7 @@ from ..inverse.separator import (
 warn(
     'pyvoro2.powerfit is deprecated; use pyvoro2.inverse for fixed-observation '
     'separator fitting or pyvoro2.inverse.separator for advanced workflows. '
-    'The compatibility package is planned for removal in v0.8.',
+    'The compatibility package will be removed in v0.8.',
     DeprecationWarning,
     # A caller-facing stack level attributes a direct import to ``__main__``,
     # where Python shows DeprecationWarning by default. Keep the warning

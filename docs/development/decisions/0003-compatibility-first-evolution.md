@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-17
-- **Refined by:** [ADR 0004 — Canonical inverse namespace](0004-canonical-inverse-namespace.md), [ADR 0005 — Common tessellation result contract](0005-tessellation-result-contract.md)
+- **Refined by:** [ADR 0004 — Canonical inverse namespace](0004-canonical-inverse-namespace.md), [ADR 0005 — Common tessellation result contract](0005-tessellation-result-contract.md), [ADR 0006 — v0.8 cleanup release](0006-v0.8-cleanup-release.md)
 
 ## Context
 
@@ -36,9 +36,10 @@ API evolution is **compatibility-first, but not compatibility-forever**.
   fixed by ADR 0004 and ADR 0005.
 
 For the inverse reorganization, v0.7 is the transition release and v0.8 is the
-planned removal release for `pyvoro2.powerfit` and broad top-level separator
-exports. An extension requires an explicit later release decision based on real
-usage.
+removal release for `pyvoro2.powerfit`, broad top-level separator exports, and
+other compatibility-only routes identified by ADR 0006. The v0.8 cleanup
+decision supersedes the earlier possibility of extending the transition based
+on usage.
 
 ## Consequences
 

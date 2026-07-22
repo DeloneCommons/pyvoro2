@@ -12,7 +12,7 @@ contributors, reviewers, coding agents, and downstream package authors.
 | How do I use the current package? | [User guide](../guide/concepts.md) and [API reference](../reference/index.md) |
 | What mathematics does it implement? | [Theory](../theory/index.md) |
 | How does work move from proposal to release? | [Development workflow](development-workflow.md) |
-| What work is planned for the current release? | [Development plans](plans/index.md), currently the [v0.7 plan](plans/v0.7.md) |
+| What work is planned for the current release? | [Development plans](plans/index.md), currently the [v0.7 plan](plans/v0.7.md); the [v0.8 cleanup plan](plans/v0.8.md) is recorded but inactive |
 | Which concrete APIs are stable, provisional, experimental, or compatibility-only? | [v0.7 API inventory](api-inventory.md) and [API lifecycle](api-lifecycle.md) |
 | How should repository documentation be written? | [Documentation conventions](documentation-conventions.md) |
 | How are modules and layers organized? | [Architecture](architecture.md) |
@@ -36,3 +36,7 @@ functionality.
 Detailed progress belongs in GitHub issues. The API inventory is updated with
 public changes, and completed user-visible behavior is recorded under
 `[Unreleased]` in the changelog before being finalized at release.
+
+User-facing lifecycle and migration decisions are summarized in
+[Choosing an API](../guide/choosing-api.md) and
+[Migrating from v0.6.3 to v0.7](../guide/migration-v0.7.md).

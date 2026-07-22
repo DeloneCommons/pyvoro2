@@ -82,8 +82,9 @@ policy.
 When text combines current and future behavior, label the boundary explicitly.
 For example:
 
-> The current v0.6.3 API accepts `radii=`. Direct `weights=` input is targeted
-> for v0.7; the exact result metadata remains provisional.
+> The v0.7 API accepts direct mathematical `weights=`. The v0.8 plan removes
+> the bounded compatibility layer; prescribed-measure fitting is planned for
+> v0.9 rather than described as current behavior.
 
 Avoid words such as “soon,” “eventually,” or “later” when a more precise status
 is available.
