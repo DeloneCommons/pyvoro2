@@ -71,6 +71,7 @@ nav:
   - Development:
       - Overview: development/index.md
       - Development workflow: development/development-workflow.md
+      - v0.7 release checklist: development/release-checklist-v0.7.md
       - Development plans:
           - Overview: development/plans/index.md
           - v0.7 plan: development/plans/v0.7.md

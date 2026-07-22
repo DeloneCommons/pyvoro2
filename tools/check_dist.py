@@ -86,6 +86,7 @@ REQUIRED_SDIST_SUFFIXES = {
     'docs/development/api-inventory.md',
     'docs/development/documentation-conventions.md',
     'docs/development/development-workflow.md',
+    'docs/development/release-checklist-v0.7.md',
     'docs/development/decisions/0004-canonical-inverse-namespace.md',
     'docs/development/decisions/0005-tessellation-result-contract.md',
     'docs/development/decisions/0006-v0.8-cleanup-release.md',

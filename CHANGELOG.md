@@ -6,127 +6,53 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-22
+
 ### Added
 
-- Reproducible notebook maintenance with a notebook-only `notebooks` extra, a
-  real-Jupyter-kernel output refresh command, non-mutating committed-metadata
-  and clean-execution validation, kernel-visible source-overlay imports, and a
-  narrow `skip-execution` policy that preserves notebook 05's reviewed py3Dmol
-  output during routine automation. Executed outputs from inverse notebooks
-  are published through the existing deterministic, non-executing exporter.
-- A repository-owned, chemistry-neutral downstream integration workflow and
-  compact paper-style regression ladder. The preferred-API examples preserve
-  external IDs and an ID-keyed metadata sidecar, fit and forward-compute from
-  mathematical weights, inspect aligned structured cells, empty state,
-  periodic boundaries, realization and active-set diagnostics, export
-  ID-labelled records/reports, and reuse deterministic molecular-shaped
-  locality inputs across a CI-scale sparse case and the optional large static
-  benchmark.
-- A provisional optional SciPy sparse-direct execution path for the primary
-  static quadratic separator fit. Explicit `solver='sparse'` reuses the public
-  quadratic operator, applies the established per-component gauge handling,
-  and reports `sparse` through existing solver metadata. The default `auto`
-  path remains dense, SciPy remains optional, unsupported ADMM/hard/penalty
-  branches and the active-set outer workflow reject sparse selection, and
-  deterministic benchmark assets record
-  dense/sparse assembly, solve time, matrix storage, and numerical agreement on
-  molecular-shaped connected and disconnected locality graphs.
-- Provisional problem-owned `SeparatorObservationGraphView` and
-  `SeparatorQuadraticOperatorView` access from `SeparatorFitProblem`. The views
-  expose the oriented observation multigraph, dense NumPy and optional lazy
-  SciPy incidence/Laplacian conversions, implied difference targets, effective
-  edge weights, informative components, matrix-free products, observation and
-  L2-regularized right-hand sides, and nullspace/gauge metadata. Repeated,
-  periodic-parallel, and zero-confidence rows retain their observation-column
-  identity. The fixed normal system is available only for squared mismatch
-  without scalar penalties; hard bounds remain separate and are explicitly
-  reported as constrained semantics. Solver execution and package dependencies
-  are unchanged.
-- Layered, non-copying separator result views for fitted state/backend
-  representation, identification and component alignment, observation-space
-  fit, objective and algebraic diagnostics, fixed-solver termination,
-  requested-image realization, optional realized geometry, and experimental
-  active-set termination/path data. Observation views are bound to their
-  originating resolved inputs and reject unrelated pair, confidence, or
-  geometry data, including after copying, pickle reconstruction, or
-  `dataclasses.replace()`. Identification views use the informative observation
-  graph induced only by positive-confidence rows. Hard restrictions and scalar
-  penalties may constrain component offsets but do not make them identified by
-  separator data; only positive L2 regularization is currently reported as
-  guaranteed objective selection of otherwise free component offsets.
-  Existing flat fields, record/report schemas, conflict witnesses, and
-  compatibility routes remain intact.
-- Canonical separator names and a deliberately small `pyvoro2.inverse` surface
-  for resolving separator observations, fitting weights, inspecting fit
-  results, and converting weights/radii; advanced separator objects remain at
-  `pyvoro2.inverse.separator`, with active-set refinement explicitly
-  experimental.
-- A frozen, dimension-neutral `TessellationResult` data contract shared by the
-  spatial and planar namespaces, with input-aligned read-only arrays, explicit
-  optional-geometry capabilities, provisional planar normalization
-  conveniences, and a private common builder.
-- Direct mathematical `weights=` input for spatial and planar
-  `compute(..., mode='power')`, using one common global representation shift
-  before the existing native radius-based calls while retaining `radii=` in
-  power mode.
-- `AGENTS.md` with repository boundaries, generated-file rules, validation commands, and numerical/architectural invariants for agent-assisted development.
-- `CONTRIBUTING.md` with the development workflow plus compact support, governance, and private security-reporting guidance suitable for the current single-maintainer project.
-- New theory documentation for power diagrams, power weights versus backend radii, global gauge versus disconnected-component offsets, and the separator-based inverse problem.
-- New development documentation covering the current v0.6.3 architecture, the implemented v0.7 layering, API lifecycle categories, compatibility policy, and initial architecture decision records.
-- A top-level API-reference overview linking the spatial, planar, and separator-fitting reference sections.
-- Development workflow and documentation-convention policies that define plan, decision, issue, changelog, release, and archival responsibilities for maintainers and coding agents.
-- A release-plan framework with an index, reusable template, the active v0.7 forward/separator stabilization plan, and a draft cleanup-only v0.8 plan.
-- Accepted decision records for the canonical `pyvoro2.inverse.separator` ownership model and one common spatial/planar `TessellationResult` contract.
-- A finalized maintainer-approved v0.7 API inventory covering stable, provisional, experimental, compatibility-only, deprecated, and internal surfaces plus the fixed v0.8 removal horizon for historical inverse imports.
-- User-facing “Choosing an API”, v0.6.3-to-v0.7 migration, lifecycle-status, result-layer, and glossary documentation that distinguishes the stable high-level inverse path, provisional advanced separator access, experimental active-set workflow, and compatibility-only historical imports.
-- Accepted ADR 0006 and a draft v0.8 plan defining v0.8 as a feature-free cleanup release: remove the v0.7 shims and aliases, reorganize the flat tests and private Python helpers, then introduce prescribed cell measures in v0.9 and mixed separator-plus-measure fitting in v0.10.
+- Direct mathematical `weights=` input for spatial and planar power diagrams,
+  with the supplied weights, backend radii, and one common representation shift
+  recorded in the result. Existing valid `radii=` calls remain supported.
+- One frozen, dimension-neutral `TessellationResult` for both forward
+  namespaces. Stable input-aligned fields cover sites, IDs, measures, empty
+  cells, representation metadata, diagnostics, and normalization while raw
+  nested cell records remain deliberately mutable.
+- The stable high-level `pyvoro2.inverse` separator API and canonical
+  implementation ownership under `pyvoro2.inverse.separator`. Provisional
+  layered fit/identification/realization views and graph, incidence, Laplacian,
+  and quadratic-operator access make solver and gauge behavior inspectable.
+- A provisional explicit SciPy-backed `solver='sparse'` path for static,
+  unconstrained quadratic separator fits. SciPy remains optional, `auto`
+  remains dense, backend reporting is explicit, and unsupported Huber,
+  hard-constrained, penalty, and active-set branches reject sparse selection.
+- Repository-owned preferred-API workflows, deterministic paper-style
+  regressions, and static sparse benchmark inputs covering external IDs,
+  disconnected components, infeasibility witnesses, periodic wrong-image
+  realization, active-set diagnostics, dense/sparse agreement, and a large
+  sparse-only case that does not allocate the dense global normal matrix.
+- Reproducible notebook execution and validation with real Jupyter kernels,
+  committed reviewed outputs, deterministic non-executing Markdown export, and
+  notebook-only dependencies outside the ordinary runtime requirements.
+- A maintainer-approved v0.7 lifecycle inventory, migration and API-choice
+  guides, glossary, architecture decisions, contributor workflow, and release
+  checklist. v0.8 is fixed as a cleanup-only compatibility-removal release;
+  prescribed measures and mixed fitting move to v0.9 and v0.10 respectively.
 
 ### Changed
 
-- Added preferred mathematical `weights=` input to the provisional
-  `match_realized_pairs(...)` API while retaining the existing mutually
-  exclusive `radii=` route. Inverse notebooks now use the canonical namespace,
-  layered diagnostics, external-ID observation records where relevant, and
-  weight-first forward/realization calls; their stored outputs are published by
-  the reproducible notebook workflow.
-- Made the five historical separator core names identity aliases to canonical
-  primary definitions. `pyvoro2.powerfit` remains a one-way compatibility-only
-  package for v0.7 and now emits a hidden-by-default `DeprecationWarning` that
-  points to the canonical namespaces and fixed v0.8 removal; broad historical
-  top-level exports remain available without adding canonical names there.
-- Moved physical ownership of the existing separator-fitting implementation to
-  `pyvoro2.inverse.separator`. Historical names, top-level exports, and all
-  `pyvoro2.powerfit` module routes remain unchanged one-way compatibility
-  imports; the canonical terminology and migration path are now documented
-  explicitly.
 - Spatial and planar `compute(...)` now return `TessellationResult` by default;
   `output='result'` selects it explicitly and `output='cells'` preserves the
   historical raw list or `(cells, diagnostics)` tuple as a one-line migration
-  for v0.6.3 callers. Structured diagnostics are stored inside the single
-  result object, including diagnostics computed for `tessellation_check`.
-- `PlanarComputeResult` is now a compatibility-only identity alias to
-  `TessellationResult`. The planar compatibility selector now has the truthful
-  signature `return_result: bool | None = None`, where `None` means omitted and
-  either boolean emits `DeprecationWarning`; equivalent selectors are accepted,
-  conflicting selectors raise `ValueError`, and explicit raw output cannot be
-  combined with normalization.
-- Migrated the published compute notebooks and both distribution smoke tests to
-  exercise the structured result contract directly.
+  for v0.6.3 callers. Structured diagnostics stay inside the result.
+- `match_realized_pairs(...)` now accepts preferred mathematical `weights=` as
+  an alternative to its retained backend-compatible `radii=` route.
+- Historical separator names are identity aliases to canonical definitions.
+  `pyvoro2.powerfit` is a one-way shim, so preferred and compatibility imports
+  share one numerical implementation and compatible object identity.
 - Documented the Voro++ radical/power dynamic-range limitation: finite backend
   radii or a successful weight conversion do not guarantee numerical resolution
   when absolute squared radii or genuine weight ranges dwarf squared geometric
   scales; no universal safe radius cutoff is promised.
-- Moved the sole weight/radius transform implementation to a neutral private
-  module while preserving the unchanged top-level and `pyvoro2.powerfit`
-  helper routes.
-- Reframed the public project documentation around forward and inverse weighted tessellations while keeping prescribed-measure and mixed solvers clearly marked as future work.
-- Replaced internal numbered-stage language with a version-oriented roadmap for v0.7 stabilization, v0.8 cleanup, v0.9 prescribed cell measures, v0.10 mixed inverse problems, 1.0, and future research.
-- Updated the concepts and power-fitting guides to distinguish mathematical weights from backend radii, global gauge from unidentified component offsets, and algebraic fitting from geometric realization.
-- Reworked the theory pages into a more readable mathematical narrative and made the AI-assistance note independent of specific model versions.
-- Clarified current-versus-planned language across architecture and policy pages, then resolved the v0.7 namespace and result decisions: canonical inverse ownership moves to `pyvoro2.inverse.separator`, while both forward namespaces target one structured default result with an explicit raw-output route.
-- Revised the v0.7 plan into an implementation-ready issue sequence with pragmatic immutability guidance, bounded compatibility policy, downstream validation gates, and issue-scoped coding-agent handoff rules.
-- Deferred theory-figure and literature synchronization to a non-blocking follow-up issue after the manuscript reaches its final public form.
-- Updated the source-distribution content check for the new root, reference, workflow, and release-planning documentation files.
 
 ### Fixed
 
@@ -145,9 +71,12 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   successful conversions and inverse-fit results cannot contain NaN or
   infinite radii, weights, or shifts through this path.
 
-### Removed
+### Deprecated
 
-- Obsolete root `DEV_PLAN.md`; its durable content is now split among architecture, API lifecycle, decision records, version-oriented roadmap, release plans, and GitHub issues.
+- `pyvoro2.powerfit`, broad top-level separator exports, five historical
+  separator core aliases, `PlanarComputeResult`, and planar `return_result=`
+  remain tested compatibility-only routes for v0.7 and are removed in v0.8.
+  The explicit `output='cells'` raw route remains supported.
 
 ## [0.6.3] - 2026-03-19
 

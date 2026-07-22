@@ -11,9 +11,10 @@
 and power/Laguerre tessellations**, with particular support for periodic
 topology and inverse fitting of power weights from partial geometric data.
 
-> **Development documentation:** this site tracks the unreleased v0.7
-> development tree. The published v0.6.3 release remains the manuscript
-> baseline and does not yet provide every API shown here.
+> **Release-candidate documentation:** this site tracks the prepared v0.7.0
+> candidate on the development branch. Publication is still pending maintainer
+> approval. The published v0.6.3 release remains the manuscript baseline and
+> does not yet provide every API shown here.
 
 The current v0.7 development tree provides:
 
@@ -315,8 +316,9 @@ python tools/release_check.py
 ## Project status and support
 
 pyvoro2 is currently **beta**. The public v0.6.3 release is the archived
-baseline for the separator-inverse manuscript. The v0.7 development line is
-finalizing the common forward/result contract and preferred separator API.
+baseline for the separator-inverse manuscript. The v0.7.0 release candidate
+contains the common forward/result contract and preferred separator API;
+independent review and public release remain pending maintainer approval.
 v0.8 removes the bounded compatibility layer before new inverse families begin
 in v0.9. The
 [v0.7 development plan](https://delonecommons.github.io/pyvoro2/development/plans/v0.7/) records the active scope,
