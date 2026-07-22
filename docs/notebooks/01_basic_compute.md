@@ -125,7 +125,7 @@ cell_volume, sum_vol
 **Output**
 
 ```text
-(855.0000000000013, 855.0)
+(np.float64(855.0000000000013), 855.0)
 ```
 ## Power/Laguerre tessellation (mode="power")
 

@@ -55,7 +55,7 @@ pprint(res)
 
 ```text
 {'found': array([ True,  True, False]),
- 'owner_id': array([14,  9, -1]),
+ 'owner_id': array([14,  9, -1], dtype=int32),
  'owner_pos': array([[ 0.18860006, -0.32417755, -0.216762  ],
        [ 0.96167068,  0.37108397,  0.30091855],
        [        nan,         nan,         nan]])}

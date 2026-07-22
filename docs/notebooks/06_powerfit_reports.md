@@ -38,6 +38,46 @@ observations = inverse.resolve_separator_observations(
 )
 observations.to_records(use_ids=True)
 ```
+**Output**
+
+```text
+({'constraint_index': 0,
+  'site_i': 100,
+  'site_j': 101,
+  'shift': (0, 0, 0),
+  'target': 0.35,
+  'confidence': 1.0,
+  'measurement': 'fraction',
+  'distance': 2.0,
+  'target_fraction': 0.35,
+  'target_position': 0.7,
+  'input_index': 0,
+  'explicit_shift': False},
+ {'constraint_index': 1,
+  'site_i': 101,
+  'site_j': 102,
+  'shift': (0, 0, 0),
+  'target': 0.55,
+  'confidence': 1.0,
+  'measurement': 'fraction',
+  'distance': 2.0,
+  'target_fraction': 0.55,
+  'target_position': 1.1,
+  'input_index': 1,
+  'explicit_shift': False},
+ {'constraint_index': 2,
+  'site_i': 100,
+  'site_j': 102,
+  'shift': (0, 0, 0),
+  'target': 0.5,
+  'confidence': 1.0,
+  'measurement': 'fraction',
+  'distance': 4.0,
+  'target_fraction': 0.5,
+  'target_position': 2.0,
+  'input_index': 2,
+  'explicit_shift': False})
+```
 ## 2) Fit power weights and export low-level reports
 ```python
 model = separator.FitModel(
@@ -66,6 +106,11 @@ fit_report["summary"]
 
 fit_report["weight_shift"]
 ```
+**Output**
+
+```text
+0.0
+```
 ## 3) Check realized pairs against the actual power tessellation
 ```python
 realized = separator.match_realized_pairs(
@@ -80,6 +125,16 @@ realized = separator.match_realized_pairs(
 realized_rows = realized.to_records(observations, use_ids=True)
 realized_report = realized.to_report(observations, use_ids=True)
 realized_report["summary"]
+```
+**Output**
+
+```text
+{'n_constraints': 3,
+ 'n_realized': 2,
+ 'n_same_shift': 2,
+ 'n_other_shift': 0,
+ 'n_unrealized': 1,
+ 'n_unaccounted_pairs': 0}
 ```
 ## 4) Run the self-consistent active-set solver
 ## Final-state vs optimization-path reports
@@ -109,10 +164,30 @@ solve_report["summary"]
 
 solve_report["path_summary"]
 ```
+**Output**
+
+```text
+{'n_iterations': 12,
+ 'ever_fit_active_graph_disconnected': False,
+ 'ever_fit_active_effective_graph_disconnected': False,
+ 'ever_fit_active_offsets_unidentified_by_data': False,
+ 'ever_unaccounted_pairs': False,
+ 'max_fit_active_graph_components': 1,
+ 'max_fit_active_effective_graph_components': 1,
+ 'max_n_unaccounted_pairs': 0,
+ 'first_fit_active_graph_disconnected_iter': None,
+ 'first_fit_active_effective_graph_disconnected_iter': None,
+ 'first_unaccounted_pairs_iter': None}
+```
 ## 5) Serialize the report bundle
 ```python
 text = separator.dumps_report_json(solve_report, sort_keys=True)
 text[:200]
+```
+**Output**
+
+```text
+'{\n  "connectivity": {\n    "active_effective_graph": {\n      "connected_components": [\n        [\n          100,\n          101,\n          102\n        ]\n      ],\n      "fully_connected": true,\n      "iso'
 ```
 The numerical API stays array-oriented, while the report helpers make it
 easy to hand plain Python dictionaries or rows to downstream packages.

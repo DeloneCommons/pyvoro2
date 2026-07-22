@@ -38,12 +38,41 @@ print("final active mask:", path.active_mask)
 print("final active graph components:", result.connectivity.active_graph.n_components)
 print("path summary:", path.summary)
 ```
+**Output**
+
+```text
+termination: self_consistent
+final active mask: [ True  True False]
+final active graph components: 1
+path summary: ActiveSetPathSummary(n_iterations=2, ever_fit_active_graph_disconnected=True, ever_fit_active_effective_graph_disconnected=True, ever_fit_active_offsets_unidentified_by_data=True, ever_unaccounted_pairs=False, max_fit_active_graph_components=3, max_fit_active_effective_graph_components=3, max_n_unaccounted_pairs=0, first_fit_active_graph_disconnected_iter=1, first_fit_active_effective_graph_disconnected_iter=1, first_unaccounted_pairs_iter=None)
+```
 ```python
 for row in path.history:
     print(row)
+```
+**Output**
+
+```text
+ActiveSetIteration(iteration=1, n_active=2, n_realized=2, n_added=2, n_removed=0, rms_residual_all=0.0, max_residual_all=0.0, weight_step_norm=0.0, n_active_fit=0, fit_active_graph_n_components=3, fit_active_effective_graph_n_components=3, fit_active_offsets_identified_by_data=False, n_unaccounted_pairs=0)
+ActiveSetIteration(iteration=2, n_active=2, n_realized=2, n_added=0, n_removed=0, rms_residual_all=0.0, max_residual_all=0.0, weight_step_norm=0.0, n_active_fit=2, fit_active_graph_n_components=1, fit_active_effective_graph_n_components=1, fit_active_offsets_identified_by_data=True, n_unaccounted_pairs=0)
 ```
 Notice the distinction between `n_active_fit` (the mask that actually generated the current iterate) and `n_active` (the post-toggle mask used for the next iterate). This lets downstream code say whether disconnectivity happened **during** optimization, not just in the final answer.
 ```python
 solve_report = result.to_report()
 solve_report["path_summary"]
+```
+**Output**
+
+```text
+{'n_iterations': 2,
+ 'ever_fit_active_graph_disconnected': True,
+ 'ever_fit_active_effective_graph_disconnected': True,
+ 'ever_fit_active_offsets_unidentified_by_data': True,
+ 'ever_unaccounted_pairs': False,
+ 'max_fit_active_graph_components': 3,
+ 'max_fit_active_effective_graph_components': 3,
+ 'max_n_unaccounted_pairs': 0,
+ 'first_fit_active_graph_disconnected_iter': 1,
+ 'first_fit_active_effective_graph_disconnected_iter': 1,
+ 'first_unaccounted_pairs_iter': None}
 ```

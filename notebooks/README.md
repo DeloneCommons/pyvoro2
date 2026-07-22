@@ -7,12 +7,18 @@ Generated Markdown copies for the docs live under `docs/notebooks/` and are
 produced by `python tools/export_notebooks.py`. Export is intentionally
 non-executing and renders outputs already stored in each source notebook.
 
-For v0.7,
-[issue #20](https://github.com/DeloneCommons/pyvoro2/issues/20) establishes that
-source notebooks are committed in an executed state, except for explicitly
-tagged skipped cells. It will add clean Jupyter-kernel execution and metadata
-validation after the notebooks have migrated to the preferred v0.7 API. Do not
-regenerate the currently missing outputs against the pre-v0.7 API.
+Source notebooks are committed in an executed state. Refresh selected sources
+with `python tools/execute_notebooks.py NAME.ipynb`, validate committed metadata
+and clean execution with `python tools/check_notebooks.py`, then export them.
+With no filename, execution and validation discover every `.ipynb` file in this
+directory in sorted order. The commands use a fresh kernel per notebook and run
+from the repository root.
+
+The `skip-execution` cell tag is reserved for deliberately preserved rich
+output. The py3Dmol display cells in notebook 05 use it so routine maintenance
+does not replace their reviewed HTML/custom MIME bundles with environment-
+specific payloads. Refresh those cells manually in a reviewed visualization
+environment when their source changes, then restore the tag before committing.
 
 Included notebooks:
 

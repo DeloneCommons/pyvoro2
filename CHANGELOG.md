@@ -8,6 +8,12 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Added
 
+- Reproducible notebook maintenance with a notebook-only `notebooks` extra, a
+  real-Jupyter-kernel output refresh command, non-mutating committed-metadata
+  and clean-execution validation, kernel-visible source-overlay imports, and a
+  narrow `skip-execution` policy that preserves notebook 05's reviewed py3Dmol
+  output during routine automation. Executed outputs from inverse notebooks
+  are published through the existing deterministic, non-executing exporter.
 - A repository-owned, chemistry-neutral downstream integration workflow and
   compact paper-style regression ladder. The preferred-API examples preserve
   external IDs and an ID-keyed metadata sidecar, fit and forward-compute from
@@ -79,8 +85,8 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   `match_realized_pairs(...)` API while retaining the existing mutually
   exclusive `radii=` route. Inverse notebooks now use the canonical namespace,
   layered diagnostics, external-ID observation records where relevant, and
-  weight-first forward/realization calls; their execution and stored-output
-  publication remain assigned to issue #20.
+  weight-first forward/realization calls; their stored outputs are published by
+  the reproducible notebook workflow.
 - Made the five historical separator core names identity aliases to canonical
   primary definitions. `pyvoro2.powerfit` remains a one-way compatibility-only
   package for v0.7 and now emits a hidden-by-default `DeprecationWarning` that

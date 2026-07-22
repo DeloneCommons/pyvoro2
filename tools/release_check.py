@@ -95,6 +95,8 @@ def main() -> int:
     args = parser.parse_args()
 
     _run('flake8', 'src', 'tests', 'tools', 'benchmarks', 'examples')
+    # Notebook checking executes clean in-memory copies and must not refresh
+    # committed outputs during release validation.
     _run(sys.executable, 'tools/check_notebooks.py')
     _run(sys.executable, 'tools/export_notebooks.py', '--check')
     _run(sys.executable, 'tools/gen_readme.py', '--check')

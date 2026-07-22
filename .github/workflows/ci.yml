@@ -38,6 +38,8 @@ jobs:
           python -m pip install .[all]
       - name: Validate notebooks
         run: python tools/check_notebooks.py
+      - name: Test notebook maintenance tools
+        run: pytest -q tests/test_notebook_tools.py tests/test_text_generation_tools.py tests/test_release_tools.py
       - name: Check generated files
         run: |
           python tools/export_notebooks.py --check

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate committed notebooks and execute clean in-memory copies."""
+"""Refresh stored outputs by executing repository notebooks."""
 
 from __future__ import annotations
 
@@ -11,15 +11,15 @@ from typing import Sequence
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            'Validate committed execution metadata and execute clean in-memory '
-            'copies through a fresh Jupyter kernel.'
+            'Clear ordinary stored outputs, execute each notebook in a fresh '
+            'Jupyter kernel, and save it after successful execution.'
         ),
     )
     parser.add_argument(
         'notebooks',
         nargs='*',
         help=(
-            'optional notebook filenames under notebooks/ to validate; '
+            'optional notebook filenames under notebooks/ to refresh; '
             'defaults to every *.ipynb file'
         ),
     )
@@ -32,24 +32,25 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Validate and cleanly execute every requested notebook."""
+    """Refresh every requested notebook and report whether it changed."""
 
     args = _parser().parse_args(argv)
     from _notebook_tools import (
         NotebookMaintenanceError,
-        check_notebook,
         iter_notebooks,
+        refresh_notebook,
     )
 
     try:
         notebooks = iter_notebooks(args.notebooks or None)
         for notebook in notebooks:
-            print(f'Validating {notebook.name}...')
-            check_notebook(notebook, use_src=args.use_src)
+            print(f'Executing {notebook.name}...')
+            changed = refresh_notebook(notebook, use_src=args.use_src)
+            print('  saved' if changed else '  unchanged')
     except NotebookMaintenanceError as exc:
         print(exc, file=sys.stderr)
         return 1
-    print(f'Validated {len(notebooks)} notebook(s).')
+    print(f'Executed {len(notebooks)} notebook(s).')
     return 0
 
 

@@ -216,11 +216,11 @@ When a change affects several document types, update each according to its role:
 
 Notebook execution and Markdown export are separate responsibilities. The
 exporter renders outputs already stored in source notebooks and must not execute
-code. Targeted for v0.7 by
-[#20](https://github.com/DeloneCommons/pyvoro2/issues/20), source notebooks are
-committed in an executed state unless a code cell carries the documented
-skip-execution tag; notebook refresh uses real Jupyter semantics and keeps
-notebook packages outside pyvoro2 runtime dependencies.
+code. Source notebooks are committed in an executed state unless a code cell
+carries the documented `skip-execution` tag. Refresh and validation use fresh
+Jupyter kernels; validation executes an in-memory copy, and notebook packages
+remain outside pyvoro2 runtime dependencies. Reviewed rich output in skipped
+cells is refreshed manually rather than churned by routine automation.
 
 Generated outputs must be committed with their sources.
 

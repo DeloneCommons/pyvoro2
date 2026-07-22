@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
 
@@ -30,3 +31,40 @@ def test_export_notebooks_check_ignores_crlf(tmp_path: Path) -> None:
         )
 
     assert export_notebooks.export_notebooks(output_dir, check=True) == 0
+
+
+def test_markdown_export_is_nonexecuting_and_deterministic(tmp_path: Path) -> None:
+    sentinel = tmp_path / 'executed'
+    notebook = tmp_path / 'stored-output.ipynb'
+    notebook.write_text(
+        json.dumps(
+            {
+                'cells': [
+                    {
+                        'cell_type': 'code',
+                        'execution_count': 1,
+                        'metadata': {},
+                        'outputs': [
+                            {
+                                'name': 'stdout',
+                                'output_type': 'stream',
+                                'text': 'stored output\n',
+                            }
+                        ],
+                        'source': f"open({str(sentinel)!r}, 'w').close()",
+                    }
+                ],
+                'metadata': {},
+                'nbformat': 4,
+                'nbformat_minor': 5,
+            }
+        ),
+        encoding='utf-8',
+    )
+
+    first = export_notebooks.export_markdown(notebook)
+    second = export_notebooks.export_markdown(notebook)
+
+    assert first == second
+    assert 'stored output' in first
+    assert not sentinel.exists()

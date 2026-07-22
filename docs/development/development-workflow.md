@@ -136,6 +136,13 @@ Every implementation change should:
 - record durable decisions in decision records;
 - report the validation commands that were run.
 
+For notebook changes, keep execution, validation, and publication separate:
+refresh selected source notebooks with `python tools/execute_notebooks.py`, run
+`python tools/check_notebooks.py` for non-mutating metadata and clean-kernel
+validation, then regenerate stored-output pages with
+`python tools/export_notebooks.py`. Ordinary MkDocs builds do not execute
+notebooks.
+
 A coding agent must read the active plan, linked issue, and relevant decision
 records before changing public behavior. Unresolved design gates require a
 maintainer decision rather than an invented implementation choice.

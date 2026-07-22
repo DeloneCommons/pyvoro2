@@ -89,7 +89,10 @@ Do not edit these files directly:
 - `docs/notebooks/*.md` are generated from `notebooks/*.ipynb` by
   `python tools/export_notebooks.py`.
 
-When changing a source, regenerate the corresponding output and include both in
+Notebook execution is separate from export. Refresh changed source notebooks
+with `python tools/execute_notebooks.py NAME.ipynb`, validate all committed
+notebooks with `python tools/check_notebooks.py`, then regenerate the Markdown
+pages. When changing a source, include its executed source and generated page in
 the same change.
 
 ## Development setup and checks
@@ -113,8 +116,15 @@ mkdocs build --strict
 Notebook changes additionally require:
 
 ```bash
+python tools/execute_notebooks.py NAME.ipynb
 python tools/check_notebooks.py
+python tools/export_notebooks.py
+python tools/export_notebooks.py --check
 ```
+
+Cells tagged `skip-execution` are intentionally omitted from automated refresh
+and validation execution. Use that tag only for reviewed rich output that must
+be refreshed manually, never to hide an execution failure.
 
 Before a release or a broad refactor, run:
 

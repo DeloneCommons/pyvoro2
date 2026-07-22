@@ -27,5 +27,9 @@ def test_check_notebooks_help() -> None:
     assert 'optional notebook filenames' in _run_help('check_notebooks.py')
 
 
+def test_execute_notebooks_help() -> None:
+    assert 'optional notebook filenames' in _run_help('execute_notebooks.py')
+
+
 def test_check_dist_help() -> None:
     assert 'dist_dir' in _run_help('check_dist.py')

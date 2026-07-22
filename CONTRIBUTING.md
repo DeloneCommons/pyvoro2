@@ -91,16 +91,17 @@ Regeneration commands:
 
 ```bash
 python tools/gen_readme.py
+python tools/execute_notebooks.py NAME.ipynb
 python tools/export_notebooks.py
 ```
 
-Notebook execution is separate from Markdown export. The current exporter
-renders outputs already stored in the source notebook, while the current
-checker validates code execution without refreshing those outputs. The v0.7
-[#20](https://github.com/DeloneCommons/pyvoro2/issues/20) work adds clean
-Jupyter-semantic execution and committed-output validation after the notebooks
-migrate to the preferred v0.7 API; do not regenerate the currently missing
-outputs against the pre-v0.7 API.
+Notebook execution, validation, and Markdown export are separate. The refresh
+command clears ordinary stored outputs, executes with a fresh Jupyter kernel,
+and saves only after success. The checker requires execution counts and runs a
+clean in-memory copy without rewriting source files. The exporter only renders
+stored outputs. Cells tagged `skip-execution` retain reviewed rich output and
+are not executed by ordinary refresh/check commands; do not use the tag to hide
+failures.
 
 ### Documentation roles
 
@@ -219,7 +220,10 @@ mkdocs build --strict
 Notebook changes require execution checks:
 
 ```bash
+python tools/execute_notebooks.py NAME.ipynb
 python tools/check_notebooks.py
+python tools/export_notebooks.py
+python tools/export_notebooks.py --check
 ```
 
 Optional randomized and cross-wrapper checks are available for geometry-heavy

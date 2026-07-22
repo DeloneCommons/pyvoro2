@@ -60,6 +60,15 @@ print('global representation shift:', state.global_representation_shift)
 print('observation components:', identification.effective_observation_components)
 print('component alignment:', identification.component_alignment_policy)
 ```
+**Output**
+
+```text
+mathematical weights: [0. 0.]
+predicted fractions: [0.5 0.5 0.5]
+global representation shift: 0.0
+observation components: ((0, 1),)
+component alignment: disconnected model-coupling components are centered to mean zero; within-component solver conventions are retained
+```
 ## 2) Add hard feasibility and a near-boundary penalty
 
 The fitting model separates mismatch, hard feasibility, and soft penalties.
@@ -91,6 +100,11 @@ fit_penalized = inverse.fit_weights_from_separators(
 )
 
 print('predicted fraction with penalty:', fit_penalized.predicted_fraction[0])
+```
+**Output**
+
+```text
+predicted fraction with penalty: 0.11117712562281495
 ```
 ## 3) Compute structured cells and match requested images
 
@@ -143,6 +157,16 @@ print('boundary measure:', realized.geometry.boundary_measure)
 print('tessellation ok:', realized.geometry.tessellation_diagnostics.ok)
 print('ID-labelled fit records:', fit.to_records(observations, use_ids=True))
 ```
+**Output**
+
+```text
+sites: [{'site_id': 205, 'metadata': {'label': 'left-site', 'source_row': 0}, 'empty': False, 'cell_measure': 0.5000000000000001, 'boundary_count': 6}, {'site_id': 101, 'metadata': {'label': 'right-site', 'source_row': 1}, 'empty': False, 'cell_measure': 0.5, 'boundary_count': 6}]
+same requested shift: [ True  True False]
+another shift: [False False  True]
+boundary measure: [1. 1. 1.]
+tessellation ok: True
+ID-labelled fit records: ({'constraint_index': 0, 'site_i': 205, 'site_j': 101, 'shift': (-1, 0, 0), 'measurement': 'fraction', 'target': 0.5, 'predicted': 0.5, 'predicted_fraction': 0.5, 'predicted_position': 0.09999999999999999, 'residual': 0.0, 'alpha': 12.500000000000002, 'beta': 0.5, 'z_obs': 0.0, 'z_fit': 0.0, 'algebraic_residual': 0.0, 'edge_weight': 156.25000000000006}, {'constraint_index': 1, 'site_i': 205, 'site_j': 101, 'shift': (0, 0, 0), 'measurement': 'fraction', 'target': 0.5, 'predicted': 0.5, 'predicted_fraction': 0.5, 'predicted_position': 0.4, 'residual': 0.0, 'alpha': 0.7812499999999999, 'beta': 0.5, 'z_obs': 0.0, 'z_fit': 0.0, 'algebraic_residual': 0.0, 'edge_weight': 0.6103515624999998}, {'constraint_index': 2, 'site_i': 205, 'site_j': 101, 'shift': (1, 0, 0), 'measurement': 'fraction', 'target': 0.5, 'predicted': 0.5, 'predicted_fraction': 0.5, 'predicted_position': 0.8999999999999999, 'residual': 0.0, 'alpha': 0.154320987654321, 'beta': 0.5, 'z_obs': 0.0, 'z_fit': 0.0, 'algebraic_residual': 0.0, 'edge_weight': 0.023814967230605097})
+```
 ## 4) Self-consistent active-set refinement
 
 For larger candidate sets, the active-set solver repeatedly fits, tessellates,
@@ -173,6 +197,15 @@ print('constraint status:', candidate_diagnostics.status)
 print('marginal constraints:', path.marginal_constraint_indices)
 print('path summary:', path.summary)
 ```
+**Output**
+
+```text
+termination: self_consistent
+active mask: [ True  True False]
+constraint status: ('stable_active', 'stable_active', 'toggled_inactive')
+marginal constraints: (2,)
+path summary: ActiveSetPathSummary(n_iterations=3, ever_fit_active_graph_disconnected=False, ever_fit_active_effective_graph_disconnected=False, ever_fit_active_offsets_unidentified_by_data=False, ever_unaccounted_pairs=False, max_fit_active_graph_components=1, max_fit_active_effective_graph_components=1, max_n_unaccounted_pairs=0, first_fit_active_graph_disconnected_iter=None, first_fit_active_effective_graph_disconnected_iter=None, first_unaccounted_pairs_iter=None)
+```
 ## Disconnected path example
 
 The next example starts from an empty active set so the first fitted subproblem is completely disconnected, while the final active set reconnects into the expected nearest-neighbor chain. This illustrates the difference between final-state diagnostics and optimization-path diagnostics.
@@ -199,4 +232,11 @@ path = result_path.path
 print('final active graph components:', result_path.connectivity.active_graph.n_components)
 print('path summary:', path.summary)
 print('first history row:', path.history[0])
+```
+**Output**
+
+```text
+final active graph components: 1
+path summary: ActiveSetPathSummary(n_iterations=2, ever_fit_active_graph_disconnected=True, ever_fit_active_effective_graph_disconnected=True, ever_fit_active_offsets_unidentified_by_data=True, ever_unaccounted_pairs=False, max_fit_active_graph_components=3, max_fit_active_effective_graph_components=3, max_n_unaccounted_pairs=0, first_fit_active_graph_disconnected_iter=1, first_fit_active_effective_graph_disconnected_iter=1, first_unaccounted_pairs_iter=None)
+first history row: ActiveSetIteration(iteration=1, n_active=2, n_realized=2, n_added=2, n_removed=0, rms_residual_all=0.0, max_residual_all=0.0, weight_step_norm=0.0, n_active_fit=0, fit_active_graph_n_components=3, fit_active_effective_graph_n_components=3, fit_active_offsets_identified_by_data=False, n_unaccounted_pairs=0)
 ```
