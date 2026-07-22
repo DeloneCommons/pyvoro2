@@ -6,7 +6,7 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
-## [0.7.0] - 2026-07-22
+## [0.7.0] - 2026-07-23
 
 ### Added
 

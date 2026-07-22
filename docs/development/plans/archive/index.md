@@ -10,8 +10,13 @@ The archive preserves:
 - the validation and release gates used;
 - what was delivered;
 - what was deferred and where it moved;
-- links to the release, changelog, milestone, and follow-up work.
+- links to the release tag, changelog, milestone, and follow-up work.
 
-No plan has been archived yet. The draft
-[v0.7 development plan](../v0.7.md) will move here after v0.7.0 is released or
-if it is superseded by another approved plan.
+| Plan | Status | Target | Finalized | Release model |
+|---|---|---|---|---|
+| [v0.7 forward and separator API stabilization](v0.7.md) | Completed | v0.7.0 | 2026-07-23 | Git tag and PyPI transition release; no GitHub Release or Zenodo record. |
+
+The archived plan is included in the final v0.7.0 source. Its separate
+[release checklist](../../release-checklist-v0.7.md) remains the operational
+record for external CI, tagging, PyPI publication, public verification, and
+closure of issue #18 and the milestone.

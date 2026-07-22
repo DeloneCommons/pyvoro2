@@ -25,14 +25,14 @@ tessellations:
 - prescribed cell measures begin in v0.9 and mixed separator-plus-measure
   problems in v0.10, not as unrelated one-off solvers.
 
-The v0.7 development line is stabilizing the forward/result contract and the
-separator inverse API. ADR 0004 and ADR 0005 fix the canonical inverse namespace
-and common result direction. Read the current
-[v0.7 development plan](docs/development/plans/v0.7.md) and
-[v0.7 API inventory](docs/development/api-inventory.md) before implementing
-work for that release. Do not begin public v0.7 implementation until the plan is
-marked **Active** and the work is linked to an issue. Do not present target
-functionality as implemented.
+v0.7.0 finalized the forward/result contract and separator inverse API. ADR
+0004 and ADR 0005 fix the canonical inverse namespace and common result
+direction. The completed
+[v0.7 development plan](docs/development/plans/archive/v0.7.md) and
+[v0.7 API inventory](docs/development/api-inventory.md) record that release.
+The v0.8 cleanup plan remains Draft until its milestone, issue set, approval
+date, and Active status are recorded; do not begin v0.8 implementation or
+present draft target functionality as implemented before activation.
 
 ## Authoritative sources
 
@@ -45,7 +45,7 @@ Use the following order when sources disagree:
    target responsibilities.
 5. The active development plan defines approved release scope, dependencies,
    and release gates.
-6. The active-release API inventory assigns lifecycle and migration status to
+6. The current release API inventory assigns lifecycle and migration status to
    concrete public surfaces.
 7. `docs/project/roadmap.md` defines version-level direction, not current
    behavior.

@@ -20,12 +20,12 @@ The sequencing rule is:
 > transition architecture, then add prescribed-measure and mixed inverse
 > methods as separate releases.
 
-## v0.7 — Forward and separator API stabilization
+## v0.7 — Forward and separator API stabilization (completed)
 
 The v0.7 line establishes a chemvoro-ready forward and separator-inverse
 contract.
 
-Target outcomes:
+Delivered outcomes:
 
 - one dimension-neutral `TessellationResult` returned by default in 2D and 3D,
   with explicit capability differences and raw `output='cells'` access;
@@ -46,7 +46,7 @@ Target outcomes:
   paper-/chemvoro-shaped integration validation.
 
 The detailed scope, dependencies, decisions, and release gates are in the
-[v0.7 development plan](../development/plans/v0.7.md).
+[archived v0.7 development plan](../development/plans/archive/v0.7.md).
 
 ## v0.8 — Cleanup and compatibility removal
 

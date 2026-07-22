@@ -3,15 +3,18 @@
 This checklist records issue
 [#18](https://github.com/DeloneCommons/pyvoro2/issues/18) release
 qualification without duplicating the release contract in the
-[v0.7 plan](plans/v0.7.md) or the publication process in the
-[development workflow](development-workflow.md). Checkmarks record completed
-evidence for the release-candidate commit. Publication and post-publication
-items remain unchecked until the maintainer approves and performs them.
+[archived v0.7 plan](plans/archive/v0.7.md) or the publication process in the
+[development workflow](development-workflow.md). The completed plan is
+included in the final release source; this checklist remains the operational
+record for release-commit CI, integration, the tag, tagged artifacts, PyPI
+publication, and post-publication verification. By approved maintainer
+decision, v0.7.0 has no GitHub Release or Zenodo archive.
 
 ## 1. Prerequisite and contract review
 
-- [x] The issue-#16 baseline is committed, the API inventory records maintainer
-      approval on 2026-07-22, and the v0.7 plan remains Active.
+- [x] The issue-#16 baseline is committed, the amended API inventory records
+      maintainer approval on 2026-07-23, and the completed v0.7 plan is archived
+      in the final release source.
 - [x] Required milestone issues #6–#17, #20, and #21 are closed; #18 is the
       only open milestone issue. Issues #19 and #23 are unmilestoned and do not
       block v0.7.
@@ -43,7 +46,7 @@ passed, and is not a release blocker.
 
 ## 5. Strict documentation validation
 
-- [x] `mkdocs build --strict` passes with current release-candidate metadata.
+- [x] `mkdocs build --strict` passes with final v0.7.0 metadata.
 
 ## 6. Source distribution and wheel validation
 
@@ -74,9 +77,9 @@ passed, and is not a release blocker.
 
 ## 9. Multi-Python and cross-platform CI
 
-- [ ] The release-candidate commit passes Linux, macOS, and Windows tests on
+- [ ] The final release commit passes Linux, macOS, and Windows tests on
       Python 3.10, 3.11, 3.12, and 3.13.
-- [ ] The release-candidate commit passes CI lint/generated-file,
+- [ ] The final release commit passes CI lint/generated-file,
       docs/notebook, and distribution jobs.
 - [ ] Tagged cibuildwheel jobs produce and test the supported wheel matrix.
 
@@ -88,37 +91,42 @@ passed, and is not a release blocker.
 - [x] README, guides, inventory, examples, benchmark scope, and changelog agree
       on preferred APIs, compatibility routes, v0.8 removals, lifecycle status,
       and the static sparse boundary.
-- [x] The v0.7 plan remains Active and its Outcome does not claim publication.
+- [x] The completed v0.7 plan is archived in the final source. Its Outcome
+      records the approved release model and local evidence without claiming
+      that unchecked CI, tag, PyPI, or public-smoke operations have passed.
 
 ## 11. Maintainer review
 
-- [ ] An independent review has accepted the repository diff, qualification
-      evidence, artifacts, and candidate CI state.
-- [ ] The maintainer has explicitly authorized irreversible release actions.
+- [x] Independent review accepted the repository diff, qualification evidence,
+      release-source corrections, and amended API inventory.
+- [x] On 2026-07-23 the maintainer authorized integration, tagging, tagged
+      artifact validation, and PyPI publication under the approved v0.7 release
+      model.
 
-## 12. Tag, GitHub release, PyPI, and Zenodo publication
+## 12. Integration, tag, and PyPI publication
 
 - [ ] The reviewed release commit is integrated according to the `dev` to
       `main` branch model.
 - [ ] The annotated or signed `v0.7.0` tag is created and pushed.
 - [ ] Tagged wheel/sdist artifacts are collected and independently validated.
-- [ ] Version 0.7.0 is published to PyPI and a GitHub release is created.
-- [ ] Zenodo archive ownership/integration is confirmed and the archive is
-      created or verified.
+- [ ] Version 0.7.0 is published to PyPI.
+- [x] No GitHub Release or Zenodo version record is created for v0.7.0. The
+      next full GitHub/Zenodo archival release is planned for v0.8.0.
 
 ## 13. Post-publication verification
 
 - [ ] A clean install from PyPI passes the public smoke workflow.
-- [ ] Published artifact hashes/metadata, the GitHub release, documentation
-      deployment, and Zenodo record are verified.
+- [ ] Published artifact hashes/metadata and documentation deployment are
+      verified.
 
 ## 14. Plan outcome, completion, and archival
 
-- [ ] Issue #18 and the v0.7 milestone are closed after publication
-      verification.
-- [ ] The v0.7 Outcome records the tag, delivered contract, sparse-path result,
-      compatibility horizon, deviations, and deferrals.
-- [ ] The plan status is changed to Completed, the plan is moved to the archive,
-      and the plan indexes are updated.
-- [ ] The draft v0.8 cleanup plan is activated only through its documented
-      maintainer-approval mechanics.
+- [x] The v0.7 Outcome records the delivered contract, sparse-path result,
+      compatibility horizon, approved release model, deviations, and deferrals.
+- [x] The plan status is Completed, the plan is moved to the archive in the
+      final release source, and the plan indexes are updated.
+- [ ] Issue #18 and the v0.7 milestone are closed after PyPI publication and
+      public verification.
+- [ ] The draft v0.8 cleanup plan is activated only after the v0.7.0 tag and PyPI publication
+      are verified and its milestone, issue set, and approval date are
+      recorded.

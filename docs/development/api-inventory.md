@@ -1,11 +1,11 @@
 # v0.7 public API inventory
 
-- **Status:** Finalized for v0.7.0 release qualification; maintainer-approved 2026-07-22
+- **Status:** Finalized and maintainer-approved for v0.7.0 on 2026-07-23
 - **Baseline:** v0.6.3
 - **Target:** v0.7.0
 - **Baseline audit:** [issue #6](https://github.com/DeloneCommons/pyvoro2/issues/6), completed 2026-07-18
 - **Policy:** [API lifecycle and compatibility](api-lifecycle.md)
-- **Plan:** [v0.7 development plan](plans/v0.7.md)
+- **Plan:** [archived v0.7 development plan](plans/archive/v0.7.md)
 
 This inventory is the authoritative v0.7 lifecycle contract for public imports,
 return routes, record schemas, defaults, and scientific semantics. It has been

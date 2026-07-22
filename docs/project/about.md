@@ -128,9 +128,9 @@ for the development workflow.
 - [Development workflow](../development/development-workflow.md) defines how
   plans, decisions, issues, implementation, changelog entries, and releases fit
   together.
-- [v0.7 development plan](../development/plans/v0.7.md) records the active
-  release scope, accepted decisions, work packages, validation, and release
-  gates.
+- [Archived v0.7 development plan](../development/plans/archive/v0.7.md)
+  records the delivered release scope, accepted decisions, work packages,
+  qualification evidence, and deferrals.
 - [Architecture](../development/architecture.md) describes the implemented
   v0.7 architecture and the accepted v0.8-v0.10 extension sequence.
 - [API lifecycle](../development/api-lifecycle.md) defines stability and

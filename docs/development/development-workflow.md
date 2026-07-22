@@ -57,7 +57,7 @@ still needs tests, documentation, and a changelog entry when user-visible.
 |---|---|
 | **Draft** | Scope and decisions are being reviewed. It is not blanket authorization to implement unresolved design choices. |
 | **Active** | The maintainer has approved the release scope and issue decomposition. |
-| **Completed** | Release gates were met and the corresponding release was made. |
+| **Completed** | The final release source was approved, its outcome was recorded, and the plan was archived. A versioned checklist may still track external CI, tag, publication, and verification operations. |
 | **Superseded** | Another plan replaced the work before completion; the replacement is linked. |
 
 For the current lead-maintainer model, activation can be recorded directly in
@@ -177,16 +177,24 @@ Before releasing:
 Conditional work that was not required for release should be recorded as
 omitted or deferred, not silently removed from history.
 
-### 8. Release and archive the plan
+### 8. Finalize the release source and archive the plan
 
-After the release is published:
+After repository-local qualification and maintainer approval, include the
+completed plan in the final release source:
 
 1. add an outcome section to the plan;
-2. link the release tag, changelog section, milestone, important decision
-   records, and deferred follow-up issues;
+2. link the intended release tag, changelog section, milestone, important
+   decision records, and deferred follow-up issues;
 3. set `Status: Completed`;
 4. move the file to `docs/development/plans/archive/`;
 5. update the plans index and roadmap if the next release direction changed.
+
+A version-specific release checklist may remain open for external operations
+that cannot be proven inside the source commit: supported CI, tag creation,
+tagged artifact validation, package-index publication, deployed documentation,
+and public smoke tests. Archiving the plan does not imply that unchecked
+operations passed. A failed operational gate requires a corrective release
+commit before publication or an explicit documented recovery.
 
 The changelog remains the concise user-facing record of delivered behavior. The
 archived plan preserves why the release was structured as it was and what was

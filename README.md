@@ -11,12 +11,14 @@
 and power/Laguerre tessellations**, with particular support for periodic
 topology and inverse fitting of power weights from partial geometric data.
 
-> **Release-candidate documentation:** this site tracks the prepared v0.7.0
-> candidate on the development branch. Publication is still pending maintainer
-> approval. The published v0.6.3 release remains the manuscript baseline and
-> does not yet provide every API shown here.
+> **v0.7.0 documentation:** this site describes the v0.7.0 transition release,
+> distributed through the `v0.7.0` Git tag and PyPI. The archived v0.6.3 release
+> remains the software baseline
+> cited by the current separator-inverse manuscript. By maintainer decision,
+> v0.7.0 has no GitHub Release or Zenodo record; the next full GitHub/Zenodo
+> archival release is planned for v0.8.0.
 
-The current v0.7 development tree provides:
+v0.7.0 provides:
 
 - standard Voronoi tessellations;
 - power/Laguerre tessellations directly from mathematical weights, with the
@@ -315,14 +317,15 @@ python tools/release_check.py
 
 ## Project status and support
 
-pyvoro2 is currently **beta**. The public v0.6.3 release is the archived
-baseline for the separator-inverse manuscript. The v0.7.0 release candidate
-contains the common forward/result contract and preferred separator API;
-independent review and public release remain pending maintainer approval.
-v0.8 removes the bounded compatibility layer before new inverse families begin
+pyvoro2 is currently **beta**. v0.7.0 is the current transition release,
+distributed through the `v0.7.0` Git tag and PyPI, and contains the common
+forward/result contract and preferred separator API. The archived v0.6.3 release remains the software baseline cited by the
+separator-inverse manuscript. No GitHub Release or Zenodo archive was created
+for v0.7.0; v0.8 removes the bounded compatibility layer and is intended to be
+the next full GitHub/Zenodo archival release before new inverse families begin
 in v0.9. The
-[v0.7 development plan](https://delonecommons.github.io/pyvoro2/development/plans/v0.7/) records the active scope,
-accepted decisions, validation, and release criteria.
+[archived v0.7 development plan](https://delonecommons.github.io/pyvoro2/development/plans/archive/v0.7/) records the
+delivered scope, accepted decisions, qualification evidence, and deferrals.
 
 Reproducible bugs and focused feature proposals are welcome through GitHub
 issues. Development is currently led by one maintainer, so support is

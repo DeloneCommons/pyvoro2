@@ -12,7 +12,7 @@ contributors, reviewers, coding agents, and downstream package authors.
 | How do I use the current package? | [User guide](../guide/concepts.md) and [API reference](../reference/index.md) |
 | What mathematics does it implement? | [Theory](../theory/index.md) |
 | How does work move from proposal to release? | [Development workflow](development-workflow.md) |
-| What work is planned for the current release? | [Development plans](plans/index.md), currently the [v0.7 plan](plans/v0.7.md); the [v0.8 cleanup plan](plans/v0.8.md) is recorded but inactive |
+| What work is planned next? | [Development plans](plans/index.md); the [v0.7 plan](plans/archive/v0.7.md) is archived and the [v0.8 cleanup plan](plans/v0.8.md) is recorded but inactive |
 | Which concrete APIs are stable, provisional, experimental, or compatibility-only? | [v0.7 API inventory](api-inventory.md) and [API lifecycle](api-lifecycle.md) |
 | How should repository documentation be written? | [Documentation conventions](documentation-conventions.md) |
 | How are modules and layers organized? | [Architecture](architecture.md) |
@@ -29,8 +29,9 @@ behavior. User guides and reference pages describe that behavior for callers.
 
 Accepted decision records and architecture documentation define durable
 boundaries. An **active** development plan defines approved release scope and
-gates. The v0.7 plan is **Active** and linked to its GitHub milestone and issue
-sequence. The roadmap describes version-level direction rather than current
+gates. The v0.7 plan is **Completed** and archived; no plan is currently Active.
+The v0.8 draft remains inactive until its documented activation mechanics are
+satisfied. The roadmap describes version-level direction rather than current
 functionality.
 
 Detailed progress belongs in GitHub issues. The API inventory is updated with

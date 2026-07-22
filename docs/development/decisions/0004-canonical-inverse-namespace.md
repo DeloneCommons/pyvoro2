@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-17
-- **Related plan:** [v0.7 development plan](../plans/v0.7.md)
+- **Related plan:** [v0.7 development plan](../plans/archive/v0.7.md)
 - **Refined by:** [ADR 0006 — v0.8 cleanup release](0006-v0.8-cleanup-release.md)
 
 ## Context

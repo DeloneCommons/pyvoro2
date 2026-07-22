@@ -9,21 +9,10 @@ milestones.
 
 ## Current plan
 
-| Plan | Status | Target | Purpose |
-|---|---|---|---|
-| [v0.7 forward and separator API stabilization](v0.7.md) | Active | v0.7.0 | Establish the common forward/result and canonical separator-inverse contract needed by chemvoro and later inverse methods. |
-
-The v0.7 namespace and result decisions are accepted. The plan links the
-milestone and issue sequence; implementation proceeds issue by issue under its
-dependencies and release gates.
-
-Notebook execution and published-output work is tracked by
-[#20](https://github.com/DeloneCommons/pyvoro2/issues/20). It follows downstream
-workflow validation in
-[#15](https://github.com/DeloneCommons/pyvoro2/issues/15) and blocks final
-documentation in [#16](https://github.com/DeloneCommons/pyvoro2/issues/16) and
-release qualification in
-[#18](https://github.com/DeloneCommons/pyvoro2/issues/18).
+No development plan is active. The completed
+[v0.7 forward and separator API stabilization plan](archive/v0.7.md) is in the
+archive and the v0.7 release checklist separately tracks the remaining external
+CI, tag, PyPI, and verification operations.
 
 ## Next draft plan
 
@@ -31,15 +20,17 @@ release qualification in
 |---|---|---|---|
 | [v0.8 cleanup and compatibility removal](v0.8.md) | Draft | v0.8.0 | Remove the bounded v0.7 compatibility layer, reorganize tests and private helpers, and resolve deferred maintenance findings without adding features. |
 
-The v0.8 draft is intentionally inactive until v0.7.0 is released and its
-milestone and issue set are approved. Prescribed cell measures move to v0.9 and
-mixed separator-plus-measure work to v0.10.
+The v0.8 draft remains inactive until the v0.7.0 tag and PyPI publication are
+verified and the v0.8 milestone, issue set, and maintainer approval date are
+recorded. v0.8.0 is intended to receive the next GitHub Release and Zenodo
+archive. Prescribed cell measures move to v0.9 and mixed
+separator-plus-measure work to v0.10.
 
 ## Plan lifecycle
 
 - **Draft** — scope and design are being reviewed, or activation mechanics remain.
 - **Active** — approved for implementation and linked to a milestone.
-- **Completed** — released and moved to the archive.
+- **Completed** — final release source approved, outcome recorded, and moved to the archive; external publication checks may remain in a versioned release checklist.
 - **Superseded** — replaced by another named plan.
 
 See [Development workflow](../development-workflow.md) for the complete process.

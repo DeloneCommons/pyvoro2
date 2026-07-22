@@ -2,15 +2,15 @@
 
 This document has three roles. It describes the **factual v0.6.3
 implementation**, which is the software baseline used by the separator-inverse
-manuscript, records the **current v0.7 development architecture**, and explains
+manuscript, records the **v0.7.0 release architecture**, and explains
 the cleanup and extension boundaries accepted for later releases.
 
-!!! note "Development-tree documentation"
-    The v0.6.3 section remains a historical baseline. The v0.7 sections describe
-    the implemented development tree being qualified for release, not the
-    published v0.6.3 wheel. The canonical inverse namespace and common result
-    contract are fixed by ADR 0004 and ADR 0005; lifecycle status is finalized
-    in the [v0.7 API inventory](api-inventory.md).
+!!! note "v0.7.0 release documentation"
+    The v0.6.3 section remains a historical manuscript baseline. The v0.7
+    sections describe the released v0.7.0 contract. The canonical inverse
+    namespace and common result contract are fixed by ADR 0004 and ADR 0005;
+    lifecycle status is finalized in the
+    [v0.7 API inventory](api-inventory.md).
 
 ## Architectural principles
 
@@ -302,7 +302,7 @@ output.
 
 The mathematical inverse variable is a power weight, but the v0.6.3 forward API
 accepted only `radii=` because Voro++ represents weights as squared radii. The
-current v0.7 development tree resolves that baseline limitation for both
+v0.7.0 resolves that baseline limitation for both
 `compute(...)` functions.
 
 ### Separator-specific public organization
