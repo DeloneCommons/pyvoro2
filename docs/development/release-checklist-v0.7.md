@@ -5,10 +5,10 @@ This checklist records issue
 qualification without duplicating the release contract in the
 [archived v0.7 plan](plans/archive/v0.7.md) or the publication process in the
 [development workflow](development-workflow.md). The completed plan is
-included in the final release source; this checklist remains the operational
-record for release-commit CI, integration, the tag, tagged artifacts, PyPI
-publication, and post-publication verification. By approved maintainer
-decision, v0.7.0 has no GitHub Release or Zenodo archive.
+included in the final release source; this checklist is the completed
+operational record for release-commit CI, integration, the tag, tagged
+artifacts, PyPI publication, and post-publication verification. By approved
+maintainer decision, v0.7.0 has no GitHub Release or Zenodo archive.
 
 ## 1. Prerequisite and contract review
 
@@ -77,11 +77,11 @@ passed, and is not a release blocker.
 
 ## 9. Multi-Python and cross-platform CI
 
-- [ ] The final release commit passes Linux, macOS, and Windows tests on
+- [x] The final release commit passes Linux, macOS, and Windows tests on
       Python 3.10, 3.11, 3.12, and 3.13.
-- [ ] The final release commit passes CI lint/generated-file,
+- [x] The final release commit passes CI lint/generated-file,
       docs/notebook, and distribution jobs.
-- [ ] Tagged cibuildwheel jobs produce and test the supported wheel matrix.
+- [x] Tagged cibuildwheel jobs produce and test the supported wheel matrix.
 
 ## 10. Release metadata and changelog preparation
 
@@ -105,18 +105,18 @@ passed, and is not a release blocker.
 
 ## 12. Integration, tag, and PyPI publication
 
-- [ ] The reviewed release commit is integrated according to the `dev` to
+- [x] The reviewed release commit is integrated according to the `dev` to
       `main` branch model.
-- [ ] The annotated or signed `v0.7.0` tag is created and pushed.
-- [ ] Tagged wheel/sdist artifacts are collected and independently validated.
-- [ ] Version 0.7.0 is published to PyPI.
+- [x] The annotated or signed `v0.7.0` tag is created and pushed.
+- [x] Tagged wheel/sdist artifacts are collected and independently validated.
+- [x] Version 0.7.0 is published to PyPI.
 - [x] No GitHub Release or Zenodo version record is created for v0.7.0. The
       next full GitHub/Zenodo archival release is planned for v0.8.0.
 
 ## 13. Post-publication verification
 
-- [ ] A clean install from PyPI passes the public smoke workflow.
-- [ ] Published artifact hashes/metadata and documentation deployment are
+- [x] A clean install from PyPI passes the public smoke workflow.
+- [x] Published artifact hashes/metadata and documentation deployment are
       verified.
 
 ## 14. Plan outcome, completion, and archival
@@ -125,8 +125,24 @@ passed, and is not a release blocker.
       compatibility horizon, approved release model, deviations, and deferrals.
 - [x] The plan status is Completed, the plan is moved to the archive in the
       final release source, and the plan indexes are updated.
-- [ ] Issue #18 and the v0.7 milestone are closed after PyPI publication and
-      public verification.
-- [ ] The draft v0.8 cleanup plan is activated only after the v0.7.0 tag and PyPI publication
-      are verified and its milestone, issue set, and approval date are
-      recorded.
+- [x] PyPI publication and public verification are complete; issue #18 and the
+      v0.7 milestone are ready to close.
+- [x] The v0.8 cleanup plan remains Draft through v0.7 closure. Activation is a
+      separate post-v0.7 maintainer decision after its milestone, issue set,
+      approval date, and scope are recorded.
+
+## 15. Publication completion record
+
+- Final v0.7.0 source and tag commit:
+  `5335d6fa201eaabe025b6bc70c8e71ccb9286b11`.
+- At publication, `main` and `v0.7.0` resolved to the same reviewed commit;
+  this checklist-completion change is post-release documentation and does not
+  alter the tagged source.
+- Final branch CI and the tagged wheel/sdist workflow completed successfully.
+- Tagged artifacts were independently validated before upload, and v0.7.0 was
+  published to PyPI.
+- Clean public no-SciPy and SciPy-backed sparse installation smoke checks
+  passed, and deployed documentation was verified.
+- No GitHub Release or Zenodo version record was created for v0.7.0, as
+  approved. The next full package, GitHub Release, and Zenodo archival release
+  is planned for v0.8.0.
