@@ -9,22 +9,17 @@ milestones.
 
 ## Current plan
 
-No development plan is active. The completed
-[v0.7 forward and separator API stabilization plan](archive/v0.7.md) is in the
-archive and the v0.7 release checklist separately tracks the remaining external
-CI, tag, PyPI, and verification operations.
-
-## Next draft plan
-
 | Plan | Status | Target | Purpose |
 |---|---|---|---|
-| [v0.8 cleanup and compatibility removal](v0.8.md) | Draft | v0.8.0 | Remove the bounded v0.7 compatibility layer, reorganize tests and private helpers, and resolve deferred maintenance findings without adding features. |
+| [v0.8 technical maintenance and Python 3.14](v0.8.md) | Active | v0.8.0 | Remove the bounded v0.7 compatibility layer, reorganize tests and private helpers, add Python 3.14 and the supported wheel matrix, and resolve deferred maintenance findings without adding numerical features. |
 
-The v0.8 draft remains inactive until the v0.7.0 tag and PyPI publication are
-verified and the v0.8 milestone, issue set, and maintainer approval date are
-recorded. v0.8.0 is intended to receive the next GitHub Release and Zenodo
-archive. Prescribed cell measures move to v0.9 and mixed
-separator-plus-measure work to v0.10.
+The plan is linked to [milestone 2](https://github.com/DeloneCommons/pyvoro2/milestone/2).
+v0.8.0 is intended to receive the next GitHub Release and Zenodo archive.
+Prescribed cell measures remain in v0.9 and mixed separator-plus-measure work
+remains in v0.10.
+
+The completed [v0.7 forward and separator API stabilization plan](archive/v0.7.md)
+is preserved in the archive.
 
 ## Plan lifecycle
 

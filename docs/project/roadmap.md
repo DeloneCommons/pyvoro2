@@ -48,11 +48,12 @@ Delivered outcomes:
 The detailed scope, dependencies, decisions, and release gates are in the
 [archived v0.7 development plan](../development/plans/archive/v0.7.md).
 
-## v0.8 — Cleanup and compatibility removal
+## v0.8 — Technical maintenance and Python 3.14
 
-v0.8 is intentionally a **feature-free maintenance release**. It cleans the
-architecture established in v0.7 before a second inverse observation family is
-added.
+v0.8 is intentionally a **technical-maintenance release without new numerical
+functionality**. It cleans the architecture established in v0.7, extends the
+supported Python and binary-distribution matrix, and qualifies that foundation
+before a second inverse observation family is added.
 
 Target outcomes:
 
@@ -62,6 +63,10 @@ Target outcomes:
 - reorganize the flat test suite into responsibility-based subdirectories;
 - move root private Python helpers into `pyvoro2._internal`, without renaming
   compiled `_core` and `_core2d` extensions or adding a public `core` namespace;
+- add standard Python 3.14 support while retaining Python 3.10–3.13;
+- build and test Python 3.10–3.14 wheels for Linux x86_64, Windows AMD64,
+  macOS arm64, and macOS x86_64;
+- qualify source distributions through an isolated sdist-to-wheel round trip;
 - resolve non-critical consistency and maintenance findings deferred from the
   v0.7 final audit;
 - preserve stable v0.7 numerical behavior and canonical public workflows;
@@ -72,7 +77,7 @@ The removal decision is based on clean architecture and usability, not on
 preserving hypothetical historical callers. `output='cells'` remains an
 explicit useful raw-data mode unless a separate future decision changes it.
 
-See the draft [v0.8 cleanup plan](../development/plans/v0.8.md) and
+See the active [v0.8 technical-maintenance plan](../development/plans/v0.8.md) and
 [ADR 0006](../development/decisions/0006-v0.8-cleanup-release.md).
 
 ## v0.9 — Prescribed cell measures
