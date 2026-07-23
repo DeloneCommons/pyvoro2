@@ -6,15 +6,21 @@ on:
       - "v*"
   workflow_dispatch:
 
-jobs:
-  build:
-    name: Build wheels (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+env:
+  CIBW_SKIP: >-
+    cp3??t-* pp* gp* *-musllinux* *-manylinux_i686
+    *-manylinux_{aarch64,ppc64le,s390x,armv7l,riscv64}
+    *-win32 *-win_arm64 *-macosx_universal2
+  CIBW_TEST_EXTRAS: "test"
+  CIBW_TEST_COMMAND: >-
+    python -m pip check &&
+    python "{project}/tools/check_installed_package.py"
+    --repo-root "{project}" --require-scipy
 
+jobs:
+  wheels-manylinux-x86_64:
+    name: Wheels (manylinux x86_64)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -22,37 +28,174 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v3.4.0
+      - name: Build and test wheels
+        uses: pypa/cibuildwheel@v3.4.1
         env:
-          CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
-          CIBW_SKIP: "pp* *-musllinux*"
-          CIBW_ARCHS_WINDOWS: "auto64"
-          CIBW_TEST_EXTRAS: "test"
-          CIBW_TEST_COMMAND: "pytest -q {project}/tests"
-          # If you later want faster builds, you can disable testing here and rely on CI job.
-          # CIBW_TEST_SKIP: "*"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_BUILD: >-
+            cp310-manylinux_x86_64 cp311-manylinux_x86_64
+            cp312-manylinux_x86_64 cp313-manylinux_x86_64
+            cp314-manylinux_x86_64
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ runner.os }}
+          name: wheels-manylinux-x86_64
           path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  wheels-windows-amd64:
+    name: Wheels (Windows AMD64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build and test wheels
+        uses: pypa/cibuildwheel@v3.4.1
+        env:
+          CIBW_ARCHS_WINDOWS: "AMD64"
+          CIBW_BUILD: >-
+            cp310-win_amd64 cp311-win_amd64 cp312-win_amd64
+            cp313-win_amd64 cp314-win_amd64
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-amd64
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  wheels-macos-arm64:
+    name: Wheels (macOS arm64)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build and test wheels
+        uses: pypa/cibuildwheel@v3.4.1
+        env:
+          CIBW_ARCHS_MACOS: "arm64"
+          CIBW_BUILD: >-
+            cp310-macosx_arm64 cp311-macosx_arm64 cp312-macosx_arm64
+            cp313-macosx_arm64 cp314-macosx_arm64
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-arm64
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  wheels-macos-x86_64:
+    name: Wheels (macOS x86_64)
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build and test wheels
+        uses: pypa/cibuildwheel@v3.4.1
+        env:
+          CIBW_ARCHS_MACOS: "x86_64"
+          CIBW_BUILD: >-
+            cp310-macosx_x86_64 cp311-macosx_x86_64
+            cp312-macosx_x86_64 cp313-macosx_x86_64
+            cp314-macosx_x86_64
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-x86_64
+          path: wheelhouse/*.whl
+          if-no-files-found: error
 
   sdist:
     name: Build sdist
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: Build sdist
         run: |
-          python -m pip install -U pip build
+          python -m pip install --upgrade pip build
           python -m build --sdist
+
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
           name: sdist
           path: dist/*.tar.gz
+          if-no-files-found: error
+
+  validate:
+    name: Validate release artifacts
+    needs:
+      - wheels-manylinux-x86_64
+      - wheels-windows-amd64
+      - wheels-macos-arm64
+      - wheels-macos-x86_64
+      - sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Download complete artifact set
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*"
+          path: release-dist
+          merge-multiple: true
+
+      - name: Install artifact validators
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install twine
+
+      - name: Validate wheel matrix and distribution contents
+        run: |
+          python tools/check_wheel_matrix.py release-dist
+          python tools/check_dist.py release-dist
+          python -m twine check release-dist/*
+
+      - name: Create clean aggregate-wheel environment
+        run: python -m venv "${{ runner.temp }}/pyvoro2-wheel-venv"
+
+      - name: Install and check aggregate manylinux wheel
+        run: |
+          "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" \
+            -m pip install --upgrade pip
+          "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" \
+            -m pip install \
+            release-dist/pyvoro2-*-cp314-cp314-manylinux*x86_64.whl
+          "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" -m pip check
+          "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" \
+            tools/check_installed_package.py \
+            --repo-root "${{ github.workspace }}" --forbid-scipy
+
+      - name: Upload release-ready distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-distributions
+          path: |
+            release-dist/*.whl
+            release-dist/*.tar.gz
+          if-no-files-found: error

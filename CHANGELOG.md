@@ -15,6 +15,9 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   with explicit installed-module provenance and forward/inverse smoke tests.
   Distribution CI now rebuilds and installs a wheel from the generated sdist
   in a fresh no-SciPy environment.
+- Complete standard CPython 3.10–3.14 binary wheels for manylinux x86_64,
+  Windows AMD64, macOS arm64, and macOS x86_64, with native installed-wheel
+  checks and aggregate release-artifact validation.
 
 ## [0.7.0] - 2026-07-23
 

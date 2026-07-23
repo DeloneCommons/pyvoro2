@@ -98,6 +98,7 @@ REQUIRED_SDIST_SUFFIXES = {
     'tools/build_wheel_from_sdist.py',
     'tools/check_installed_package.py',
     'tools/check_dist.py',
+    'tools/check_wheel_matrix.py',
     'tools/_notebook_tools.py',
     'tools/check_notebooks.py',
     'tools/execute_notebooks.py',

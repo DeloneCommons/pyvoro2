@@ -23,6 +23,10 @@ Main entry points:
   inverse workflows. Use `--forbid-scipy` for a base installation.
 - `python tools/check_dist.py dist` — verify that built sdists and wheels
   contain the expected key files.
+- `python tools/check_wheel_matrix.py release-dist` — require the complete
+  CPython 3.10–3.14 release matrix (20 supported native wheels and one matching
+  sdist), validate wheel tags, Python/runtime dependency metadata, and project
+  identity, and require both native extension modules in every wheel.
 
 Install the focused notebook stack with:
 
