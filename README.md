@@ -265,12 +265,13 @@ Optional extras:
 - `pyvoro2[all]` for the full local notebook, docs, lint, test, and release
   validation stack.
 
-Source builds require Python 3.10+, a C++17 compiler, CMake 3.20 or newer,
-and Python development headers. Ninja is recommended because the build backend
-uses CMake efficiently with it. Typical toolchains are GCC or Clang on Linux,
-Xcode Command Line Tools on macOS, and Visual Studio Build Tools with the
-"Desktop development with C++" workload on Windows. These are source-build
-requirements, not pyvoro2 runtime dependencies.
+Source builds support standard GIL-enabled CPython 3.10–3.14 and require a
+C++17 compiler, CMake 3.20 or newer, and Python development headers.
+Free-threaded CPython builds are not currently supported. Ninja is recommended
+because the build backend uses CMake efficiently with it. Typical toolchains
+are GCC or Clang on Linux, Xcode Command Line Tools on macOS, and Visual Studio
+Build Tools with the "Desktop development with C++" workload on Windows. These
+are source-build requirements, not pyvoro2 runtime dependencies.
 
 For an editable runtime-only build:
 

@@ -61,9 +61,10 @@ activation, scope changes, release review, and archival rules.
 
 ## Development environment
 
-pyvoro2 requires Python 3.10 or newer and a native source-build toolchain.
-These tools compile the two extension modules; they are not Python runtime
-dependencies.
+pyvoro2 supports standard GIL-enabled CPython 3.10–3.14 source builds and
+requires a native source-build toolchain. Free-threaded CPython builds are not
+currently supported. These tools compile the two extension modules; they are
+not Python runtime dependencies.
 
 | Platform | Required source-build tools |
 |---|---|
@@ -86,12 +87,11 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[all]"
 ```
 
-The normal command uses PEP 517 build isolation and obtains
-`scikit-build-core`, `pybind11`, and the build-time NumPy headers declared in
-`pyproject.toml`. In a controlled offline environment, install those declared
-build requirements into the environment first and use
-`--no-build-isolation`; do not add them to pyvoro2 runtime dependencies merely
-to simplify local bootstrapping.
+The normal command uses PEP 517 build isolation and obtains the
+`scikit-build-core` and `pybind11` requirements declared in `pyproject.toml`.
+In a controlled offline environment, install those declared build requirements
+into the environment first and use `--no-build-isolation`; do not add them to
+pyvoro2 runtime dependencies merely to simplify local bootstrapping.
 
 Verify the editable build before changing code:
 
