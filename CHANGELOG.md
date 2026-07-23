@@ -11,6 +11,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - Standard GIL-enabled CPython 3.14 source-build and package-metadata support,
   while retaining Python 3.10–3.13 support. The isolated build toolchain now
   uses Python-3.14-compatible pybind11 3 and scikit-build-core releases.
+- Source-install CI qualification for Python 3.14 on Linux, macOS, and Windows,
+  with explicit installed-module provenance and forward/inverse smoke tests.
+  Distribution CI now rebuilds and installs a wheel from the generated sdist
+  in a fresh no-SciPy environment.
 
 ## [0.7.0] - 2026-07-23
 

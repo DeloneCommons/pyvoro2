@@ -15,7 +15,12 @@ Main entry points:
   copy in a fresh Jupyter kernel without rewriting repository files.
 - `python tools/gen_readme.py` — regenerate `README.md` from the MkDocs source.
 - `python tools/release_check.py` — run the combined local release-preparation
-  checks.
+  checks, including an isolated sdist-to-wheel round trip.
+- `python tools/build_wheel_from_sdist.py dist` — select exactly one generated
+  sdist and rebuild its wheel with pip build isolation.
+- `python tools/check_installed_package.py --require-scipy` — verify installed
+  module provenance, native loading, and representative 2D, 3D, and canonical
+  inverse workflows. Use `--forbid-scipy` for a base installation.
 - `python tools/check_dist.py dist` — verify that built sdists and wheels
   contain the expected key files.
 

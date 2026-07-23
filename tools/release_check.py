@@ -31,13 +31,21 @@ def _fresh_build_dirs() -> None:
     shutil.rmtree(BUILD_DIR, ignore_errors=True)
 
 
+def _distribution_artifacts() -> list[Path]:
+    """Return built distributions without relying on shell glob expansion."""
+
+    return sorted((*DIST_DIR.glob('*.tar.gz'), *DIST_DIR.glob('*.whl')))
+
+
 def _smoke_test_wheel() -> None:
-    """Install the built wheel into a temporary virtualenv and smoke-test it."""
+    """Install the rebuilt wheel into a temporary base environment and test it."""
 
     wheels = sorted(DIST_DIR.glob('*.whl'))
-    if not wheels:
-        raise RuntimeError('no wheel found in dist/')
-    wheel = wheels[-1]
+    if len(wheels) != 1:
+        raise RuntimeError(
+            f'expected exactly one rebuilt wheel in dist/, found {len(wheels)}'
+        )
+    wheel = wheels[0]
 
     with tempfile.TemporaryDirectory(prefix='pyvoro2-release-check-') as tmp:
         env_dir = Path(tmp) / 'venv'
@@ -46,29 +54,14 @@ def _smoke_test_wheel() -> None:
         bindir = 'Scripts' if sys.platform.startswith('win') else 'bin'
         python = env_dir / bindir / 'python'
         _run(str(python), '-m', 'pip', 'install', str(wheel))
-        smoke = (
-            "import sys; "
-            "import numpy as np; "
-            "import pyvoro2 as pv; "
-            "import pyvoro2.inverse as inverse; "
-            "import pyvoro2.planar as pv2; "
-            "pts3 = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float); "
-            "result3 = pv.compute(pts3, domain=pv.Box(((-5.0, 5.0), (-5.0, 5.0), "
-            "(-5.0, 5.0))), mode='standard'); "
-            "assert isinstance(result3, pv.TessellationResult); "
-            "assert len(result3.cells) == 2; "
-            "pts2 = np.array([[0.25, 0.5], [0.75, 0.5]], dtype=float); "
-            "result2 = pv2.compute(pts2, domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))), "
-            "return_edges=True); "
-            "assert isinstance(result2, pv.TessellationResult); "
-            "assert len(result2.cells) == 2; "
-            "fit = inverse.fit_weights_from_separators("
-            "pts2, [(0, 1, 0.25)], connectivity_check='diagnose'); "
-            "assert fit.status == 'optimal'; "
-            "assert fit.solver == 'analytic'; "
-            "assert 'scipy' not in sys.modules"
+        _run(str(python), '-m', 'pip', 'check')
+        _run(
+            str(python),
+            str(REPO_ROOT / 'tools' / 'check_installed_package.py'),
+            '--repo-root',
+            str(REPO_ROOT),
+            '--forbid-scipy',
         )
-        _run(str(python), '-c', smoke)
 
 
 def main() -> int:
@@ -108,8 +101,16 @@ def main() -> int:
         return 0
 
     _fresh_build_dirs()
-    _run(sys.executable, '-m', 'build')
-    _run(sys.executable, '-m', 'twine', 'check', 'dist/*')
+    _run(sys.executable, '-m', 'build', '--sdist')
+    _run(sys.executable, 'tools/build_wheel_from_sdist.py', 'dist')
+    artifacts = _distribution_artifacts()
+    _run(
+        sys.executable,
+        '-m',
+        'twine',
+        'check',
+        *(str(path) for path in artifacts),
+    )
     _run(sys.executable, 'tools/check_dist.py', 'dist')
     if not args.skip_smoke_test:
         _smoke_test_wheel()

@@ -95,6 +95,8 @@ REQUIRED_SDIST_SUFFIXES = {
     'docs/development/plans/template.md',
     'docs/development/plans/archive/index.md',
     'docs/project/roadmap.md',
+    'tools/build_wheel_from_sdist.py',
+    'tools/check_installed_package.py',
     'tools/check_dist.py',
     'tools/_notebook_tools.py',
     'tools/check_notebooks.py',
