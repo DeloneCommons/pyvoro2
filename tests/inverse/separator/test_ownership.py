@@ -13,7 +13,7 @@ import pyvoro2.inverse as inverse
 import pyvoro2.inverse.separator as separator
 
 
-PACKAGE_ROOT = Path(__file__).resolve().parents[1] / 'src' / 'pyvoro2'
+PACKAGE_ROOT = Path(__file__).resolve().parents[3] / 'src' / 'pyvoro2'
 CANONICAL_ROOT = PACKAGE_ROOT / 'inverse' / 'separator'
 
 

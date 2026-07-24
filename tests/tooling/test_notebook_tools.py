@@ -13,7 +13,7 @@ nbformat = pytest.importorskip('nbformat')
 pytest.importorskip('nbclient')
 pytest.importorskip('ipykernel')
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 TOOLS = REPO_ROOT / 'tools'
 MODULE_PATH = TOOLS / '_notebook_tools.py'
 CHECKER_PATH = TOOLS / 'check_notebooks.py'

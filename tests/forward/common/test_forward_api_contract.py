@@ -1,9 +1,4 @@
-"""Characterization of the v0.6.3 forward compatibility surface.
-
-These tests intentionally describe the baseline before v0.7 changes the
-preferred result contract.  They should remain attached to the explicit raw
-compatibility route introduced by the v0.7 result work.
-"""
+"""Canonical forward imports, signatures, results, and raw-output regressions."""
 
 from __future__ import annotations
 

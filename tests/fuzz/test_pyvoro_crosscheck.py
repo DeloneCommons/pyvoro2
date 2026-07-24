@@ -7,6 +7,8 @@ import pytest
 
 import pyvoro2 as pv
 
+from ._support import rng_for_run
+
 
 def _sample_points(rng: np.random.Generator, n: int, bounds, pad_frac: float = 0.05):
     (xmin, xmax), (ymin, ymax), (zmin, zmax) = bounds
@@ -15,11 +17,6 @@ def _sample_points(rng: np.random.Generator, n: int, bounds, pad_frac: float = 0
     low = np.array([xmin + pad_x, ymin + pad_y, zmin + pad_z], dtype=float)
     high = np.array([xmax - pad_x, ymin + dy - pad_y, zmin + dz - pad_z], dtype=float)
     return rng.uniform(low, high, size=(n, 3))
-
-
-def _rng_for_run(seed: int, run: int) -> np.random.Generator:
-    mixed = (seed + 0x9E3779B97F4A7C15 + 104729 * int(run)) & 0xFFFFFFFFFFFFFFFF
-    return np.random.default_rng(mixed)
 
 
 @pytest.mark.fuzz
@@ -47,7 +44,7 @@ def test_crosscheck_pyvoro_box_standard_volumes(fuzz_settings):
     block_size = 2.5
 
     for run in range(n_runs):
-        rng = _rng_for_run(seed, 3000 + run)
+        rng = rng_for_run(seed, 3000 + run)
         pts = _sample_points(rng, 40, bounds)
 
         cells2 = pv.compute(
@@ -107,7 +104,7 @@ def test_crosscheck_pyvoro_orthorhombic_periodic_if_supported(fuzz_settings):
     block_size = 2.5
 
     for run in range(n_runs):
-        rng = _rng_for_run(seed, 4000 + run)
+        rng = rng_for_run(seed, 4000 + run)
         pts = _sample_points(rng, 50, bounds)
 
         cells2 = pv.compute(

@@ -5,11 +5,7 @@ import numpy as np
 
 import pyvoro2 as pv
 
-
-def rng_for_run(seed: int, run: int) -> np.random.Generator:
-    """Deterministic per-run RNG for fuzz tests."""
-    mixed = (seed + 0x9E3779B97F4A7C15 + 104729 * int(run)) & 0xFFFFFFFFFFFFFFFF
-    return np.random.default_rng(mixed)
+from ._support import rng_for_run
 
 
 def _sample_points_in_bounds(

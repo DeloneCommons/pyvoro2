@@ -1,4 +1,4 @@
-"""Neutral ownership and compatibility tests for weight/radius transforms."""
+"""Neutral ownership and canonical-route tests for weight/radius transforms."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ import pyvoro2.inverse.separator.active as separator_active
 import pyvoro2.inverse.separator.problem as separator_problem
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKAGE_ROOT = REPO_ROOT / 'src' / 'pyvoro2'
 TRANSFORM_NAMES = {'radii_to_weights', 'weights_to_radii'}
 

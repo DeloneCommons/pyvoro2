@@ -680,7 +680,7 @@ def test_separator_all_matches_the_api_inventory() -> None:
     import pyvoro2.inverse.separator as separator
 
     inventory_path = (
-        Path(__file__).resolve().parents[1]
+        Path(__file__).resolve().parents[3]
         / 'docs'
         / 'development'
         / 'api-inventory.md'

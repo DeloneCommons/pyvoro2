@@ -97,7 +97,9 @@ Verify the editable build before changing code:
 
 ```bash
 python -c "import pyvoro2, pyvoro2.planar, pyvoro2.inverse; print(pyvoro2.__version__)"
-pytest -q tests/test_smoke.py tests/test_lazy_core_import.py tests/test_planar_lazy_core_import.py
+pytest -q tests/forward/spatial/test_smoke.py \
+    tests/forward/spatial/test_lazy_core_import.py \
+    tests/forward/planar/test_planar_lazy_core_import.py
 ```
 
 For a wheel-core plus repository-source workflow, see `tools/README.md` and
@@ -224,10 +226,40 @@ boundaries.
 
 ## Tests
 
+The test tree follows implementation and workflow responsibility:
+
+- `tests/forward/common/` protects dimension-neutral forward contracts such as
+  `TessellationResult`, weight-first input, and the shared forward API;
+- `tests/forward/spatial/` owns 3D computation, domains, diagnostics, topology,
+  visualization, validation, and native loading;
+- `tests/forward/planar/` owns the corresponding explicit 2D behavior;
+- `tests/inverse/separator/` owns the canonical separator inverse;
+- `tests/integration/` covers end-to-end public workflows and genuine
+  cross-subsystem contracts;
+- `tests/tooling/` covers notebooks, text generation, distributions, and
+  release/developer tools; and
+- `tests/fuzz/` contains randomized geometry tests and optional independent
+  `pyvoro` cross-checks.
+
+Root `tests/conftest.py` is reserved for pytest hooks, options, and fixtures
+that apply across the suite. Imported helper code belongs to an explicitly
+owned support module such as `tests/fuzz/_support.py`.
+
 Run the deterministic suite for ordinary changes:
 
 ```bash
 pytest -q
+```
+
+Focused subsystem runs use the responsibility directories directly, for
+example:
+
+```bash
+pytest -q tests/forward/spatial
+pytest -q tests/forward/planar
+pytest -q tests/inverse/separator
+pytest -q tests/integration
+pytest -q tests/tooling
 ```
 
 Run lint and generated-file checks:

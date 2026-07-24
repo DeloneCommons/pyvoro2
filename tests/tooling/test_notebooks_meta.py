@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 EXPORT_SCRIPT = REPO_ROOT / 'tools' / 'export_notebooks.py'
 NOTEBOOKS = REPO_ROOT / 'notebooks'
 EXPORTED_NOTEBOOKS = REPO_ROOT / 'docs' / 'notebooks'

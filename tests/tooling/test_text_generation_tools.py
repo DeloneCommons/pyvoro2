@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = REPO_ROOT / 'tools' / 'export_notebooks.py'
 
 spec = importlib.util.spec_from_file_location('export_notebooks_tool', MODULE_PATH)

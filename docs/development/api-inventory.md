@@ -35,9 +35,11 @@ inventory remain synchronized.
 This section records behavior observed in the v0.6.3 source tree before any
 v0.7 public implementation. It was checked against package `__all__` values,
 call signatures, generated API reference pages, user guides, source notebooks,
-and the existing tests. Focused executable checks live in
-`tests/test_v063_forward_baseline.py` and
-`tests/test_v063_inverse_baseline.py`.
+and the existing tests. The surviving canonical contracts derived from those
+characterizations live in
+`tests/forward/common/test_forward_api_contract.py` and
+`tests/inverse/separator/test_api_contract.py`. Assertions that existed only
+for the compatibility routes removed by issue #28 are not retained.
 
 “Baseline” does not make every current convenience stable forever. It identifies
 what the v0.7 compatibility routes must preserve deliberately and prevents a

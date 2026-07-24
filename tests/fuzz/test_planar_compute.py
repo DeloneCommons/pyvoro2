@@ -5,7 +5,7 @@ import importlib.util
 import numpy as np
 import pytest
 
-from conftest import rng_for_run
+from ._support import rng_for_run
 
 
 if importlib.util.find_spec('pyvoro2._core2d') is None:

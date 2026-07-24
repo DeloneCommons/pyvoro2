@@ -270,6 +270,23 @@ Issue #28 removes the planar result alias and legacy return selector.
 `TessellationResult` and the explicit `output=` rules remain unchanged;
 explicit raw output with normalization fails clearly.
 
+### Responsibility-based test ownership
+
+The test tree follows the same responsibility boundaries as the implementation.
+Dimension-neutral forward result, weight-input, and API contracts live in
+`tests/forward/common`; explicitly 3D and 2D behavior lives in
+`tests/forward/spatial` and `tests/forward/planar`, respectively. Canonical
+separator tests live in `tests/inverse/separator`. End-to-end and genuine
+cross-subsystem contracts, developer tooling, and randomized or independent
+cross-wrapper checks live in `tests/integration`, `tests/tooling`, and
+`tests/fuzz`.
+
+Root `tests/conftest.py` contains only cross-suite pytest configuration and
+fixtures. Ordinary imported support has an explicit subsystem owner, currently
+`tests/fuzz/_support.py`. No compatibility directory is needed after issue #28;
+the surviving raw-output contract is current forward behavior and is tested
+under common forward ownership.
+
 ## Why stabilization is needed
 
 The v0.6.3 implementation is functional, but several details should be stabilized
@@ -531,8 +548,8 @@ imports.
 ### v0.8 cleanup and compatibility removal
 
 ADR 0006 makes v0.8 a feature-free maintenance release. It removes the bounded
-v0.7 compatibility layer, reorganizes the flat tests, moves root private Python
-helpers under `pyvoro2._internal`, and resolves non-critical audit findings.
+v0.7 compatibility layer, organizes tests by responsibility, moves root private
+Python helpers under `pyvoro2._internal`, and resolves non-critical audit findings.
 Compiled `_core` and `_core2d` names remain private native extension names; no
 public `pyvoro2.core` namespace is introduced.
 

@@ -20,7 +20,7 @@ import pyvoro2.inverse.separator as separator
 import pyvoro2.planar as planar
 
 
-PACKAGE_ROOT = Path(__file__).resolve().parents[1] / 'src' / 'pyvoro2'
+PACKAGE_ROOT = Path(__file__).resolve().parents[3] / 'src' / 'pyvoro2'
 HIGH_LEVEL_NAMES = (
     'SeparatorObservations',
     'resolve_separator_observations',

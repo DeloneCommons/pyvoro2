@@ -11,7 +11,7 @@ import zipfile
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _load_tool_module(script_name: str) -> ModuleType:

@@ -66,7 +66,11 @@ inconsistent.
   visualization, and public package exports.
 - `src/pyvoro2/planar/`: explicit 2D API and planar result/diagnostic layer.
 - `src/pyvoro2/inverse/separator/`: canonical separator implementation.
-- `tests/`: deterministic tests plus opt-in fuzz and cross-check groups.
+- `tests/forward/`: common, spatial, and planar forward contracts.
+- `tests/inverse/separator/`: canonical separator inverse tests.
+- `tests/integration/`: end-to-end and cross-subsystem public contracts.
+- `tests/tooling/`: notebook, generation, distribution, and release tooling.
+- `tests/fuzz/`: opt-in randomized and independent-wrapper cross-checks.
 - `examples/`: repository-owned preferred-API workflows and deterministic
   public regression inputs.
 - `notebooks/`: source notebooks.

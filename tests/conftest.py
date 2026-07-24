@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from typing import Any
 
-import numpy as np
 import pytest
 
 
@@ -43,10 +42,3 @@ def fuzz_settings(request: pytest.FixtureRequest) -> dict[str, Any]:
         env_seed = os.environ.get('PYVORO2_FUZZ_SEED')
         seed = int(env_seed) if env_seed is not None else 0
     return {'n': n, 'seed': int(seed)}
-
-
-def rng_for_run(seed: int, run: int) -> np.random.Generator:
-    """Deterministic per-run RNG."""
-    # Mix run index to avoid correlated sequences.
-    mixed = (seed + 0x9E3779B97F4A7C15 + 104729 * int(run)) & 0xFFFFFFFFFFFFFFFF
-    return np.random.default_rng(mixed)
