@@ -13,7 +13,10 @@ import pytest
 import pyvoro2 as pv
 import pyvoro2.api as api3d
 import pyvoro2.planar as pv2
-from pyvoro2._power_input import ResolvedPowerInput, resolve_power_input
+from pyvoro2._internal.power_input import (
+    ResolvedPowerInput,
+    resolve_power_input,
+)
 from pyvoro2.result import _build_tessellation_result
 
 

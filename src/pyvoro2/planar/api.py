@@ -8,18 +8,18 @@ import warnings
 
 import numpy as np
 
-from .._cell_output import add_empty_cells_inplace, remap_ids_inplace
-from .._inputs import (
+from .._internal.cell_output import add_empty_cells_inplace, remap_ids_inplace
+from .._internal.inputs import (
     coerce_id_array,
     coerce_nonnegative_scalar_or_vector,
     coerce_nonnegative_vector,
     coerce_point_array,
     validate_duplicate_check_mode,
 )
-from .._power_input import ResolvedPowerInput, resolve_power_input
+from .._internal.power_input import ResolvedPowerInput, resolve_power_input
 from ..result import TessellationResult, _build_tessellation_result
-from ._domain_geometry import geometry2d
-from ._edge_shifts2d import _add_periodic_edge_shifts_inplace
+from .._internal.planar.domain_geometry import geometry2d
+from .._internal.planar.edge_shifts import _add_periodic_edge_shifts_inplace
 from .diagnostics import (
     TessellationDiagnostics,
     TessellationError,

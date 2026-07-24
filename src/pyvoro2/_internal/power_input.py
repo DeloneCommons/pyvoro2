@@ -7,8 +7,8 @@ from typing import Literal, Sequence
 
 import numpy as np
 
-from ._inputs import coerce_nonnegative_vector
-from ._weight_transforms import weights_to_radii
+from .inputs import coerce_nonnegative_vector
+from .weight_transforms import weights_to_radii
 
 
 @dataclass(frozen=True, slots=True)

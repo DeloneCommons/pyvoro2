@@ -133,6 +133,27 @@ stored outputs. Cells tagged `skip-execution` retain reviewed rich output and
 are not executed by ordinary refresh/check commands; do not use the tag to hide
 failures.
 
+### Private Python helper ownership
+
+Private pure-Python implementation helpers live under
+`src/pyvoro2/_internal/`. Keep dimension-neutral helpers directly in that
+package, genuinely 3D-specific helpers under `_internal/spatial/`, and
+genuinely 2D-specific helpers under `_internal/planar/`. Import the concrete
+owning module; the internal package initializers intentionally provide no
+convenience re-exports.
+
+`pyvoro2._internal` is not public API. Do not add compatibility shims for moved
+internal paths without concrete evidence that a path was promised publicly.
+Public modules may use internal helpers, but internal code must not depend on
+removed compatibility facades. Keep shared helpers dimension-neutral and do
+not force materially different spatial and planar logic into an artificial
+common abstraction.
+
+The root `src/pyvoro2/__about__.py` is build metadata, not a helper module.
+Compiled `pyvoro2._core` and `pyvoro2._core2d` also remain at the package root
+with their existing lazy loading paths; do not move or wrap them for naming
+symmetry.
+
 ### Documentation roles
 
 The authoritative role and language policy is in

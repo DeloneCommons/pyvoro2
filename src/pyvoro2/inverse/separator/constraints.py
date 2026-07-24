@@ -7,9 +7,9 @@ from typing import Literal, Sequence
 
 import numpy as np
 
-from ..._domain_geometry import geometry3d
+from ..._internal.spatial.domain_geometry import geometry3d
 from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
-from ...planar._domain_geometry import geometry2d
+from ..._internal.planar.domain_geometry import geometry2d
 from ...planar.domains import Box as Box2D, RectangularCell
 
 ConstraintRow = tuple[int, int, float] | tuple[int, int, float, Sequence[int]]

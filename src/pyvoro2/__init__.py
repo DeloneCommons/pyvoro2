@@ -41,7 +41,7 @@ from .normalize import (
     normalize_edges_faces,
     normalize_topology,
 )
-from ._weight_transforms import radii_to_weights, weights_to_radii
+from ._internal.weight_transforms import radii_to_weights, weights_to_radii
 
 
 __all__ = [

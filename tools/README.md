@@ -19,10 +19,13 @@ Main entry points:
 - `python tools/build_wheel_from_sdist.py dist` — select exactly one generated
   sdist and rebuild its wheel with pip build isolation.
 - `python tools/check_installed_package.py --require-scipy` — verify installed
-  module provenance, native loading, and representative 2D, 3D, and canonical
-  inverse workflows. Use `--forbid-scipy` for a base installation.
+  module provenance, the private `_internal` layout, lazy and explicit native
+  loading, public transforms, periodic behavior, and representative 2D, 3D,
+  and canonical inverse workflows. Use `--forbid-scipy` for a base
+  installation.
 - `python tools/check_dist.py dist` — verify that built sdists and wheels
-  contain the expected key files.
+  contain the expected `_internal` hierarchy and other key files while omitting
+  obsolete private and compatibility paths.
 - `python tools/check_wheel_matrix.py release-dist` — require the complete
   CPython 3.10–3.14 release matrix (20 supported native wheels and one matching
   sdist), validate wheel tags, Python/runtime dependency metadata, and project

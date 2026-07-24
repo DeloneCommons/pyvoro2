@@ -62,8 +62,12 @@ inconsistent.
 - `cpp/`: pybind11 bindings for the vendored 3D and 2D Voro++ backends.
 - `vendor/voro++/`: vendored upstream sources. Avoid local backend changes
   unless the issue explicitly requires them and documents the reason.
-- `src/pyvoro2/`: 3D forward API, shared utilities, diagnostics, topology,
-  visualization, and public package exports.
+- `src/pyvoro2/`: 3D forward API, diagnostics, topology, visualization,
+  build metadata, native `_core`/`_core2d` loading paths, and public package
+  exports.
+- `src/pyvoro2/_internal/`: private pure-Python helpers; shared helpers live at
+  this level and genuinely dimension-specific helpers use explicit `spatial/`
+  or `planar/` ownership. Package initializers do not re-export helpers.
 - `src/pyvoro2/planar/`: explicit 2D API and planar result/diagnostic layer.
 - `src/pyvoro2/inverse/separator/`: canonical separator implementation.
 - `tests/forward/`: common, spatial, and planar forward contracts.

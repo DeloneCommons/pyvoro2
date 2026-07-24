@@ -2,7 +2,9 @@ import numpy as np
 import pytest
 
 import pyvoro2 as pv
-from pyvoro2._face_shifts3d import _add_periodic_face_shifts_inplace
+from pyvoro2._internal.spatial.face_shifts import (
+    _add_periodic_face_shifts_inplace,
+)
 
 
 def test_face_shift_tie_break_prefers_best_residual_over_small_l1():

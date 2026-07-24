@@ -7,7 +7,7 @@ from typing import Literal
 
 import numpy as np
 
-from ..._weight_transforms import weights_to_radii
+from ..._internal.weight_transforms import weights_to_radii
 from .constraints import SeparatorObservations
 from .model import (
     ExponentialBoundaryPenalty,

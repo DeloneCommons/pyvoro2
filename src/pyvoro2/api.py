@@ -9,17 +9,17 @@ import warnings
 import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
-from ._util import domain_length_scale
-from ._inputs import (
+from ._internal.spatial.domain_utils import domain_length_scale
+from ._internal.inputs import (
     coerce_id_array,
     coerce_nonnegative_scalar_or_vector,
     coerce_nonnegative_vector,
     coerce_point_array,
     validate_duplicate_check_mode,
 )
-from ._domain_geometry import geometry3d
-from ._face_shifts3d import _add_periodic_face_shifts_inplace
-from ._power_input import ResolvedPowerInput, resolve_power_input
+from ._internal.spatial.domain_geometry import geometry3d
+from ._internal.spatial.face_shifts import _add_periodic_face_shifts_inplace
+from ._internal.power_input import ResolvedPowerInput, resolve_power_input
 from .duplicates import duplicate_check as _duplicate_check
 from .diagnostics import (
     TessellationDiagnostics,

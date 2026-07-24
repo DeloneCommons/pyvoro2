@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from pyvoro2.planar import Box, RectangularCell
-from pyvoro2.planar._domain_geometry import geometry2d
+from pyvoro2._internal.planar.domain_geometry import geometry2d
 
 
 def test_planar_box_from_points() -> None:

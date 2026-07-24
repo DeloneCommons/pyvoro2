@@ -10,13 +10,13 @@ import warnings
 import numpy as np
 
 from .constraints import SeparatorObservations
-from ..._domain_geometry import geometry3d
+from ..._internal.spatial.domain_geometry import geometry3d
 from ...api import compute as compute3d
 from ...diagnostics import TessellationDiagnostics as TessellationDiagnostics3D
 from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ...edge_properties import annotate_edge_properties
 from ...face_properties import annotate_face_properties
-from ...planar._domain_geometry import geometry2d
+from ..._internal.planar.domain_geometry import geometry2d
 from ...planar.api import compute as compute2d
 from ...planar.diagnostics import (
     TessellationDiagnostics as TessellationDiagnostics2D,

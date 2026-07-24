@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 import pyvoro2 as pv
-import pyvoro2._weight_transforms as neutral_transforms
+import pyvoro2._internal.weight_transforms as neutral_transforms
 import pyvoro2.inverse as inverse
 import pyvoro2.inverse.separator as separator
 import pyvoro2.inverse.separator.active as separator_active
@@ -48,8 +48,8 @@ def test_transform_functions_have_one_neutral_implementation() -> None:
     }
 
     assert definitions == {
-        ('_weight_transforms.py', 'radii_to_weights'),
-        ('_weight_transforms.py', 'weights_to_radii'),
+        ('_internal/weight_transforms.py', 'radii_to_weights'),
+        ('_internal/weight_transforms.py', 'weights_to_radii'),
     }
 
 
@@ -60,8 +60,12 @@ def test_all_canonical_public_routes_share_function_objects() -> None:
     assert inverse.weights_to_radii is neutral_transforms.weights_to_radii
     assert separator.radii_to_weights is neutral_transforms.radii_to_weights
     assert separator.weights_to_radii is neutral_transforms.weights_to_radii
-    assert pv.radii_to_weights.__module__ == 'pyvoro2._weight_transforms'
-    assert pv.weights_to_radii.__module__ == 'pyvoro2._weight_transforms'
+    assert pv.radii_to_weights.__module__ == (
+        'pyvoro2._internal.weight_transforms'
+    )
+    assert pv.weights_to_radii.__module__ == (
+        'pyvoro2._internal.weight_transforms'
+    )
 
 
 @pytest.mark.parametrize(
@@ -85,7 +89,11 @@ def test_separator_modules_import_neutral_transform_directly(
         if isinstance(node, ast.ImportFrom)
         for alias in node.names
     }
-    assert (3, '_weight_transforms', 'weights_to_radii') in direct_imports
+    assert (
+        3,
+        '_internal.weight_transforms',
+        'weights_to_radii',
+    ) in direct_imports
     assert not any(
         module_name == 'transforms' or module_name.endswith('.transforms')
         for _, module_name, _ in direct_imports
@@ -94,7 +102,9 @@ def test_separator_modules_import_neutral_transform_directly(
 
 
 def test_neutral_module_has_no_separator_or_native_dependencies() -> None:
-    imports = _imported_modules(PACKAGE_ROOT / '_weight_transforms.py')
+    imports = _imported_modules(
+        PACKAGE_ROOT / '_internal' / 'weight_transforms.py'
+    )
 
     assert imports == {'__future__', 'numpy'}
     assert not any('powerfit' in module for module in imports)
@@ -302,7 +312,7 @@ assert 'pyvoro2._core2d' not in sys.modules
             sys.executable,
             '-c',
             code,
-            str(PACKAGE_ROOT / '_weight_transforms.py'),
+            str(PACKAGE_ROOT / '_internal' / 'weight_transforms.py'),
         ],
         cwd=REPO_ROOT,
         check=True,
@@ -344,7 +354,9 @@ print(json.dumps(attempted))
         return json.loads(completed.stdout)
 
     package_attempts = native_import_attempts('pyvoro2')
-    transform_attempts = native_import_attempts('pyvoro2._weight_transforms')
+    transform_attempts = native_import_attempts(
+        'pyvoro2._internal.weight_transforms'
+    )
 
     assert package_attempts == []
     assert transform_attempts == package_attempts

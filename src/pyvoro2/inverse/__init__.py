@@ -8,7 +8,7 @@ in :mod:`pyvoro2.inverse.separator`.
 
 from __future__ import annotations
 
-from .._weight_transforms import radii_to_weights, weights_to_radii
+from .._internal.weight_transforms import radii_to_weights, weights_to_radii
 from .separator import (
     SeparatorFitResult,
     SeparatorObservations,

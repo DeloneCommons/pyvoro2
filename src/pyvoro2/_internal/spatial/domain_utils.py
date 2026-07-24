@@ -1,4 +1,4 @@
-"""Internal shared helpers.
+"""Internal spatial domain helpers.
 
 This module exists to avoid duplicating small pieces of domain logic across
 `api`, `normalize`, and `viz3d`.
@@ -13,7 +13,7 @@ from typing import TypeAlias
 
 import numpy as np
 
-from .domains import Box, OrthorhombicCell, PeriodicCell
+from ...domains import Box, OrthorhombicCell, PeriodicCell
 
 
 Domain: TypeAlias = Box | OrthorhombicCell | PeriodicCell

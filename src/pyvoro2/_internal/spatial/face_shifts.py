@@ -1,8 +1,8 @@
 """3D periodic face-shift reconstruction helpers.
 
 These helpers remain intentionally 3D-specific. They isolate the current
-face-shift logic from the main API wrapper so the later planar implementation
-can add a parallel edge-shift path without re-entangling ``api.py``.
+face-shift logic from the main API wrapper and from the materially different
+planar edge-shift implementation.
 """
 
 from __future__ import annotations

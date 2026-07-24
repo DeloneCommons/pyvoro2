@@ -8,8 +8,8 @@ from typing import Any, Literal, Sequence
 
 import numpy as np
 
-from ._power_input import ResolvedPowerInput
-from ._weight_transforms import weights_to_radii
+from ._internal.power_input import ResolvedPowerInput
+from ._internal.weight_transforms import weights_to_radii
 
 
 def _readonly_float_array(

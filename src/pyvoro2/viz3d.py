@@ -38,7 +38,7 @@ import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from .normalize import NormalizedTopology, NormalizedVertices
-from ._util import (
+from ._internal.spatial.domain_utils import (
     domain_length_scale,
     domain_lattice_vectors,
     domain_origin,

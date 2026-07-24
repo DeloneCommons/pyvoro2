@@ -770,9 +770,9 @@ accepted decision.
 
 ## Current v0.7 implementation status
 
-The current development tree owns the two weight/radius conversion
-implementations in the private neutral module `pyvoro2._weight_transforms`.
-Top-level `pyvoro2`, `pyvoro2.powerfit`, and
+The v0.7 release owned the two weight/radius conversion implementations in the
+private neutral module `pyvoro2._weight_transforms`. Top-level `pyvoro2`,
+`pyvoro2.powerfit`, and
 `pyvoro2.powerfit.transforms` expose the same function objects, with the latter
 two retained as historical compatibility routes. Separator implementation code
 imports the neutral module directly. Issue #7 changed ownership without
@@ -802,13 +802,14 @@ squared coordinate/domain scales can lose geometric resolution. No universal
 safe cutoff is promised; sensitivity depends on scale, geometry, platform, and
 compiler, especially for periodic power tessellations.
 
-The private dimension-neutral `pyvoro2._power_input` resolution path keeps the
-validated input weights, resolved backend radii, and representation shift
-together for later `TessellationResult` construction. It imports only the
+The v0.7 private dimension-neutral `pyvoro2._power_input` resolution path kept
+the validated input weights, resolved backend radii, and representation shift
+together for later `TessellationResult` construction. It imported only the
 neutral transform and input-validation helpers. The resolved radii feed native
 2D, 3D box/orthorhombic, and 3D triclinic power calls, as well as periodic
 edge/face shift inference. `locate(...)` and `ghost_cells(...)` signatures are
-unchanged.
+unchanged. Issue #30 moves this unchanged implementation to
+`pyvoro2._internal.power_input` in v0.8.
 
 Issues #9 and #10 implement and wire the public structured result. Both
 `compute(...)` functions expose keyword-only `output='result'|'cells'` and
@@ -827,9 +828,11 @@ implementations. Canonical modules import only canonical siblings and
 neutral/shared `pyvoro2` modules. `pyvoro2.powerfit` and all characterized
 historical direct submodules forward explicitly to those canonical objects;
 top-level historical separator exports also bind directly to the canonical
-package. The weight/radius formulas remain solely in
+package. In v0.7, the weight/radius formulas remained solely in
 `pyvoro2._weight_transforms`, including through the historical
-`pyvoro2.powerfit.transforms` route.
+`pyvoro2.powerfit.transforms` route. Issue #30 moves the sole implementation
+to `pyvoro2._internal.weight_transforms` after issue #28 removes that
+compatibility route.
 
 Plain `import pyvoro2 as pv` retains the historical `pv.powerfit` attribute
 through lazy module-level attribute resolution. The compatibility package is
@@ -914,7 +917,7 @@ See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 | Optional sparse quadratic backend | Provisional | Explicit `solver='sparse'` is validated for the primary static quadratic fit; `auto` remains dense and unsupported branches reject sparse selection. |
 | `pyvoro2.powerfit` | Compatibility-only and deprecated | One-way shim during v0.7; removed in v0.8. |
 | Broad separator-specific exports from top-level `pyvoro2` | Compatibility-only and deprecated | New code imports from `pyvoro2.inverse`; removed in v0.8. |
-| Native extension and solver-internal modules | Internal | No compatibility guarantee. |
+| `pyvoro2._internal`, native extensions, and solver-internal modules | Internal | No compatibility guarantee; `_internal` has no package-level convenience exports. |
 
 ### Documented module-route status
 
@@ -933,7 +936,7 @@ assigned above. The module route itself has the following status:
 | `pyvoro2.inverse.separator` and its non-active submodules | Mixed route: stable high-level core names, provisional advanced objects, and compatibility-only historical aliases |
 | `pyvoro2.inverse.separator.active` | Experimental |
 | `pyvoro2.powerfit` and its direct submodules | Compatibility-only and deprecated; removed in v0.8 |
-| underscore-prefixed Python helpers and native `_core`/`_core2d` extensions | Internal |
+| `pyvoro2._internal` helpers and native `_core`/`_core2d` extensions | Internal; the native modules remain outside `_internal` |
 
 ## Spatial forward namespace: `pyvoro2`
 
@@ -1323,6 +1326,41 @@ behavior. The v0.8 tree:
 The high-level `pyvoro2.inverse` export set, canonical class and function names,
 solver defaults, numerical values, result fields, record keys, and gauge
 policies are unchanged.
+
+### v0.8 private-helper organization status
+
+Issue #30 moves all private pure-Python implementation helpers into
+`pyvoro2._internal`:
+
+```text
+pyvoro2._internal.cell_output
+pyvoro2._internal.inputs
+pyvoro2._internal.power_input
+pyvoro2._internal.weight_transforms
+pyvoro2._internal.spatial.domain_geometry
+pyvoro2._internal.spatial.domain_utils
+pyvoro2._internal.spatial.face_shifts
+pyvoro2._internal.planar.domain_geometry
+pyvoro2._internal.planar.edge_shifts
+```
+
+These module routes and every object available only from them are
+**internal**. The `_internal`, `_internal.spatial`, and `_internal.planar`
+package initializers provide no convenience re-exports. The former root helper
+modules and former `pyvoro2.planar` helper modules are absent, with no
+compatibility shims, because they were never documented or exported as public
+API.
+
+The stable public `weights_to_radii` and `radii_to_weights` exports remain
+identical function objects across `pyvoro2`, `pyvoro2.inverse`, and
+`pyvoro2.inverse.separator`; only their internal implementation-module metadata
+now names `pyvoro2._internal.weight_transforms`. Public signatures, defaults,
+transform semantics, forward and inverse numerical results, record schemas,
+and lazy native-extension loading are unchanged.
+
+`pyvoro2.__about__` remains root-owned build metadata rather than a helper
+module. Native `pyvoro2._core` and `pyvoro2._core2d` remain root-owned internal
+extensions with their established names and loading behavior.
 
 ## Final release review checklist
 

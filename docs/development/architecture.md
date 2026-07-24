@@ -180,10 +180,36 @@ separate computations.
 
 ## Current v0.8 implementation status
 
+### Private pure-Python helper ownership
+
+Private pure-Python implementation helpers now have one explicit package,
+`pyvoro2._internal`. The package initializers contain no convenience imports:
+internal callers import the concrete module that owns the behavior. The current
+ownership is:
+
+| Ownership | Modules | Reason |
+|---|---|---|
+| Dimension-neutral | `_internal.cell_output`, `_internal.inputs`, `_internal.power_input`, `_internal.weight_transforms` | Raw-record post-processing is parameterized by measure and boundary keys; input coercion is parameterized by dimension; power-input resolution and weight/radius conversion have no dimension-specific geometry. |
+| Spatial/3D | `_internal.spatial.domain_geometry`, `_internal.spatial.domain_utils`, `_internal.spatial.face_shifts` | These helpers use the 3D domain classes, three-component lattice operations, or realized face geometry. |
+| Planar/2D | `_internal.planar.domain_geometry`, `_internal.planar.edge_shifts` | These helpers use the planar domain classes, two-component lattice operations, or realized edge geometry. |
+
+The obsolete root helper modules and private modules under `pyvoro2.planar`
+are absent rather than retained as forwarding shims. `_internal` is not public
+API, and implementation-module metadata such as a public function's
+`__module__` value does not make an internal path stable. Stable public
+weight/radius functions continue to be exported from `pyvoro2` and
+`pyvoro2.inverse`.
+
+`pyvoro2.__about__` remains root-owned package metadata because the build
+backend reads the version assignment from that file; it is not an
+implementation-helper namespace. The compiled extension modules
+`pyvoro2._core` and `pyvoro2._core2d` also remain at the package root and keep
+their existing lazy loading paths.
+
 ### Neutral weight/radius transforms
 
 The sole implementations of `weights_to_radii` and `radii_to_weights` now live
-in the private shared module `pyvoro2._weight_transforms`. The top-level
+in the private shared module `pyvoro2._internal.weight_transforms`. The top-level
 `pyvoro2` helpers import from that module directly. Separator problem and
 active-set code also import the neutral implementation directly, without going
 through a separator-owned module.
@@ -196,7 +222,7 @@ provider:
 
 ```text
 top-level pyvoro2 exports -----------------+
-separator problem and active-set code -----+--> pyvoro2._weight_transforms
+separator problem and active-set code -----+--> pyvoro2._internal.weight_transforms
 pyvoro2.inverse exports -------------------+
 forward power-input resolution ------------+
 ```
@@ -210,7 +236,7 @@ active-set refinement, reports, and result dataclasses. Those modules import
 only canonical siblings or neutral/shared `pyvoro2` providers. In particular,
 no module under `pyvoro2.inverse` imports the removed compatibility package.
 The neutral transform implementation remains in
-`pyvoro2._weight_transforms`.
+`pyvoro2._internal.weight_transforms`.
 
 `pyvoro2.inverse` exposes only the normal fixed-observation workflow and
 neutral transforms; advanced separator objects remain in
@@ -222,10 +248,10 @@ the canonical implementation.
 
 The spatial and planar `compute(...)` functions now accept direct mathematical
 `weights=` in power mode. The dimension-neutral private module
-`pyvoro2._power_input` validates the input contract once and carries three
-values together: supplied mathematical weights, resolved backend radii, and
-the common representation shift. It delegates the conversion itself to
-`pyvoro2._weight_transforms` and has no separator or native-extension
+`pyvoro2._internal.power_input` validates the input contract once and carries
+three values together: supplied mathematical weights, resolved backend radii,
+and the common representation shift. It delegates the conversion itself to
+`pyvoro2._internal.weight_transforms` and has no separator or native-extension
 dependency.
 
 Both forward wrappers pass the resolved backend radii to every native power
@@ -549,9 +575,11 @@ imports.
 
 ADR 0006 makes v0.8 a feature-free maintenance release. It removes the bounded
 v0.7 compatibility layer, organizes tests by responsibility, moves root private
-Python helpers under `pyvoro2._internal`, and resolves non-critical audit findings.
-Compiled `_core` and `_core2d` names remain private native extension names; no
-public `pyvoro2.core` namespace is introduced.
+Python helpers under `pyvoro2._internal`, and resolves non-critical audit
+findings. The helper move is complete in the current tree: shared code is
+dimension-neutral, while genuine 3D and 2D behavior has explicit `spatial` and
+`planar` ownership. Compiled `_core` and `_core2d` names remain private native
+extension names; no public `pyvoro2.core` namespace is introduced.
 
 ### v0.9 prescribed cell measures
 
@@ -577,6 +605,8 @@ inside the stable weights-only solver.
 
 - Native/backend modules do not depend on high-level inverse code.
 - Forward domain and result concepts do not depend on observation families.
+- Private pure-Python helpers live under `pyvoro2._internal`; its package
+  initializers do not re-export helper objects.
 - Neutral weight/radius transforms do not depend on separator or native-backend
   modules.
 - Inverse observation implementations may depend on forward computation and

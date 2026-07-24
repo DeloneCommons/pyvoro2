@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from ._domain_geometry import geometry2d
+from .._internal.planar.domain_geometry import geometry2d
 from .domains import Box, RectangularCell
 from .normalize import NormalizedTopology, NormalizedVertices
 

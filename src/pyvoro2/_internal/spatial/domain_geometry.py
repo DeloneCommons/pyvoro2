@@ -1,8 +1,4 @@
-"""Internal domain-geometry adapter for 3D code paths.
-
-The current public package is still 3D-first, but centralizing the geometry
-logic behind a small adapter makes the eventual 2D addition much less invasive.
-"""
+"""Internal domain-geometry adapter for spatial code paths."""
 
 from __future__ import annotations
 
@@ -11,7 +7,7 @@ from typing import Sequence
 
 import numpy as np
 
-from .domains import Box, OrthorhombicCell, PeriodicCell
+from ...domains import Box, OrthorhombicCell, PeriodicCell
 
 Domain3D = Box | OrthorhombicCell | PeriodicCell
 

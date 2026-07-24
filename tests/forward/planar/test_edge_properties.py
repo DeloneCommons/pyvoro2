@@ -4,7 +4,9 @@ import numpy as np
 
 from pyvoro2.edge_properties import annotate_edge_properties
 from pyvoro2.planar import RectangularCell
-from pyvoro2.planar._edge_shifts2d import _add_periodic_edge_shifts_inplace
+from pyvoro2._internal.planar.edge_shifts import (
+    _add_periodic_edge_shifts_inplace,
+)
 
 
 def test_annotate_edge_properties_basic() -> None:

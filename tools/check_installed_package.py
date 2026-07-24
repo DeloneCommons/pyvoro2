@@ -7,10 +7,33 @@ import argparse
 import importlib
 import importlib.util
 from pathlib import Path
+import sys
 from types import ModuleType
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+INTERNAL_HELPER_MODULES = (
+    'pyvoro2._internal.cell_output',
+    'pyvoro2._internal.inputs',
+    'pyvoro2._internal.power_input',
+    'pyvoro2._internal.weight_transforms',
+    'pyvoro2._internal.spatial.domain_geometry',
+    'pyvoro2._internal.spatial.domain_utils',
+    'pyvoro2._internal.spatial.face_shifts',
+    'pyvoro2._internal.planar.domain_geometry',
+    'pyvoro2._internal.planar.edge_shifts',
+)
+OBSOLETE_PRIVATE_MODULES = (
+    'pyvoro2._cell_output',
+    'pyvoro2._inputs',
+    'pyvoro2._power_input',
+    'pyvoro2._weight_transforms',
+    'pyvoro2._domain_geometry',
+    'pyvoro2._face_shifts3d',
+    'pyvoro2._util',
+    'pyvoro2.planar._domain_geometry',
+    'pyvoro2.planar._edge_shifts2d',
+)
 
 
 class InstalledPackageCheckError(RuntimeError):
@@ -100,6 +123,46 @@ def _check_removed_compatibility() -> None:
     print('removed v0.7 compatibility surfaces: absent')
 
 
+def _check_private_helper_layout() -> None:
+    native_extensions = {'pyvoro2._core', 'pyvoro2._core2d'}
+    loaded_early = sorted(native_extensions.intersection(sys.modules))
+    if loaded_early:
+        raise InstalledPackageCheckError(
+            f'native extensions loaded before helper imports: {loaded_early}'
+        )
+
+    for module_name in INTERNAL_HELPER_MODULES:
+        if importlib.util.find_spec(module_name) is None:
+            raise InstalledPackageCheckError(
+                f'installed package is missing {module_name}'
+            )
+        importlib.import_module(module_name)
+
+    loaded_after_helpers = sorted(native_extensions.intersection(sys.modules))
+    if loaded_after_helpers:
+        raise InstalledPackageCheckError(
+            'private pure-Python helpers loaded native extensions: '
+            f'{loaded_after_helpers}'
+        )
+
+    for module_name in OBSOLETE_PRIVATE_MODULES:
+        if importlib.util.find_spec(module_name) is not None:
+            raise InstalledPackageCheckError(
+                f'obsolete private helper remains importable: {module_name}'
+            )
+        try:
+            importlib.import_module(module_name)
+        except ModuleNotFoundError:
+            pass
+        else:
+            raise InstalledPackageCheckError(
+                f'obsolete private helper imported successfully: {module_name}'
+            )
+
+    print('private helper layout: internal modules present, obsolete paths absent')
+    print('private helper imports: native extensions remained lazy')
+
+
 def _run_workflows(repository_root: Path) -> None:
     import numpy as np
     import pyvoro2 as pv
@@ -155,6 +218,39 @@ def _run_workflows(repository_root: Path) -> None:
             f'the planar smoke workflow returned {len(result2.cells)} cells'
         )
 
+    periodic_points = np.array(
+        [[0.12, 0.2], [0.75, 0.25], [0.35, 0.72], [0.88, 0.82]],
+        dtype=float,
+    )
+    periodic_result = pv2.compute(
+        periodic_points,
+        domain=pv2.RectangularCell(
+            ((0.0, 1.0), (0.0, 1.0)),
+            periodic=(True, True),
+        ),
+        return_edge_shifts=True,
+    )
+    if not periodic_result.has_periodic_shifts:
+        raise InstalledPackageCheckError(
+            'the periodic planar workflow did not expose image shifts'
+        )
+    if not np.isclose(np.sum(periodic_result.cell_measures), 1.0):
+        raise InstalledPackageCheckError(
+            'the periodic planar workflow did not cover the unit cell'
+        )
+
+    public_weights = np.array([-2.5, 0.25, 4.0])
+    backend_radii, representation_shift = pv.weights_to_radii(public_weights)
+    restored_weights = pv.radii_to_weights(backend_radii) - representation_shift
+    if not np.allclose(restored_weights, public_weights):
+        raise InstalledPackageCheckError(
+            'the public weight/radius transforms did not round-trip'
+        )
+    if inverse.weights_to_radii is not pv.weights_to_radii:
+        raise InstalledPackageCheckError(
+            'the public transform routes do not share one implementation'
+        )
+
     fit = inverse.fit_weights_from_separators(
         points2,
         [(0, 1, 0.25)],
@@ -177,6 +273,8 @@ def _run_workflows(repository_root: Path) -> None:
 
     print('spatial workflow: TessellationResult with 2 cells')
     print('planar workflow: TessellationResult with 2 cells')
+    print('periodic workflow: planar unit-cell coverage with image shifts')
+    print('weight/radius transforms: public routes round-trip finite values')
     print('inverse workflow: optimal analytic fit with finite values')
 
 
@@ -205,6 +303,7 @@ def main() -> int:
 
     _check_scipy(require_scipy=args.require_scipy)
     _check_removed_compatibility()
+    _check_private_helper_layout()
     _run_workflows(args.repo_root)
     return 0
 

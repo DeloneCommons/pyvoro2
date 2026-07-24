@@ -4,7 +4,9 @@ import numpy as np
 import pytest
 
 import pyvoro2.planar as pv2
-from pyvoro2.planar._edge_shifts2d import _add_periodic_edge_shifts_inplace
+from pyvoro2._internal.planar.edge_shifts import (
+    _add_periodic_edge_shifts_inplace,
+)
 
 
 def _two_cell_periodic_x() -> list[dict[str, object]]:

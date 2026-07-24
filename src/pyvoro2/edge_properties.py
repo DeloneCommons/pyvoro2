@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from .planar._domain_geometry import geometry2d
+from ._internal.planar.domain_geometry import geometry2d
 from .planar.domains import Box, RectangularCell
 
 

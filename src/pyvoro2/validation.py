@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
-from ._util import is_periodic_domain
+from ._internal.spatial.domain_utils import is_periodic_domain
 from .normalize import NormalizedVertices, NormalizedTopology
 
 

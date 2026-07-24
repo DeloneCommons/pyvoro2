@@ -36,6 +36,11 @@ installed_package_tool = _load_tool_module('check_installed_package')
 InstalledPackageCheckError = installed_package_tool.InstalledPackageCheckError
 assert_outside_repository = installed_package_tool.assert_outside_repository
 
+dist_tool = _load_tool_module('check_dist')
+DistCheckError = dist_tool.DistCheckError
+check_sdist = dist_tool.check_sdist
+check_wheel = dist_tool.check_wheel
+
 overlay_tool = _load_tool_module('install_wheel_overlay')
 
 wheel_matrix_tool = _load_tool_module('check_wheel_matrix')
@@ -96,6 +101,88 @@ def test_check_installed_package_help() -> None:
 
 def test_check_wheel_matrix_help() -> None:
     assert 'merged wheels and sdist' in _run_help('check_wheel_matrix.py')
+
+
+def _write_content_wheel(
+    path: Path,
+    *,
+    extra_members: tuple[str, ...] = (),
+) -> None:
+    with zipfile.ZipFile(path, 'w') as zf:
+        for suffix in sorted(dist_tool.REQUIRED_WHEEL_SUFFIXES):
+            member = (
+                f'{suffix}.test.so'
+                if suffix in {'pyvoro2/_core', 'pyvoro2/_core2d'}
+                else suffix
+            )
+            zf.writestr(member, b'')
+        for member in extra_members:
+            zf.writestr(member, b'')
+
+
+def _write_content_sdist(
+    path: Path,
+    *,
+    extra_members: tuple[str, ...] = (),
+) -> None:
+    prefix = 'pyvoro2-0.8.0.dev0'
+    with tarfile.open(path, 'w:gz') as tf:
+        for suffix in sorted(dist_tool.REQUIRED_SDIST_SUFFIXES):
+            tf.addfile(tarfile.TarInfo(f'{prefix}/{suffix}'), io.BytesIO())
+        for member in extra_members:
+            tf.addfile(tarfile.TarInfo(f'{prefix}/{member}'), io.BytesIO())
+
+
+def test_distribution_content_checks_require_internal_hierarchy(
+    tmp_path: Path,
+) -> None:
+    required_internal = {
+        'pyvoro2/_internal/__init__.py',
+        'pyvoro2/_internal/cell_output.py',
+        'pyvoro2/_internal/inputs.py',
+        'pyvoro2/_internal/power_input.py',
+        'pyvoro2/_internal/weight_transforms.py',
+        'pyvoro2/_internal/spatial/__init__.py',
+        'pyvoro2/_internal/spatial/domain_geometry.py',
+        'pyvoro2/_internal/spatial/domain_utils.py',
+        'pyvoro2/_internal/spatial/face_shifts.py',
+        'pyvoro2/_internal/planar/__init__.py',
+        'pyvoro2/_internal/planar/domain_geometry.py',
+        'pyvoro2/_internal/planar/edge_shifts.py',
+    }
+    assert required_internal <= dist_tool.REQUIRED_WHEEL_SUFFIXES
+    assert {
+        f'src/{member}'
+        for member in required_internal
+    } <= dist_tool.REQUIRED_SDIST_SUFFIXES
+
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    sdist = tmp_path / 'pyvoro2-test.tar.gz'
+    _write_content_wheel(wheel)
+    _write_content_sdist(sdist)
+
+    check_wheel(wheel)
+    check_sdist(sdist)
+
+
+def test_distribution_content_checks_reject_obsolete_private_paths(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    sdist = tmp_path / 'pyvoro2-test.tar.gz'
+    _write_content_wheel(
+        wheel,
+        extra_members=('pyvoro2/_weight_transforms.py',),
+    )
+    _write_content_sdist(
+        sdist,
+        extra_members=('src/pyvoro2/planar/_domain_geometry.py',),
+    )
+
+    with pytest.raises(DistCheckError, match='_weight_transforms'):
+        check_wheel(wheel)
+    with pytest.raises(DistCheckError, match='_domain_geometry'):
+        check_sdist(sdist)
 
 
 def test_overlay_verification_imports_extensions_explicitly(

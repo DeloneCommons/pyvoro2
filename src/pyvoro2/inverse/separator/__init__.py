@@ -7,7 +7,7 @@ algorithm and does not carry a universal convergence guarantee.
 
 from __future__ import annotations
 
-from ..._weight_transforms import radii_to_weights, weights_to_radii
+from ..._internal.weight_transforms import radii_to_weights, weights_to_radii
 from .constraints import SeparatorObservations, resolve_separator_observations
 from .model import (
     ExponentialBoundaryPenalty,

@@ -25,7 +25,7 @@ import warnings
 import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
-from ._util import is_periodic_domain
+from ._internal.spatial.domain_utils import is_periodic_domain
 
 
 Domain = Box | OrthorhombicCell | PeriodicCell

@@ -7,7 +7,7 @@ from typing import Sequence
 
 import numpy as np
 
-from .domains import Box, RectangularCell
+from ...planar.domains import Box, RectangularCell
 
 Domain2D = Box | RectangularCell
 

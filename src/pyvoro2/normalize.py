@@ -25,7 +25,10 @@ import warnings
 import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
-from ._util import domain_length_scale, is_periodic_domain
+from ._internal.spatial.domain_utils import (
+    domain_length_scale,
+    is_periodic_domain,
+)
 
 
 @dataclass(frozen=True)

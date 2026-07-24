@@ -14,7 +14,7 @@ import pyvoro2 as pv
 import pyvoro2.api as api3d
 import pyvoro2.planar as pv2
 import pyvoro2.planar.api as api2d
-from pyvoro2._power_input import resolve_power_input
+from pyvoro2._internal.power_input import resolve_power_input
 
 
 Compute = Callable[..., Any]

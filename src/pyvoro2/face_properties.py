@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
-from ._domain_geometry import geometry3d
+from ._internal.spatial.domain_geometry import geometry3d
 from .diagnostics import TessellationDiagnostics
 
 
