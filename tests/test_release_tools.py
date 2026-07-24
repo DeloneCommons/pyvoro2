@@ -36,6 +36,8 @@ installed_package_tool = _load_tool_module('check_installed_package')
 InstalledPackageCheckError = installed_package_tool.InstalledPackageCheckError
 assert_outside_repository = installed_package_tool.assert_outside_repository
 
+overlay_tool = _load_tool_module('install_wheel_overlay')
+
 wheel_matrix_tool = _load_tool_module('check_wheel_matrix')
 WheelMatrixError = wheel_matrix_tool.WheelMatrixError
 classify_platform_tag = wheel_matrix_tool.classify_platform_tag
@@ -94,6 +96,44 @@ def test_check_installed_package_help() -> None:
 
 def test_check_wheel_matrix_help() -> None:
     assert 'merged wheels and sdist' in _run_help('check_wheel_matrix.py')
+
+
+def test_overlay_verification_imports_extensions_explicitly(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_src = tmp_path / 'src'
+    package_dir = repo_src / 'pyvoro2'
+    py_file = package_dir / '__init__.py'
+    core_file = package_dir / '_core.test.so'
+    core2d_file = package_dir / '_core2d.test.so'
+    observed: dict[str, str] = {}
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        capture_output: bool,
+        text: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        assert check is True
+        assert capture_output is True
+        assert text is True
+        observed['code'] = command[-1]
+        stdout = f'{py_file}\n{core_file}\n{core2d_file}\n'
+        return subprocess.CompletedProcess(command, 0, stdout=stdout)
+
+    monkeypatch.setattr(overlay_tool.subprocess, 'run', fake_run)
+
+    assert overlay_tool._verify_overlay(repo_src) == (
+        str(py_file),
+        str(core_file),
+        str(core2d_file),
+    )
+    assert "import_module('pyvoro2._core')" in observed['code']
+    assert "import_module('pyvoro2._core2d')" in observed['code']
+    assert 'api._core.__file__' not in observed['code']
+    assert 'api2._core2d' not in observed['code']
 
 
 def test_installed_provenance_rejects_repository_import(tmp_path: Path) -> None:

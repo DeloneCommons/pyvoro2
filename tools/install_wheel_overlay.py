@@ -134,12 +134,20 @@ def _write_pth(repo_src: Path, *, pth_name: str) -> Path:
 def _verify_overlay(repo_src: Path) -> tuple[str, str, str]:
     code = textwrap.dedent(
         '''
+        from importlib import import_module, util
+
         import pyvoro2
-        import pyvoro2.api as api
-        import pyvoro2.planar.api as api2
+
+        core = import_module('pyvoro2._core')
+        core2d_spec = util.find_spec('pyvoro2._core2d')
+        core2d = (
+            None
+            if core2d_spec is None
+            else import_module('pyvoro2._core2d')
+        )
         print(pyvoro2.__file__)
-        print(api._core.__file__)
-        print('MISSING' if api2._core2d is None else api2._core2d.__file__)
+        print(core.__file__)
+        print('MISSING' if core2d is None else core2d.__file__)
         '''
     )
     proc = subprocess.run(
