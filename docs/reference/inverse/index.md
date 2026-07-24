@@ -5,7 +5,7 @@ separator fitting. Its deliberately small public surface contains the resolved
 observation container, resolver, fit result, solver entry point, and neutral
 weight/radius transforms.
 
-The six high-level names exported here are **stable for v0.7**. Advanced
+The six high-level names exported here are **stable in v0.8**. Advanced
 separator inspection and solver-control objects are provisional unless marked
 experimental in the [API inventory](../../development/api-inventory.md).
 

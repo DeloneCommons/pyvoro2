@@ -4,14 +4,12 @@
 and power/Laguerre tessellations**, with particular support for periodic
 topology and inverse fitting of power weights from partial geometric data.
 
-> **v0.7.0 documentation:** this site describes the v0.7.0 transition release,
-> distributed through the `v0.7.0` Git tag and PyPI. The archived v0.6.3 release
-> remains the software baseline
-> cited by the current separator-inverse manuscript. By maintainer decision,
-> v0.7.0 has no GitHub Release or Zenodo record; the next full GitHub/Zenodo
-> archival release is planned for v0.8.0.
+> **v0.8.0 development documentation:** this site describes the current v0.8
+> tree prepared for release qualification. v0.7.0 remains the latest published
+> PyPI version until v0.8.0 is released. The archived v0.6.3 release remains the
+> software baseline cited by the current separator-inverse manuscript.
 
-v0.7.0 provides:
+The v0.8 tree provides:
 
 - standard Voronoi tessellations;
 - power/Laguerre tessellations directly from mathematical weights, with the
@@ -25,9 +23,10 @@ v0.7.0 provides:
   optional realization-aware active-set loop.
 
 The package is evolving toward a stable architecture for **forward and inverse
-weighted tessellations**. v0.8 is a cleanup-only compatibility-removal release.
+weighted tessellations**. v0.8 is a feature-free maintenance and
+compatibility-removal release.
 Prescribed cell measures move to v0.9 and mixed separator-plus-measure fitting
-to v0.10; none of those later capabilities is part of v0.7.
+to v0.10; neither later capability is part of v0.8.
 
 pyvoro2 is designed to be explicit and predictable:
 
@@ -239,6 +238,7 @@ of the Python-side contracts needed in scientific workflows. pyvoro2 adds:
 | [Visualization](guide/visualization.md) | Optional `py3Dmol` and `matplotlib` helpers. |
 | [Examples](guide/notebooks.md) | Executable notebook workflows. |
 | [API reference](reference/index.md) | Exact signatures and docstring reference for spatial, planar, and separator-fitting APIs. |
+| [v0.8.0 release notes](project/release-notes-v0.8.md) | Removals, fixes, maintenance, documentation, and the qualified distribution matrix. |
 | [Roadmap](project/roadmap.md) | v0.7 stabilization, v0.8 cleanup, v0.9 prescribed measures, v0.10 mixed fitting, 1.0, and future research. |
 
 ## Installation
@@ -249,6 +249,13 @@ Most users should install a prebuilt wheel:
 pip install pyvoro2
 ```
 
+The v0.8 release workflow builds and tests 20 standard GIL-enabled CPython
+wheels: Python 3.10, 3.11, 3.12, 3.13, and 3.14 for each of manylinux x86_64,
+Windows AMD64, macOS arm64, and macOS x86_64. It also builds one source
+distribution. Other operating systems, architectures, interpreter
+implementations, free-threaded CPython builds, musllinux, 32-bit targets,
+Windows arm64, and macOS universal2 do not have v0.8 prebuilt wheels.
+
 Optional extras:
 
 - `pyvoro2[sparse]` for optional SciPy sparse-direct static quadratic
@@ -258,7 +265,7 @@ Optional extras:
 - `pyvoro2[all]` for the full local notebook, docs, lint, test, and release
   validation stack.
 
-Source builds support standard GIL-enabled CPython 3.10–3.14 and require a
+Supported source builds use standard GIL-enabled CPython 3.10–3.14 and require a
 C++17 compiler, CMake 3.20 or newer, and Python development headers.
 Free-threaded CPython builds are not currently supported. Ninja is recommended
 because the build backend uses CMake efficiently with it. Typical toolchains
@@ -311,15 +318,16 @@ python tools/release_check.py
 
 ## Project status and support
 
-pyvoro2 is currently **beta**. v0.7.0 is the current transition release,
-distributed through the `v0.7.0` Git tag and PyPI, and contains the common
-forward/result contract and preferred separator API. The archived v0.6.3 release remains the software baseline cited by the
-separator-inverse manuscript. No GitHub Release or Zenodo archive was created
-for v0.7.0; the v0.8 development line has removed the bounded compatibility
-layer and is intended to become the next full GitHub/Zenodo archival release
-before new inverse families begin in v0.9. The
-[archived v0.7 development plan](development/plans/archive/v0.7.md) records the
-delivered scope, accepted decisions, qualification evidence, and deferrals.
+pyvoro2 is currently **beta**. v0.7.0 remains the latest published PyPI
+release. The current v0.8 tree preserves its numerical behavior while removing
+the scheduled compatibility layer, organizing tests and private helpers,
+qualifying Python 3.14 and the complete wheel matrix, and correcting bounded
+API-contract inconsistencies. The archived v0.6.3 release remains the software
+baseline cited by the separator-inverse manuscript. No GitHub Release or Zenodo
+archive was created for v0.7.0; v0.8.0 is intended to be the next full
+GitHub/Zenodo archival release before new inverse families begin in v0.9. See
+the [v0.8.0 release notes](project/release-notes-v0.8.md) and the
+[active v0.8 development plan](development/plans/v0.8.md).
 
 Reproducible bugs and focused feature proposals are welcome through GitHub
 issues. Development is currently led by one maintainer, so support is

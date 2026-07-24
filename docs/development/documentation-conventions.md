@@ -82,9 +82,9 @@ policy.
 When text combines current and future behavior, label the boundary explicitly.
 For example:
 
-> The v0.7 API accepts direct mathematical `weights=`. The v0.8 plan removes
-> the bounded compatibility layer; prescribed-measure fitting is planned for
-> v0.9 rather than described as current behavior.
+> The current API accepts direct mathematical `weights=` and does not expose
+> the removed v0.7 compatibility routes. Prescribed-measure fitting is targeted
+> for v0.9 rather than described as current behavior.
 
 Avoid words such as “soon,” “eventually,” or “later” when a more precise status
 is available.
@@ -92,8 +92,8 @@ is available.
 ## Tense and claims
 
 - Use present tense for implemented behavior: “`compute` returns …”.
-- Use future or target language for accepted release work: “v0.7 will provide
-  …” or “the v0.7 plan requires …”.
+- Use future or target language for accepted release work: “vX.Y targets …” or
+  “the vX.Y plan requires …”.
 - Use conditional language for unresolved design choices: “the result may use
   …”.
 - Do not describe an object as implemented before it exists. A preferred target

@@ -169,7 +169,7 @@ from pyvoro2.inverse import (
 
 The core mapping is:
 
-| v0.6.3 name | v0.7 preferred name |
+| v0.6.3 name | Current canonical name |
 |---|---|
 | `PairBisectorConstraints` | `SeparatorObservations` |
 | `resolve_pair_bisector_constraints` | `resolve_separator_observations` |
@@ -214,8 +214,8 @@ core aliases are absent in v0.8. Canonical separator APIs live under
 
 ## Layered separator results
 
-The flat v0.6.3 fields remain available during v0.7, while the canonical result
-also groups them by meaning:
+The canonical v0.8 result retains the established flat result fields and also
+groups the same data by meaning:
 
 ```python
 state = fit.state

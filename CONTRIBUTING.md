@@ -5,9 +5,10 @@ code, and a developing inverse weighted-tessellation API. Contributions are
 welcome when they are focused, testable, and consistent with the documented
 architecture.
 
-This guide is being prepared with the v0.7.0 stabilization work. Until that
-release reaches `main`, the project may prioritize integration and API design on
-`dev` over broad feature contributions.
+The active v0.8 plan is a feature-free maintenance and release-qualification
+workstream. Keep contributions on `dev` scoped to its linked issues; prescribed
+cell measures and mixed-observation fitting belong to v0.9 and v0.10 rather
+than the v0.8 release.
 
 ## Before starting
 
@@ -71,6 +72,15 @@ not Python runtime dependencies.
 | Linux | GCC or Clang with C++17 support, Python development headers, CMake 3.20+; Ninja recommended |
 | macOS | Xcode Command Line Tools, CMake 3.20+; Ninja recommended |
 | Windows | Visual Studio 2022 Build Tools with **Desktop development with C++**, CMake 3.20+; Ninja recommended |
+
+The prebuilt v0.8 wheel matrix is narrower than the general source-build
+toolchain table: standard CPython 3.10–3.14 on manylinux x86_64, Windows AMD64,
+macOS arm64, and macOS x86_64. This is 20 tested wheels plus one source
+distribution. Free-threaded CPython, alternative interpreters, musllinux,
+other Linux architectures, 32-bit or arm64 Windows, and macOS universal2 are
+not v0.8 wheel targets. Package metadata uses `Requires-Python: >=3.10`, but
+versions newer than 3.14 are not supported until they are added to the source
+and wheel qualification matrices.
 
 Create a clean environment and install the complete contributor stack:
 

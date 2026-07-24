@@ -28,10 +28,11 @@ tessellations:
 v0.7.0 finalized the forward/result contract and separator inverse API. ADR
 0004 and ADR 0005 fix the canonical inverse namespace and common result
 direction. The completed
-[v0.7 development plan](docs/development/plans/archive/v0.7.md) and
-[v0.7 API inventory](docs/development/api-inventory.md) record that release.
-The [v0.8 cleanup plan](docs/development/plans/v0.8.md) is Active. Implement
-only its linked issue scope and keep the release feature-free.
+[v0.7 development plan](docs/development/plans/archive/v0.7.md) records that
+release. The [v0.8 API inventory](docs/development/api-inventory.md) records the
+current public contract and retains the historical migration baseline. The
+[v0.8 cleanup plan](docs/development/plans/v0.8.md) is Active. Implement only
+its linked issue scope and keep the release feature-free.
 
 ## Authoritative sources
 
@@ -203,9 +204,9 @@ outcomes and deferrals, then archive the completed plan.
 
 ## Issue-scoped agent handoff
 
-For substantial v0.7 implementation, one coding-agent chain should normally own
-one linked issue. Before editing, read the issue, its work package, relevant
-ADRs, and the API inventory. The issue defines observable outcomes and
+For substantial release-scoped implementation, one coding-agent chain should
+normally own one linked issue. Before editing, read the issue, its work package,
+relevant ADRs, and the API inventory. The issue defines observable outcomes and
 boundaries; choose clean internal implementation details without inventing new
 public policy.
 

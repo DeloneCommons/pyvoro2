@@ -65,9 +65,9 @@ underscore is one signal, but the decisive criterion is whether a name is
 included in public documentation or exports.
 
 
-## The v0.7 stabilization release
+## The v0.7 stabilization and v0.8 cleanup boundary
 
-v0.7.0 is intended to establish a credible stable/provisional boundary for:
+v0.7.0 established the stable/provisional boundary for:
 
 - forward domain and site input;
 - forward standard and power computation;
@@ -79,18 +79,19 @@ v0.7.0 is intended to establish a credible stable/provisional boundary for:
 - a bounded v0.7 compatibility period for `pyvoro2.powerfit`, broad top-level
   separator exports, and historical result switches.
 
-The [v0.7 API inventory](api-inventory.md) is maintained throughout
-implementation and finalized before the release candidate. This policy defines
-the categories; the inventory assigns them to concrete names, return routes,
-record schemas, defaults, and scientific semantics. The v0.8 cleanup release
-removes the bounded compatibility layer. Prescribed cell measures move to v0.9
-and mixed separator-plus-measure fitting to v0.10;
+The [v0.8 API inventory](api-inventory.md) assigns these categories to concrete
+names, return routes, record schemas, defaults, and scientific semantics in the
+current tree. The v0.8 cleanup removes the bounded compatibility layer and
+retains the v0.7 stable/provisional boundary for canonical APIs. No
+compatibility-only or deprecated route remains in the current v0.8 public
+namespace. Prescribed cell measures move to v0.9 and mixed
+separator-plus-measure fitting to v0.10;
 those solvers may remain experimental without weakening the stable forward and
 separator core.
 
-v0.7.0 is not the same promise as 1.0. It is a stabilization release designed to
-support real downstream integration and to expose remaining rough edges before
-the stronger 1.0 commitment.
+The v0.8 contract is not the same promise as 1.0. It supports real downstream
+integration while keeping explicitly provisional and experimental surfaces
+available for evidence-driven refinement before the stronger 1.0 commitment.
 
 ## What counts as a breaking change
 
@@ -213,8 +214,9 @@ benchmark coverage, and a public API audit.
 
 ## Downstream validation
 
-chemvoro is an intended early downstream consumer. Before declaring the v0.7 API
-stable, the project should verify that a chemistry-facing package can:
+chemvoro is an intended early downstream consumer. Downstream evidence for
+promoting provisional surfaces or making the stronger 1.0 commitment should
+verify that a chemistry-facing package can:
 
 - preserve atom IDs through forward and inverse workflows;
 - compute directly from weights;

@@ -35,9 +35,9 @@ For namespace selection and lifecycle status, begin with
 [Choosing an API](choosing-api.md). The [glossary](glossary.md) defines gauge,
 component offsets, representation shift, realized face, and active set. Users
 migrating from v0.6.3 should also read the
-[v0.7 migration guide](migration-v0.7.md).
+[v0.6.3–v0.8 migration guide](migration-v0.7.md).
 
-The v0.7 high-level resolver, observation container, fit result, fit entry
+The high-level resolver, observation container, fit result, fit entry
 point, and neutral transforms are **stable**. Advanced models, problem and
 operator views, report/realization helpers, and layered convenience views are
 **provisional**. Active-set refinement is **experimental**. The optional
@@ -54,7 +54,7 @@ those exact integer IDs; floats, numeric strings, and booleans are rejected
 rather than converted.
 
 The repository-owned `examples/chemvoro_workflow.py` script is the canonical
-chemistry-neutral downstream example. It uses only preferred v0.7 imports and
+chemistry-neutral downstream example. It uses only current canonical imports and
 keeps application metadata outside pyvoro2 in an external-ID-keyed sidecar:
 
 ```python
@@ -242,8 +242,8 @@ print(sparse_fit.solver_termination.backend)  # sparse
 ```
 
 `solver='analytic'` explicitly selects the dense quadratic path. There is no
-automatic size threshold in v0.7: `auto` remains dense for compatibility and
-predictable dependency behavior. Sparse execution supports `SquaredLoss` with
+automatic size threshold: `auto` remains dense to preserve predictable
+dependency and solver-selection behavior. Sparse execution supports `SquaredLoss` with
 optional L2 regularization and no scalar penalties or hard restrictions.
 Huber mismatch, hard constraints, and scalar-penalty models continue to use the
 existing ADMM path and reject `solver='sparse'`.

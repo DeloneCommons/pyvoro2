@@ -5,7 +5,7 @@ Use it when you need exact signatures, parameters, return fields, or exception
 behavior. For task-oriented examples, begin with the [user guide](../guide/concepts.md);
 for mathematical interpretation, see the [theory section](../theory/index.md).
 Lifecycle classifications are authoritative in the
-[v0.7 API inventory](../development/api-inventory.md); the concise user-facing
+[v0.8 API inventory](../development/api-inventory.md); the concise user-facing
 summary is in [Choosing an API](../guide/choosing-api.md).
 
 ## Spatial API (3D)

@@ -18,7 +18,7 @@ separator observations, reports compatibility, identifiability, and
 hard-constraint feasibility, and separates algebraic fitting from
 realized-boundary checks.
 Prescribed cell measures are planned for v0.9 and mixed separator-plus-measure
-problems for v0.10; neither is part of the current v0.7 implementation.
+problems for v0.10; neither is part of the current v0.8 implementation.
 
 ## What is Voro++?
 
@@ -131,8 +131,9 @@ for the development workflow.
 - [Archived v0.7 development plan](../development/plans/archive/v0.7.md)
   records the delivered release scope, accepted decisions, work packages,
   qualification evidence, and deferrals.
-- [Architecture](../development/architecture.md) describes the implemented
-  v0.7 architecture and the accepted v0.8-v0.10 extension sequence.
+- [Architecture](../development/architecture.md) describes the historical
+  baselines, implemented v0.8 architecture, and accepted v0.9–v0.10 extension
+  sequence.
 - [API lifecycle](../development/api-lifecycle.md) defines stability and
   compatibility.
 - [Decision records](../development/decisions/index.md) explain durable choices.

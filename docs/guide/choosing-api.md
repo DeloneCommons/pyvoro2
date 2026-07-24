@@ -109,11 +109,12 @@ experimental and has no universal convergence guarantee.
 names were compatibility-only routes in v0.7 and are absent in v0.8. Use
 `pyvoro2.inverse` or `pyvoro2.inverse.separator`.
 
-See the [v0.7 migration guide](migration-v0.7.md) for exact replacements.
+See the [v0.6.3–v0.8 migration guide](migration-v0.7.md) for exact
+replacements.
 
 ## Feature and lifecycle status
 
-| Capability | v0.7 status | Recommended use |
+| Capability | v0.8 lifecycle | Recommended use |
 |---|---|---|
 | 2D/3D domains and `compute`, `locate`, `ghost_cells` | Stable | Normal public API |
 | `weights=` and `radii=` power input semantics | Stable | Prefer `weights=` for mathematical workflows |
@@ -125,19 +126,19 @@ See the [v0.7 migration guide](migration-v0.7.md) for exact replacements.
 | Explicit SciPy sparse quadratic separator backend | Provisional | Large static sparse quadratic observation graphs |
 | Realization-aware active-set refinement | Experimental | Opt-in diagnostic outer algorithm |
 | v0.7-only inverse and planar compatibility routes | Removed in v0.8 | Follow the migration guide |
-| v0.8 cleanup and compatibility removal | Active | No new numerical features |
+| v0.8 cleanup and compatibility removal | Implemented maintenance scope | No new numerical features |
 | Prescribed cell areas/volumes | Planned for v0.9 | Not implemented |
 | Mixed separator and cell-measure fitting | Planned for v0.10 | Not implemented |
 
 The complete name-by-name contract is in the
-[v0.7 API inventory](../development/api-inventory.md).
+[v0.8 API inventory](../development/api-inventory.md).
 
 ## Static scalability contract
 
-v0.7 supports large **static sparse** separator-observation graphs through the
-explicit SciPy-backed quadratic path when its model restrictions are satisfied.
-The supported scalable regime is a locality graph with observation count that
-remains sparse relative to all possible site pairs.
+The current API supports large **static sparse** separator-observation graphs
+through the explicit SciPy-backed quadratic path when its model restrictions
+are satisfied. The supported scalable regime is a locality graph with
+observation count that remains sparse relative to all possible site pairs.
 
 The following are not implied:
 

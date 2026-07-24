@@ -22,6 +22,11 @@ The repository source notebooks are:
 - `notebooks/08_powerfit_active_path.ipynb` — experimental outer-loop path
   diagnostics
 
+The inverse notebooks use only the current canonical routes,
+`pyvoro2.inverse` and `pyvoro2.inverse.separator`. They do not depend on the
+v0.7-only `pyvoro2.powerfit`, historical aliases, or broad top-level separator
+exports.
+
 ## Published notebook pages
 
 The generated documentation pages are:

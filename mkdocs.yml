@@ -81,7 +81,7 @@ nav:
       - Documentation conventions: development/documentation-conventions.md
       - Architecture: development/architecture.md
       - API lifecycle: development/api-lifecycle.md
-      - v0.7 API inventory: development/api-inventory.md
+      - v0.8 API inventory: development/api-inventory.md
       - Decision records:
           - Overview: development/decisions/index.md
           - Project scope and layering: development/decisions/0001-project-scope-and-layering.md
@@ -127,6 +127,7 @@ nav:
   - Project:
       - About: project/about.md
       - Roadmap: project/roadmap.md
+      - v0.8.0 release notes: project/release-notes-v0.8.md
       - Changelog: about/changelog.md
       - License: project/license.md
       - AI-assisted development: project/ai.md

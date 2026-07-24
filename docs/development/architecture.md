@@ -3,14 +3,14 @@
 This document has three roles. It describes the **factual v0.6.3
 implementation**, which is the software baseline used by the separator-inverse
 manuscript, records the **v0.7.0 release architecture**, and explains
-the cleanup and extension boundaries accepted for later releases.
+the **current v0.8 implementation** and accepted extension boundaries.
 
-!!! note "v0.7.0 release documentation"
+!!! note "Current and historical documentation"
     The v0.6.3 section remains a historical manuscript baseline. The v0.7
-    sections describe the released v0.7.0 contract. The canonical inverse
-    namespace and common result contract are fixed by ADR 0004 and ADR 0005;
-    lifecycle status is finalized in the
-    [v0.7 API inventory](api-inventory.md).
+    sections explain the architecture established by the released v0.7.0
+    contract. Current sections describe the feature-free v0.8 cleanup fixed by
+    ADR 0006. Lifecycle status is finalized in the
+    [v0.8 API inventory](api-inventory.md).
 
 ## Architectural principles
 
@@ -25,16 +25,16 @@ the cleanup and extension boundaries accepted for later releases.
    infeasibility, empty cells, and wrong periodic images should be inspectable.
 7. **API evolution is explicit and time-bounded.** v0.7 provides one documented
    transition release; ADR 0006 removes compatibility-only routes in v0.8.
-8. **Real downstream use validates stability.** The chemvoro integration is an
-   intended test of the v0.7 contract.
+8. **Real downstream use validates stability.** The chemvoro-shaped integration
+   workflow tests the current canonical contract.
 
 ## Architecture at a glance
 
-| Layer | Historical v0.6.3 state | Current v0.7 contract |
+| Layer | Historical v0.6.3 state | Current v0.8 contract |
 |---|---|---|
 | Native backends | Separate 3D and legacy planar Voro++ extensions | Preserve explicit dimensional capabilities and backend isolation |
 | Forward Python API | Mature domain and operation layers, but asymmetric result containers | Return one dimension-neutral `TessellationResult` by default, with explicit supported raw output |
-| Inverse API | Separator fitting under `pyvoro2.powerfit` with broad top-level re-exports | Move ownership to `pyvoro2.inverse.separator`; keep a bounded v0.7 compatibility shim |
+| Inverse API | Separator fitting under `pyvoro2.powerfit` with broad top-level re-exports | Stable high-level workflow at `pyvoro2.inverse`, advanced ownership at `pyvoro2.inverse.separator`, and no compatibility shim |
 | Downstream boundary | Rich records and reports exist, but some callers still need implementation knowledge | Support chemvoro through documented weights, IDs, geometry, and diagnostic contracts |
 
 ## Historical implementation baseline: v0.6.3
@@ -69,7 +69,7 @@ The top-level `pyvoro2` namespace is the 3D public surface.
 In the v0.6.3 baseline, the ordinary 3D compute path returned a list of Python
 cell records. Diagnostics, normalization, and annotations were requested
 through separate functions or compute options; that release had no universal
-result object. The current v0.7 behavior is described separately below.
+result object. The current v0.8 behavior is described separately below.
 
 ### Planar forward layer (2D)
 
@@ -86,7 +86,7 @@ and operation code.
   their corresponding modules.
 
 The v0.6.3 planar API therefore had a structured result path that the 3D API
-did not. The current v0.7 tree described below aligns the common result concept
+did not. The current v0.8 tree described below aligns the common result concept
 without pretending that every backend capability is identical.
 
 ### Shared post-processing and scientific utilities
@@ -127,7 +127,7 @@ surface.
 
 ### Core data flows
 
-The inverse flows use the current canonical v0.7 names for clarity. The v0.6.3
+The inverse flows use the current canonical names for clarity. The v0.6.3
 implementation exposed the same roles through the historical names recorded in
 the [advanced separator API inventory](api-inventory.md#advanced-separator-api).
 
@@ -206,6 +206,21 @@ implementation-helper namespace. The compiled extension modules
 `pyvoro2._core` and `pyvoro2._core2d` also remain at the package root and keep
 their existing lazy loading paths.
 
+### Lazy import boundaries
+
+Plain `import pyvoro2` loads the public pure-Python forward/result surface and
+the `pyvoro2.planar` namespace, but it does not import `pyvoro2.inverse`,
+`pyvoro2._core`, or `pyvoro2._core2d`. Importing `pyvoro2.inverse` or
+`pyvoro2.inverse.separator` also does not load either native extension.
+
+The spatial wrapper imports `_core` only when `compute`, `locate`, or
+`ghost_cells` first needs the 3D backend. The planar wrapper does the same for
+`_core2d`. Documentation builds and inverse-only work can therefore import the
+package without a compiled extension; a forward geometry operation raises an
+informative `ImportError` when its required native module is unavailable. Lazy
+loading does not change ownership: `_core` and `_core2d` remain root-owned
+internal native extensions, while `_internal` owns only pure-Python helpers.
+
 ### Neutral weight/radius transforms
 
 The sole implementations of `weights_to_radii` and `radii_to_weights` now live
@@ -240,7 +255,7 @@ The neutral transform implementation remains in
 
 `pyvoro2.inverse` exposes only the normal fixed-observation workflow and
 neutral transforms; advanced separator objects remain in
-`pyvoro2.inverse.separator`. Issue #28 removes the v0.7-only facade, broad
+`pyvoro2.inverse.separator`. Issue #28 removed the v0.7-only facade, broad
 top-level separator exports, and five historical core aliases without changing
 the canonical implementation.
 
@@ -263,7 +278,7 @@ separator-ownership move without changing solver behavior.
 
 ### Common forward result data contract
 
-The current v0.7 tree now defines the dimension-neutral
+The current v0.8 tree defines the dimension-neutral
 `pyvoro2.TessellationResult` in `pyvoro2.result` and re-exports the identical
 class from `pyvoro2.planar`. A single private builder constructs aligned
 measures and empty-cell state by final external ID, including cells that the
@@ -294,7 +309,7 @@ tessellation check are stored in the structured result. Planar normalization
 uses the same result and keeps internally requested temporary geometry out of
 the final raw-cell capabilities.
 
-Issue #28 removes the planar result alias and legacy return selector.
+Issue #28 removed the planar result alias and legacy return selector.
 `TessellationResult` and the explicit `output=` rules remain unchanged;
 explicit raw output with normalization fails clearly.
 
@@ -315,7 +330,7 @@ fixtures. Ordinary imported support has an explicit subsystem owner, currently
 the surviving raw-output contract is current forward behavior and is tested
 under common forward ownership.
 
-## Why stabilization is needed
+## Why v0.7 stabilization was needed
 
 The v0.6.3 implementation is functional, but several details should be stabilized
 before new inverse families are added.
@@ -323,7 +338,7 @@ before new inverse families are added.
 ### Result asymmetry
 
 The v0.6.3 3D API normally returned raw records, while the planar API could
-return a separate `PlanarComputeResult`. The current v0.7 tree resolves this
+return a separate `PlanarComputeResult`. The current v0.8 tree resolves this
 asymmetry through the common default result while retaining explicit supported raw
 output.
 
@@ -339,7 +354,7 @@ v0.7.0 resolves that baseline limitation for both
 The v0.6.3 `powerfit` surface grew around one observation family. Prescribed
 cell measures should not be implemented as a second unrelated module with its
 own geometry parsing, gauge policy, result vocabulary, and failure reporting.
-The current v0.7 tree resolves physical ownership under
+The current v0.8 tree resolves physical ownership under
 `pyvoro2.inverse.separator`; the terminology migration remains separate.
 
 ### Ambiguous gauge language for disconnected observations
@@ -356,7 +371,7 @@ shift harmless gauge.
 The v0.6.3 top-level namespace re-exported many inverse implementation types.
 v0.7 provided a bounded transition, and v0.8 removes those exports.
 
-## Public architecture for v0.7
+## Current public architecture
 
 ### Dependency direction
 
@@ -407,7 +422,7 @@ re-parse or reorder the same geometry independently.
 
 ### Weight-first forward route
 
-The current v0.7 forward power API accepts mathematical weights directly in
+The current forward power API accepts mathematical weights directly in
 addition to the existing `radii=` route. Power mode requires exactly one
 representation. Standard mode rejects both representations rather than silently
 ignoring unused weighted inputs.
@@ -427,7 +442,7 @@ result implementation without exposing a new public weights object.
 
 ### Shared forward result contract
 
-The v0.7 line provides one inspectable conceptual contract across 2D and 3D.
+The current API provides one inspectable conceptual contract across 2D and 3D.
 It does not erase backend differences, but users can obtain:
 
 - raw or structured cell records;
@@ -508,14 +523,14 @@ SciPy is imported only when sparse conversion or explicit sparse solving is
 requested and is not a runtime dependency. Issue #17 reuses the same quadratic
 operator for `solver='sparse'`, removes one gauge anchor per unregularized
 effective component, and performs a SciPy sparse-direct solve. The default
-`solver='auto'` remains dense; v0.7 deliberately has no automatic size
-threshold. Sparse execution is limited to the primary fixed-observation
+`solver='auto'` remains dense; the current API deliberately has no automatic
+size threshold. Sparse execution is limited to the primary fixed-observation
 quadratic path and does not extend ADMM, the active-set outer loop, or dynamic
 workflows.
 
 ### Layered inverse result contract
 
-The v0.7 result vocabulary keeps these concerns distinct:
+The current result vocabulary keeps these concerns distinct:
 
 - **state**: fitted weights, representation shift/radii, and identification
   metadata;
@@ -533,15 +548,15 @@ The v0.7 result vocabulary keeps these concerns distinct:
 Not every inverse method has every layer. Missing concepts should be absent or
 explicitly unsupported rather than filled with misleading placeholders.
 
-### Compatibility boundary
+### Current compatibility boundary
 
-The v0.7 implementation does the following:
+The v0.8 implementation does the following:
 
-- keep documented v0.6.3 inverse imports functioning through a one-way shim;
+- remove the documented v0.6.3 inverse imports after the bounded v0.7 shim;
 - keep raw forward returns available through `output='cells'`;
 - make `TessellationResult` and `pyvoro2.inverse` the normal new-user paths;
-- document aliases, default changes, warnings, and the v0.8 removal of
-  historical inverse and planar transition paths;
+- retain aliases, changed defaults, warnings, and removals only in migration
+  documentation and historical records;
 - avoid encouraging new code to import separator-specific types from top-level
   `pyvoro2`;
 - keep the paper's archived v0.6.3 environment independent of later internal
@@ -555,7 +570,7 @@ chemvoro is intended to be a thin chemistry-facing layer. It supplies atomic
 information and proposed interatomic separator positions; pyvoro2 supplies the
 weighted geometry and inverse mathematics.
 
-The v0.7 contract lets chemvoro rely on:
+The current v0.8 contract lets chemvoro rely on:
 
 1. stable association of coordinates, external atom IDs, and output cells;
 2. direct forward computation from power weights;
@@ -567,11 +582,10 @@ The v0.7 contract lets chemvoro rely on:
 8. no dependency on private backend radius shifts, solver internals, or record
    ordering accidents.
 
-A repository-owned chemvoro-shaped integration workflow is part of the v0.7
-stabilization review and validates the preferred public boundary without private
-imports.
+A repository-owned chemvoro-shaped integration workflow validates the preferred
+public boundary without private imports.
 
-## Extension path after v0.7
+## Release sequence from v0.8
 
 ### v0.8 cleanup and compatibility removal
 
@@ -621,7 +635,7 @@ inside the stable weights-only solver.
 
 ## Near-term non-goals
 
-The v0.7 line does not commit to:
+The current release line does not commit to:
 
 - moving-site optimization;
 - arbitrary user-defined objective callbacks;
@@ -630,7 +644,7 @@ The v0.7 line does not commit to:
 - a general computational-geometry framework competing with CGAL;
 - guaranteed convergence of the realization-aware active-set loop;
 - planar oblique-periodic support solely for symmetry with 3D;
-- prescribed-measure work before the v0.8 cleanup is complete;
+- prescribed-measure work in the v0.8 release;
 - mixed-observation work before the prescribed-measure family exists.
 
 ## Keeping this document current

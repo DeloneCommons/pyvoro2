@@ -90,12 +90,12 @@ It is experimental and is not part of the exact fixed-observation theory.
 The dimension-neutral term for cell area in 2D or cell volume in 3D.
 `TessellationResult.cell_measures` is an input-aligned forward result. Fitting
 weights from prescribed cell measures is planned for v0.9 and is not implemented
-in v0.7.
+in v0.8.
 
 ## Static sparse observation graph
 
 A fixed separator-observation graph whose number of rows is sparse relative to
-all possible site pairs. v0.7 provides an optional explicit SciPy-backed
+all possible site pairs. The current API provides an optional explicit SciPy-backed
 quadratic solve for this regime. The term does not imply trajectory processing,
 all-pairs scalability, automatic backend selection, or parallel execution.
 

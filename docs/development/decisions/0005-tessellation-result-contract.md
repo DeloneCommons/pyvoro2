@@ -61,7 +61,8 @@ combinations, but the documented v0.7 contract uses `output`.
   geometry was requested.
 
 The precise full list of stable and provisional fields is maintained in the
-[v0.7 API inventory](../api-inventory.md). Dimension-specific raw geometry and
+[public API inventory](../api-inventory.md), which retains the historical v0.7
+contract alongside the current v0.8 surface. Dimension-specific raw geometry and
 normalization types remain explicit; a common class does not imply false
 capability parity.
 

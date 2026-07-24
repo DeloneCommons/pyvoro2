@@ -17,7 +17,20 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   in a fresh no-SciPy environment.
 - Complete standard CPython 3.10–3.14 binary wheels for manylinux x86_64,
   Windows AMD64, macOS arm64, and macOS x86_64, with native installed-wheel
-  checks and aggregate release-artifact validation.
+  checks and aggregate validation of exactly 20 wheels plus one source
+  distribution.
+
+### Changed
+
+- Reorganized tests by forward, inverse, integration, tooling, and fuzz
+  responsibility, and moved private pure-Python helpers under
+  `pyvoro2._internal` with explicit shared, spatial, and planar ownership.
+  Root-owned `_core` and `_core2d` remain lazy internal native extensions;
+  public imports, signatures, and numerical behavior are unchanged.
+- Finalized the v0.8 public API inventory, canonical API-selection and migration
+  guidance, architecture and contributor documentation, notebook references,
+  generated README, reference navigation, and v0.8.0 release notes against the
+  exact current exports and distribution workflows.
 
 ### Removed
 

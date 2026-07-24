@@ -117,8 +117,8 @@ lazily; requesting sparse conversion without it raises an actionable
 
 The primary fixed quadratic fit additionally accepts `solver='sparse'` for an
 optional SciPy sparse-direct solve. `solver='auto'` and `solver='analytic'`
-retain the dense NumPy quadratic path; v0.7 does not choose a sparse backend
-automatically. `SeparatorFitResult.solver` and
+retain the dense NumPy quadratic path; the current API does not choose a sparse
+backend automatically. `SeparatorFitResult.solver` and
 `SeparatorFitResult.solver_termination.backend` report the path actually
 selected. Sparse execution is limited to unconstrained `SquaredLoss` with
 optional L2 regularization and no scalar penalties. It is not exposed through

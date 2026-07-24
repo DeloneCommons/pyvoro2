@@ -12,8 +12,8 @@ contributors, reviewers, coding agents, and downstream package authors.
 | How do I use the current package? | [User guide](../guide/concepts.md) and [API reference](../reference/index.md) |
 | What mathematics does it implement? | [Theory](../theory/index.md) |
 | How does work move from proposal to release? | [Development workflow](development-workflow.md) |
-| What work is planned next? | [Development plans](plans/index.md); the [v0.7 plan](plans/archive/v0.7.md) is archived and the [v0.8 cleanup plan](plans/v0.8.md) is recorded but inactive |
-| Which concrete APIs are stable, provisional, experimental, or compatibility-only? | [v0.7 API inventory](api-inventory.md) and [API lifecycle](api-lifecycle.md) |
+| What work is planned next? | [Development plans](plans/index.md); the [v0.7 plan](plans/archive/v0.7.md) is archived and the [v0.8 cleanup plan](plans/v0.8.md) is active |
+| Which concrete APIs are stable, provisional, experimental, removed, or internal? | [v0.8 API inventory](api-inventory.md) and [API lifecycle](api-lifecycle.md) |
 | How should repository documentation be written? | [Documentation conventions](documentation-conventions.md) |
 | How are modules and layers organized? | [Architecture](architecture.md) |
 | Why was a durable choice made? | [Decision records](decisions/index.md) |
@@ -21,6 +21,7 @@ contributors, reviewers, coding agents, and downstream package authors.
 | What concrete work is in progress? | GitHub issues and milestones |
 | How do I prepare a change? | [`CONTRIBUTING.md`](https://github.com/DeloneCommons/pyvoro2/blob/main/CONTRIBUTING.md) |
 | What changed historically? | [Changelog](../about/changelog.md) |
+| What is included in v0.8.0? | [v0.8.0 release notes](../project/release-notes-v0.8.md) |
 
 ## Authority and status
 
