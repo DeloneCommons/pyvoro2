@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Sequence
 
 import numpy as np
 
 from ..._internal.weight_transforms import weights_to_radii
-from .constraints import SeparatorObservations, resolve_separator_observations
+from .constraints import (
+    _external_id_label,
+    _validated_ids_array,
+    SeparatorObservations,
+    resolve_separator_observations,
+)
 from .model import FitModel
 from .realize import RealizedPairDiagnostics, match_realized_pairs
 from .problem import (
@@ -37,8 +42,7 @@ def _label_value(
 ) -> object:
     if ids is None:
         return int(values[index])
-    item = ids[int(values[index])]
-    return item.item() if hasattr(item, 'item') else item
+    return _external_id_label(ids, int(values[index]))
 
 
 def _boundary_value(values: np.ndarray | None, index: int) -> float | None:
@@ -157,10 +161,13 @@ class PairConstraintDiagnostics:
     status: tuple[str, ...]
 
     def to_records(
-        self, *, ids: np.ndarray | None = None
+        self,
+        *,
+        ids: Sequence[int | np.integer] | np.ndarray | None = None,
     ) -> tuple[dict[str, object], ...]:
         """Return one plain-Python record per candidate pair."""
 
+        ids_array = None if ids is None else _validated_ids_array(ids)
         rows: list[dict[str, object]] = []
         for k in range(int(self.site_i.shape[0])):
             realized_shifts = tuple(
@@ -170,8 +177,8 @@ class PairConstraintDiagnostics:
             rows.append(
                 {
                     'constraint_index': int(k),
-                    'site_i': _label_value(self.site_i, k, ids),
-                    'site_j': _label_value(self.site_j, k, ids),
+                    'site_i': _label_value(self.site_i, k, ids_array),
+                    'site_j': _label_value(self.site_j, k, ids_array),
                     'shift': tuple(int(v) for v in self.shift[k]),
                     'target': float(self.target[k]),
                     'confidence': float(self.confidence[k]),
@@ -308,7 +315,7 @@ def solve_self_consistent_power_weights(
     *,
     measurement: Literal['fraction', 'position'] = 'fraction',
     domain: Box2D | RectangularCell | Box3D | OrthorhombicCell | PeriodicCell,
-    ids: list[int] | tuple[int, ...] | np.ndarray | None = None,
+    ids: Sequence[int | np.integer] | np.ndarray | None = None,
     index_mode: Literal['index', 'id'] = 'index',
     image: Literal['nearest', 'given_only'] = 'nearest',
     image_search: int = 1,

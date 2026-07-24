@@ -174,7 +174,7 @@ jobs:
         run: |
           python tools/check_wheel_matrix.py release-dist
           python tools/check_dist.py release-dist
-          python -m twine check release-dist/*
+          python tools/check_dist_metadata.py release-dist
 
       - name: Create clean aggregate-wheel environment
         run: python -m venv "${{ runner.temp }}/pyvoro2-wheel-venv"

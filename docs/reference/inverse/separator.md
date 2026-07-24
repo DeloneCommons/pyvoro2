@@ -14,6 +14,13 @@ objects on this page are **provisional**. Active-set refinement is
 **provisional** and is limited to the static squared-loss branch documented
 below.
 
+Separator external IDs are unique non-negative integers aligned with input-site
+order. Python integers and NumPy integer scalars are accepted consistently by
+the resolver, fixed fit, and active-set entry points. Raw endpoints are strict
+integers in both index and ID modes; lossy float conversion, numeric-string
+parsing, and booleans are not accepted. Record and report conversion preserves
+the integer IDs.
+
 ## Layered result access
 
 The provisional view types below organize existing result data without adding

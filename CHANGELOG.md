@@ -28,6 +28,15 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   Canonical separator APIs remain under `pyvoro2.inverse` and
   `pyvoro2.inverse.separator`; numerical behavior is unchanged.
 
+### Fixed
+
+- Separator external IDs and raw observation endpoints now enforce the
+  documented non-negative integer contract consistently, accepting Python and
+  NumPy integers while rejecting lossy float, string, and boolean conversions.
+- Distribution metadata checks now discover wheel and sdist artifacts in
+  Python, so local and GitHub Actions Twine validation no longer depends on
+  shell glob expansion.
+
 ## [0.7.0] - 2026-07-23
 
 ### Added

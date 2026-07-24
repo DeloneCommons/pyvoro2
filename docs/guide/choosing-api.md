@@ -22,6 +22,9 @@ result2d = pv2.compute(points2d, domain=domain2d)
 
 Both calls return the same stable `TessellationResult` class. Use its aligned
 arrays and capability checks for normal downstream work.
+Application code should receive this result from `compute(...)`; direct
+construction remains provisional and is not a backend-record normalization or
+geometric-verification API.
 
 Select `output='cells'` only when a low-level workflow intentionally wants the
 raw backend-shaped cell dictionaries:

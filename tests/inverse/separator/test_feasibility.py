@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 
 def test_infeasible_hard_constraints_return_conflict_witness():
@@ -98,3 +99,46 @@ def test_conflict_and_fit_records_are_exportable():
     assert len(fit_rows) == 3
     assert fit_rows[0]['measurement'] == 'position'
     assert fit_rows[0]['predicted'] is None
+
+    with pytest.raises(ValueError, match=r'ids\[0\] must be an integer'):
+        res.conflict.to_records(ids=np.array(['10', '20', '30']))
+
+
+def test_conflict_records_validate_external_ids_once(monkeypatch) -> None:
+    import pyvoro2.inverse.separator.types as types_module
+    from pyvoro2.inverse.separator import (
+        HardConstraintConflict,
+        HardConstraintConflictTerm,
+    )
+
+    original_validator = types_module._validated_ids_array
+    validation_count = 0
+
+    def counting_validator(ids, n_points=None):
+        nonlocal validation_count
+        validation_count += 1
+        return original_validator(ids, n_points)
+
+    monkeypatch.setattr(
+        types_module,
+        '_validated_ids_array',
+        counting_validator,
+    )
+    terms = (
+        HardConstraintConflictTerm(0, 0, 1, '<=', 0.0),
+        HardConstraintConflictTerm(1, 1, 2, '>=', 1.0),
+    )
+    conflict = HardConstraintConflict(
+        component_nodes=(0, 1, 2),
+        cycle_nodes=(0, 1, 2),
+        terms=terms,
+        message='test conflict',
+    )
+
+    records = conflict.to_records(ids=[10, 20, 30])
+
+    assert [(record['site_i'], record['site_j']) for record in records] == [
+        (10, 20),
+        (20, 30),
+    ]
+    assert validation_count == 1

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import replace
-from typing import Literal
+from typing import Literal, Sequence
 
 import numpy as np
 
@@ -56,7 +56,7 @@ def fit_weights_from_separators(
     *,
     measurement: Literal['fraction', 'position'] = 'fraction',
     domain: DomainAny | None = None,
-    ids: list[int] | tuple[int, ...] | np.ndarray | None = None,
+    ids: Sequence[int | np.integer] | np.ndarray | None = None,
     index_mode: Literal['index', 'id'] = 'index',
     image: Literal['nearest', 'given_only'] = 'nearest',
     image_search: int = 1,

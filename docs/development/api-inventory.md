@@ -647,8 +647,12 @@ UnaccountedRealizedPair.to_record(*, ids=None)
 
 ### Current inverse record schemas
 
-Record order follows constraint order. `use_ids=True` substitutes external site
-labels where the relevant container has `ids`.
+Record order follows constraint order. `use_ids=True` substitutes the stable
+external site IDs where the relevant container has `ids`. Separator IDs are
+input-order-aligned, unique, non-negative integers; Python integers and NumPy
+integer scalars are accepted without lossy float or string conversion. Raw
+observation endpoints are strict integers in both `index_mode='index'` and
+`index_mode='id'`.
 
 | Producer | Exact keys |
 |---|---|
@@ -1196,16 +1200,19 @@ fields and raises if mutation made them inconsistent with the recorded
 snapshots or capabilities. An empty cell cannot contain realized edge or face
 records; both omitted and explicitly empty boundary collections remain valid.
 
-Direct dataclass construction is **provisional** and validates raw IDs, measures,
-empty state, representation metadata, and capability metadata against the
-aligned fields. Weight-first metadata must satisfy the shared exact
+Direct dataclass construction is **provisional** and validates documented raw
+IDs, measures, empty state, representation metadata, and capability metadata
+against the aligned fields. It does not normalize arbitrary hand-written
+backend-style dictionaries, recompute derived geometry, or geometrically verify
+the records. Weight-first metadata must satisfy the shared exact
 weight/shift-to-radius transform. Boundary and periodic-shift availability are
 private keyword-only construction state supplied by the shared builder;
 keeping them as normal dataclass initialization fields preserves them through
 `dataclasses.replace()` without adding stable public result fields. Deep copies
-and pickle round trips preserve the exact existing snapshot state rather than
-revalidating it against later permitted raw-record mutation; reconstructed
-arrays remain owned and read-only, and capability state is preserved.
+and same-version pickle round trips preserve the exact existing snapshot state
+rather than revalidating it against later permitted raw-record mutation;
+reconstructed arrays remain owned and read-only, and capability state is
+preserved. No cross-version pickle compatibility is promised.
 
 ### Preferred compute route
 

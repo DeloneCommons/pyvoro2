@@ -26,6 +26,9 @@ Main entry points:
 - `python tools/check_dist.py dist` — verify that built sdists and wheels
   contain the expected `_internal` hierarchy and other key files while omitting
   obsolete private and compatibility paths.
+- `python tools/check_dist_metadata.py dist` — discover `.whl` and `.tar.gz`
+  artifacts in deterministic order and run Twine metadata validation without
+  shell-dependent glob expansion.
 - `python tools/check_wheel_matrix.py release-dist` — require the complete
   CPython 3.10–3.14 release matrix (20 supported native wheels and one matching
   sdist), validate wheel tags, Python/runtime dependency metadata, and project

@@ -31,12 +31,6 @@ def _fresh_build_dirs() -> None:
     shutil.rmtree(BUILD_DIR, ignore_errors=True)
 
 
-def _distribution_artifacts() -> list[Path]:
-    """Return built distributions without relying on shell glob expansion."""
-
-    return sorted((*DIST_DIR.glob('*.tar.gz'), *DIST_DIR.glob('*.whl')))
-
-
 def _smoke_test_wheel() -> None:
     """Install the rebuilt wheel into a temporary base environment and test it."""
 
@@ -103,14 +97,7 @@ def main() -> int:
     _fresh_build_dirs()
     _run(sys.executable, '-m', 'build', '--sdist')
     _run(sys.executable, 'tools/build_wheel_from_sdist.py', 'dist')
-    artifacts = _distribution_artifacts()
-    _run(
-        sys.executable,
-        '-m',
-        'twine',
-        'check',
-        *(str(path) for path in artifacts),
-    )
+    _run(sys.executable, 'tools/check_dist_metadata.py', 'dist')
     _run(sys.executable, 'tools/check_dist.py', 'dist')
     if not args.skip_smoke_test:
         _smoke_test_wheel()

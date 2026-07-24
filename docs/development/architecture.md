@@ -275,14 +275,16 @@ Capability flags for boundaries and periodic shifts are validated keyword-only
 construction state supplied explicitly by the builder, so replacement, empty
 input, and all-hidden output preserve the distinction between unavailable
 geometry and requested geometry with no records. Direct construction validates
-the raw/aligned invariants. Later raw-cell mutation does not alter the aligned
-measure and empty-mask snapshots; boundary access revalidates mutable boundary
-records against those snapshots before returning them. Weight-first metadata
-is validated against the shared weight-to-radius transform. Deep-copy and
-pickle reconstruction preserve the existing snapshot state, including allowed
-raw-record divergence, while restoring owned read-only arrays and capability
-state. The builder does no native work and does not trigger diagnostics,
-normalization, or boundary annotation.
+the documented raw/aligned invariants without normalizing arbitrary
+backend-style dictionaries, recomputing geometry, or verifying geometric
+validity. Later raw-cell mutation does not alter the aligned measure and
+empty-mask snapshots; boundary access revalidates mutable boundary records
+against those snapshots before returning them. Weight-first metadata is
+validated against the shared weight-to-radius transform. Deep-copy and
+same-version pickle reconstruction preserve the existing snapshot state,
+including allowed raw-record divergence, while restoring owned read-only arrays
+and capability state. The builder does no native work and does not trigger
+diagnostics, normalization, or boundary annotation.
 
 Both public `compute(...)` functions now build through that shared path and
 return `TessellationResult` by default. `output='cells'` preserves the

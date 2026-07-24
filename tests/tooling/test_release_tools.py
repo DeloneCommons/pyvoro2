@@ -32,6 +32,13 @@ SdistWheelBuildError = build_wheel_tool.SdistWheelBuildError
 build_wheel_from_sdist = build_wheel_tool.build_wheel_from_sdist
 select_only_sdist = build_wheel_tool.select_only_sdist
 
+dist_metadata_tool = _load_tool_module('check_dist_metadata')
+DistributionMetadataCheckError = (
+    dist_metadata_tool.DistributionMetadataCheckError
+)
+distribution_artifacts = dist_metadata_tool.distribution_artifacts
+run_twine_check = dist_metadata_tool.run_twine_check
+
 installed_package_tool = _load_tool_module('check_installed_package')
 InstalledPackageCheckError = installed_package_tool.InstalledPackageCheckError
 assert_outside_repository = installed_package_tool.assert_outside_repository
@@ -91,6 +98,10 @@ def test_execute_notebooks_help() -> None:
 
 def test_check_dist_help() -> None:
     assert 'dist_dir' in _run_help('check_dist.py')
+
+
+def test_check_dist_metadata_help() -> None:
+    assert 'without shell glob' in _run_help('check_dist_metadata.py')
 
 
 def test_check_installed_package_help() -> None:
@@ -163,6 +174,10 @@ def test_distribution_content_checks_require_internal_hierarchy(
 
     check_wheel(wheel)
     check_sdist(sdist)
+
+
+def test_distribution_content_checks_require_metadata_tool() -> None:
+    assert 'tools/check_dist_metadata.py' in dist_tool.REQUIRED_SDIST_SUFFIXES
 
 
 def test_distribution_content_checks_reject_obsolete_private_paths(
@@ -265,6 +280,70 @@ def test_select_only_sdist_requires_one_artifact(tmp_path: Path) -> None:
     second.touch()
     with pytest.raises(SdistWheelBuildError, match='found 2'):
         select_only_sdist(tmp_path)
+
+
+def test_distribution_metadata_artifacts_are_filtered_and_sorted(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-2.whl'
+    sdist = tmp_path / 'pyvoro2-1.tar.gz'
+    ignored = tmp_path / 'checksums.txt'
+    wheel.touch()
+    sdist.touch()
+    ignored.touch()
+
+    assert distribution_artifacts(tmp_path) == (sdist, wheel)
+
+
+def test_distribution_metadata_requires_artifacts(tmp_path: Path) -> None:
+    with pytest.raises(
+        DistributionMetadataCheckError,
+        match=r'no \.whl or \.tar\.gz distributions found',
+    ):
+        distribution_artifacts(tmp_path)
+
+
+def test_twine_check_uses_explicit_shell_independent_arguments(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    dist_dir = tmp_path / 'release dist'
+    dist_dir.mkdir()
+    wheel = dist_dir / 'pyvoro2-2.whl'
+    sdist = dist_dir / 'pyvoro2-1.tar.gz'
+    wheel.touch()
+    sdist.touch()
+    observed: dict[str, object] = {}
+
+    def fake_run(
+        command: list[str],
+        *,
+        cwd: Path,
+        check: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        observed['command'] = command
+        observed['cwd'] = cwd
+        observed['check'] = check
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(dist_metadata_tool.subprocess, 'run', fake_run)
+
+    assert run_twine_check(
+        dist_dir,
+        python_executable='python-for-test',
+    ) == (sdist, wheel)
+    assert observed == {
+        'command': [
+            'python-for-test',
+            '-m',
+            'twine',
+            'check',
+            str(sdist),
+            str(wheel),
+        ],
+        'cwd': REPO_ROOT,
+        'check': True,
+    }
 
 
 def test_sdist_wheel_build_rejects_existing_wheel(tmp_path: Path) -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from operator import index
 from typing import Literal, Sequence
 
 import numpy as np
@@ -12,7 +13,10 @@ from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ..._internal.planar.domain_geometry import geometry2d
 from ...planar.domains import Box as Box2D, RectangularCell
 
-ConstraintRow = tuple[int, int, float] | tuple[int, int, float, Sequence[int]]
+ConstraintRow = (
+    tuple[int | np.integer, int | np.integer, float]
+    | tuple[int | np.integer, int | np.integer, float, Sequence[int]]
+)
 ConstraintInput = Sequence[ConstraintRow]
 Domain3D = Box3D | OrthorhombicCell | PeriodicCell
 Domain2D = Box2D | RectangularCell
@@ -35,22 +39,79 @@ def _readonly_array(
     return arr
 
 
-def _validated_ids_array(ids: Sequence[int] | np.ndarray, n_points: int) -> np.ndarray:
-    """Return validated external ids as a 1D NumPy array.
+def _strict_integer(value: object, *, name: str) -> int:
+    """Return one integer without truncating or parsing another type."""
 
-    The power-fit layer uses ids only as external labels and for mapping raw
-    constraint tuples when ``index_mode='id'``. The ids must therefore match
-    the point array length and be unique.
-    """
+    if isinstance(value, (bool, np.bool_)):
+        raise ValueError(f'{name} must be an integer')
+    try:
+        return int(index(value))
+    except TypeError as exc:
+        raise ValueError(f'{name} must be an integer') from exc
 
-    if len(ids) != n_points:
-        raise ValueError('ids must have length n_points')
-    ids_arr = np.asarray(ids)
-    if ids_arr.shape != (n_points,):
+
+def _validated_ids_array(
+    ids: Sequence[int | np.integer] | np.ndarray,
+    n_points: int | None = None,
+) -> np.ndarray:
+    """Return validated non-negative unique integer external IDs."""
+
+    try:
+        ids_arr = np.asarray(ids, dtype=object)
+    except (TypeError, ValueError) as exc:
+        raise ValueError('ids must be a 1D sequence of integers') from exc
+    if n_points is not None and ids_arr.shape != (n_points,):
+        if ids_arr.ndim == 1:
+            raise ValueError('ids must have length n_points')
         raise ValueError('ids must be a 1D sequence of length n_points')
-    if np.unique(ids_arr).size != n_points:
+    if n_points is None and ids_arr.ndim != 1:
+        raise ValueError('ids must be a 1D sequence')
+    if n_points is not None and ids_arr.size != n_points:
+        raise ValueError('ids must have length n_points')
+    values = [
+        _strict_integer(value, name=f'ids[{position}]')
+        for position, value in enumerate(ids_arr)
+    ]
+    if any(value < 0 for value in values):
+        raise ValueError('ids must be non-negative')
+    largest = max(values, default=0)
+    if largest <= np.iinfo(np.int64).max:
+        dtype: np.dtype | type = np.int64
+    elif largest <= np.iinfo(np.uint64).max:
+        dtype = np.uint64
+    else:
+        dtype = object
+    owned = np.array(values, dtype=dtype, copy=True)
+    if np.unique(owned).size != owned.size:
         raise ValueError('ids must be unique')
-    return ids_arr
+    owned.setflags(write=False)
+    return owned
+
+
+def _external_id_label(ids: np.ndarray, site_index: int) -> int:
+    """Return an external ID for one internal site index."""
+
+    if not 0 <= int(site_index) < int(ids.size):
+        raise ValueError(f'ids do not cover site index {site_index}')
+    return int(ids[int(site_index)])
+
+
+def _readonly_index_array(value: np.ndarray, *, name: str) -> np.ndarray:
+    """Return a read-only int64 array without lossy element conversion."""
+
+    array = np.asarray(value)
+    if array.ndim != 1:
+        raise ValueError(f'{name} must have shape (m,)')
+    values = [
+        _strict_integer(item, name=f'{name}[{position}]')
+        for position, item in enumerate(array)
+    ]
+    try:
+        owned = np.array(values, dtype=np.int64, copy=True)
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise ValueError(f'{name} must contain int64-compatible integers') from exc
+    owned.setflags(write=False)
+    return owned
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,8 +141,16 @@ class SeparatorObservations:
     warnings: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, 'i', _readonly_array(self.i, dtype=np.int64))
-        object.__setattr__(self, 'j', _readonly_array(self.j, dtype=np.int64))
+        object.__setattr__(
+            self,
+            'i',
+            _readonly_index_array(self.i, name='SeparatorObservations.i'),
+        )
+        object.__setattr__(
+            self,
+            'j',
+            _readonly_index_array(self.j, name='SeparatorObservations.j'),
+        )
         object.__setattr__(
             self,
             'shifts',
@@ -128,7 +197,15 @@ class SeparatorObservations:
             'explicit_shift',
             _readonly_array(self.explicit_shift, dtype=bool),
         )
-        object.__setattr__(self, 'ids', _readonly_array(self.ids))
+        object.__setattr__(
+            self,
+            'ids',
+            (
+                None
+                if self.ids is None
+                else _validated_ids_array(self.ids, int(self.n_points))
+            ),
+        )
         object.__setattr__(self, 'warnings', tuple(self.warnings))
 
         m = int(self.i.shape[0])
@@ -155,6 +232,14 @@ class SeparatorObservations:
             raise ValueError(
                 'SeparatorObservations.delta and shifts must use the same dimension'
             )
+        if np.any(self.i < 0) or np.any(self.i >= int(self.n_points)):
+            raise ValueError(
+                'SeparatorObservations.i contains a site index out of range'
+            )
+        if np.any(self.j < 0) or np.any(self.j >= int(self.n_points)):
+            raise ValueError(
+                'SeparatorObservations.j contains a site index out of range'
+            )
         if self.measurement not in ('fraction', 'position'):
             raise ValueError('measurement must be "fraction" or "position"')
         for name in (
@@ -177,14 +262,6 @@ class SeparatorObservations:
             raise ValueError(
                 'SeparatorObservations distances must be strictly positive'
             )
-        if self.ids is not None:
-            ids_arr = np.asarray(self.ids)
-            if ids_arr.shape != (int(self.n_points),):
-                raise ValueError(
-                    'SeparatorObservations.ids must have shape (n_points,)'
-                )
-            if np.unique(ids_arr).size != int(self.n_points):
-                raise ValueError('SeparatorObservations.ids must be unique')
 
     @property
     def n_constraints(self) -> int:
@@ -265,7 +342,7 @@ def resolve_separator_observations(
     *,
     measurement: Literal['fraction', 'position'] = 'fraction',
     domain: DomainAny | None = None,
-    ids: Sequence[int] | None = None,
+    ids: Sequence[int | np.integer] | np.ndarray | None = None,
     index_mode: Literal['index', 'id'] = 'index',
     image: Literal['nearest', 'given_only'] = 'nearest',
     image_search: int = 1,
@@ -281,9 +358,11 @@ def resolve_separator_observations(
         measurement: Whether ``value`` is interpreted as a normalized fraction
             in ``[0, 1]`` or as an absolute position along the connector.
         domain: Optional non-periodic or periodic domain.
-        ids: External ids used when ``index_mode='id'``.
+        ids: Unique non-negative integer external IDs aligned with ``points``.
+            Python integers and NumPy integer scalars are accepted.
         index_mode: Interpret the first two tuple entries as internal indices or
-            external ids.
+            external IDs. Endpoint values must be integers in either mode;
+            floats, numeric strings, and booleans are rejected.
         image: Shift resolution policy for tuples that do not specify a shift.
         image_search: Search radius for nearest-image resolution in triclinic
             periodic 3D cells. It is ignored for the current planar backend.
@@ -406,7 +485,7 @@ def _parse_constraints(
     constraints: ConstraintInput,
     *,
     n_points: int,
-    ids: Sequence[int] | None,
+    ids: np.ndarray | None,
     index_mode: Literal['index', 'id'],
     allow_empty: bool,
     shift_dim: int,
@@ -423,7 +502,9 @@ def _parse_constraints(
     if index_mode == 'id':
         if ids is None:
             raise ValueError('ids must be provided when index_mode="id"')
-        id_to_index = {int(v): k for k, v in enumerate(ids)}
+        id_to_index = {
+            _external_id_label(ids, k): k for k in range(int(ids.size))
+        }
     else:
         id_to_index = None
 
@@ -445,8 +526,8 @@ def _parse_constraints(
             raise ValueError(
                 f'constraint {k} must have length 3 or 4: (i, j, value[, shift])'
             )
-        ii = int(c[0])
-        jj = int(c[1])
+        ii = _strict_integer(c[0], name=f'constraint {k} endpoint i')
+        jj = _strict_integer(c[1], name=f'constraint {k} endpoint j')
         if id_to_index is not None:
             if ii not in id_to_index or jj not in id_to_index:
                 raise ValueError(f'constraint {k} uses id not present in ids')

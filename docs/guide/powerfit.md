@@ -46,6 +46,13 @@ sparse observation graphs only.
 
 ## Canonical downstream integration
 
+External IDs follow the same contract throughout separator resolution,
+fitting, active-set refinement, realization records, and reports: provide one
+unique non-negative integer per input site. Python integers and NumPy integer
+scalars are accepted. With `index_mode='id'`, raw observation endpoints must be
+those exact integer IDs; floats, numeric strings, and booleans are rejected
+rather than converted.
+
 The repository-owned `examples/chemvoro_workflow.py` script is the canonical
 chemistry-neutral downstream example. It uses only preferred v0.7 imports and
 keeps application metadata outside pyvoro2 in an external-ID-keyed sidecar:

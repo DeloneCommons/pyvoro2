@@ -1,6 +1,56 @@
 import numpy as np
 
 
+def test_unaccounted_pair_records_preserve_large_ids_and_validate_once(
+    monkeypatch,
+) -> None:
+    import pyvoro2.inverse.separator.realize as realize_module
+    from pyvoro2.inverse.separator import (
+        RealizedPairDiagnostics,
+        UnaccountedRealizedPair,
+    )
+
+    large_id = 2**63 + 1
+    pair = UnaccountedRealizedPair(
+        site_i=0,
+        site_j=1,
+        realized_shifts=((0, 0),),
+    )
+    assert pair.to_record(ids=[0, large_id])['site_j'] == large_id
+
+    original_validator = realize_module._validated_ids_array
+    validation_count = 0
+
+    def counting_validator(ids, n_points=None):
+        nonlocal validation_count
+        validation_count += 1
+        return original_validator(ids, n_points)
+
+    monkeypatch.setattr(
+        realize_module,
+        '_validated_ids_array',
+        counting_validator,
+    )
+    diagnostics = RealizedPairDiagnostics(
+        realized=np.zeros(0, dtype=bool),
+        unrealized=(),
+        realized_same_shift=np.zeros(0, dtype=bool),
+        realized_other_shift=np.zeros(0, dtype=bool),
+        realized_shifts=(),
+        endpoint_i_empty=np.zeros(0, dtype=bool),
+        endpoint_j_empty=np.zeros(0, dtype=bool),
+        boundary_measure=None,
+        cells=None,
+        tessellation_diagnostics=None,
+        unaccounted_pairs=(pair, pair),
+    )
+
+    records = diagnostics.unaccounted_records(ids=[0, large_id])
+
+    assert [record['site_j'] for record in records] == [large_id, large_id]
+    assert validation_count == 1
+
+
 def test_match_realized_pairs_flags_unrealized_constraints():
     from pyvoro2 import Box
     from pyvoro2.inverse.separator import (

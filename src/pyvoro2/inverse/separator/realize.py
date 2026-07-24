@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 
 import warnings
 
 import numpy as np
 
-from .constraints import SeparatorObservations
+from .constraints import (
+    _external_id_label,
+    _validated_ids_array,
+    SeparatorObservations,
+)
 from ..._internal.spatial.domain_geometry import geometry3d
 from ...api import compute as compute3d
 from ...diagnostics import TessellationDiagnostics as TessellationDiagnostics3D
@@ -62,15 +66,15 @@ class UnaccountedRealizedPair:
     realized_shifts: tuple[ShiftTuple, ...]
     boundary_measure: float | None = None
 
-    def to_record(self, *, ids: np.ndarray | None = None) -> dict[str, object]:
-        """Return a plain-Python record for the unaccounted pair."""
+    def _to_record(self, ids: np.ndarray | None) -> dict[str, object]:
+        """Return a record using IDs already validated by the caller."""
 
         if ids is None:
             site_i: object = int(self.site_i)
             site_j: object = int(self.site_j)
         else:
-            site_i = _plain_value(ids[int(self.site_i)])
-            site_j = _plain_value(ids[int(self.site_j)])
+            site_i = _external_id_label(ids, self.site_i)
+            site_j = _external_id_label(ids, self.site_j)
         return {
             'site_i': site_i,
             'site_j': site_j,
@@ -79,6 +83,16 @@ class UnaccountedRealizedPair:
             ],
             'boundary_measure': self.boundary_measure,
         }
+
+    def to_record(
+        self,
+        *,
+        ids: Sequence[int | np.integer] | np.ndarray | None = None,
+    ) -> dict[str, object]:
+        """Return a plain-Python record for the unaccounted pair."""
+
+        ids_array = None if ids is None else _validated_ids_array(ids)
+        return self._to_record(ids_array)
 
 
 class UnaccountedRealizedPairError(ValueError):
@@ -209,11 +223,14 @@ class RealizedPairDiagnostics:
     def unaccounted_records(
         self,
         *,
-        ids: np.ndarray | None = None,
+        ids: Sequence[int | np.integer] | np.ndarray | None = None,
     ) -> tuple[dict[str, object], ...]:
         """Return one record per realized-but-unaccounted unordered pair."""
 
-        return tuple(pair.to_record(ids=ids) for pair in self.unaccounted_pairs)
+        ids_array = None if ids is None else _validated_ids_array(ids)
+        return tuple(
+            pair._to_record(ids_array) for pair in self.unaccounted_pairs
+        )
 
     def to_report(
         self,

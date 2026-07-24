@@ -88,7 +88,7 @@ jobs:
       - name: Build wheel from sdist in build isolation
         run: python tools/build_wheel_from_sdist.py dist
       - name: Validate metadata
-        run: python -m twine check dist/*
+        run: python tools/check_dist_metadata.py dist
       - name: Check packaged files
         run: python tools/check_dist.py dist
       - name: Create fresh no-SciPy environment

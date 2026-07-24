@@ -138,7 +138,10 @@ if raw records are later mutated.
 
 Application code should normally receive results from `compute(...)` rather
 than construct `TessellationResult` directly. Direct-construction and some
-convenience accessors remain provisional.
+convenience accessors remain provisional. Direct construction validates the
+documented aligned metadata but does not normalize hand-written backend-style
+records, recompute geometry, or verify that the records form a valid
+tessellation.
 
 ## Canonical inverse imports
 

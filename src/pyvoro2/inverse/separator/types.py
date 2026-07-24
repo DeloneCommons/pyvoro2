@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import InitVar, KW_ONLY, dataclass, fields
+from typing import Sequence
 
 import numpy as np
 
-from .constraints import SeparatorObservations
+from .constraints import (
+    _external_id_label,
+    _validated_ids_array,
+    SeparatorObservations,
+)
 
 
 def _plain_value(value: object) -> object:
@@ -178,9 +183,19 @@ class HardConstraintConflictTerm:
     relation: str
     bound_value: float
 
-    def to_record(self, *, ids: np.ndarray | None = None) -> dict[str, object]:
-        site_i = int(self.site_i) if ids is None else ids[self.site_i].item()
-        site_j = int(self.site_j) if ids is None else ids[self.site_j].item()
+    def _to_record(self, ids: np.ndarray | None) -> dict[str, object]:
+        """Return a record using IDs already validated by the caller."""
+
+        site_i = (
+            int(self.site_i)
+            if ids is None
+            else _external_id_label(ids, self.site_i)
+        )
+        site_j = (
+            int(self.site_j)
+            if ids is None
+            else _external_id_label(ids, self.site_j)
+        )
         return {
             'constraint_index': int(self.constraint_index),
             'site_i': site_i,
@@ -188,6 +203,14 @@ class HardConstraintConflictTerm:
             'relation': self.relation,
             'bound_value': float(self.bound_value),
         }
+
+    def to_record(
+        self,
+        *,
+        ids: Sequence[int | np.integer] | np.ndarray | None = None,
+    ) -> dict[str, object]:
+        ids_array = None if ids is None else _validated_ids_array(ids)
+        return self._to_record(ids_array)
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,9 +229,10 @@ class HardConstraintConflict:
     def to_records(
         self,
         *,
-        ids: np.ndarray | None = None,
+        ids: Sequence[int | np.integer] | np.ndarray | None = None,
     ) -> tuple[dict[str, object], ...]:
-        return tuple(term.to_record(ids=ids) for term in self.terms)
+        ids_array = None if ids is None else _validated_ids_array(ids)
+        return tuple(term._to_record(ids_array) for term in self.terms)
 
 
 @dataclass(frozen=True, slots=True)

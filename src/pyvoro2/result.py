@@ -117,15 +117,17 @@ class TessellationResult:
     inconsistency error. Normalization and diagnostic objects retain their own
     dimension-specific mutability contracts.
 
-    Direct construction is provisional. The constructor validates raw-cell IDs,
-    measures, empty state, representation metadata, and capability metadata
-    against the aligned fields rather than repairing inconsistent input. The
-    private keyword-only ``_boundaries_available`` and
+    Direct construction is provisional. The constructor validates documented
+    raw-cell IDs, measures, empty state, representation metadata, and capability
+    metadata against the aligned fields rather than repairing inconsistent
+    input. It does not normalize arbitrary backend-style dictionaries,
+    recompute derived geometry, or geometrically verify the records. The private
+    keyword-only ``_boundaries_available`` and
     ``_periodic_shifts_available`` parameters carry construction capability
     state; the shared builder supplies them for normal integration use. Deep
-    copies and pickle round trips preserve the existing snapshot state while
-    restoring read-only owned arrays and capability state, even after allowed
-    raw-record mutation.
+    copies and same-version pickle round trips preserve the existing snapshot
+    state while restoring read-only owned arrays and capability state, even
+    after allowed raw-record mutation.
     """
 
     dimension: Literal[2, 3]
@@ -490,7 +492,7 @@ class TessellationResult:
         return result
 
     def __reduce_ex__(self, protocol: int) -> tuple[object, tuple[object, ...]]:
-        """Use a version-independent pickle restoration path."""
+        """Use the constructor-independent snapshot restoration path."""
 
         return (
             _restore_tessellation_result,
@@ -502,7 +504,7 @@ def _restore_tessellation_result(
     cls: type[TessellationResult],
     state: dict[str, Any],
 ) -> TessellationResult:
-    """Rebuild a serialized result without rerunning constructor checks."""
+    """Restore a serialized snapshot without rerunning constructor checks."""
 
     result = object.__new__(cls)
     _restore_tessellation_result_state(result, state)
@@ -702,6 +704,7 @@ def _build_tessellation_result(
 
     Raw cells are matched to original input positions by their final external
     IDs. Missing raw cells become zero-measure entries in ``empty_mask``.
+    Records are not normalized, recomputed, or geometrically verified here.
     """
 
     if dimension not in (2, 3):
