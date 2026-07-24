@@ -1033,7 +1033,8 @@ The preferred names have these final lifecycle assignments:
 
 ### Advanced separator API
 
-`pyvoro2.inverse.separator.__all__` contains exactly the following 58 names:
+After the v0.8 issue-#28 removal,
+`pyvoro2.inverse.separator.__all__` contains exactly the following 53 names:
 
 ```text
 SeparatorObservations
@@ -1048,8 +1049,6 @@ SeparatorAlgebraicView
 SeparatorSolverTerminationView
 SeparatorObservationGraphView
 SeparatorQuadraticOperatorView
-PairBisectorConstraints
-resolve_pair_bisector_constraints
 SquaredLoss
 HuberLoss
 Interval
@@ -1068,8 +1067,6 @@ HardConstraintConflict
 PowerFitBounds
 PowerFitPredictions
 PowerFitObjectiveBreakdown
-PowerFitProblem
-PowerWeightFitResult
 build_power_fit_problem
 build_power_fit_result
 RequestedImageMatchView
@@ -1089,7 +1086,6 @@ ActiveSetTerminationView
 ActiveSetPathView
 PairConstraintDiagnostics
 SelfConsistentPowerFitResult
-fit_power_weights
 match_realized_pairs
 solve_self_consistent_power_weights
 radii_to_weights
@@ -1137,11 +1133,11 @@ The explicit SciPy sparse quadratic backend is **provisional**: it is supported
 for large static sparse quadratic graphs but does not extend to Huber, hard,
 penalty, or active-set branches.
 
-`pyvoro2.powerfit.__all__` remains the exact 42-name historical list recorded
-in the v0.6.3 baseline section. It deliberately does not export the canonical
-names and contains no implementation logic. The broad top-level historical
-separator set likewise remains unchanged, and none of the five new canonical
-names is added to top-level `pyvoro2`.
+During v0.7, `pyvoro2.powerfit.__all__` remained the exact 42-name historical
+list recorded in the v0.6.3 baseline section. It did not export the canonical
+names or contain implementation logic. Issue #28 removes that package, the
+broad top-level historical separator set, and the five historical identity
+aliases in v0.8.
 
 ## Forward return contract
 
@@ -1183,7 +1179,7 @@ The following convenience surface remains **provisional**:
 | `has_boundaries`, `has_periodic_shifts` | Provisional | Report explicit builder capabilities, including available-but-empty geometry. |
 | `require_tessellation_diagnostics()`, `require_normalized_vertices()`, `require_normalized_topology()` | Provisional | Return optional objects or raise a clear `ValueError`. |
 | `require_boundaries()` | Provisional | Return input-order-aligned edge/face collections, using an empty collection for hidden sites, or raise when boundaries were unavailable. |
-| `global_vertices`, `global_edges` | Provisional compatibility conveniences | Forward to available planar normalized objects, preserving the historical `PlanarComputeResult` access pattern; otherwise `None`. |
+| `global_vertices`, `global_edges` | Provisional conveniences | Forward to available planar normalized objects; otherwise `None`. |
 
 The outer object prevents field replacement. Its aligned arrays are copies and
 are non-writeable, so construction never marks caller-owned arrays read-only.
@@ -1232,9 +1228,10 @@ tessellation check computed diagnostics internally. With
 ordering, external IDs, requested geometry, and numerical behavior remain the
 characterized baseline.
 
-### Planar compatibility selector matrix
+### Historical v0.7 planar compatibility selector matrix
 
-The public compatibility parameter is `return_result: bool | None = None`.
+In v0.7, the public compatibility parameter was
+`return_result: bool | None = None`.
 `None` means that the selector was omitted and follows the `output=` contract.
 Passing either boolean emits `DeprecationWarning`; `output=` is the replacement.
 
@@ -1251,8 +1248,9 @@ Passing either boolean emits `DeprecationWarning`; `output=` is the replacement.
 | conflicting explicit `output` and `return_result` | `ValueError`, plus warning |
 | explicit `output='cells'` with normalization | `ValueError` |
 
-`PlanarComputeResult` from both `pyvoro2.planar` and
-`pyvoro2.planar.result` is an identity alias to `pyvoro2.TessellationResult`.
+In v0.7, `PlanarComputeResult` from both `pyvoro2.planar` and
+`pyvoro2.planar.result` was an identity alias to
+`pyvoro2.TessellationResult`; issue #28 removed both routes in v0.8.
 
 ## Scientifically meaningful semantics to inventory explicitly
 
@@ -1304,6 +1302,25 @@ The following are API even when no dedicated Python class represents them:
 | `PlanarComputeResult` | Compatibility-only and deprecated alias to `TessellationResult` | Remove |
 | Raw cell return | Available through `output='cells'` | Continue as explicit route unless a later decision removes it |
 | Planar `return_result=` | Compatibility-only and deprecated | Remove |
+
+### v0.8 compatibility removal status
+
+Issue #28 completed this schedule without changing canonical numerical
+behavior. The v0.8 tree:
+
+- has no `pyvoro2.powerfit` package, direct submodules, or lazy top-level
+  package attribute;
+- exports no separator-specific objects from top-level `pyvoro2`;
+- removes the five mapped historical core aliases from both
+  `pyvoro2.inverse.separator` and their former direct canonical submodules;
+- exports only `TessellationResult` from the planar namespace and no longer
+  provides `pyvoro2.planar.result`;
+- exposes no planar `return_result=` parameter; and
+- retains `output='cells'` as the explicit supported raw-output route.
+
+The high-level `pyvoro2.inverse` export set, canonical class and function names,
+solver defaults, numerical values, result fields, record keys, and gauge
+policies are unchanged.
 
 ## Final release review checklist
 

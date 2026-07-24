@@ -6,9 +6,9 @@ def test_match_realized_pairs_flags_unrealized_constraints():
     from pyvoro2.inverse.separator import (
         FitModel,
         Interval,
-        fit_power_weights,
+        fit_weights_from_separators,
         match_realized_pairs,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array(
@@ -16,13 +16,13 @@ def test_match_realized_pairs_flags_unrealized_constraints():
         dtype=float,
     )
     domain = Box(((-5, 5), (-5, 5), (-5, 5)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 2, 0.5)],
         measurement='fraction',
         domain=domain,
     )
-    fit = fit_power_weights(
+    fit = fit_weights_from_separators(
         pts,
         constraints,
         model=FitModel(feasible=Interval(0.0, 1.0)),
@@ -44,20 +44,20 @@ def test_match_realized_pairs_flags_unrealized_constraints():
 def test_match_realized_pairs_reports_boundary_measure_when_requested():
     from pyvoro2 import Box
     from pyvoro2.inverse.separator import (
-        fit_power_weights,
+        fit_weights_from_separators,
         match_realized_pairs,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     domain = Box(((-5, 5), (-5, 5), (-5, 5)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.5)],
         measurement='fraction',
         domain=domain,
     )
-    fit = fit_power_weights(pts, constraints)
+    fit = fit_weights_from_separators(pts, constraints)
     diag = match_realized_pairs(
         pts,
         domain=domain,
@@ -75,20 +75,20 @@ def test_match_realized_pairs_reports_boundary_measure_when_requested():
 def test_match_realized_pairs_can_return_tessellation_diagnostics():
     from pyvoro2 import Box
     from pyvoro2.inverse.separator import (
-        fit_power_weights,
+        fit_weights_from_separators,
         match_realized_pairs,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     domain = Box(((-5, 5), (-5, 5), (-5, 5)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.5)],
         measurement='fraction',
         domain=domain,
     )
-    fit = fit_power_weights(pts, constraints)
+    fit = fit_weights_from_separators(pts, constraints)
     diag = match_realized_pairs(
         pts,
         domain=domain,
@@ -105,21 +105,21 @@ def test_match_realized_pairs_can_return_tessellation_diagnostics():
 def test_match_realized_pairs_reports_periodic_wrong_shift():
     from pyvoro2 import PeriodicCell
     from pyvoro2.inverse.separator import (
-        fit_power_weights,
+        fit_weights_from_separators,
         match_realized_pairs,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     cell = PeriodicCell(vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     pts = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.5, (1, 0, 0))],
         measurement='fraction',
         domain=cell,
         image='given_only',
     )
-    fit = fit_power_weights(pts, constraints)
+    fit = fit_weights_from_separators(pts, constraints)
     diag = match_realized_pairs(
         pts,
         domain=cell,
@@ -139,12 +139,12 @@ def test_realized_pair_diagnostics_export_records():
     from pyvoro2 import Box
     from pyvoro2.inverse.separator import (
         match_realized_pairs,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     box = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(11, 22, 0.5)],
         ids=[11, 22],
@@ -166,20 +166,20 @@ def test_realized_pair_diagnostics_export_records():
 def test_match_realized_pairs_supports_planar_measure_and_diag() -> None:
     import pyvoro2.planar as pv2
     from pyvoro2.inverse.separator import (
-        fit_power_weights,
+        fit_weights_from_separators,
         match_realized_pairs,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0], [2.0, 0.0]], dtype=float)
     domain = pv2.Box(((-5.0, 5.0), (-5.0, 5.0)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.5)],
         measurement='fraction',
         domain=domain,
     )
-    fit = fit_power_weights(pts, constraints)
+    fit = fit_weights_from_separators(pts, constraints)
     diag = match_realized_pairs(
         pts,
         domain=domain,
@@ -201,21 +201,21 @@ def test_match_realized_pairs_supports_planar_measure_and_diag() -> None:
 def test_match_realized_pairs_supports_planar_periodic_wrong_shift() -> None:
     import pyvoro2.planar as pv2
     from pyvoro2.inverse.separator import (
-        fit_power_weights,
+        fit_weights_from_separators,
         match_realized_pairs,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     cell = pv2.RectangularCell(((0.0, 1.0), (0.0, 1.0)), periodic=(True, True))
     pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.5, (1, 0))],
         measurement='fraction',
         domain=cell,
         image='given_only',
     )
-    fit = fit_power_weights(pts, constraints)
+    fit = fit_weights_from_separators(pts, constraints)
     diag = match_realized_pairs(
         pts,
         domain=cell,
@@ -234,9 +234,9 @@ def test_match_realized_pairs_supports_planar_periodic_wrong_shift() -> None:
 def test_match_realized_pairs_reports_unaccounted_realized_pairs_in_3d():
     from pyvoro2 import Box
     from pyvoro2.inverse.separator import (
-        fit_power_weights,
+        fit_weights_from_separators,
         match_realized_pairs,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array(
@@ -244,13 +244,13 @@ def test_match_realized_pairs_reports_unaccounted_realized_pairs_in_3d():
         dtype=float,
     )
     box = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 2, 0.5)],
         measurement='fraction',
         domain=box,
     )
-    fit = fit_power_weights(pts, constraints)
+    fit = fit_weights_from_separators(pts, constraints)
     diag = match_realized_pairs(
         pts,
         domain=box,
@@ -275,20 +275,20 @@ def test_match_realized_pairs_reports_unaccounted_realized_pairs_in_planar_box(
 ) -> None:
     import pyvoro2.planar as pv2
     from pyvoro2.inverse.separator import (
-        fit_power_weights,
+        fit_weights_from_separators,
         match_realized_pairs,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]], dtype=float)
     box = pv2.Box(((-5.0, 5.0), (-5.0, 5.0)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 2, 0.5)],
         measurement='fraction',
         domain=box,
     )
-    fit = fit_power_weights(pts, constraints)
+    fit = fit_weights_from_separators(pts, constraints)
     diag = match_realized_pairs(
         pts,
         domain=box,

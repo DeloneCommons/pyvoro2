@@ -14,10 +14,6 @@ objects on this page are **provisional**. Active-set refinement is
 **provisional** and is limited to the static squared-loss branch documented
 below.
 
-Historical names remain identity aliases during v0.7 and will be removed in
-v0.8. New code should use the canonical five-name map documented in
-the [compatibility reference](../powerfit/index.md).
-
 ## Layered result access
 
 The provisional view types below organize existing result data without adding

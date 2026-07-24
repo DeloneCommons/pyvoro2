@@ -1,8 +1,8 @@
 # Choosing an API
 
 pyvoro2 has one normal forward path and one normal separator-inverse path.
-Advanced and compatibility namespaces exist for narrower purposes; they are not
-parallel APIs of equal status.
+The advanced separator namespace serves narrower research workflows; the v0.7
+compatibility namespaces are no longer part of the package.
 
 ## Forward computation
 
@@ -100,12 +100,11 @@ fit = separator.fit_weights_from_separators(
 Most of this larger surface is provisional. The active-set workflow is
 experimental and has no universal convergence guarantee.
 
-### Historical compatibility path
+### Removed v0.7 compatibility path
 
 `pyvoro2.powerfit`, broad top-level separator exports, and historical separator
-names are deprecated compatibility-only routes in v0.7. They exist only to make
-the v0.6.3-to-v0.7 migration explicit and will be removed in v0.8.
-Do not use them in new code.
+names were compatibility-only routes in v0.7 and are absent in v0.8. Use
+`pyvoro2.inverse` or `pyvoro2.inverse.separator`.
 
 See the [v0.7 migration guide](migration-v0.7.md) for exact replacements.
 
@@ -122,8 +121,8 @@ See the [v0.7 migration guide](migration-v0.7.md) for exact replacements.
 | Advanced objective, problem, operator, realization, and report objects in `pyvoro2.inverse.separator` | Provisional | Research and specialized downstream use |
 | Explicit SciPy sparse quadratic separator backend | Provisional | Large static sparse quadratic observation graphs |
 | Realization-aware active-set refinement | Experimental | Opt-in diagnostic outer algorithm |
-| `pyvoro2.powerfit`, broad top-level inverse exports, historical separator aliases, planar `return_result=`, `PlanarComputeResult` | Compatibility-only and deprecated | Migration only; removed in v0.8 |
-| v0.8 cleanup and compatibility removal | Planned | No new numerical features |
+| v0.7-only inverse and planar compatibility routes | Removed in v0.8 | Follow the migration guide |
+| v0.8 cleanup and compatibility removal | Active | No new numerical features |
 | Prescribed cell areas/volumes | Planned for v0.9 | Not implemented |
 | Mixed separator and cell-measure fitting | Planned for v0.10 | Not implemented |
 

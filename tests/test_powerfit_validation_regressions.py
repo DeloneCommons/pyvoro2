@@ -4,25 +4,25 @@ import pytest
 
 def test_powerfit_rejects_nonfinite_points_values_and_confidence():
     from pyvoro2.inverse.separator import (
-        fit_power_weights,
-        resolve_pair_bisector_constraints,
+        fit_weights_from_separators,
+        resolve_separator_observations,
     )
 
     pts_bad = np.array([[0.0, 0.0, 0.0], [np.nan, 0.0, 0.0]], dtype=float)
     with pytest.raises(ValueError, match='finite'):
-        resolve_pair_bisector_constraints(pts_bad, [(0, 1, 0.5)])
+        resolve_separator_observations(pts_bad, [(0, 1, 0.5)])
     with pytest.raises(ValueError, match='finite'):
-        fit_power_weights(pts_bad, [(0, 1, 0.5)])
+        fit_weights_from_separators(pts_bad, [(0, 1, 0.5)])
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     with pytest.raises(ValueError, match='finite'):
-        resolve_pair_bisector_constraints(pts, [(0, 1, np.nan)])
+        resolve_separator_observations(pts, [(0, 1, np.nan)])
     with pytest.raises(ValueError, match='finite'):
-        resolve_pair_bisector_constraints(pts, [(0, 1, 0.5)], confidence=[np.inf])
+        resolve_separator_observations(pts, [(0, 1, 0.5)], confidence=[np.inf])
 
 
 def test_powerfit_constraint_ids_must_match_points_and_be_unique():
-    from pyvoro2.inverse.separator import resolve_pair_bisector_constraints
+    from pyvoro2.inverse.separator import resolve_separator_observations
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0]],
@@ -30,7 +30,7 @@ def test_powerfit_constraint_ids_must_match_points_and_be_unique():
     )
 
     with pytest.raises(ValueError, match='unique'):
-        resolve_pair_bisector_constraints(
+        resolve_separator_observations(
             pts,
             [(10, 20, 0.5)],
             ids=[10, 10, 20],
@@ -38,7 +38,7 @@ def test_powerfit_constraint_ids_must_match_points_and_be_unique():
         )
 
     with pytest.raises(ValueError, match='length n_points'):
-        resolve_pair_bisector_constraints(
+        resolve_separator_observations(
             pts,
             [(10, 20, 0.5)],
             ids=[10, 20],
@@ -47,10 +47,10 @@ def test_powerfit_constraint_ids_must_match_points_and_be_unique():
 
 
 def test_zero_confidence_constraints_do_not_crash_quadratic_fit():
-    from pyvoro2.inverse.separator import fit_power_weights
+    from pyvoro2.inverse.separator import fit_weights_from_separators
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
@@ -64,13 +64,13 @@ def test_zero_confidence_constraints_do_not_crash_quadratic_fit():
 
 
 def test_zero_confidence_rows_do_not_join_effective_components():
-    from pyvoro2.inverse.separator import fit_power_weights
+    from pyvoro2.inverse.separator import fit_weights_from_separators
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0]],
         dtype=float,
     )
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.25), (1, 2, 0.9)],
         measurement='fraction',
@@ -86,8 +86,8 @@ def test_huber_admm_handles_medium_size_sparse_outliers():
     from pyvoro2.inverse.separator import (
         FitModel,
         HuberLoss,
-        fit_power_weights,
-        resolve_pair_bisector_constraints,
+        fit_weights_from_separators,
+        resolve_separator_observations,
     )
 
     rng = np.random.default_rng(20260318)
@@ -113,24 +113,24 @@ def test_huber_admm_handles_medium_size_sparse_outliers():
     for idx, step in zip(outlier_idx, outlier_step, strict=True):
         noisy_rows[int(idx)][2] += float(step)
 
-    clean = resolve_pair_bisector_constraints(
+    clean = resolve_separator_observations(
         pts,
         clean_rows,
         measurement='fraction',
     )
-    noisy = resolve_pair_bisector_constraints(
+    noisy = resolve_separator_observations(
         pts,
         [tuple(row) for row in noisy_rows],
         measurement='fraction',
     )
 
-    squared = fit_power_weights(
+    squared = fit_weights_from_separators(
         pts,
         noisy,
         measurement='fraction',
         solver='analytic',
     )
-    huber = fit_power_weights(
+    huber = fit_weights_from_separators(
         pts,
         noisy,
         measurement='fraction',
@@ -170,14 +170,14 @@ def test_empty_resolved_constraints_use_regularization_only_solution():
     from pyvoro2.inverse.separator import (
         FitModel,
         L2Regularization,
-        fit_power_weights,
+        fit_weights_from_separators,
     )
     from pyvoro2.inverse.separator.constraints import (
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], dtype=float)
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [],
         measurement='fraction',
@@ -190,7 +190,7 @@ def test_empty_resolved_constraints_use_regularization_only_solution():
         )
     )
 
-    res = fit_power_weights(pts, constraints, model=model)
+    res = fit_weights_from_separators(pts, constraints, model=model)
 
     assert res.status == 'optimal'
     assert np.allclose(res.weights, np.array([3.0, 5.0]))
@@ -206,11 +206,11 @@ def test_weight_radius_conversions_reject_nonfinite_values():
         weights_to_radii(np.array([0.0, np.inf]))
 
 
-def test_fit_power_weights_returns_numerical_failure_on_internal_solver_error(
+def test_fit_weights_from_separators_reports_internal_solver_failure(
     monkeypatch,
 ):
     import pyvoro2.inverse.separator.solver as solver_mod
-    from pyvoro2.inverse.separator import fit_power_weights
+    from pyvoro2.inverse.separator import fit_weights_from_separators
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
 
@@ -219,7 +219,7 @@ def test_fit_power_weights_returns_numerical_failure_on_internal_solver_error(
 
     monkeypatch.setattr(solver_mod, '_solve_component_analytic', boom)
 
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
@@ -237,13 +237,13 @@ def test_fit_power_weights_returns_numerical_failure_on_internal_solver_error(
 def test_active_set_propagates_numerical_failure(monkeypatch):
     import pyvoro2.inverse.separator.active as active_mod
     from pyvoro2 import Box
-    from pyvoro2.inverse.separator.types import PowerWeightFitResult
+    from pyvoro2.inverse.separator.types import SeparatorFitResult
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     domain = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
 
     def fake_fit_weights_from_separators(points, constraints, **kwargs):
-        return PowerWeightFitResult(
+        return SeparatorFitResult(
             status='numerical_failure',
             hard_feasible=True,
             weights=None,
@@ -285,11 +285,14 @@ def test_active_set_propagates_numerical_failure(monkeypatch):
     assert any('synthetic fit failure' in msg for msg in res.warnings)
 
 
-def test_fit_power_weights_accepts_pre_resolved_lower_dim_constraints():
-    from pyvoro2.inverse.separator import PairBisectorConstraints, fit_power_weights
+def test_fit_weights_from_separators_accepts_resolved_lower_dim_observations():
+    from pyvoro2.inverse.separator import (
+        SeparatorObservations,
+        fit_weights_from_separators,
+    )
 
     pts = np.array([[0.0, 0.0], [2.0, 0.0]], dtype=float)
-    constraints = PairBisectorConstraints(
+    constraints = SeparatorObservations(
         n_points=2,
         i=np.array([0], dtype=np.int64),
         j=np.array([1], dtype=np.int64),
@@ -308,7 +311,7 @@ def test_fit_power_weights_accepts_pre_resolved_lower_dim_constraints():
         warnings=tuple(),
     )
 
-    res = fit_power_weights(pts, constraints, measurement='fraction')
+    res = fit_weights_from_separators(pts, constraints, measurement='fraction')
 
     assert res.status == 'optimal'
     assert np.allclose(res.weights[1] - res.weights[0], 2.0)
@@ -316,9 +319,9 @@ def test_fit_power_weights_accepts_pre_resolved_lower_dim_constraints():
 
 
 def test_pre_resolved_constraints_expose_dimension_property():
-    from pyvoro2.inverse.separator import PairBisectorConstraints
+    from pyvoro2.inverse.separator import SeparatorObservations
 
-    constraints = PairBisectorConstraints(
+    constraints = SeparatorObservations(
         n_points=2,
         i=np.array([0], dtype=np.int64),
         j=np.array([1], dtype=np.int64),
@@ -343,12 +346,12 @@ def test_pre_resolved_constraints_expose_dimension_property():
 def test_match_realized_pairs_supports_pre_resolved_planar_constraints():
     import pyvoro2.planar as pv2
     from pyvoro2.inverse.separator import (
-        PairBisectorConstraints,
+        SeparatorObservations,
         match_realized_pairs,
     )
 
     pts = np.array([[0.0, 0.0], [2.0, 0.0]], dtype=float)
-    constraints = PairBisectorConstraints(
+    constraints = SeparatorObservations(
         n_points=2,
         i=np.array([0], dtype=np.int64),
         j=np.array([1], dtype=np.int64),
@@ -381,12 +384,12 @@ def test_match_realized_pairs_supports_pre_resolved_planar_constraints():
 def test_active_set_supports_pre_resolved_planar_constraints():
     import pyvoro2.planar as pv2
     from pyvoro2.inverse.separator import (
-        PairBisectorConstraints,
+        SeparatorObservations,
         solve_self_consistent_power_weights,
     )
 
     pts = np.array([[0.0, 0.0], [2.0, 0.0]], dtype=float)
-    constraints = PairBisectorConstraints(
+    constraints = SeparatorObservations(
         n_points=2,
         i=np.array([0], dtype=np.int64),
         j=np.array([1], dtype=np.int64),
@@ -420,14 +423,14 @@ def test_empty_resolved_constraints_can_follow_zero_strength_reference_gauge():
     from pyvoro2.inverse.separator import (
         FitModel,
         L2Regularization,
-        fit_power_weights,
+        fit_weights_from_separators,
     )
     from pyvoro2.inverse.separator.constraints import (
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], dtype=float)
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [],
         measurement='fraction',
@@ -440,7 +443,7 @@ def test_empty_resolved_constraints_can_follow_zero_strength_reference_gauge():
         )
     )
 
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         constraints,
         model=model,

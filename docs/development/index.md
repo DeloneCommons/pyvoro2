@@ -29,10 +29,9 @@ behavior. User guides and reference pages describe that behavior for callers.
 
 Accepted decision records and architecture documentation define durable
 boundaries. An **active** development plan defines approved release scope and
-gates. The v0.7 plan is **Completed** and archived; no plan is currently Active.
-The v0.8 draft remains inactive until its documented activation mechanics are
-satisfied. The roadmap describes version-level direction rather than current
-functionality.
+gates. The v0.7 plan is **Completed** and archived; the v0.8
+technical-maintenance plan is **Active**. The roadmap describes version-level
+direction rather than current functionality.
 
 Detailed progress belongs in GitHub issues. The API inventory is updated with
 public changes, and completed user-visible behavior is recorded under
@@ -40,4 +39,4 @@ public changes, and completed user-visible behavior is recorded under
 
 User-facing lifecycle and migration decisions are summarized in
 [Choosing an API](../guide/choosing-api.md) and
-[Migrating from v0.6.3 to v0.7](../guide/migration-v0.7.md).
+[Migrating from v0.6.3 through v0.8](../guide/migration-v0.7.md).

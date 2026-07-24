@@ -16,16 +16,6 @@ REQUIRED_WHEEL_SUFFIXES = {
     'pyvoro2/inverse/separator/__init__.py',
     'pyvoro2/inverse/separator/solver.py',
     'pyvoro2/planar/__init__.py',
-    'pyvoro2/powerfit/__init__.py',
-    'pyvoro2/powerfit/active.py',
-    'pyvoro2/powerfit/constraints.py',
-    'pyvoro2/powerfit/model.py',
-    'pyvoro2/powerfit/problem.py',
-    'pyvoro2/powerfit/realize.py',
-    'pyvoro2/powerfit/report.py',
-    'pyvoro2/powerfit/solver.py',
-    'pyvoro2/powerfit/transforms.py',
-    'pyvoro2/powerfit/types.py',
     'pyvoro2/viz2d.py',
     'pyvoro2/viz3d.py',
     'pyvoro2/_core',
@@ -42,16 +32,6 @@ REQUIRED_SDIST_SUFFIXES = {
     'src/pyvoro2/inverse/__init__.py',
     'src/pyvoro2/inverse/separator/__init__.py',
     'src/pyvoro2/inverse/separator/solver.py',
-    'src/pyvoro2/powerfit/__init__.py',
-    'src/pyvoro2/powerfit/active.py',
-    'src/pyvoro2/powerfit/constraints.py',
-    'src/pyvoro2/powerfit/model.py',
-    'src/pyvoro2/powerfit/problem.py',
-    'src/pyvoro2/powerfit/realize.py',
-    'src/pyvoro2/powerfit/report.py',
-    'src/pyvoro2/powerfit/solver.py',
-    'src/pyvoro2/powerfit/transforms.py',
-    'src/pyvoro2/powerfit/types.py',
     'benchmarks/README.md',
     'benchmarks/benchmark_sparse_separator.py',
     'examples/README.md',
@@ -108,6 +88,16 @@ REQUIRED_SDIST_SUFFIXES = {
     'tools/README.md',
 }
 
+FORBIDDEN_WHEEL_MARKERS = (
+    'pyvoro2/powerfit/',
+    'pyvoro2/planar/result.py',
+)
+
+FORBIDDEN_SDIST_MARKERS = (
+    'src/pyvoro2/powerfit/',
+    'src/pyvoro2/planar/result.py',
+)
+
 
 class DistCheckError(RuntimeError):
     """Raised when a built distribution is missing required members."""
@@ -137,6 +127,22 @@ def _members_matching_suffixes(actual: set[str], suffixes: set[str]) -> set[str]
     return matched
 
 
+def _assert_members_absent(
+    actual: set[str],
+    forbidden_markers: tuple[str, ...],
+    *,
+    label: str,
+) -> None:
+    unexpected = sorted(
+        name
+        for name in actual
+        if any(marker in name for marker in forbidden_markers)
+    )
+    if unexpected:
+        joined = ', '.join(unexpected)
+        raise DistCheckError(f'{label} contains removed members: {joined}')
+
+
 def check_wheel(path: Path) -> None:
     """Validate the contents of one built wheel."""
 
@@ -144,6 +150,7 @@ def check_wheel(path: Path) -> None:
         names = set(zf.namelist())
     matched = _members_matching_suffixes(names, REQUIRED_WHEEL_SUFFIXES)
     _assert_members_present(matched, REQUIRED_WHEEL_SUFFIXES, label=path.name)
+    _assert_members_absent(names, FORBIDDEN_WHEEL_MARKERS, label=path.name)
 
 
 def check_sdist(path: Path) -> None:
@@ -153,6 +160,7 @@ def check_sdist(path: Path) -> None:
         names = {member.name for member in tf.getmembers()}
     matched = _members_matching_suffixes(names, REQUIRED_SDIST_SUFFIXES)
     _assert_members_present(matched, REQUIRED_SDIST_SUFFIXES, label=path.name)
+    _assert_members_absent(names, FORBIDDEN_SDIST_MARKERS, label=path.name)
 
 
 def main() -> None:

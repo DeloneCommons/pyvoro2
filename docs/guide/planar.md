@@ -168,12 +168,6 @@ This returns the common `pv2.TessellationResult` bundling:
 - optional normalized vertices,
 - optional normalized topology.
 
-`pv2.PlanarComputeResult` remains a compatibility-only identity alias to
-`TessellationResult` during v0.7. The deprecated
-`return_result: bool | None = None` selector uses `None` to mean “not supplied”;
-passing either boolean emits a deprecation warning. Both transition surfaces are
-removed in v0.8. New code uses `TessellationResult` and `output=`.
-
 Code that deliberately needs raw cell dictionaries can select the explicit
 low-level output mode:
 

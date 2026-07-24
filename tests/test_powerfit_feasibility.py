@@ -2,13 +2,17 @@ import numpy as np
 
 
 def test_infeasible_hard_constraints_return_conflict_witness():
-    from pyvoro2.inverse.separator import FixedValue, FitModel, fit_power_weights
+    from pyvoro2.inverse.separator import (
+        FixedValue,
+        FitModel,
+        fit_weights_from_separators,
+    )
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0]],
         dtype=float,
     )
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.0), (1, 2, 0.0), (0, 2, 0.0)],
         measurement='position',
@@ -33,10 +37,14 @@ def test_infeasible_hard_constraints_return_conflict_witness():
 
 
 def test_feasible_fit_has_no_conflict_witness():
-    from pyvoro2.inverse.separator import FitModel, Interval, fit_power_weights
+    from pyvoro2.inverse.separator import (
+        FitModel,
+        Interval,
+        fit_weights_from_separators,
+    )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.5)],
         measurement='fraction',
@@ -54,8 +62,8 @@ def test_conflict_and_fit_records_are_exportable():
     from pyvoro2.inverse.separator import (
         FixedValue,
         FitModel,
-        fit_power_weights,
-        resolve_pair_bisector_constraints,
+        fit_weights_from_separators,
+        resolve_separator_observations,
     )
 
     pts = np.array(
@@ -63,7 +71,7 @@ def test_conflict_and_fit_records_are_exportable():
         dtype=float,
     )
     constraints = [(0, 1, 0.0), (1, 2, 0.0), (0, 2, 0.0)]
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         constraints,
         measurement='position',
@@ -81,7 +89,7 @@ def test_conflict_and_fit_records_are_exportable():
         'bound_value',
     }
 
-    resolved = resolve_pair_bisector_constraints(
+    resolved = resolve_separator_observations(
         pts,
         constraints,
         measurement='position',

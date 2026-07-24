@@ -178,7 +178,7 @@ fitted weights/radii
 The fixed-observation fit and the realization-aware outer loop are intentionally
 separate computations.
 
-## Current v0.7 implementation status
+## Current v0.8 implementation status
 
 ### Neutral weight/radius transforms
 
@@ -188,48 +188,35 @@ in the private shared module `pyvoro2._weight_transforms`. The top-level
 active-set code also import the neutral implementation directly, without going
 through a separator-owned module.
 
-`pyvoro2.powerfit.weights_to_radii`, `pyvoro2.powerfit.radii_to_weights`, and
-the historical `pyvoro2.powerfit.transforms` module remain compatibility routes
-to the same function objects. The compatibility module contains no numerical
-formulas. The neutral transforms reject non-finite inputs and any arithmetic
-that would produce non-finite weights, radii, or representation shifts. Import
-arrows point toward the implementation provider:
+The v0.8 removal leaves the top-level, high-level inverse, and advanced
+separator exports bound to the same neutral functions. The transforms reject
+non-finite inputs and any arithmetic that would produce non-finite weights,
+radii, or representation shifts. Import arrows point toward the implementation
+provider:
 
 ```text
 top-level pyvoro2 exports -----------------+
 separator problem and active-set code -----+--> pyvoro2._weight_transforms
-pyvoro2.powerfit compatibility exports ----+
+pyvoro2.inverse exports -------------------+
 forward power-input resolution ------------+
 ```
 
 ### Canonical separator implementation ownership
 
-The current v0.7 tree physically owns every separator-fitting implementation
+The current tree physically owns every separator-fitting implementation
 module under `pyvoro2.inverse.separator`: observation resolution, objective
 models, problem construction, fixed-observation solving, realization matching,
 active-set refinement, reports, and result dataclasses. Those modules import
 only canonical siblings or neutral/shared `pyvoro2` providers. In particular,
-no module under `pyvoro2.inverse` imports `pyvoro2.powerfit`.
+no module under `pyvoro2.inverse` imports the removed compatibility package.
+The neutral transform implementation remains in
+`pyvoro2._weight_transforms`.
 
-`pyvoro2.powerfit` and its historical direct submodules are now explicit
-forwarding shims. Their exports are the same class and function objects as the
-canonical modules; the shims contain no numerical formulas, solver paths,
-report builders, or duplicate dataclasses. Broad historical top-level exports
-also bind directly to `pyvoro2.inverse.separator`, so importing the canonical
-package does not load the compatibility namespace. The neutral transform
-implementation remains in `pyvoro2._weight_transforms`.
-
-The historical `pyvoro2.powerfit` package attribute is resolved lazily on
-first access. Plain `import pyvoro2` and canonical-only imports therefore do
-not load the compatibility package, while existing `pv.powerfit` calls still
-receive the historical module. The attribute remains outside `pyvoro2.__all__`.
-
-Issue #12 adds canonical primary definitions for the five accepted core names
-and keeps their historical names as identity aliases. `pyvoro2.inverse`
-exposes only the normal fixed-observation workflow and neutral transforms;
-advanced separator objects remain in `pyvoro2.inverse.separator`. Importing
-the historical `pyvoro2.powerfit` package emits a hidden-by-default
-`DeprecationWarning` with the fixed v0.8 removal horizon.
+`pyvoro2.inverse` exposes only the normal fixed-observation workflow and
+neutral transforms; advanced separator objects remain in
+`pyvoro2.inverse.separator`. Issue #28 removes the v0.7-only facade, broad
+top-level separator exports, and five historical core aliases without changing
+the canonical implementation.
 
 ### Direct weight-first forward input
 
@@ -279,12 +266,9 @@ tessellation check are stored in the structured result. Planar normalization
 uses the same result and keeps internally requested temporary geometry out of
 the final raw-cell capabilities.
 
-`PlanarComputeResult` is an identity alias to `TessellationResult`.
-Planar `return_result=` remains compatibility-only, emits a deprecation warning,
-and delegates to the explicit `output=` selection rules. The historical
-normalization override for an explicitly false legacy selector is retained;
-conflicting explicit selectors and explicit raw output with normalization fail
-clearly.
+Issue #28 removes the planar result alias and legacy return selector.
+`TessellationResult` and the explicit `output=` rules remain unchanged;
+explicit raw output with normalization fails clearly.
 
 ## Why stabilization is needed
 
@@ -324,9 +308,8 @@ shift harmless gauge.
 
 ### Broad top-level exports
 
-The top-level namespace currently re-exports many inverse implementation types.
-The preferred v0.7 organization should be clearer while keeping compatibility
-imports available.
+The v0.6.3 top-level namespace re-exported many inverse implementation types.
+v0.7 provided a bounded transition, and v0.8 removes those exports.
 
 ## Public architecture for v0.7
 
@@ -428,16 +411,13 @@ explicitly.
 [ADR 0004](decisions/0004-canonical-inverse-namespace.md) selects
 `pyvoro2.inverse` as the canonical home of math-aligned
 inverse concepts and `pyvoro2.inverse.separator` as the implementation owner for
-the first observation family. `pyvoro2.powerfit` becomes a thin
-compatibility-only shim during v0.7 and is removed in v0.8. Broad
+the first observation family. The v0.7-only `pyvoro2.powerfit` facade, broad
 separator-specific top-level exports, historical core aliases, and deprecated
-planar selectors follow the same transition schedule under ADR 0006.
+planar selectors were removed in v0.8 under ADR 0006.
 
-The physical ownership, one-way shim direction, canonical core names, and
-high-level convenience surface are implemented in the current tree. The
-historical names are identity aliases for v0.7, while `pyvoro2.powerfit` and
-broad top-level separator exports are deprecated compatibility routes that are
-removed in v0.8.
+The physical ownership, canonical core names, and high-level convenience
+surface are implemented in the current tree. Canonical code has no dependency
+on the removed facade.
 
 The separator workflow should be described using the following concepts:
 
@@ -450,10 +430,8 @@ The separator workflow should be described using the following concepts:
 - optional realization-aware refinement.
 
 New documentation prefers `SeparatorObservations`, `SeparatorFitResult`, and
-`fit_weights_from_separators`. Historical names such as
-`PairBisectorConstraints` resolve to those same canonical objects during v0.7.
-Compatibility code imports from the canonical namespace; canonical code never
-imports from `powerfit`.
+`fit_weights_from_separators`. The v0.7 historical aliases no longer resolve in
+v0.8.
 
 ### Inspectable algebraic operators
 
@@ -586,9 +564,8 @@ inside the stable weights-only solver.
   modules.
 - Inverse observation implementations may depend on forward computation and
   common diagnostics.
-- During v0.7 only, `powerfit` compatibility code delegates to
-  `inverse.separator`; the canonical implementation never depends on
-  `powerfit`. v0.8 removes the compatibility package.
+- The canonical implementation lives under `inverse.separator`; the v0.7
+  compatibility package is absent in v0.8.
 - Visualization remains optional and outside solver requirements.
 - Chemistry-specific data and models remain downstream.
 - Optional performance backends must not define the only public data format.

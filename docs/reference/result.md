@@ -9,9 +9,7 @@ raw diagnostics tuple.
 Structured output is always one object. Diagnostics computed because of
 `return_diagnostics=True` or `tessellation_check` are stored in
 `tessellation_diagnostics`. Planar normalized objects are stored in
-`normalized_vertices` and `normalized_topology`. The compatibility name
-`PlanarComputeResult` is the identical class object, not a second wrapper; it
-will be removed in v0.8.
+`normalized_vertices` and `normalized_topology`.
 
 Direct construction is provisional. It validates documented ID, measure,
 empty-state, representation, and capability metadata, including the exact
@@ -26,9 +24,8 @@ records to a shared empty raw cell makes boundary access raise. Deep copies and 
 aligned-array and capability contracts without reinterpreting later permitted
 raw-record mutation.
 
-The provisional `global_vertices` and `global_edges` conveniences preserve the
-historical planar result access pattern by forwarding to available normalized
-planar objects.
+The provisional `global_vertices` and `global_edges` conveniences forward to
+available normalized planar objects.
 
 ::: pyvoro2.result.TessellationResult
 :::

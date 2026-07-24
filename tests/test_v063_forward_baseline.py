@@ -11,7 +11,6 @@ from dataclasses import fields
 import inspect
 
 import numpy as np
-import pytest
 
 import pyvoro2 as pv
 import pyvoro2.api as spatial_api
@@ -26,7 +25,6 @@ import pyvoro2.planar.api as planar_api
 import pyvoro2.planar.diagnostics as planar_diagnostics
 import pyvoro2.planar.domains as planar_domains
 import pyvoro2.planar.normalize as planar_normalize
-import pyvoro2.planar.result as planar_result
 import pyvoro2.planar.validation as planar_validation
 import pyvoro2.validation as spatial_validation
 import pyvoro2.viz2d as viz2d
@@ -126,7 +124,6 @@ def test_documented_forward_module_routes_are_characterized() -> None:
         (planar_normalize.normalize_topology, pv2.normalize_topology),
         (planar_normalize.NormalizedVertices, pv2.NormalizedVertices),
         (planar_normalize.NormalizedTopology, pv2.NormalizedTopology),
-        (planar_result.PlanarComputeResult, pv2.PlanarComputeResult),
         (planar_validation.NormalizationIssue,
          pv2.NormalizationIssue),
         (planar_validation.NormalizationDiagnostics,
@@ -177,9 +174,6 @@ def test_spatial_compute_signature_and_defaults_are_characterized() -> None:
 
 def test_planar_compute_signature_and_defaults_are_characterized() -> None:
     defaults = _parameter_defaults(pv2.compute)
-    return_result = inspect.signature(pv2.compute).parameters['return_result']
-    assert return_result.annotation == 'bool | None'
-    assert return_result.default is None
     assert defaults[11] == ('weights', None)
     assert defaults[:11] + defaults[12:] == (
         ('points', REQUIRED),
@@ -205,7 +199,6 @@ def test_planar_compute_signature_and_defaults_are_characterized() -> None:
         ('edge_shift_tol', None),
         ('return_diagnostics', False),
         ('output', 'result'),
-        ('return_result', None),
         ('normalize', 'none'),
         ('normalization_tol', None),
         ('tessellation_check', 'none'),
@@ -526,15 +519,15 @@ def test_supporting_forward_signatures_are_characterized() -> None:
             ),
         ),
         (
-            planar_result.PlanarComputeResult.require_tessellation_diagnostics,
+            pv2.TessellationResult.require_tessellation_diagnostics,
             (('self', REQUIRED),),
         ),
         (
-            planar_result.PlanarComputeResult.require_normalized_vertices,
+            pv2.TessellationResult.require_normalized_vertices,
             (('self', REQUIRED),),
         ),
         (
-            planar_result.PlanarComputeResult.require_normalized_topology,
+            pv2.TessellationResult.require_normalized_topology,
             (('self', REQUIRED),),
         ),
         (
@@ -748,15 +741,15 @@ def test_forward_positional_and_keyword_only_parameters_are_characterized() -> N
         (pv.validate_normalized_topology, ('normalized', 'domain')),
         (pv2.validate_normalized_topology, ('normalized', 'domain')),
         (
-            planar_result.PlanarComputeResult.require_tessellation_diagnostics,
+            pv2.TessellationResult.require_tessellation_diagnostics,
             ('self',),
         ),
         (
-            planar_result.PlanarComputeResult.require_normalized_vertices,
+            pv2.TessellationResult.require_normalized_vertices,
             ('self',),
         ),
         (
-            planar_result.PlanarComputeResult.require_normalized_topology,
+            pv2.TessellationResult.require_normalized_topology,
             ('self',),
         ),
         (pv.annotate_face_properties, ('cells', 'domain')),
@@ -900,7 +893,7 @@ def test_forward_result_and_diagnostic_fields_are_characterized() -> None:
             planar_normalize.NormalizedTopology,
             ('global_vertices', 'global_edges', 'cells'),
         ),
-        (planar_result.PlanarComputeResult, _field_names(pv.TessellationResult)),
+        (pv2.TessellationResult, _field_names(pv.TessellationResult)),
     )
     for dataclass_type, expected in expected_fields:
         assert _field_names(dataclass_type) == expected
@@ -949,13 +942,11 @@ def test_planar_raw_and_structured_return_variants_are_characterized() -> None:
         return_diagnostics=True,
         output='cells',
     )
-    with pytest.warns(DeprecationWarning, match='output'):
-        result = pv2.compute(
-            points,
-            domain=domain,
-            return_result=True,
-            return_diagnostics=True,
-        )
+    result = pv2.compute(
+        points,
+        domain=domain,
+        return_diagnostics=True,
+    )
     normalized_result = pv2.compute(
         points,
         domain=domain,
@@ -971,9 +962,9 @@ def test_planar_raw_and_structured_return_variants_are_characterized() -> None:
     assert len(cells_with_diagnostics) == 2
     assert isinstance(cells_with_diagnostics[1], pv2.TessellationDiagnostics)
 
-    assert isinstance(result, pv2.PlanarComputeResult)
+    assert isinstance(result, pv2.TessellationResult)
     assert result.has_tessellation_diagnostics is True
-    assert isinstance(normalized_result, pv2.PlanarComputeResult)
+    assert isinstance(normalized_result, pv2.TessellationResult)
     assert normalized_result.has_normalized_vertices is True
     assert normalized_result.has_tessellation_diagnostics is False
 

@@ -678,8 +678,3 @@ def _separator_fit_result_setstate(
 # in the class body. Install these after decoration on every supported version.
 SeparatorFitResult.__getstate__ = _separator_fit_result_getstate
 SeparatorFitResult.__setstate__ = _separator_fit_result_setstate
-
-
-# Historical v0.6 name retained as an identity alias during v0.7.
-# Removal release: v0.8.
-PowerWeightFitResult = SeparatorFitResult

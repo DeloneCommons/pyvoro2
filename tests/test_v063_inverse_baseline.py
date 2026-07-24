@@ -1,4 +1,4 @@
-"""Characterization of v0.6.3 inverse imports and exported schemas."""
+"""Canonical inverse imports, signatures, and exported-schema regressions."""
 
 from __future__ import annotations
 
@@ -9,13 +9,13 @@ import numpy as np
 
 import pyvoro2 as pv
 import pyvoro2.planar as pv2
-import pyvoro2.powerfit as powerfit
-import pyvoro2.powerfit.active as powerfit_active
-import pyvoro2.powerfit.constraints as powerfit_constraints
-import pyvoro2.powerfit.model as powerfit_model
-import pyvoro2.powerfit.realize as powerfit_realize
-import pyvoro2.powerfit.report as powerfit_report
-import pyvoro2.powerfit.solver as powerfit_solver
+import pyvoro2.inverse.separator as separator
+import pyvoro2.inverse.separator.active as separator_active
+import pyvoro2.inverse.separator.constraints as separator_constraints
+import pyvoro2.inverse.separator.model as separator_model
+import pyvoro2.inverse.separator.realize as separator_realize
+import pyvoro2.inverse.separator.report as separator_report
+import pyvoro2.inverse.separator.solver as separator_solver
 import pyvoro2.viz2d as viz2d
 import pyvoro2.viz3d as viz3d
 
@@ -49,40 +49,6 @@ TOP_LEVEL_ALL = (
     'normalize_vertices',
     'normalize_edges_faces',
     'normalize_topology',
-    'PairBisectorConstraints',
-    'resolve_pair_bisector_constraints',
-    'SquaredLoss',
-    'HuberLoss',
-    'Interval',
-    'FixedValue',
-    'SoftIntervalPenalty',
-    'ExponentialBoundaryPenalty',
-    'ReciprocalBoundaryPenalty',
-    'L2Regularization',
-    'FitModel',
-    'AlgebraicEdgeDiagnostics',
-    'ConstraintGraphDiagnostics',
-    'ConnectivityDiagnostics',
-    'ConnectivityDiagnosticsError',
-    'HardConstraintConflictTerm',
-    'HardConstraintConflict',
-    'PowerWeightFitResult',
-    'RealizedPairDiagnostics',
-    'UnaccountedRealizedPair',
-    'UnaccountedRealizedPairError',
-    'build_fit_report',
-    'build_realized_report',
-    'build_active_set_report',
-    'dumps_report_json',
-    'write_report_json',
-    'ActiveSetOptions',
-    'ActiveSetIteration',
-    'ActiveSetPathSummary',
-    'PairConstraintDiagnostics',
-    'SelfConsistentPowerFitResult',
-    'fit_power_weights',
-    'match_realized_pairs',
-    'solve_self_consistent_power_weights',
     'radii_to_weights',
     'weights_to_radii',
     '__version__',
@@ -93,7 +59,6 @@ PLANAR_ALL = (
     'Box',
     'RectangularCell',
     'TessellationResult',
-    'PlanarComputeResult',
     'compute',
     'locate',
     'ghost_cells',
@@ -118,9 +83,19 @@ PLANAR_ALL = (
     'validate_normalized_topology',
 )
 
-POWERFIT_ALL = (
-    'PairBisectorConstraints',
-    'resolve_pair_bisector_constraints',
+SEPARATOR_ALL = (
+    'SeparatorObservations',
+    'resolve_separator_observations',
+    'SeparatorFitProblem',
+    'SeparatorFitResult',
+    'fit_weights_from_separators',
+    'SeparatorFitStateView',
+    'SeparatorIdentificationView',
+    'SeparatorObservationView',
+    'SeparatorAlgebraicView',
+    'SeparatorSolverTerminationView',
+    'SeparatorObservationGraphView',
+    'SeparatorQuadraticOperatorView',
     'SquaredLoss',
     'HuberLoss',
     'Interval',
@@ -139,10 +114,10 @@ POWERFIT_ALL = (
     'PowerFitBounds',
     'PowerFitPredictions',
     'PowerFitObjectiveBreakdown',
-    'PowerFitProblem',
-    'PowerWeightFitResult',
     'build_power_fit_problem',
     'build_power_fit_result',
+    'RequestedImageMatchView',
+    'RealizedGeometryView',
     'RealizedPairDiagnostics',
     'UnaccountedRealizedPair',
     'UnaccountedRealizedPairError',
@@ -154,16 +129,17 @@ POWERFIT_ALL = (
     'ActiveSetOptions',
     'ActiveSetIteration',
     'ActiveSetPathSummary',
+    'ActiveSetTerminationView',
+    'ActiveSetPathView',
     'PairConstraintDiagnostics',
     'SelfConsistentPowerFitResult',
-    'fit_power_weights',
     'match_realized_pairs',
     'solve_self_consistent_power_weights',
     'radii_to_weights',
     'weights_to_radii',
 )
 
-POWERFIT_REPORT_ALL = (
+SEPARATOR_REPORT_ALL = (
     'build_fit_report',
     'build_realized_report',
     'build_active_set_report',
@@ -171,8 +147,8 @@ POWERFIT_REPORT_ALL = (
     'write_report_json',
 )
 
-POWERFIT_SOLVER_ALL = (
-    'fit_power_weights',
+SEPARATOR_SOLVER_ALL = (
+    'fit_weights_from_separators',
     'ConnectivityDiagnosticsError',
 )
 
@@ -225,12 +201,12 @@ def test_public_all_exports_are_characterized_exactly() -> None:
     assert set(pv.__all__) == set(TOP_LEVEL_ALL)
     assert len(pv2.__all__) == len(PLANAR_ALL)
     assert set(pv2.__all__) == set(PLANAR_ALL)
-    assert len(powerfit.__all__) == len(POWERFIT_ALL)
-    assert set(powerfit.__all__) == set(POWERFIT_ALL)
-    assert len(powerfit_report.__all__) == len(POWERFIT_REPORT_ALL)
-    assert set(powerfit_report.__all__) == set(POWERFIT_REPORT_ALL)
-    assert len(powerfit_solver.__all__) == len(POWERFIT_SOLVER_ALL)
-    assert set(powerfit_solver.__all__) == set(POWERFIT_SOLVER_ALL)
+    assert len(separator.__all__) == len(SEPARATOR_ALL)
+    assert set(separator.__all__) == set(SEPARATOR_ALL)
+    assert len(separator_report.__all__) == len(SEPARATOR_REPORT_ALL)
+    assert set(separator_report.__all__) == set(SEPARATOR_REPORT_ALL)
+    assert len(separator_solver.__all__) == len(SEPARATOR_SOLVER_ALL)
+    assert set(separator_solver.__all__) == set(SEPARATOR_SOLVER_ALL)
     assert len(viz3d.__all__) == len(VIZ3D_ALL)
     assert set(viz3d.__all__) == set(VIZ3D_ALL)
 
@@ -240,83 +216,86 @@ def test_documented_submodule_import_routes_are_characterized() -> None:
 
     package_routes = (
         (
-            powerfit_constraints.PairBisectorConstraints,
-            powerfit.PairBisectorConstraints,
+            separator_constraints.SeparatorObservations,
+            separator.SeparatorObservations,
         ),
         (
-            powerfit_constraints.resolve_pair_bisector_constraints,
-            powerfit.resolve_pair_bisector_constraints,
+            separator_constraints.resolve_separator_observations,
+            separator.resolve_separator_observations,
         ),
         (
-            powerfit_active.solve_self_consistent_power_weights,
-            powerfit.solve_self_consistent_power_weights,
+            separator_active.solve_self_consistent_power_weights,
+            separator.solve_self_consistent_power_weights,
         ),
-        (powerfit_active.ActiveSetOptions, powerfit.ActiveSetOptions),
-        (powerfit_active.ActiveSetIteration, powerfit.ActiveSetIteration),
-        (powerfit_active.ActiveSetPathSummary, powerfit.ActiveSetPathSummary),
+        (separator_active.ActiveSetOptions, separator.ActiveSetOptions),
+        (separator_active.ActiveSetIteration, separator.ActiveSetIteration),
+        (separator_active.ActiveSetPathSummary, separator.ActiveSetPathSummary),
         (
-            powerfit_active.PairConstraintDiagnostics,
-            powerfit.PairConstraintDiagnostics,
-        ),
-        (
-            powerfit_active.SelfConsistentPowerFitResult,
-            powerfit.SelfConsistentPowerFitResult,
-        ),
-        (powerfit_model.SquaredLoss, powerfit.SquaredLoss),
-        (powerfit_model.HuberLoss, powerfit.HuberLoss),
-        (powerfit_model.Interval, powerfit.Interval),
-        (powerfit_model.FixedValue, powerfit.FixedValue),
-        (powerfit_model.SoftIntervalPenalty, powerfit.SoftIntervalPenalty),
-        (
-            powerfit_model.ExponentialBoundaryPenalty,
-            powerfit.ExponentialBoundaryPenalty,
+            separator_active.PairConstraintDiagnostics,
+            separator.PairConstraintDiagnostics,
         ),
         (
-            powerfit_model.ReciprocalBoundaryPenalty,
-            powerfit.ReciprocalBoundaryPenalty,
+            separator_active.SelfConsistentPowerFitResult,
+            separator.SelfConsistentPowerFitResult,
         ),
-        (powerfit_model.L2Regularization, powerfit.L2Regularization),
-        (powerfit_model.FitModel, powerfit.FitModel),
+        (separator_model.SquaredLoss, separator.SquaredLoss),
+        (separator_model.HuberLoss, separator.HuberLoss),
+        (separator_model.Interval, separator.Interval),
+        (separator_model.FixedValue, separator.FixedValue),
+        (separator_model.SoftIntervalPenalty, separator.SoftIntervalPenalty),
         (
-            powerfit_realize.RealizedPairDiagnostics,
-            powerfit.RealizedPairDiagnostics,
-        ),
-        (
-            powerfit_realize.UnaccountedRealizedPair,
-            powerfit.UnaccountedRealizedPair,
-        ),
-        (
-            powerfit_realize.UnaccountedRealizedPairError,
-            powerfit.UnaccountedRealizedPairError,
+            separator_model.ExponentialBoundaryPenalty,
+            separator.ExponentialBoundaryPenalty,
         ),
         (
-            powerfit_realize.match_realized_pairs,
-            powerfit.match_realized_pairs,
+            separator_model.ReciprocalBoundaryPenalty,
+            separator.ReciprocalBoundaryPenalty,
         ),
-        (powerfit_report.build_fit_report, powerfit.build_fit_report),
+        (separator_model.L2Regularization, separator.L2Regularization),
+        (separator_model.FitModel, separator.FitModel),
         (
-            powerfit_report.build_realized_report,
-            powerfit.build_realized_report,
+            separator_realize.RealizedPairDiagnostics,
+            separator.RealizedPairDiagnostics,
         ),
         (
-            powerfit_report.build_active_set_report,
-            powerfit.build_active_set_report,
+            separator_realize.UnaccountedRealizedPair,
+            separator.UnaccountedRealizedPair,
         ),
-        (powerfit_report.dumps_report_json, powerfit.dumps_report_json),
-        (powerfit_report.write_report_json, powerfit.write_report_json),
-        (powerfit_solver.fit_power_weights, powerfit.fit_power_weights),
         (
-            powerfit_solver.ConnectivityDiagnosticsError,
-            powerfit.ConnectivityDiagnosticsError,
+            separator_realize.UnaccountedRealizedPairError,
+            separator.UnaccountedRealizedPairError,
+        ),
+        (
+            separator_realize.match_realized_pairs,
+            separator.match_realized_pairs,
+        ),
+        (separator_report.build_fit_report, separator.build_fit_report),
+        (
+            separator_report.build_realized_report,
+            separator.build_realized_report,
+        ),
+        (
+            separator_report.build_active_set_report,
+            separator.build_active_set_report,
+        ),
+        (separator_report.dumps_report_json, separator.dumps_report_json),
+        (separator_report.write_report_json, separator.write_report_json),
+        (
+            separator_solver.fit_weights_from_separators,
+            separator.fit_weights_from_separators,
+        ),
+        (
+            separator_solver.ConnectivityDiagnosticsError,
+            separator.ConnectivityDiagnosticsError,
         ),
     )
     assert all(direct is packaged for direct, packaged in package_routes)
 
-    assert issubclass(powerfit.SquaredLoss, powerfit_model.ScalarMismatch)
-    assert issubclass(powerfit.Interval, powerfit_model.HardConstraint)
+    assert issubclass(separator.SquaredLoss, separator_model.ScalarMismatch)
+    assert issubclass(separator.Interval, separator_model.HardConstraint)
     assert issubclass(
-        powerfit.SoftIntervalPenalty,
-        powerfit_model.ScalarPenalty,
+        separator.SoftIntervalPenalty,
+        separator_model.ScalarPenalty,
     )
 
 
@@ -325,30 +304,24 @@ def test_notebook_only_visualization_imports_are_characterized() -> None:
     assert callable(viz3d.view_tessellation)
 
 
-def test_top_level_inverse_exports_are_identity_compatibility_imports() -> None:
-    inverse_names = tuple(
-        name
-        for name in POWERFIT_ALL
-        if name in TOP_LEVEL_ALL
-        and name not in {'radii_to_weights', 'weights_to_radii'}
-    )
-    for name in inverse_names:
-        assert getattr(pv, name) is getattr(powerfit, name)
-
+def test_advanced_inverse_exports_stay_in_separator_namespace() -> None:
     advanced_problem_names = {
         'PowerFitBounds',
         'PowerFitPredictions',
         'PowerFitObjectiveBreakdown',
-        'PowerFitProblem',
+        'SeparatorFitProblem',
         'build_power_fit_problem',
         'build_power_fit_result',
     }
-    assert advanced_problem_names <= set(powerfit.__all__)
+    assert advanced_problem_names <= set(separator.__all__)
     assert advanced_problem_names.isdisjoint(pv.__all__)
+    assert set(SEPARATOR_ALL).isdisjoint(
+        set(pv.__all__) - {'radii_to_weights', 'weights_to_radii'}
+    )
 
 
 def test_inverse_entrypoint_signatures_and_defaults_are_characterized() -> None:
-    assert _parameter_defaults(powerfit.resolve_pair_bisector_constraints) == (
+    assert _parameter_defaults(separator.resolve_separator_observations) == (
         ('points', REQUIRED),
         ('constraints', REQUIRED),
         ('measurement', 'fraction'),
@@ -360,7 +333,7 @@ def test_inverse_entrypoint_signatures_and_defaults_are_characterized() -> None:
         ('confidence', None),
         ('allow_empty', False),
     )
-    assert _parameter_defaults(powerfit.fit_power_weights) == (
+    assert _parameter_defaults(separator.fit_weights_from_separators) == (
         ('points', REQUIRED),
         ('constraints', REQUIRED),
         ('measurement', 'fraction'),
@@ -380,7 +353,7 @@ def test_inverse_entrypoint_signatures_and_defaults_are_characterized() -> None:
         ('tol_rel', 1e-5),
         ('connectivity_check', 'warn'),
     )
-    assert _parameter_defaults(powerfit.build_power_fit_result) == (
+    assert _parameter_defaults(separator.build_power_fit_result) == (
         ('problem', REQUIRED),
         ('weights', REQUIRED),
         ('solver', 'external'),
@@ -393,7 +366,7 @@ def test_inverse_entrypoint_signatures_and_defaults_are_characterized() -> None:
         ('r_min', 0.0),
         ('weight_shift', None),
     )
-    assert _parameter_defaults(powerfit.match_realized_pairs) == (
+    assert _parameter_defaults(separator.match_realized_pairs) == (
         ('points', REQUIRED),
         ('domain', REQUIRED),
         ('constraints', REQUIRED),
@@ -406,7 +379,7 @@ def test_inverse_entrypoint_signatures_and_defaults_are_characterized() -> None:
         ('unaccounted_pair_check', 'diagnose'),
     )
     assert _parameter_defaults(
-        powerfit.solve_self_consistent_power_weights
+        separator.solve_self_consistent_power_weights
     ) == (
         ('points', REQUIRED),
         ('constraints', REQUIRED),
@@ -440,11 +413,11 @@ def test_inverse_entrypoint_signatures_and_defaults_are_characterized() -> None:
 def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
     signatures = (
         (
-            powerfit.build_power_fit_problem,
+            separator.build_power_fit_problem,
             (('constraints', REQUIRED), ('model', None)),
         ),
         (
-            powerfit.build_fit_report,
+            separator.build_fit_report,
             (
                 ('result', REQUIRED),
                 ('constraints', REQUIRED),
@@ -452,7 +425,7 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.build_realized_report,
+            separator.build_realized_report,
             (
                 ('diagnostics', REQUIRED),
                 ('constraints', REQUIRED),
@@ -460,11 +433,11 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.build_active_set_report,
+            separator.build_active_set_report,
             (('result', REQUIRED), ('use_ids', False)),
         ),
         (
-            powerfit.dumps_report_json,
+            separator.dumps_report_json,
             (
                 ('report', REQUIRED),
                 ('indent', 2),
@@ -472,7 +445,7 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.write_report_json,
+            separator.write_report_json,
             (
                 ('report', REQUIRED),
                 ('path', REQUIRED),
@@ -480,15 +453,15 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
                 ('sort_keys', False),
             ),
         ),
-        (powerfit.SquaredLoss, ()),
-        (powerfit.HuberLoss, (('delta', 1.0),)),
+        (separator.SquaredLoss, ()),
+        (separator.HuberLoss, (('delta', 1.0),)),
         (
-            powerfit.Interval,
+            separator.Interval,
             (('lower', REQUIRED), ('upper', REQUIRED)),
         ),
-        (powerfit.FixedValue, (('value', REQUIRED),)),
+        (separator.FixedValue, (('value', REQUIRED),)),
         (
-            powerfit.SoftIntervalPenalty,
+            separator.SoftIntervalPenalty,
             (
                 ('lower', REQUIRED),
                 ('upper', REQUIRED),
@@ -496,7 +469,7 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.ExponentialBoundaryPenalty,
+            separator.ExponentialBoundaryPenalty,
             (
                 ('lower', 0.0),
                 ('upper', 1.0),
@@ -506,7 +479,7 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.ReciprocalBoundaryPenalty,
+            separator.ReciprocalBoundaryPenalty,
             (
                 ('lower', 0.0),
                 ('upper', 1.0),
@@ -516,11 +489,11 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.L2Regularization,
+            separator.L2Regularization,
             (('strength', 0.0), ('reference', None)),
         ),
         (
-            powerfit.ActiveSetOptions,
+            separator.ActiveSetOptions,
             (
                 ('add_after', 1),
                 ('drop_after', 2),
@@ -531,7 +504,7 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.ConnectivityDiagnostics,
+            separator.ConnectivityDiagnostics,
             (
                 ('unconstrained_points', REQUIRED),
                 ('candidate_graph', REQUIRED),
@@ -546,7 +519,7 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.UnaccountedRealizedPair,
+            separator.UnaccountedRealizedPair,
             (
                 ('site_i', REQUIRED),
                 ('site_j', REQUIRED),
@@ -555,7 +528,7 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.ActiveSetIteration,
+            separator.ActiveSetIteration,
             (
                 ('iteration', REQUIRED),
                 ('n_active', REQUIRED),
@@ -573,7 +546,7 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.ActiveSetPathSummary,
+            separator.ActiveSetPathSummary,
             (
                 ('n_iterations', REQUIRED),
                 ('ever_fit_active_graph_disconnected', REQUIRED),
@@ -592,40 +565,40 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
     for callable_, expected in signatures:
         assert _parameter_defaults(callable_) == expected
 
-    model_signature = inspect.signature(powerfit.FitModel)
+    model_signature = inspect.signature(separator.FitModel)
     assert tuple(model_signature.parameters) == (
         'mismatch',
         'feasible',
         'penalties',
         'regularization',
     )
-    model = powerfit.FitModel()
-    assert isinstance(model.mismatch, powerfit.SquaredLoss)
+    model = separator.FitModel()
+    assert isinstance(model.mismatch, separator.SquaredLoss)
     assert model.feasible is None
     assert model.penalties == ()
-    assert isinstance(model.regularization, powerfit.L2Regularization)
+    assert isinstance(model.regularization, separator.L2Regularization)
 
 
 def test_documented_inverse_method_signatures_are_characterized() -> None:
     signatures = (
         (
-            powerfit.PairBisectorConstraints.pair_labels,
+            separator.SeparatorObservations.pair_labels,
             (('self', REQUIRED), ('use_ids', False)),
         ),
         (
-            powerfit.PairBisectorConstraints.to_records,
+            separator.SeparatorObservations.to_records,
             (('self', REQUIRED), ('use_ids', False)),
         ),
         (
-            powerfit.PairBisectorConstraints.subset,
+            separator.SeparatorObservations.subset,
             (('self', REQUIRED), ('mask', REQUIRED)),
         ),
         (
-            powerfit.PowerFitProblem.canonicalize_gauge,
+            separator.SeparatorFitProblem.canonicalize_gauge,
             (('self', REQUIRED), ('weights', REQUIRED)),
         ),
         (
-            powerfit.PowerWeightFitResult.to_records,
+            separator.SeparatorFitResult.to_records,
             (
                 ('self', REQUIRED),
                 ('constraints', REQUIRED),
@@ -633,7 +606,7 @@ def test_documented_inverse_method_signatures_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.PowerWeightFitResult.to_report,
+            separator.SeparatorFitResult.to_report,
             (
                 ('self', REQUIRED),
                 ('constraints', REQUIRED),
@@ -641,7 +614,7 @@ def test_documented_inverse_method_signatures_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.RealizedPairDiagnostics.to_records,
+            separator.RealizedPairDiagnostics.to_records,
             (
                 ('self', REQUIRED),
                 ('constraints', REQUIRED),
@@ -649,11 +622,11 @@ def test_documented_inverse_method_signatures_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.RealizedPairDiagnostics.unaccounted_records,
+            separator.RealizedPairDiagnostics.unaccounted_records,
             (('self', REQUIRED), ('ids', None)),
         ),
         (
-            powerfit.RealizedPairDiagnostics.to_report,
+            separator.RealizedPairDiagnostics.to_report,
             (
                 ('self', REQUIRED),
                 ('constraints', REQUIRED),
@@ -661,27 +634,27 @@ def test_documented_inverse_method_signatures_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.PairConstraintDiagnostics.to_records,
+            separator.PairConstraintDiagnostics.to_records,
             (('self', REQUIRED), ('ids', None)),
         ),
         (
-            powerfit.SelfConsistentPowerFitResult.to_records,
+            separator.SelfConsistentPowerFitResult.to_records,
             (('self', REQUIRED), ('use_ids', False)),
         ),
         (
-            powerfit.SelfConsistentPowerFitResult.to_report,
+            separator.SelfConsistentPowerFitResult.to_report,
             (('self', REQUIRED), ('use_ids', False)),
         ),
         (
-            powerfit.HardConstraintConflictTerm.to_record,
+            separator.HardConstraintConflictTerm.to_record,
             (('self', REQUIRED), ('ids', None)),
         ),
         (
-            powerfit.HardConstraintConflict.to_records,
+            separator.HardConstraintConflict.to_records,
             (('self', REQUIRED), ('ids', None)),
         ),
         (
-            powerfit.UnaccountedRealizedPair.to_record,
+            separator.UnaccountedRealizedPair.to_record,
             (('self', REQUIRED), ('ids', None)),
         ),
     )
@@ -692,45 +665,45 @@ def test_documented_inverse_method_signatures_are_characterized() -> None:
 def test_inverse_positional_and_keyword_only_parameters_are_characterized() -> None:
     positional_parameters = (
         (
-            powerfit.resolve_pair_bisector_constraints,
+            separator.resolve_separator_observations,
             ('points', 'constraints'),
         ),
-        (powerfit.fit_power_weights, ('points', 'constraints')),
-        (powerfit.build_power_fit_problem, ('constraints',)),
-        (powerfit.build_power_fit_result, ('problem', 'weights')),
-        (powerfit.match_realized_pairs, ('points',)),
+        (separator.fit_weights_from_separators, ('points', 'constraints')),
+        (separator.build_power_fit_problem, ('constraints',)),
+        (separator.build_power_fit_result, ('problem', 'weights')),
+        (separator.match_realized_pairs, ('points',)),
         (
-            powerfit.solve_self_consistent_power_weights,
+            separator.solve_self_consistent_power_weights,
             ('points', 'constraints'),
         ),
-        (powerfit.build_fit_report, ('result', 'constraints')),
-        (powerfit.build_realized_report, ('diagnostics', 'constraints')),
-        (powerfit.build_active_set_report, ('result',)),
-        (powerfit.dumps_report_json, ('report',)),
-        (powerfit.write_report_json, ('report', 'path')),
-        (powerfit.SquaredLoss, ()),
-        (powerfit.HuberLoss, ('delta',)),
-        (powerfit.Interval, ('lower', 'upper')),
-        (powerfit.FixedValue, ('value',)),
+        (separator.build_fit_report, ('result', 'constraints')),
+        (separator.build_realized_report, ('diagnostics', 'constraints')),
+        (separator.build_active_set_report, ('result',)),
+        (separator.dumps_report_json, ('report',)),
+        (separator.write_report_json, ('report', 'path')),
+        (separator.SquaredLoss, ()),
+        (separator.HuberLoss, ('delta',)),
+        (separator.Interval, ('lower', 'upper')),
+        (separator.FixedValue, ('value',)),
         (
-            powerfit.SoftIntervalPenalty,
+            separator.SoftIntervalPenalty,
             ('lower', 'upper', 'strength'),
         ),
         (
-            powerfit.ExponentialBoundaryPenalty,
+            separator.ExponentialBoundaryPenalty,
             ('lower', 'upper', 'margin', 'strength', 'tau'),
         ),
         (
-            powerfit.ReciprocalBoundaryPenalty,
+            separator.ReciprocalBoundaryPenalty,
             ('lower', 'upper', 'margin', 'strength', 'epsilon'),
         ),
-        (powerfit.L2Regularization, ('strength', 'reference')),
+        (separator.L2Regularization, ('strength', 'reference')),
         (
-            powerfit.FitModel,
+            separator.FitModel,
             ('mismatch', 'feasible', 'penalties', 'regularization'),
         ),
         (
-            powerfit.ActiveSetOptions,
+            separator.ActiveSetOptions,
             (
                 'add_after',
                 'drop_after',
@@ -741,7 +714,7 @@ def test_inverse_positional_and_keyword_only_parameters_are_characterized() -> N
             ),
         ),
         (
-            powerfit.ConnectivityDiagnostics,
+            separator.ConnectivityDiagnostics,
             (
                 'unconstrained_points',
                 'candidate_graph',
@@ -756,64 +729,64 @@ def test_inverse_positional_and_keyword_only_parameters_are_characterized() -> N
             ),
         ),
         (
-            powerfit.UnaccountedRealizedPair,
+            separator.UnaccountedRealizedPair,
             ('site_i', 'site_j', 'realized_shifts', 'boundary_measure'),
         ),
         (
-            powerfit.ActiveSetIteration,
+            separator.ActiveSetIteration,
             tuple(
                 name
                 for name, _ in _parameter_defaults(
-                    powerfit.ActiveSetIteration
+                    separator.ActiveSetIteration
                 )
             ),
         ),
         (
-            powerfit.ActiveSetPathSummary,
+            separator.ActiveSetPathSummary,
             tuple(
                 name
                 for name, _ in _parameter_defaults(
-                    powerfit.ActiveSetPathSummary
+                    separator.ActiveSetPathSummary
                 )
             ),
         ),
-        (powerfit.PairBisectorConstraints.pair_labels, ('self',)),
-        (powerfit.PairBisectorConstraints.to_records, ('self',)),
-        (powerfit.PairBisectorConstraints.subset, ('self', 'mask')),
+        (separator.SeparatorObservations.pair_labels, ('self',)),
+        (separator.SeparatorObservations.to_records, ('self',)),
+        (separator.SeparatorObservations.subset, ('self', 'mask')),
         (
-            powerfit.PowerFitProblem.canonicalize_gauge,
+            separator.SeparatorFitProblem.canonicalize_gauge,
             ('self', 'weights'),
         ),
         (
-            powerfit.PowerWeightFitResult.to_records,
+            separator.SeparatorFitResult.to_records,
             ('self', 'constraints'),
         ),
         (
-            powerfit.PowerWeightFitResult.to_report,
+            separator.SeparatorFitResult.to_report,
             ('self', 'constraints'),
         ),
         (
-            powerfit.RealizedPairDiagnostics.to_records,
+            separator.RealizedPairDiagnostics.to_records,
             ('self', 'constraints'),
         ),
-        (powerfit.RealizedPairDiagnostics.unaccounted_records, ('self',)),
+        (separator.RealizedPairDiagnostics.unaccounted_records, ('self',)),
         (
-            powerfit.RealizedPairDiagnostics.to_report,
+            separator.RealizedPairDiagnostics.to_report,
             ('self', 'constraints'),
         ),
-        (powerfit.PairConstraintDiagnostics.to_records, ('self',)),
-        (powerfit.SelfConsistentPowerFitResult.to_records, ('self',)),
-        (powerfit.SelfConsistentPowerFitResult.to_report, ('self',)),
-        (powerfit.HardConstraintConflictTerm.to_record, ('self',)),
-        (powerfit.HardConstraintConflict.to_records, ('self',)),
-        (powerfit.UnaccountedRealizedPair.to_record, ('self',)),
+        (separator.PairConstraintDiagnostics.to_records, ('self',)),
+        (separator.SelfConsistentPowerFitResult.to_records, ('self',)),
+        (separator.SelfConsistentPowerFitResult.to_report, ('self',)),
+        (separator.HardConstraintConflictTerm.to_record, ('self',)),
+        (separator.HardConstraintConflict.to_records, ('self',)),
+        (separator.UnaccountedRealizedPair.to_record, ('self',)),
     )
     for callable_, expected in positional_parameters:
         _assert_positional_parameters(callable_, expected)
 
 
 def test_public_inverse_result_fields_are_characterized() -> None:
-    assert _field_names(powerfit.PairBisectorConstraints) == (
+    assert _field_names(separator.SeparatorObservations) == (
         'n_points',
         'i',
         'j',
@@ -831,7 +804,7 @@ def test_public_inverse_result_fields_are_characterized() -> None:
         'ids',
         'warnings',
     )
-    assert _field_names(powerfit.PowerFitProblem) == (
+    assert _field_names(separator.SeparatorFitProblem) == (
         'constraints',
         'model',
         'alpha',
@@ -846,7 +819,7 @@ def test_public_inverse_result_fields_are_characterized() -> None:
         'hard_feasible',
         'hard_conflict',
     )
-    assert _field_names(powerfit.PowerWeightFitResult) == (
+    assert _field_names(separator.SeparatorFitResult) == (
         'status',
         'hard_feasible',
         'weights',
@@ -871,7 +844,7 @@ def test_public_inverse_result_fields_are_characterized() -> None:
         'edge_diagnostics',
         'objective_breakdown',
     )
-    assert _field_names(powerfit.RealizedPairDiagnostics) == (
+    assert _field_names(separator.RealizedPairDiagnostics) == (
         'realized',
         'unrealized',
         'realized_same_shift',
@@ -885,7 +858,7 @@ def test_public_inverse_result_fields_are_characterized() -> None:
         'unaccounted_pairs',
         'warnings',
     )
-    assert _field_names(powerfit.PairConstraintDiagnostics) == (
+    assert _field_names(separator.PairConstraintDiagnostics) == (
         'site_i',
         'site_j',
         'shift',
@@ -910,7 +883,7 @@ def test_public_inverse_result_fields_are_characterized() -> None:
         'marginal',
         'status',
     )
-    assert _field_names(powerfit.SelfConsistentPowerFitResult) == (
+    assert _field_names(separator.SelfConsistentPowerFitResult) == (
         'constraints',
         'fit',
         'realized',
@@ -934,7 +907,7 @@ def test_public_inverse_result_fields_are_characterized() -> None:
 def test_supporting_inverse_result_fields_are_characterized() -> None:
     expected_fields = (
         (
-            powerfit.PowerFitBounds,
+            separator.PowerFitBounds,
             (
                 'measurement_lower',
                 'measurement_upper',
@@ -943,11 +916,11 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.PowerFitPredictions,
+            separator.PowerFitPredictions,
             ('difference', 'fraction', 'position', 'measurement'),
         ),
         (
-            powerfit.PowerFitObjectiveBreakdown,
+            separator.PowerFitObjectiveBreakdown,
             (
                 'total',
                 'mismatch',
@@ -959,7 +932,7 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.AlgebraicEdgeDiagnostics,
+            separator.AlgebraicEdgeDiagnostics,
             (
                 'alpha',
                 'beta',
@@ -974,7 +947,7 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.ConstraintGraphDiagnostics,
+            separator.ConstraintGraphDiagnostics,
             (
                 'n_points',
                 'n_constraints',
@@ -985,7 +958,7 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.ConnectivityDiagnostics,
+            separator.ConnectivityDiagnostics,
             (
                 'unconstrained_points',
                 'candidate_graph',
@@ -1000,7 +973,7 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.HardConstraintConflictTerm,
+            separator.HardConstraintConflictTerm,
             (
                 'constraint_index',
                 'site_i',
@@ -1010,15 +983,15 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.HardConstraintConflict,
+            separator.HardConstraintConflict,
             ('component_nodes', 'cycle_nodes', 'terms', 'message'),
         ),
         (
-            powerfit.UnaccountedRealizedPair,
+            separator.UnaccountedRealizedPair,
             ('site_i', 'site_j', 'realized_shifts', 'boundary_measure'),
         ),
         (
-            powerfit.ActiveSetIteration,
+            separator.ActiveSetIteration,
             (
                 'iteration',
                 'n_active',
@@ -1036,7 +1009,7 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
             ),
         ),
         (
-            powerfit.ActiveSetPathSummary,
+            separator.ActiveSetPathSummary,
             (
                 'n_iterations',
                 'ever_fit_active_graph_disconnected',
@@ -1059,17 +1032,17 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
 def test_inverse_record_and_report_schemas_are_characterized() -> None:
     points = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
     domain = pv.Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
-    constraints = pv.resolve_pair_bisector_constraints(
+    constraints = separator.resolve_separator_observations(
         points,
         [(0, 1, 0.25)],
         domain=domain,
     )
-    fit = pv.fit_power_weights(
+    fit = separator.fit_weights_from_separators(
         points,
         constraints,
         connectivity_check='diagnose',
     )
-    realized = pv.match_realized_pairs(
+    realized = separator.match_realized_pairs(
         points,
         domain=domain,
         radii=fit.radii,
@@ -1078,11 +1051,11 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
         return_tessellation_diagnostics=True,
         unaccounted_pair_check='diagnose',
     )
-    active = pv.solve_self_consistent_power_weights(
+    active = separator.solve_self_consistent_power_weights(
         points,
         constraints,
         domain=domain,
-        options=pv.ActiveSetOptions(max_iter=4),
+        options=separator.ActiveSetOptions(max_iter=4),
         return_history=True,
         return_boundary_measure=True,
         return_tessellation_diagnostics=True,

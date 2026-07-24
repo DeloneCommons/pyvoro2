@@ -845,12 +845,10 @@ intentionally dimension-safe: fitting is phrased in terms of separator
 observations and generic boundary measure rather than chemistry-specific or
 3D-only semantics.
 
-The historical `pyvoro2.powerfit` package, broad top-level separator exports,
-and the five historical core names remain deprecated compatibility routes for
-v0.7. They will be removed in v0.8. See the
-[compatibility reference](../reference/powerfit/index.md),
-[architecture](../development/architecture.md), and
-[API lifecycle](../development/api-lifecycle.md).
+The v0.7 compatibility package, broad top-level separator exports, and five
+historical core aliases are absent in v0.8. See the
+[migration guide](migration-v0.7.md), [architecture](../development/architecture.md),
+and [API lifecycle](../development/api-lifecycle.md).
 
 The main current restriction is geometric, not algebraic:
 

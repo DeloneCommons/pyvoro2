@@ -61,7 +61,7 @@ nav:
       - Operations: guide/operations.md
       - Topology and graphs: guide/topology.md
       - Separator fitting: guide/powerfit.md
-      - Migrating from v0.6.3: guide/migration-v0.7.md
+      - v0.6.3–v0.8 migration: guide/migration-v0.7.md
       - Visualization: guide/visualization.md
       - Notebooks: guide/notebooks.md
   - Theory:
@@ -75,7 +75,7 @@ nav:
       - Development plans:
           - Overview: development/plans/index.md
           - v0.7 archived plan: development/plans/archive/v0.7.md
-          - v0.8 draft cleanup plan: development/plans/v0.8.md
+          - v0.8 active cleanup plan: development/plans/v0.8.md
           - Plan template: development/plans/template.md
           - Archive: development/plans/archive/index.md
       - Documentation conventions: development/documentation-conventions.md
@@ -119,20 +119,11 @@ nav:
           - Diagnostics: reference/planar/diagnostics.md
           - Normalization: reference/planar/normalize.md
           - Validation: reference/planar/validation.md
-          - Historical result alias: reference/planar/result.md
           - Edge properties: reference/edge_properties.md
           - Visualization (2D): reference/viz2d.md
       - Inverse fitting:
           - High-level API: reference/inverse/index.md
           - Advanced separator API: reference/inverse/separator.md
-      - Deprecated power fitting:
-          - Compatibility overview: reference/powerfit/index.md
-          - Constraints: reference/powerfit/constraints.md
-          - Objective models: reference/powerfit/model.md
-          - Solver: reference/powerfit/solver.md
-          - Realization: reference/powerfit/realize.md
-          - Active set: reference/powerfit/active.md
-          - Reports: reference/powerfit/report.md
   - Project:
       - About: project/about.md
       - Roadmap: project/roadmap.md

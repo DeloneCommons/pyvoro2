@@ -13,7 +13,6 @@ import pytest
 import pyvoro2 as pv
 import pyvoro2.api as api3d
 import pyvoro2.planar as pv2
-import pyvoro2.planar.result as planar_result
 from pyvoro2._power_input import ResolvedPowerInput, resolve_power_input
 from pyvoro2.result import _build_tessellation_result
 
@@ -60,8 +59,6 @@ def test_public_imports_are_the_identical_class() -> None:
     assert pv.TessellationResult is pv2.TessellationResult
     assert 'TessellationResult' in pv.__all__
     assert 'TessellationResult' in pv2.__all__
-    assert pv2.PlanarComputeResult is pv.TessellationResult
-    assert planar_result.PlanarComputeResult is pv.TessellationResult
 
     public_fields = tuple(
         item.name for item in fields(pv.TessellationResult)

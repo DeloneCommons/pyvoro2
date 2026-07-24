@@ -8,12 +8,7 @@ algorithm and does not carry a universal convergence guarantee.
 from __future__ import annotations
 
 from ..._weight_transforms import radii_to_weights, weights_to_radii
-from .constraints import (
-    PairBisectorConstraints,
-    SeparatorObservations,
-    resolve_pair_bisector_constraints,
-    resolve_separator_observations,
-)
+from .constraints import SeparatorObservations, resolve_separator_observations
 from .model import (
     ExponentialBoundaryPenalty,
     FitModel,
@@ -36,7 +31,6 @@ from .active import (
     solve_self_consistent_power_weights,
 )
 from .problem import (
-    PowerFitProblem,
     SeparatorFitProblem,
     build_power_fit_problem,
     build_power_fit_result,
@@ -62,7 +56,6 @@ from .report import (
 )
 from .solver import (
     ConnectivityDiagnosticsError,
-    fit_power_weights,
     fit_weights_from_separators,
 )
 from .types import (
@@ -74,7 +67,6 @@ from .types import (
     PowerFitBounds,
     PowerFitObjectiveBreakdown,
     PowerFitPredictions,
-    PowerWeightFitResult,
     SeparatorAlgebraicView,
     SeparatorFitResult,
     SeparatorFitStateView,
@@ -96,8 +88,6 @@ __all__ = [
     'SeparatorSolverTerminationView',
     'SeparatorObservationGraphView',
     'SeparatorQuadraticOperatorView',
-    'PairBisectorConstraints',
-    'resolve_pair_bisector_constraints',
     'SquaredLoss',
     'HuberLoss',
     'Interval',
@@ -116,8 +106,6 @@ __all__ = [
     'PowerFitBounds',
     'PowerFitPredictions',
     'PowerFitObjectiveBreakdown',
-    'PowerFitProblem',
-    'PowerWeightFitResult',
     'build_power_fit_problem',
     'build_power_fit_result',
     'RequestedImageMatchView',
@@ -137,7 +125,6 @@ __all__ = [
     'ActiveSetPathView',
     'PairConstraintDiagnostics',
     'SelfConsistentPowerFitResult',
-    'fit_power_weights',
     'match_realized_pairs',
     'solve_self_consistent_power_weights',
     'radii_to_weights',

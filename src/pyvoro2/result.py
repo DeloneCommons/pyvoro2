@@ -328,9 +328,7 @@ class TessellationResult:
     def global_vertices(self) -> np.ndarray | None:
         """Global planar vertices from the available normalized output.
 
-        This provisional convenience preserves the historical
-        ``PlanarComputeResult`` access pattern. It is ``None`` when no planar
-        normalization output is available.
+        It is ``None`` when no planar normalization output is available.
         """
 
         if self.normalized_topology is not None:

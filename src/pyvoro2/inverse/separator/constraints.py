@@ -582,9 +582,3 @@ def shift_to_cart(shifts: np.ndarray, domain: DomainAny | None) -> np.ndarray:
     if sh.ndim != 2:
         raise ValueError('shifts must have shape (m, d)')
     return _geometry_for_dim(int(sh.shape[1]), domain).shift_to_cart(sh)
-
-
-# Historical v0.6 names retained as identity aliases during the bounded v0.7
-# compatibility period. Removal release: v0.8.
-PairBisectorConstraints = SeparatorObservations
-resolve_pair_bisector_constraints = resolve_separator_observations

@@ -13,10 +13,10 @@ import pytest
 
 import pyvoro2 as pv
 import pyvoro2._weight_transforms as neutral_transforms
+import pyvoro2.inverse as inverse
+import pyvoro2.inverse.separator as separator
 import pyvoro2.inverse.separator.active as separator_active
 import pyvoro2.inverse.separator.problem as separator_problem
-import pyvoro2.powerfit as powerfit
-import pyvoro2.powerfit.transforms as compatibility_transforms
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -53,19 +53,13 @@ def test_transform_functions_have_one_neutral_implementation() -> None:
     }
 
 
-def test_all_public_and_compatibility_routes_share_function_objects() -> None:
+def test_all_canonical_public_routes_share_function_objects() -> None:
     assert pv.radii_to_weights is neutral_transforms.radii_to_weights
     assert pv.weights_to_radii is neutral_transforms.weights_to_radii
-    assert powerfit.radii_to_weights is neutral_transforms.radii_to_weights
-    assert powerfit.weights_to_radii is neutral_transforms.weights_to_radii
-    assert (
-        compatibility_transforms.radii_to_weights
-        is neutral_transforms.radii_to_weights
-    )
-    assert (
-        compatibility_transforms.weights_to_radii
-        is neutral_transforms.weights_to_radii
-    )
+    assert inverse.radii_to_weights is neutral_transforms.radii_to_weights
+    assert inverse.weights_to_radii is neutral_transforms.weights_to_radii
+    assert separator.radii_to_weights is neutral_transforms.radii_to_weights
+    assert separator.weights_to_radii is neutral_transforms.weights_to_radii
     assert pv.radii_to_weights.__module__ == 'pyvoro2._weight_transforms'
     assert pv.weights_to_radii.__module__ == 'pyvoro2._weight_transforms'
 

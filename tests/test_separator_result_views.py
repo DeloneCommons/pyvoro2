@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import copy
 from dataclasses import fields, replace
-import importlib
 import inspect
 import json
 from pathlib import Path
 import pickle
-import warnings
 
 import numpy as np
 import pytest
@@ -471,17 +469,11 @@ def test_infeasible_fit_views_preserve_conflict_and_none_arrays() -> None:
     assert loaded['conflict']['constraint_indices'] == [0, 1, 2]
 
 
-def test_canonical_and_historical_result_paths_share_view_types() -> None:
-    import pyvoro2
+def test_high_level_and_advanced_result_paths_share_view_types() -> None:
     import pyvoro2.inverse as inverse
     import pyvoro2.inverse.separator as separator
 
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', DeprecationWarning)
-        powerfit = importlib.import_module('pyvoro2.powerfit')
-
-    assert powerfit.PowerWeightFitResult is separator.SeparatorFitResult
-    assert pyvoro2.PowerWeightFitResult is separator.SeparatorFitResult
+    assert inverse.SeparatorFitResult is separator.SeparatorFitResult
     points = np.array(
         [[0.0, 0.0], [2.0, 0.0], [4.0, 0.0]],
         dtype=float,
@@ -500,26 +492,26 @@ def test_canonical_and_historical_result_paths_share_view_types() -> None:
         model=model,
         solver='admm',
     )
-    historical = powerfit.fit_power_weights(
+    advanced = separator.fit_weights_from_separators(
         points,
         observations,
         model=model,
         solver='admm',
     )
 
-    assert canonical.state.__class__ is historical.state.__class__
+    assert canonical.state.__class__ is advanced.state.__class__
     assert canonical.identification.__class__ is (
-        historical.identification.__class__
+        advanced.identification.__class__
     )
     assert canonical.observation_view(observations).__class__ is (
-        historical.observation_view(observations).__class__
+        advanced.observation_view(observations).__class__
     )
-    assert canonical.algebraic.__class__ is historical.algebraic.__class__
+    assert canonical.algebraic.__class__ is advanced.algebraic.__class__
     assert canonical.solver_termination.__class__ is (
-        historical.solver_termination.__class__
+        advanced.solver_termination.__class__
     )
-    np.testing.assert_array_equal(canonical.weights, historical.weights)
-    assert canonical.identification == historical.identification
+    np.testing.assert_array_equal(canonical.weights, advanced.weights)
+    assert canonical.identification == advanced.identification
     assert (
         canonical.identification.relative_component_offsets_identified_by_data
         is False
@@ -683,12 +675,6 @@ def test_view_exports_are_canonical_only_and_high_level_surface_stays_small() ->
         'radii_to_weights',
     )
 
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', DeprecationWarning)
-        powerfit = importlib.import_module('pyvoro2.powerfit')
-    assert view_names.isdisjoint(powerfit.__all__)
-    assert all(not hasattr(powerfit, name) for name in view_names)
-
 
 def test_separator_all_matches_the_api_inventory() -> None:
     import pyvoro2.inverse.separator as separator
@@ -702,7 +688,7 @@ def test_separator_all_matches_the_api_inventory() -> None:
     inventory = inventory_path.read_text(encoding='utf-8')
     marker = (
         '`pyvoro2.inverse.separator.__all__` contains exactly the following '
-        '58 names:\n\n```text\n'
+        '53 names:\n\n```text\n'
     )
     exported_block = inventory.split(marker, maxsplit=1)[1].split(
         '\n```',

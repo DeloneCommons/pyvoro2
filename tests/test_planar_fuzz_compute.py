@@ -150,7 +150,7 @@ def test_fuzz_planar_compute_result_periodic_topology(
             normalize='topology',
         )
 
-        assert isinstance(result, pv2.PlanarComputeResult)
+        assert isinstance(result, pv2.TessellationResult)
         assert result.require_tessellation_diagnostics().ok is True
         topo = result.require_normalized_topology()
         diag = pv2.validate_normalized_topology(topo, domain, level='basic')

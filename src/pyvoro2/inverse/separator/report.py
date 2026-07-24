@@ -528,7 +528,7 @@ def dumps_report_json(
     indent: int = 2,
     sort_keys: bool = False,
 ) -> str:
-    """Serialize a powerfit report into a JSON string."""
+    """Serialize a separator-fit report into a JSON string."""
 
     return json.dumps(
         _jsonable_report_value(report),
@@ -544,7 +544,7 @@ def write_report_json(
     indent: int = 2,
     sort_keys: bool = False,
 ) -> None:
-    """Write a powerfit report to a JSON file."""
+    """Write a separator-fit report to a JSON file."""
 
     output_path = Path(path)
     text = dumps_report_json(report, indent=indent, sort_keys=sort_keys)

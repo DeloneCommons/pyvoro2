@@ -361,7 +361,7 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
     from pyvoro2 import Box
     from pyvoro2.inverse.separator import ActiveSetOptions, weights_to_radii
     from pyvoro2.inverse.separator.realize import RealizedPairDiagnostics
-    from pyvoro2.inverse.separator.types import PowerWeightFitResult
+    from pyvoro2.inverse.separator.types import SeparatorFitResult
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [10.0, 0.0, 0.0], [12.0, 0.0, 0.0]],
@@ -375,7 +375,7 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
         else:
             weights = np.array([-1.0, 1.0, 1.0, -1.0], dtype=float)
         radii, shift = weights_to_radii(weights)
-        return PowerWeightFitResult(
+        return SeparatorFitResult(
             status='optimal',
             hard_feasible=True,
             weights=weights,

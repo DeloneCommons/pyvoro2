@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import builtins
-import importlib
 import subprocess
 import sys
-import warnings
 
 import numpy as np
 import pytest
@@ -450,11 +448,10 @@ def test_optional_scipy_conversions_match_dense_operators() -> None:
     )
 
 
-def test_operator_views_are_canonical_only_and_aliases_gain_properties() -> None:
+def test_operator_views_are_canonical_and_available_on_problems() -> None:
     import pyvoro2.inverse as inverse
     import pyvoro2.inverse.separator as separator
 
-    assert separator.PowerFitProblem is separator.SeparatorFitProblem
     assert {
         'SeparatorObservationGraphView',
         'SeparatorQuadraticOperatorView',
@@ -467,14 +464,6 @@ def test_operator_views_are_canonical_only_and_aliases_gain_properties() -> None
         'weights_to_radii',
         'radii_to_weights',
     )
-
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', DeprecationWarning)
-        powerfit = importlib.import_module('pyvoro2.powerfit')
-    assert 'SeparatorObservationGraphView' not in powerfit.__all__
-    assert 'SeparatorQuadraticOperatorView' not in powerfit.__all__
-    assert not hasattr(powerfit, 'SeparatorObservationGraphView')
-    assert not hasattr(powerfit, 'SeparatorQuadraticOperatorView')
 
     _, _, problem = _noisy_problem()
     assert isinstance(

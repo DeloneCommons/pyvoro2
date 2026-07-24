@@ -4,11 +4,11 @@ import numpy as np
 def test_build_power_fit_problem_exposes_resolved_numeric_problem():
     from pyvoro2.inverse.separator import (
         build_power_fit_problem,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
@@ -26,14 +26,14 @@ def test_build_power_fit_problem_exposes_resolved_numeric_problem():
 def test_build_power_fit_problem_reports_advisory_anchors_for_disconnected_case():
     from pyvoro2.inverse.separator import (
         build_power_fit_problem,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [10.0, 0.0, 0.0], [12.0, 0.0, 0.0]],
         dtype=float,
     )
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.25), (2, 3, 0.75)],
         measurement='fraction',
@@ -49,11 +49,11 @@ def test_problem_definition_objects_are_read_only():
         FitModel,
         Interval,
         build_power_fit_problem,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
@@ -74,17 +74,17 @@ def test_build_power_fit_result_round_trips_native_weights_and_reports_objective
     from pyvoro2.inverse.separator import (
         build_power_fit_problem,
         build_power_fit_result,
-        fit_power_weights,
-        resolve_pair_bisector_constraints,
+        fit_weights_from_separators,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
     )
-    fit = fit_power_weights(pts, constraints)
+    fit = fit_weights_from_separators(pts, constraints)
     problem = build_power_fit_problem(constraints)
     rebuilt = build_power_fit_result(problem, fit.weights, solver='external-lbfgsb')
 
@@ -101,11 +101,11 @@ def test_build_power_fit_result_can_package_imperfect_external_weights():
         Interval,
         build_power_fit_problem,
         build_power_fit_result,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
@@ -136,11 +136,11 @@ def test_fit_report_includes_objective_breakdown_and_status_detail():
         build_fit_report,
         build_power_fit_problem,
         build_power_fit_result,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',

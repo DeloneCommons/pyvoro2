@@ -1,8 +1,0 @@
-# Power fitting constraints
-
-!!! warning "Deprecated compatibility route"
-    This v0.7 historical module will be removed in v0.8. Use
-    `pyvoro2.inverse` or `pyvoro2.inverse.separator` instead.
-
-::: pyvoro2.powerfit.constraints
-:::

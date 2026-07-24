@@ -8,8 +8,8 @@ def test_fit_report_exports_nested_plain_python_payload():
         FixedValue,
         FitModel,
         build_fit_report,
-        fit_power_weights,
-        resolve_pair_bisector_constraints,
+        fit_weights_from_separators,
+        resolve_separator_observations,
     )
 
     pts = np.array(
@@ -17,7 +17,7 @@ def test_fit_report_exports_nested_plain_python_payload():
         dtype=float,
     )
     box = Box(((-5.0, 15.0), (-5.0, 5.0), (-5.0, 5.0)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(10, 20, 0.5), (20, 30, 0.5), (10, 30, 3.0)],
         ids=[10, 20, 30],
@@ -25,7 +25,7 @@ def test_fit_report_exports_nested_plain_python_payload():
         measurement='position',
         domain=box,
     )
-    fit = fit_power_weights(
+    fit = fit_weights_from_separators(
         pts,
         constraints,
         model=FitModel(feasible=FixedValue(0.0)),
@@ -52,13 +52,13 @@ def test_active_set_report_collects_nested_diagnostics_and_history():
         FitModel,
         Interval,
         build_active_set_report,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
         solve_self_consistent_power_weights,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     box = Box(((-5.0, 15.0), (-5.0, 5.0), (-5.0, 5.0)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(100, 200, 0.5)],
         ids=[100, 200],
@@ -100,8 +100,8 @@ def test_report_json_helpers_roundtrip_plain_report(tmp_path):
         FitModel,
         build_fit_report,
         dumps_report_json,
-        fit_power_weights,
-        resolve_pair_bisector_constraints,
+        fit_weights_from_separators,
+        resolve_separator_observations,
         write_report_json,
     )
 
@@ -110,7 +110,7 @@ def test_report_json_helpers_roundtrip_plain_report(tmp_path):
         dtype=float,
     )
     box = Box(((-5.0, 15.0), (-5.0, 5.0), (-5.0, 5.0)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(10, 20, 0.5), (20, 30, 0.5), (10, 30, 3.0)],
         ids=[10, 20, 30],
@@ -118,7 +118,7 @@ def test_report_json_helpers_roundtrip_plain_report(tmp_path):
         measurement='position',
         domain=box,
     )
-    fit = fit_power_weights(
+    fit = fit_weights_from_separators(
         pts,
         constraints,
         model=FitModel(feasible=FixedValue(0.0)),
@@ -145,13 +145,13 @@ def test_active_set_report_supports_planar_tessellation_diagnostics() -> None:
         FitModel,
         Interval,
         build_active_set_report,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
         solve_self_consistent_power_weights,
     )
 
     pts = np.array([[0.0, 0.0], [2.0, 0.0]], dtype=float)
     box = pv2.Box(((-5.0, 5.0), (-5.0, 5.0)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(100, 200, 0.5)],
         ids=[100, 200],
@@ -180,19 +180,19 @@ def test_active_set_report_supports_planar_tessellation_diagnostics() -> None:
 def test_fit_report_includes_edge_diagnostics_and_algebraic_rows():
     from pyvoro2.inverse.separator import (
         build_fit_report,
-        fit_power_weights,
-        resolve_pair_bisector_constraints,
+        fit_weights_from_separators,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(10, 20, 0.25)],
         ids=[10, 20],
         index_mode='id',
         measurement='fraction',
     )
-    fit = fit_power_weights(pts, constraints)
+    fit = fit_weights_from_separators(pts, constraints)
 
     report = build_fit_report(fit, constraints, use_ids=True)
 
@@ -210,22 +210,22 @@ def test_fit_report_includes_edge_diagnostics_and_algebraic_rows():
 def test_fit_report_includes_connectivity_diagnostics():
     from pyvoro2.inverse.separator import (
         build_fit_report,
-        fit_power_weights,
-        resolve_pair_bisector_constraints,
+        fit_weights_from_separators,
+        resolve_separator_observations,
     )
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [10.0, 0.0, 0.0], [12.0, 0.0, 0.0]],
         dtype=float,
     )
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(10, 20, 0.25), (30, 40, 0.75)],
         ids=[10, 20, 30, 40],
         index_mode='id',
         measurement='fraction',
     )
-    fit = fit_power_weights(
+    fit = fit_weights_from_separators(
         pts,
         constraints,
         connectivity_check='diagnose',
@@ -245,9 +245,9 @@ def test_realized_report_includes_unaccounted_pairs_and_warnings():
     from pyvoro2 import Box
     from pyvoro2.inverse.separator import (
         build_realized_report,
-        fit_power_weights,
+        fit_weights_from_separators,
         match_realized_pairs,
-        resolve_pair_bisector_constraints,
+        resolve_separator_observations,
     )
 
     pts = np.array(
@@ -255,7 +255,7 @@ def test_realized_report_includes_unaccounted_pairs_and_warnings():
         dtype=float,
     )
     box = Box(((-5.0, 15.0), (-5.0, 5.0), (-5.0, 5.0)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(10, 30, 0.5)],
         ids=[10, 20, 30],
@@ -263,7 +263,7 @@ def test_realized_report_includes_unaccounted_pairs_and_warnings():
         measurement='fraction',
         domain=box,
     )
-    fit = fit_power_weights(pts, constraints)
+    fit = fit_weights_from_separators(pts, constraints)
     diag = match_realized_pairs(
         pts,
         domain=box,

@@ -240,7 +240,7 @@ of the Python-side contracts needed in scientific workflows. pyvoro2 adds:
 | [Operations](https://delonecommons.github.io/pyvoro2/guide/operations/) | Forward tessellation, owner lookup, and ghost-cell workflows. |
 | [Topology and graphs](https://delonecommons.github.io/pyvoro2/guide/topology/) | Periodic image-labelled adjacency and normalized topology. |
 | [Separator fitting](https://delonecommons.github.io/pyvoro2/guide/powerfit/) | Current inverse API, result diagnostics, realization matching, and active-set refinement. |
-| [v0.7 migration](https://delonecommons.github.io/pyvoro2/guide/migration-v0.7/) | Exact v0.6.3-to-v0.7 changes and the fixed v0.8 removal horizon. |
+| [v0.6.3–v0.8 migration](https://delonecommons.github.io/pyvoro2/guide/migration-v0.7/) | Canonical replacements and the completed v0.8 compatibility removal. |
 | [Theory](https://delonecommons.github.io/pyvoro2/theory/) | API-independent definitions of power diagrams, weights, gauge, and separator inversion. |
 | [Development](https://delonecommons.github.io/pyvoro2/development/) | Architecture, workflow, documentation conventions, release plans, API lifecycle, and decision records. |
 | [Visualization](https://delonecommons.github.io/pyvoro2/guide/visualization/) | Optional `py3Dmol` and `matplotlib` helpers. |
@@ -322,9 +322,9 @@ pyvoro2 is currently **beta**. v0.7.0 is the current transition release,
 distributed through the `v0.7.0` Git tag and PyPI, and contains the common
 forward/result contract and preferred separator API. The archived v0.6.3 release remains the software baseline cited by the
 separator-inverse manuscript. No GitHub Release or Zenodo archive was created
-for v0.7.0; v0.8 removes the bounded compatibility layer and is intended to be
-the next full GitHub/Zenodo archival release before new inverse families begin
-in v0.9. The
+for v0.7.0; the v0.8 development line has removed the bounded compatibility
+layer and is intended to become the next full GitHub/Zenodo archival release
+before new inverse families begin in v0.9. The
 [archived v0.7 development plan](https://delonecommons.github.io/pyvoro2/development/plans/archive/v0.7/) records the
 delivered scope, accepted decisions, qualification evidence, and deferrals.
 

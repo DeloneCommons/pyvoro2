@@ -29,7 +29,6 @@ and visualization.
 - [Planar overview](planar/index.md)
 - [Planar API](planar/api.md)
 - [Common tessellation result](result.md)
-- [Historical planar result alias](planar/result.md)
 
 ## Separator fitting
 
@@ -39,14 +38,3 @@ The canonical fixed-observation workflow is deliberately small at
 
 - [High-level inverse API](inverse/index.md)
 - [Advanced separator API](inverse/separator.md)
-
-The historical `pyvoro2.powerfit` package and broad top-level separator exports
-are deprecated compatibility routes for v0.7 and will be removed in v0.8.
-
-- [Compatibility overview](powerfit/index.md)
-- [Constraints and observations](powerfit/constraints.md)
-- [Objective models](powerfit/model.md)
-- [Solver and results](powerfit/solver.md)
-- [Realization](powerfit/realize.md)
-- [Active-set refinement](powerfit/active.md)
-- [Reports](powerfit/report.md)

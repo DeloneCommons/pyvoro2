@@ -795,13 +795,7 @@ def _apply_connectivity_policy(
     raise ValueError('unsupported connectivity policy')
 
 
-# Historical v0.6 name retained as an identity alias during v0.7.
-# Removal release: v0.8.
-fit_power_weights = fit_weights_from_separators
-
-
 __all__ = [
     'fit_weights_from_separators',
-    'fit_power_weights',
     'ConnectivityDiagnosticsError',
 ]

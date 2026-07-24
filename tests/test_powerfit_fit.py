@@ -2,11 +2,11 @@ import numpy as np
 import pytest
 
 
-def test_fit_power_weights_fraction_two_points_analytic():
-    from pyvoro2.inverse.separator import fit_power_weights
+def test_fit_weights_from_separators_fraction_two_points_analytic():
+    from pyvoro2.inverse.separator import fit_weights_from_separators
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    res = fit_power_weights(pts, [(0, 1, 0.25)], measurement='fraction')
+    res = fit_weights_from_separators(pts, [(0, 1, 0.25)], measurement='fraction')
 
     assert np.allclose(res.weights[0] - res.weights[1], -2.0, atol=1e-10)
     assert np.allclose(res.predicted[0], 0.25, atol=1e-10)
@@ -16,12 +16,12 @@ def test_fit_power_weights_fraction_two_points_analytic():
 
 def test_fit_result_exposes_algebraic_edge_diagnostics():
     from pyvoro2.inverse.separator import (
-        fit_power_weights,
-        resolve_pair_bisector_constraints,
+        fit_weights_from_separators,
+        resolve_separator_observations,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    res = fit_power_weights(pts, [(0, 1, 0.25)], measurement='fraction')
+    res = fit_weights_from_separators(pts, [(0, 1, 0.25)], measurement='fraction')
 
     assert res.edge_diagnostics is not None
     diag = res.edge_diagnostics
@@ -36,7 +36,7 @@ def test_fit_result_exposes_algebraic_edge_diagnostics():
     assert np.isclose(diag.rmse, 0.0)
     assert np.isclose(diag.mae, 0.0)
 
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
@@ -48,21 +48,25 @@ def test_fit_result_exposes_algebraic_edge_diagnostics():
     assert rows[0]['edge_weight'] == pytest.approx(0.015625)
 
 
-def test_fit_power_weights_fraction_allows_values_outside_segment():
-    from pyvoro2.inverse.separator import fit_power_weights
+def test_fit_weights_from_separators_fraction_allows_values_outside_segment():
+    from pyvoro2.inverse.separator import fit_weights_from_separators
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    res = fit_power_weights(pts, [(0, 1, 1.2)], measurement='fraction')
+    res = fit_weights_from_separators(pts, [(0, 1, 1.2)], measurement='fraction')
 
     assert np.allclose(res.predicted[0], 1.2, atol=1e-10)
     assert np.all(res.radii >= 0)
 
 
-def test_fit_power_weights_fraction_hard_interval_clips_prediction():
-    from pyvoro2.inverse.separator import FitModel, Interval, fit_power_weights
+def test_fit_weights_from_separators_fraction_hard_interval_clips_prediction():
+    from pyvoro2.inverse.separator import (
+        FitModel,
+        Interval,
+        fit_weights_from_separators,
+    )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, -0.2)],
         measurement='fraction',
@@ -76,23 +80,28 @@ def test_fit_power_weights_fraction_hard_interval_clips_prediction():
 
 
 def test_r_min_sets_minimum_radius_via_weight_shift():
-    from pyvoro2.inverse.separator import fit_power_weights
+    from pyvoro2.inverse.separator import fit_weights_from_separators
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    res = fit_power_weights(pts, [(0, 1, 0.25)], measurement='fraction', r_min=1.0)
+    res = fit_weights_from_separators(
+        pts,
+        [(0, 1, 0.25)],
+        measurement='fraction',
+        r_min=1.0,
+    )
 
     assert np.min(res.radii) == np.min(res.radii)
     assert np.allclose(np.min(res.radii), 1.0, atol=1e-12)
     assert np.allclose(res.radii * res.radii, res.weights + res.weight_shift)
 
 
-def test_fit_power_weights_rejects_nonfinite_r_min_before_returning_result():
-    from pyvoro2.inverse.separator import fit_power_weights
+def test_fit_weights_from_separators_rejects_nonfinite_r_min_before_result():
+    from pyvoro2.inverse.separator import fit_weights_from_separators
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
 
     with pytest.raises(ValueError, match='r_min must be finite'):
-        fit_power_weights(
+        fit_weights_from_separators(
             pts,
             [(0, 1, 0.25)],
             measurement='fraction',
@@ -104,15 +113,15 @@ def test_soft_interval_penalty_prefers_inside_interval():
     from pyvoro2.inverse.separator import (
         FitModel,
         SoftIntervalPenalty,
-        fit_power_weights,
+        fit_weights_from_separators,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
 
-    res0 = fit_power_weights(pts, [(0, 1, -0.2)], measurement='fraction')
+    res0 = fit_weights_from_separators(pts, [(0, 1, -0.2)], measurement='fraction')
     assert np.allclose(res0.predicted[0], -0.2, atol=1e-10)
 
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, -0.2)],
         measurement='fraction',
@@ -129,12 +138,12 @@ def test_exponential_boundary_penalty_pushes_away_from_boundary():
         ExponentialBoundaryPenalty,
         FitModel,
         Interval,
-        fit_power_weights,
+        fit_weights_from_separators,
     )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
 
-    res_hard = fit_power_weights(
+    res_hard = fit_weights_from_separators(
         pts,
         [(0, 1, 1e-3)],
         measurement='fraction',
@@ -143,7 +152,7 @@ def test_exponential_boundary_penalty_pushes_away_from_boundary():
         max_iter=5000,
     )
 
-    res_repulse = fit_power_weights(
+    res_repulse = fit_weights_from_separators(
         pts,
         [(0, 1, 1e-3)],
         measurement='fraction',
@@ -168,10 +177,10 @@ def test_exponential_boundary_penalty_pushes_away_from_boundary():
 
 
 def test_position_measurement_uses_absolute_position_space():
-    from pyvoro2.inverse.separator import fit_power_weights
+    from pyvoro2.inverse.separator import fit_weights_from_separators
 
     pts = np.array([[0.0, 0.0, 0.0], [4.0, 0.0, 0.0]], dtype=float)
-    res = fit_power_weights(pts, [(0, 1, 1.0)], measurement='position')
+    res = fit_weights_from_separators(pts, [(0, 1, 1.0)], measurement='position')
 
     assert np.allclose(res.predicted[0], 1.0, atol=1e-10)
     assert np.allclose(res.predicted_position[0], 1.0, atol=1e-10)
@@ -179,14 +188,18 @@ def test_position_measurement_uses_absolute_position_space():
 
 
 def test_infeasible_hard_constraints_are_reported():
-    from pyvoro2.inverse.separator import FixedValue, FitModel, fit_power_weights
+    from pyvoro2.inverse.separator import (
+        FixedValue,
+        FitModel,
+        fit_weights_from_separators,
+    )
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0]],
         dtype=float,
     )
     # Impossible equalities on a 3-cycle: z01=0, z12=0, z02=2.
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.5), (1, 2, 0.5), (0, 2, 3.0)],
         measurement='position',
@@ -202,10 +215,14 @@ def test_infeasible_hard_constraints_are_reported():
 
 
 def test_huber_loss_is_available_as_an_alternative_mismatch():
-    from pyvoro2.inverse.separator import FitModel, HuberLoss, fit_power_weights
+    from pyvoro2.inverse.separator import (
+        FitModel,
+        HuberLoss,
+        fit_weights_from_separators,
+    )
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, 1.2)],
         measurement='fraction',
@@ -219,11 +236,11 @@ def test_huber_loss_is_available_as_an_alternative_mismatch():
     assert res.predicted is not None
 
 
-def test_fit_power_weights_accepts_explicit_weight_shift_for_radii():
-    from pyvoro2.inverse.separator import fit_power_weights
+def test_fit_weights_from_separators_accepts_explicit_weight_shift():
+    from pyvoro2.inverse.separator import fit_weights_from_separators
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
@@ -236,13 +253,13 @@ def test_fit_power_weights_accepts_explicit_weight_shift_for_radii():
 
 
 def test_disconnected_components_use_mean_zero_gauge_and_connectivity_diagnostics():
-    from pyvoro2.inverse.separator import fit_power_weights
+    from pyvoro2.inverse.separator import fit_weights_from_separators
 
     pts = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [10.0, 0.0, 0.0], [12.0, 0.0, 0.0]],
         dtype=float,
     )
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.25), (2, 3, 0.75)],
         measurement='fraction',
@@ -262,7 +279,7 @@ def test_disconnected_components_can_align_to_zero_strength_reference_means():
     from pyvoro2.inverse.separator import (
         FitModel,
         L2Regularization,
-        fit_power_weights,
+        fit_weights_from_separators,
     )
 
     pts = np.array(
@@ -275,7 +292,7 @@ def test_disconnected_components_can_align_to_zero_strength_reference_means():
             reference=np.array([10.0, 20.0, 30.0, 40.0], dtype=float),
         )
     )
-    res = fit_power_weights(
+    res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.25), (2, 3, 0.75)],
         measurement='fraction',
@@ -291,10 +308,10 @@ def test_disconnected_components_can_align_to_zero_strength_reference_means():
     assert 'reference mean' in res.connectivity.gauge_policy
 
 
-def test_fit_power_weights_can_raise_connectivity_diagnostics():
+def test_fit_weights_from_separators_can_raise_connectivity_diagnostics():
     from pyvoro2.inverse.separator import (
         ConnectivityDiagnosticsError,
-        fit_power_weights,
+        fit_weights_from_separators,
     )
 
     pts = np.array(
@@ -303,7 +320,7 @@ def test_fit_power_weights_can_raise_connectivity_diagnostics():
     )
 
     with pytest.raises(ConnectivityDiagnosticsError):
-        fit_power_weights(
+        fit_weights_from_separators(
             pts,
             [(0, 1, 0.25), (2, 3, 0.75)],
             measurement='fraction',

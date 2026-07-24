@@ -63,6 +63,43 @@ def _check_scipy(*, require_scipy: bool) -> None:
     print('scipy: absent (verified with importlib.util.find_spec)')
 
 
+def _check_removed_compatibility() -> None:
+    import inspect
+    import pyvoro2 as pv
+    import pyvoro2.inverse.separator as separator
+    import pyvoro2.planar as pv2
+
+    if importlib.util.find_spec('pyvoro2.powerfit') is not None:
+        raise InstalledPackageCheckError(
+            'the removed pyvoro2.powerfit package is still importable'
+        )
+    removed_aliases = (
+        'PairBisectorConstraints',
+        'resolve_pair_bisector_constraints',
+        'PowerFitProblem',
+        'PowerWeightFitResult',
+        'fit_power_weights',
+    )
+    for name in removed_aliases:
+        if hasattr(pv, name) or hasattr(separator, name):
+            raise InstalledPackageCheckError(
+                f'the removed compatibility alias {name} is still exported'
+            )
+    if hasattr(pv, 'powerfit'):
+        raise InstalledPackageCheckError(
+            'the removed top-level powerfit attribute is still exported'
+        )
+    if hasattr(pv2, 'PlanarComputeResult'):
+        raise InstalledPackageCheckError(
+            'the removed PlanarComputeResult alias is still exported'
+        )
+    if 'return_result' in inspect.signature(pv2.compute).parameters:
+        raise InstalledPackageCheckError(
+            'the removed planar return_result parameter is still accepted'
+        )
+    print('removed v0.7 compatibility surfaces: absent')
+
+
 def _run_workflows(repository_root: Path) -> None:
     import numpy as np
     import pyvoro2 as pv
@@ -167,6 +204,7 @@ def main() -> int:
     args = parser.parse_args()
 
     _check_scipy(require_scipy=args.require_scipy)
+    _check_removed_compatibility()
     _run_workflows(args.repo_root)
     return 0
 

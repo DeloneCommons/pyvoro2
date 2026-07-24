@@ -30,9 +30,8 @@ v0.7.0 finalized the forward/result contract and separator inverse API. ADR
 direction. The completed
 [v0.7 development plan](docs/development/plans/archive/v0.7.md) and
 [v0.7 API inventory](docs/development/api-inventory.md) record that release.
-The v0.8 cleanup plan remains Draft until its milestone, issue set, approval
-date, and Active status are recorded; do not begin v0.8 implementation or
-present draft target functionality as implemented before activation.
+The [v0.8 cleanup plan](docs/development/plans/v0.8.md) is Active. Implement
+only its linked issue scope and keep the release feature-free.
 
 ## Authoritative sources
 
@@ -67,8 +66,6 @@ inconsistent.
   visualization, and public package exports.
 - `src/pyvoro2/planar/`: explicit 2D API and planar result/diagnostic layer.
 - `src/pyvoro2/inverse/separator/`: canonical separator implementation.
-- `src/pyvoro2/powerfit/`: v0.7 compatibility-only shim; ADR 0006 removes it
-  in v0.8.
 - `tests/`: deterministic tests plus opt-in fuzz and cross-check groups.
 - `examples/`: repository-owned preferred-API workflows and deterministic
   public regression inputs.
@@ -254,8 +251,7 @@ shifts, or normalization:
 
 ## Inverse changes
 
-For changes under the canonical `inverse/` namespace or the v0.7-only
-`powerfit/` compatibility package:
+For changes under the canonical `inverse/` namespace:
 
 - keep measurement-space and algebraic edge-space quantities distinct;
 - preserve confidence-zero/effective-graph semantics;

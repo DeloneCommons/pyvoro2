@@ -126,12 +126,10 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, domain: Domain2D) -> None:
 def _resolve_compute_output(
     *,
     output: str,
-    return_result: bool | None,
     normalize: str,
 ) -> Literal['result', 'cells']:
-    """Resolve preferred and compatibility planar output selectors."""
+    """Validate and resolve the planar output selector."""
 
-    output_was_omitted = output is _DEFAULT_OUTPUT
     if not isinstance(output, str) or output not in ('result', 'cells'):
         raise ValueError('output must be one of: result, cells')
     if normalize not in ('none', 'vertices', 'topology'):
@@ -140,32 +138,13 @@ def _resolve_compute_output(
     resolved: Literal['result', 'cells'] = (
         'result' if output == 'result' else 'cells'
     )
-    if return_result is not None:
-        warnings.warn(
-            'return_result= is deprecated; use output="result" or '
-            'output="cells" instead',
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        legacy_output: Literal['result', 'cells'] = (
-            'result' if return_result else 'cells'
-        )
-        if not output_was_omitted and resolved != legacy_output:
-            raise ValueError(
-                f'output={resolved!r} conflicts with '
-                f'return_result={return_result!r}'
-            )
-        if output_was_omitted:
-            resolved = legacy_output
 
     if normalize != 'none':
-        if not output_was_omitted and resolved == 'cells':
+        if resolved == 'cells':
             raise ValueError(
                 'output="cells" cannot be combined with normalization; '
                 'use output="result"'
             )
-        # Historical normalization requests forced structured output even when
-        # the compatibility-only return_result=False selector was explicit.
         resolved = 'result'
 
     return resolved
@@ -241,7 +220,6 @@ def compute(
     edge_shift_tol: float | None = None,
     return_diagnostics: bool = False,
     output: Literal['result', 'cells'] = _DEFAULT_OUTPUT,
-    return_result: bool | None = None,
     normalize: Literal['none', 'vertices', 'topology'] = 'none',
     normalization_tol: float | None = None,
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'none',
@@ -271,12 +249,9 @@ def compute(
     Wrapper-level normalization convenience is also available via
     ``normalize='vertices'`` or ``'topology'``. Any request for normalized
     output returns a :class:`~pyvoro2.TessellationResult`.
-    ``return_result=`` remains as a deprecated compatibility selector; its
-    default ``None`` means that no legacy selection was supplied. Passing
-    ``True`` or ``False`` emits :class:`DeprecationWarning`; use ``output=`` in
-    new code. The normalized structures intentionally carry their own augmented
-    cell copies, so the raw ``cells`` field can stay lightweight even when
-    internal geometry was needed for diagnostics or normalization.
+    The normalized structures intentionally carry their own augmented cell
+    copies, so the raw ``cells`` field can stay lightweight even when internal
+    geometry was needed for diagnostics or normalization.
 
     For periodic domains, diagnostics and normalization automatically compute
     temporary edge shifts and the required edge/vertex geometry internally,
@@ -306,7 +281,6 @@ def compute(
 
     resolved_output = _resolve_compute_output(
         output=output,
-        return_result=return_result,
         normalize=normalize,
     )
     pts = coerce_point_array(points, name='points', dim=2)

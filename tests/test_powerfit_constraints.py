@@ -2,14 +2,14 @@ import numpy as np
 import pytest
 
 
-def test_resolve_pair_bisector_constraints_preserves_explicit_periodic_shift():
+def test_resolve_separator_observations_preserves_explicit_periodic_shift():
     from pyvoro2 import PeriodicCell
-    from pyvoro2.inverse.separator import resolve_pair_bisector_constraints
+    from pyvoro2.inverse.separator import resolve_separator_observations
 
     cell = PeriodicCell(vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     pts = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
 
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.5, (-1, 0, 0))],
         measurement='fraction',
@@ -24,9 +24,9 @@ def test_resolve_pair_bisector_constraints_preserves_explicit_periodic_shift():
     assert np.isclose(constraints.target_position[0], 0.1)
 
 
-def test_resolve_pair_bisector_constraints_rejects_shifts_on_nonperiodic_axes():
+def test_resolve_separator_observations_rejects_shifts_on_nonperiodic_axes():
     from pyvoro2 import OrthorhombicCell
-    from pyvoro2.inverse.separator import resolve_pair_bisector_constraints
+    from pyvoro2.inverse.separator import resolve_separator_observations
 
     domain = OrthorhombicCell(
         bounds=((0.0, 1.0), (0.0, 1.0), (0.0, 1.0)), periodic=(True, False, True)
@@ -34,7 +34,7 @@ def test_resolve_pair_bisector_constraints_rejects_shifts_on_nonperiodic_axes():
     pts = np.array([[0.1, 0.2, 0.3], [0.9, 0.8, 0.7]], dtype=float)
 
     with pytest.raises(ValueError, match='non-periodic axes|non-periodic'):
-        resolve_pair_bisector_constraints(
+        resolve_separator_observations(
             pts,
             [(0, 1, 0.5, (0, 1, 0))],
             measurement='fraction',
@@ -45,11 +45,11 @@ def test_resolve_pair_bisector_constraints_rejects_shifts_on_nonperiodic_axes():
 
 def test_resolved_constraints_export_records_and_ids():
     from pyvoro2 import Box
-    from pyvoro2.inverse.separator import resolve_pair_bisector_constraints
+    from pyvoro2.inverse.separator import resolve_separator_observations
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     domain = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
-    resolved = resolve_pair_bisector_constraints(
+    resolved = resolve_separator_observations(
         pts,
         [(10, 20, 0.25)],
         ids=[10, 20],
@@ -67,14 +67,14 @@ def test_resolved_constraints_export_records_and_ids():
     assert rows_id[0]['measurement'] == 'fraction'
 
 
-def test_resolve_pair_bisector_constraints_warns_on_triclinic_search_boundary():
+def test_resolve_separator_observations_warns_on_triclinic_search_boundary():
     from pyvoro2 import PeriodicCell
-    from pyvoro2.inverse.separator import resolve_pair_bisector_constraints
+    from pyvoro2.inverse.separator import resolve_separator_observations
 
     cell = PeriodicCell(vectors=((1.0, 0.0, 0.0), (0.2, 1.0, 0.0), (0.0, 0.0, 1.0)))
     pts = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
 
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.5)],
         measurement='fraction',
@@ -87,13 +87,13 @@ def test_resolve_pair_bisector_constraints_warns_on_triclinic_search_boundary():
     assert any('image_search boundary' in msg for msg in constraints.warnings)
 
 
-def test_resolve_pair_bisector_constraints_supports_planar_box() -> None:
+def test_resolve_separator_observations_supports_planar_box() -> None:
     import pyvoro2.planar as pv2
-    from pyvoro2.inverse.separator import resolve_pair_bisector_constraints
+    from pyvoro2.inverse.separator import resolve_separator_observations
 
     pts = np.array([[0.0, 0.0], [2.0, 0.0]], dtype=float)
     domain = pv2.Box(((-5.0, 5.0), (-5.0, 5.0)))
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
@@ -106,14 +106,14 @@ def test_resolve_pair_bisector_constraints_supports_planar_box() -> None:
     assert np.isclose(constraints.target_position[0], 0.5)
 
 
-def test_resolve_pair_bisector_constraints_supports_planar_periodic_shift() -> None:
+def test_resolve_separator_observations_supports_planar_periodic_shift() -> None:
     import pyvoro2.planar as pv2
-    from pyvoro2.inverse.separator import resolve_pair_bisector_constraints
+    from pyvoro2.inverse.separator import resolve_separator_observations
 
     domain = pv2.RectangularCell(((0.0, 1.0), (0.0, 1.0)), periodic=(True, True))
     pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
 
-    constraints = resolve_pair_bisector_constraints(
+    constraints = resolve_separator_observations(
         pts,
         [(0, 1, 0.5, (-1, 0))],
         measurement='fraction',

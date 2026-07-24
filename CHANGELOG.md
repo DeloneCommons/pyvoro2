@@ -19,6 +19,15 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   Windows AMD64, macOS arm64, and macOS x86_64, with native installed-wheel
   checks and aggregate release-artifact validation.
 
+### Removed
+
+- Completed the announced v0.7 compatibility lifecycle by removing the
+  temporary `pyvoro2.powerfit` facade and submodules, the lazy top-level
+  package attribute, broad top-level separator exports, the five historical
+  separator core aliases, `PlanarComputeResult`, and planar `return_result=`.
+  Canonical separator APIs remain under `pyvoro2.inverse` and
+  `pyvoro2.inverse.separator`; numerical behavior is unchanged.
+
 ## [0.7.0] - 2026-07-23
 
 ### Added

@@ -53,16 +53,14 @@ def test_planar_ghost_cells_standard_smoke() -> None:
     assert cells[0]['empty'] is False
 
 
-def test_planar_compute_return_result_only_smoke() -> None:
+def test_planar_compute_default_result_metadata_smoke() -> None:
     pts = np.array([[0.25, 0.5], [0.75, 0.5]], dtype=float)
-    with pytest.warns(DeprecationWarning, match='output'):
-        result = pv2.compute(
-            pts,
-            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
-            return_result=True,
-        )
+    result = pv2.compute(
+        pts,
+        domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+    )
 
-    assert isinstance(result, pv2.PlanarComputeResult)
+    assert isinstance(result, pv2.TessellationResult)
     assert result.tessellation_diagnostics is None
     assert result.normalized_vertices is None
     assert result.normalized_topology is None
@@ -117,7 +115,7 @@ def test_planar_compute_result_vertices_smoke() -> None:
         normalize='vertices',
     )
 
-    assert isinstance(result, pv2.PlanarComputeResult)
+    assert isinstance(result, pv2.TessellationResult)
     assert result.global_vertices is not None
     assert result.global_vertices.shape == (6, 2)
     assert set(result.cells[0].keys()) == {'id', 'area', 'site'}
@@ -136,7 +134,7 @@ def test_planar_compute_result_topology_periodic_smoke() -> None:
         normalize='topology',
     )
 
-    assert isinstance(result, pv2.PlanarComputeResult)
+    assert isinstance(result, pv2.TessellationResult)
     assert result.require_tessellation_diagnostics().ok is True
     assert set(result.cells[0].keys()) == {'id', 'area', 'site'}
 

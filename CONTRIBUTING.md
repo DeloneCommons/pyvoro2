@@ -162,11 +162,9 @@ In particular:
 - distinguish stable, provisional, experimental, compatibility-only, and
   internal surfaces.
 
-`pyvoro2.inverse` is the canonical v0.7 inverse namespace. The current
-`pyvoro2.powerfit`, broad top-level separator exports, historical separator
-aliases, `PlanarComputeResult`, and planar `return_result=` remain
-compatibility-only paths for v0.7 and are removed in the feature-free v0.8
-cleanup release. New work must place numerical ownership under
+`pyvoro2.inverse` is the canonical inverse namespace. The v0.7-only inverse and
+planar compatibility surfaces were removed in the feature-free v0.8 cleanup
+release. New work must place numerical ownership under
 `pyvoro2.inverse.separator` and document migration explicitly.
 
 ## Planning substantial changes

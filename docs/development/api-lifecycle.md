@@ -137,26 +137,22 @@ ADR 0004 establishes `pyvoro2.inverse` as the canonical namespace and
 `pyvoro2.inverse.separator` as the owner of separator implementation.
 `pyvoro2.powerfit`, broad top-level separator exports, historical separator
 aliases, `PlanarComputeResult`, and planar `return_result=` are
-compatibility-only and deprecated for v0.7. ADR 0006 schedules their removal in
-v0.8.
+compatibility-only and deprecated for v0.7. ADR 0006 schedules—and issue #28
+completes—their removal in v0.8.
 
 Required practice:
 
 - new guides use the canonical namespace and mathematical terminology;
-- old imports delegate one-way to the canonical implementation;
-- every historical name has a documented replacement and removal horizon;
-- compatibility code does not duplicate numerical logic;
-- the v0.7 compatibility layer is removed in v0.8; no usage-based extension is
-  planned.
+- every removed historical name has a documented canonical replacement;
+- v0.8 code and examples use only canonical imports;
+- the explicit `output='cells'` route remains supported because it is current
+  low-level API rather than a compatibility shim.
 
-The current v0.7 tree implements the five accepted canonical core names as the
-primary class and function definitions and binds the historical names as
-identity aliases. The small `pyvoro2.inverse` surface is the preferred normal
+The five accepted canonical core names remain the primary class and function
+definitions. The small `pyvoro2.inverse` surface is the preferred normal
 workflow; advanced and experimental separator objects remain explicit under
-`pyvoro2.inverse.separator`. Loading `pyvoro2.powerfit` emits one ordinary
-hidden-by-default `DeprecationWarning` naming the canonical replacements and
-the fixed v0.8 removal. Plain and canonical imports emit no compatibility
-warning and do not load the compatibility package.
+`pyvoro2.inverse.separator`. The removed package, aliases, and planar selector
+fail through ordinary import, attribute, or argument errors.
 
 ## Result schemas
 

@@ -42,56 +42,6 @@ from .normalize import (
     normalize_topology,
 )
 from ._weight_transforms import radii_to_weights, weights_to_radii
-from .inverse.separator import (
-    PairBisectorConstraints,
-    resolve_pair_bisector_constraints,
-    SquaredLoss,
-    HuberLoss,
-    Interval,
-    FixedValue,
-    SoftIntervalPenalty,
-    ExponentialBoundaryPenalty,
-    ReciprocalBoundaryPenalty,
-    L2Regularization,
-    FitModel,
-    AlgebraicEdgeDiagnostics,
-    ConstraintGraphDiagnostics,
-    ConnectivityDiagnostics,
-    ConnectivityDiagnosticsError,
-    HardConstraintConflictTerm,
-    HardConstraintConflict,
-    PowerWeightFitResult,
-    RealizedPairDiagnostics,
-    UnaccountedRealizedPair,
-    UnaccountedRealizedPairError,
-    build_fit_report,
-    build_realized_report,
-    build_active_set_report,
-    dumps_report_json,
-    write_report_json,
-    ActiveSetOptions,
-    ActiveSetIteration,
-    ActiveSetPathSummary,
-    PairConstraintDiagnostics,
-    SelfConsistentPowerFitResult,
-    fit_power_weights,
-    match_realized_pairs,
-    solve_self_consistent_power_weights,
-)
-
-
-def __getattr__(name: str) -> object:
-    """Resolve historical package attributes without eager compatibility imports."""
-    if name == 'powerfit':
-        from importlib import import_module
-
-        return import_module('.powerfit', __name__)
-    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
-
-
-def __dir__() -> list[str]:
-    """Include the lazy historical namespace in interactive discovery."""
-    return sorted({*globals(), 'powerfit'})
 
 
 __all__ = [
@@ -120,40 +70,6 @@ __all__ = [
     'normalize_vertices',
     'normalize_edges_faces',
     'normalize_topology',
-    'PairBisectorConstraints',
-    'resolve_pair_bisector_constraints',
-    'SquaredLoss',
-    'HuberLoss',
-    'Interval',
-    'FixedValue',
-    'SoftIntervalPenalty',
-    'ExponentialBoundaryPenalty',
-    'ReciprocalBoundaryPenalty',
-    'L2Regularization',
-    'FitModel',
-    'AlgebraicEdgeDiagnostics',
-    'ConstraintGraphDiagnostics',
-    'ConnectivityDiagnostics',
-    'ConnectivityDiagnosticsError',
-    'HardConstraintConflictTerm',
-    'HardConstraintConflict',
-    'PowerWeightFitResult',
-    'RealizedPairDiagnostics',
-    'UnaccountedRealizedPair',
-    'UnaccountedRealizedPairError',
-    'build_fit_report',
-    'build_realized_report',
-    'build_active_set_report',
-    'dumps_report_json',
-    'write_report_json',
-    'ActiveSetOptions',
-    'ActiveSetIteration',
-    'ActiveSetPathSummary',
-    'PairConstraintDiagnostics',
-    'SelfConsistentPowerFitResult',
-    'fit_power_weights',
-    'match_realized_pairs',
-    'solve_self_consistent_power_weights',
     'radii_to_weights',
     'weights_to_radii',
     '__version__',

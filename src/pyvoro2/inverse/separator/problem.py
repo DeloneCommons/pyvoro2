@@ -1237,8 +1237,3 @@ def _penalty_derivatives(
         return fp, fpp
 
     raise TypeError(f'unsupported penalty: {type(penalty)!r}')
-
-
-# Historical v0.6 name retained as an identity alias during v0.7.
-# Removal release: v0.8.
-PowerFitProblem = SeparatorFitProblem

@@ -1,8 +1,9 @@
-# Migrating from v0.6.3 to v0.7
+# Migrating from v0.6.3 through v0.8
 
-v0.7 changes the preferred result and inverse namespaces while preserving one
-explicit transition release. This guide covers ordinary source changes; the
-archived manuscript environment remains pinned to v0.6.3.
+v0.7 changed the preferred result and inverse namespaces while preserving one
+explicit transition release. v0.8 completes that transition by removing the
+announced compatibility-only surfaces. This guide covers ordinary source
+changes; the archived manuscript environment remains pinned to v0.6.3.
 
 ## Forward `compute(...)` now returns `TessellationResult`
 
@@ -65,12 +66,9 @@ cells = pyvoro2.planar.compute(
 )
 ```
 
-`return_result=` is deprecated and removed in v0.8. Passing either boolean in
-v0.7 emits `DeprecationWarning`. `PlanarComputeResult` is an identity alias to
-`TessellationResult` during v0.7 and is also removed in v0.8.
-
-Normalization requires structured output. Replace combinations involving
-`return_result=True` with the default result or `output='result'`.
+The v0.7 `return_result=` selector and `PlanarComputeResult` alias are absent in
+v0.8. Use the default `TessellationResult`, `output='result'`, or the explicit
+`output='cells'` raw route. Normalization requires structured output.
 
 ## Use mathematical `weights=` directly
 
@@ -199,25 +197,17 @@ v0.6.3 allowed broad imports such as:
 from pyvoro2 import FitModel, fit_power_weights
 ```
 
-These names remain compatibility-only in v0.7 but are not part of the preferred
-top-level package. Move them to `pyvoro2.inverse` or
-`pyvoro2.inverse.separator` now. They are removed from top-level `pyvoro2` in
-v0.8.
+These names were compatibility-only in v0.7 and are absent from top-level
+`pyvoro2` in v0.8. Move them to `pyvoro2.inverse` or
+`pyvoro2.inverse.separator`.
 
 ## `pyvoro2.powerfit` transition
 
-Importing `pyvoro2.powerfit` in v0.7 loads a thin one-way shim and emits a
-hidden-by-default `DeprecationWarning`. It contains no independent solver
-implementation.
-
-The entire package and its direct submodules are removed in v0.8. The removal
-horizon is fixed; the project does not plan to retain the old namespace based on
-hypothetical downstream use.
-
-Historical core aliases also remain visible from the advanced canonical
-separator package during v0.7 so that objects retain one implementation and
-compatible identity. New code should not use those aliases; they are removed in
-v0.8 together with the shim.
+`pyvoro2.powerfit` was a temporary v0.7 compatibility facade with no independent
+solver implementation. The package, its direct submodules, the lazy top-level
+attribute, broad top-level separator exports, and the five mapped historical
+core aliases are absent in v0.8. Canonical separator APIs live under
+`pyvoro2.inverse` and `pyvoro2.inverse.separator`.
 
 ## Layered separator results
 
@@ -237,17 +227,19 @@ Realization is still a separate operation and result. Active-set path data are
 experimental outer-loop diagnostics. See [Choosing an API](choosing-api.md) and
 the [separator-fitting guide](powerfit.md).
 
-## Removal summary for v0.8
+## Completed removal summary for v0.8
 
-| v0.7 transition surface | v0.8 action |
+| v0.7 transition surface | v0.8 status |
 |---|---|
-| `pyvoro2.powerfit` and historical submodules | Remove |
-| broad top-level separator exports | Remove |
-| historical separator core aliases in `pyvoro2.inverse.separator` | Remove |
-| lazy top-level `pyvoro2.powerfit` attribute | Remove |
-| `PlanarComputeResult` | Remove |
-| planar `return_result=` | Remove |
-| `output='cells'` | Retain as an explicit useful raw-output mode |
+| `pyvoro2.powerfit` and historical submodules | Removed |
+| broad top-level separator exports | Removed |
+| historical separator core aliases in `pyvoro2.inverse.separator` | Removed |
+| lazy top-level `pyvoro2.powerfit` attribute | Removed |
+| `PlanarComputeResult` | Removed |
+| planar `return_result=` | Removed |
+| `output='cells'` | Retained as an explicit useful raw-output mode |
 
 v0.8 is a cleanup-only release. Prescribed cell measures begin in v0.9, and
-mixed separator-plus-measure fitting begins in v0.10.
+mixed separator-plus-measure fitting begins in v0.10. Canonical numerical
+algorithms, defaults, result fields, record keys, and gauge behavior are
+unchanged by these removals.
