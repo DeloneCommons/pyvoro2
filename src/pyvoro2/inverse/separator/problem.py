@@ -8,6 +8,32 @@ from typing import Literal
 import numpy as np
 
 from ..._internal.weight_transforms import weights_to_radii
+from ._objective import (
+    _active_scalar_penalties,
+    _hard_accepted_measurement_bounds,
+    _hard_row_status,
+    _l2_value,
+    _mismatch_terms as _objective_mismatch_terms,
+    _mismatch_values as _objective_mismatch_values,
+    _mismatch_values_from_affine,
+    _penalty_terms,
+    _penalty_value,
+    _penalty_value_from_affine,
+    _quadratic_row_data,
+)
+from ._numerics import (
+    _stable_affine_difference,
+    _stable_affine_residual,
+    _stable_incidence_accumulate,
+    _stable_mean_abs,
+    _stable_norm,
+    _stable_product,
+    _stable_ratio_difference,
+    _stable_rms,
+    _stable_scaled_difference,
+    _stable_sum_products,
+    _stable_sum_scalar,
+)
 from .constraints import SeparatorObservations
 from .model import (
     ExponentialBoundaryPenalty,
@@ -40,6 +66,10 @@ from .types import (
 )
 
 
+class _NonFiniteOptimalObjectiveError(ValueError):
+    """Raised when result packaging would claim success for a non-finite objective."""
+
+
 @dataclass(frozen=True, slots=True)
 class _MeasurementGeometry:
     alpha: np.ndarray
@@ -67,9 +97,10 @@ class SeparatorFitProblem:
 
     ``offset_identifying_constraint_mask`` is the historical public name for
     the row mask used to decompose the numerical problem.  It includes rows
-    touched by hard restrictions or penalties because those terms can couple
-    solver variables.  The mask does not claim that those rows identify
-    offsets from separator data or select them uniquely.
+    touched by hard restrictions or positive-strength penalties because those
+    terms can couple solver variables.  Zero-strength penalties are absent.
+    The mask does not claim that those rows identify offsets from separator
+    data or select them uniquely.
     """
 
     constraints: SeparatorObservations
@@ -171,28 +202,44 @@ class SeparatorFitProblem:
         """Return the exact fixed least-squares normal operator.
 
         This view is intentionally limited to ``SquaredLoss`` models without
-        scalar penalties.  Hard restrictions may coexist, but they remain in
-        ``bounds`` and are not folded into the unconstrained normal equation.
+        positive-strength scalar penalties.  Zero-strength penalties are
+        absent from the objective.  Hard restrictions may coexist, but they
+        remain in ``bounds`` and are not folded into the unconstrained normal
+        equation.
         """
 
         if not isinstance(self.model.mismatch, SquaredLoss):
             raise ValueError(
                 'quadratic_operator is available only for SquaredLoss models'
             )
-        if self.model.penalties:
+        if _active_scalar_penalties(self.model.penalties):
             raise ValueError(
-                'quadratic_operator is unavailable when scalar penalties are '
-                'present because one fixed normal system does not represent '
-                'the full objective'
+                'quadratic_operator is unavailable when positive-strength '
+                'scalar penalties are present because one fixed normal system '
+                'does not represent the full objective'
             )
 
         graph = self.observation_graph
-        observation_rhs = np.zeros(int(self.constraints.n_points), dtype=np.float64)
-        edge_rhs = self.edge_weight * self.z_obs
-        np.add.at(observation_rhs, self.constraints.i, edge_rhs)
-        np.add.at(observation_rhs, self.constraints.j, -edge_rhs)
-        regularized_rhs = observation_rhs + (
-            float(self.regularization_strength) * self.regularization_reference
+        rows = _quadratic_row_data(
+            self.alpha,
+            self.beta,
+            self.measurement_target,
+            self.confidence,
+        )
+        observation_rhs = _stable_incidence_accumulate(
+            int(self.constraints.n_points),
+            self.constraints.i,
+            self.constraints.j,
+            rows.rhs,
+        )
+        regularized_rhs = _stable_sum_products(
+            (
+                (observation_rhs,),
+                (
+                    float(self.regularization_strength),
+                    self.regularization_reference,
+                ),
+            )
         )
         return SeparatorQuadraticOperatorView(
             observation_graph=graph,
@@ -305,10 +352,19 @@ def build_power_fit_problem(
         model = FitModel()
     geom = _measurement_geometry(constraints)
     reg_ref = _regularization_reference(model.regularization, constraints.n_points)
-    hard_diff = _hard_constraint_bounds(model.feasible, geom.alpha, geom.beta)
     hard_measurement = _hard_constraint_measurement_bounds(
         model.feasible,
         constraints.n_constraints,
+    )
+    hard_diff = (
+        None
+        if hard_measurement is None
+        else _hard_constraint_bounds(
+            hard_measurement[0],
+            hard_measurement[1],
+            geom.alpha,
+            geom.beta,
+        )
     )
     bounds = PowerFitBounds(
         measurement_lower=None if hard_measurement is None else hard_measurement[0],
@@ -334,15 +390,19 @@ def build_power_fit_problem(
     alpha = np.asarray(geom.alpha, dtype=np.float64)
     beta = np.asarray(geom.beta, dtype=np.float64)
     target = np.asarray(geom.target, dtype=np.float64)
-    z_obs = (target - beta) / alpha
-    edge_weight = np.asarray(constraints.confidence, dtype=np.float64) * (alpha * alpha)
+    quadratic_rows = _quadratic_row_data(
+        alpha,
+        beta,
+        target,
+        constraints.confidence,
+    )
     return SeparatorFitProblem(
         constraints=constraints,
         model=model,
         alpha=alpha,
         beta=beta,
-        z_obs=z_obs,
-        edge_weight=edge_weight,
+        z_obs=quadratic_rows.z_obs,
+        edge_weight=quadratic_rows.rho,
         regularization_strength=float(model.regularization.strength),
         regularization_reference=reg_ref,
         offset_identifying_constraint_mask=_model_coupling_constraint_mask(
@@ -361,6 +421,7 @@ def build_power_fit_result(
     weights: np.ndarray,
     *,
     solver: str = 'external',
+    linear_backend: str | None = None,
     status: str = 'optimal',
     status_detail: str | None = None,
     converged: bool = True,
@@ -370,22 +431,31 @@ def build_power_fit_result(
     r_min: float = 0.0,
     weight_shift: float | None = None,
 ) -> SeparatorFitResult:
-    """Package candidate weights into a standard power-fit result object."""
+    """Package candidate weights into a standard power-fit result object.
+
+    An optimal or converged request is rejected when any reported
+    soft-objective component or total is non-finite.
+    """
 
     w = _validated_weight_vector(problem, weights)
     if canonicalize_gauge:
         w = problem.canonicalize_gauge(w)
     predictions = _predict_all(problem, w)
-    residuals = np.asarray(
-        predictions.measurement - problem.measurement_target,
-        dtype=np.float64,
-    )
+    residuals = _measurement_residuals(problem, w)
     edge_diagnostics = _compute_edge_diagnostics(
         problem.constraints,
         weights=w,
         predictions=predictions,
     )
     objective_breakdown = _objective_breakdown(problem, predictions, w)
+    if (
+        (status == 'optimal' or bool(converged))
+        and not _soft_objective_is_finite(objective_breakdown)
+    ):
+        raise _NonFiniteOptimalObjectiveError(
+            'cannot package an optimal or converged result with a non-finite '
+            'soft objective'
+        )
     warnings_list = list(warnings)
     if not objective_breakdown.hard_constraints_satisfied:
         warnings_list.append(
@@ -396,7 +466,7 @@ def build_power_fit_result(
         r_min=r_min,
         weight_shift=weight_shift,
     )
-    rms = float(np.sqrt(np.mean(residuals * residuals))) if residuals.size else 0.0
+    rms = _stable_rms(residuals)
     mx = float(np.max(np.abs(residuals))) if residuals.size else 0.0
     result = SeparatorFitResult(
         status=status,
@@ -415,6 +485,7 @@ def build_power_fit_result(
         max_residual=mx,
         used_shifts=np.asarray(problem.constraints.shifts),
         solver=solver,
+        linear_backend=linear_backend,
         n_iter=int(n_iter),
         converged=bool(converged),
         conflict=problem.hard_conflict,
@@ -442,11 +513,11 @@ def _measurement_geometry(constraints: SeparatorObservations) -> _MeasurementGeo
     d = constraints.distance
     d2 = constraints.distance2
     if constraints.measurement == 'fraction':
-        alpha = 1.0 / (2.0 * d2)
+        alpha = _stable_ratio_difference(0.5, 0.0, d2)
         beta = np.full_like(alpha, 0.5)
         target = constraints.target_fraction
     else:
-        alpha = 1.0 / (2.0 * d)
+        alpha = _stable_ratio_difference(0.5, 0.0, d)
         beta = 0.5 * d
         target = constraints.target_position
     return _MeasurementGeometry(
@@ -462,9 +533,29 @@ def _predict_all(
     problem: SeparatorFitProblem,
     weights: np.ndarray,
 ) -> PowerFitPredictions:
-    z_pred = weights[problem.constraints.i] - weights[problem.constraints.j]
-    fraction = 0.5 + z_pred / (2.0 * problem.constraints.distance2)
-    position = problem.constraints.distance * fraction
+    left = weights[problem.constraints.i]
+    right = weights[problem.constraints.j]
+    z_pred = _stable_scaled_difference(left, right, 1.0)
+    fraction = _stable_affine_difference(
+        0.5,
+        _stable_ratio_difference(
+            0.5,
+            0.0,
+            problem.constraints.distance2,
+        ),
+        left,
+        right,
+    )
+    position = _stable_affine_difference(
+        0.5 * problem.constraints.distance,
+        _stable_ratio_difference(
+            0.5,
+            0.0,
+            problem.constraints.distance,
+        ),
+        left,
+        right,
+    )
     measurement = (
         fraction if problem.constraints.measurement == 'fraction' else position
     )
@@ -473,6 +564,24 @@ def _predict_all(
         fraction=np.asarray(fraction, dtype=np.float64),
         position=np.asarray(position, dtype=np.float64),
         measurement=np.asarray(measurement, dtype=np.float64),
+    )
+
+
+def _measurement_residuals(
+    problem: SeparatorFitProblem,
+    weights: np.ndarray,
+    *,
+    active: np.ndarray | None = None,
+) -> np.ndarray:
+    """Return direct affine residuals without materializing predictions."""
+
+    return _stable_affine_residual(
+        problem.beta,
+        problem.alpha,
+        weights[problem.constraints.i],
+        weights[problem.constraints.j],
+        problem.measurement_target,
+        active=active,
     )
 
 
@@ -488,8 +597,14 @@ def _compute_edge_diagnostics(
     alpha = np.asarray(geom.alpha, dtype=np.float64)
     beta = np.asarray(geom.beta, dtype=np.float64)
     target = np.asarray(geom.target, dtype=np.float64)
-    z_obs = (target - beta) / alpha
-    edge_weight = np.asarray(constraints.confidence, dtype=np.float64) * (alpha * alpha)
+    quadratic_rows = _quadratic_row_data(
+        alpha,
+        beta,
+        target,
+        constraints.confidence,
+    )
+    z_obs = quadratic_rows.z_obs
+    edge_weight = quadratic_rows.rho
     if weights is None:
         return AlgebraicEdgeDiagnostics(
             alpha=alpha,
@@ -504,19 +619,30 @@ def _compute_edge_diagnostics(
             mae=None,
         )
     if predictions is None:
-        z_fit = np.asarray(
-            weights[constraints.i] - weights[constraints.j],
-            dtype=np.float64,
+        z_fit = _stable_scaled_difference(
+            weights[constraints.i],
+            weights[constraints.j],
+            1.0,
         )
     else:
         z_fit = np.asarray(predictions.difference, dtype=np.float64)
-    residual = z_obs - z_fit
-    weighted_sq = edge_weight * residual * residual
+    residual = _stable_scaled_difference(z_obs, z_fit, 1.0)
     if residual.size:
-        weighted_l2 = float(np.linalg.norm(np.sqrt(edge_weight) * residual))
-        weighted_rmse = float(np.sqrt(np.mean(weighted_sq)))
-        rmse = float(np.sqrt(np.mean(residual * residual)))
-        mae = float(np.mean(np.abs(residual)))
+        measurement_residual = -_stable_affine_residual(
+            beta,
+            alpha,
+            weights[constraints.i],
+            weights[constraints.j],
+            target,
+        )
+        weighted_residual = _stable_product(
+            np.sqrt(np.asarray(constraints.confidence, dtype=np.float64)),
+            measurement_residual,
+        )
+        weighted_l2 = _stable_norm(weighted_residual)
+        weighted_rmse = _stable_rms(weighted_residual)
+        rmse = _stable_rms(residual)
+        mae = _stable_mean_abs(residual)
     else:
         weighted_l2 = 0.0
         weighted_rmse = 0.0
@@ -551,18 +677,12 @@ def _mismatch_values(
     confidence: np.ndarray,
     mismatch: SquaredLoss | HuberLoss,
 ) -> np.ndarray:
-    residual = measurement - target
-    if isinstance(mismatch, SquaredLoss):
-        return confidence * residual * residual
-    if isinstance(mismatch, HuberLoss):
-        delta = float(mismatch.delta)
-        abs_r = np.abs(residual)
-        return confidence * np.where(
-            abs_r <= delta,
-            0.5 * residual * residual,
-            delta * (abs_r - 0.5 * delta),
-        )
-    raise TypeError(f'unsupported mismatch: {type(mismatch)!r}')
+    return _objective_mismatch_values(
+        measurement,
+        target,
+        confidence,
+        mismatch,
+    )
 
 
 def _penalty_values(
@@ -571,66 +691,24 @@ def _penalty_values(
     | ExponentialBoundaryPenalty
     | ReciprocalBoundaryPenalty,
 ) -> np.ndarray:
-    y = np.asarray(measurement, dtype=np.float64)
-    if isinstance(penalty, SoftIntervalPenalty):
-        out = np.zeros_like(y)
-        lo_mask = y < float(penalty.lower)
-        hi_mask = y > float(penalty.upper)
-        if np.any(lo_mask):
-            out[lo_mask] = float(penalty.strength) * (
-                y[lo_mask] - float(penalty.lower)
-            ) ** 2
-        if np.any(hi_mask):
-            out[hi_mask] = float(penalty.strength) * (
-                y[hi_mask] - float(penalty.upper)
-            ) ** 2
-        return out
-    if isinstance(penalty, ExponentialBoundaryPenalty):
-        left = float(penalty.lower) + float(penalty.margin)
-        right = float(penalty.upper) - float(penalty.margin)
-        tau = float(penalty.tau)
-        strength = float(penalty.strength)
-        A = np.exp((left - y) / tau)
-        B = np.exp((y - right) / tau)
-        return strength * (A + B)
-    if isinstance(penalty, ReciprocalBoundaryPenalty):
-        lower = float(penalty.lower)
-        upper = float(penalty.upper)
-        left = lower + float(penalty.margin)
-        right = upper - float(penalty.margin)
-        eps = float(penalty.epsilon)
-        strength = float(penalty.strength)
-        out = np.zeros_like(y)
-        lo_mask = y < left
-        hi_mask = y > right
-        if np.any(lo_mask):
-            denom = np.maximum(y[lo_mask] - lower, eps)
-            base = max(left - lower, eps)
-            out[lo_mask] = strength * ((1.0 / denom) - (1.0 / base))
-        if np.any(hi_mask):
-            denom = np.maximum(upper - y[hi_mask], eps)
-            base = max(upper - right, eps)
-            out[hi_mask] = strength * ((1.0 / denom) - (1.0 / base))
-        return out
-    raise TypeError(f'unsupported penalty: {type(penalty)!r}')
+    return _penalty_value(measurement, penalty)
 
 
 def _hard_constraint_status(
     problem: SeparatorFitProblem,
     predictions: PowerFitPredictions,
-) -> tuple[bool, float]:
+) -> tuple[bool, float, float]:
     lower = problem.bounds.measurement_lower
     upper = problem.bounds.measurement_upper
     if lower is None or upper is None:
-        return True, 0.0
+        return True, 0.0, 0.0
     y = np.asarray(predictions.measurement, dtype=np.float64)
-    lo_violation = np.maximum(lower - y, 0.0)
-    hi_violation = np.maximum(y - upper, 0.0)
-    violation = np.maximum(lo_violation, hi_violation)
+    satisfied, violation, tolerance = _hard_row_status(lower, y, upper)
     if violation.size == 0:
-        return True, 0.0
+        return True, 0.0, 0.0
     max_violation = float(np.max(violation))
-    return max_violation <= 1e-12, max_violation
+    max_tolerance = float(np.max(tolerance))
+    return bool(np.all(satisfied)), max_violation, max_tolerance
 
 
 def _objective_breakdown(
@@ -638,30 +716,46 @@ def _objective_breakdown(
     predictions: PowerFitPredictions,
     weights: np.ndarray,
 ) -> PowerFitObjectiveBreakdown:
-    target = np.asarray(problem.measurement_target, dtype=np.float64)
     confidence = np.asarray(problem.constraints.confidence, dtype=np.float64)
     measurement = np.asarray(predictions.measurement, dtype=np.float64)
-    mismatch = float(
-        np.sum(
-            _mismatch_values(
-                measurement,
-                target,
-                confidence,
-                problem.model.mismatch,
-            )
-        )
+    left = weights[problem.constraints.i]
+    right = weights[problem.constraints.j]
+    mismatch_values = _mismatch_values_from_affine(
+        problem.beta,
+        problem.alpha,
+        left,
+        right,
+        problem.measurement_target,
+        confidence,
+        problem.model.mismatch,
     )
+    mismatch = _stable_sum_scalar(*mismatch_values.tolist())
     penalty_terms_list: list[tuple[str, float]] = []
     penalties_total = 0.0
     for penalty in problem.model.penalties:
-        value = float(np.sum(_penalty_values(measurement, penalty)))
+        value = _stable_sum_scalar(
+            *_penalty_value_from_affine(
+                problem.beta,
+                problem.alpha,
+                left,
+                right,
+                measurement,
+                penalty,
+            ).tolist()
+        )
         penalty_terms_list.append((type(penalty).__name__, value))
-        penalties_total += value
-    reg = problem.regularization_strength * float(
-        np.sum((weights - problem.regularization_reference) ** 2)
+        penalties_total = _stable_sum_scalar(penalties_total, value)
+    reg = _l2_value(
+        weights,
+        problem.regularization_reference,
+        problem.regularization_strength,
     )
-    hard_satisfied, hard_max_violation = _hard_constraint_status(problem, predictions)
-    total = mismatch + penalties_total + reg
+    (
+        hard_satisfied,
+        hard_max_violation,
+        hard_max_tolerance,
+    ) = _hard_constraint_status(problem, predictions)
+    total = _stable_sum_scalar(mismatch, penalties_total, reg)
     return PowerFitObjectiveBreakdown(
         total=float(total),
         mismatch=float(mismatch),
@@ -670,7 +764,23 @@ def _objective_breakdown(
         regularization=float(reg),
         hard_constraints_satisfied=bool(hard_satisfied),
         hard_max_violation=float(hard_max_violation),
+        hard_max_tolerance=float(hard_max_tolerance),
     )
+
+
+def _soft_objective_is_finite(
+    breakdown: PowerFitObjectiveBreakdown,
+) -> bool:
+    """Return whether every reported soft-objective value is finite."""
+
+    values = (
+        breakdown.total,
+        breakdown.mismatch,
+        breakdown.penalties_total,
+        breakdown.regularization,
+        *(value for _, value in breakdown.penalty_terms),
+    )
+    return bool(np.all(np.isfinite(np.asarray(values, dtype=np.float64))))
 
 
 def _regularization_reference(reg: L2Regularization, n: int) -> np.ndarray:
@@ -693,7 +803,10 @@ def _model_coupling_constraint_mask(
     model: FitModel,
 ) -> np.ndarray:
     mask = _informative_observation_mask(constraints)
-    if model.feasible is not None or len(model.penalties) > 0:
+    if (
+        model.feasible is not None
+        or _active_scalar_penalties(model.penalties)
+    ):
         mask = np.ones(constraints.n_constraints, dtype=bool)
     return mask
 
@@ -960,12 +1073,20 @@ def _build_active_set_connectivity_diagnostics(
             'separately'
         )
     if active_effective_graph.n_components > 1:
-        messages.append(
-            'final active pairwise data identify only '
-            f'{_format_component_counts(active_effective_graph)}; relative '
-            'component offsets are preserved by the self-consistent gauge '
-            'policy rather than identified by the data'
-        )
+        if _component_offsets_selected_by_objective(model):
+            messages.append(
+                'final active pairwise data identify only '
+                f'{_format_component_counts(active_effective_graph)}; relative '
+                'component offsets are selected by the objective rather than '
+                'identified by the data'
+            )
+        else:
+            messages.append(
+                'final active pairwise data identify only '
+                f'{_format_component_counts(active_effective_graph)}; relative '
+                'component offsets are preserved by the self-consistent gauge '
+                'policy rather than identified by the data'
+            )
 
     return ConnectivityDiagnostics(
         unconstrained_points=candidate_graph.isolated_points,
@@ -1003,22 +1124,17 @@ def _hard_constraint_measurement_bounds(
 
 
 def _hard_constraint_bounds(
-    feasible: HardConstraint | None,
+    lower: np.ndarray,
+    upper: np.ndarray,
     alpha: np.ndarray,
     beta: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray] | None:
-    if feasible is None:
-        return None
-    if isinstance(feasible, Interval):
-        lower = np.full_like(alpha, float(feasible.lower))
-        upper = np.full_like(alpha, float(feasible.upper))
-    elif isinstance(feasible, FixedValue):
-        lower = np.full_like(alpha, float(feasible.value))
-        upper = lower.copy()
-    else:
-        raise TypeError(f'unsupported hard constraint: {type(feasible)!r}')
-    z_lo = (lower - beta) / alpha
-    z_hi = (upper - beta) / alpha
+) -> tuple[np.ndarray, np.ndarray]:
+    accepted_lower, accepted_upper = _hard_accepted_measurement_bounds(
+        lower,
+        upper,
+    )
+    z_lo = _stable_ratio_difference(accepted_lower, beta, alpha)
+    z_hi = _stable_ratio_difference(accepted_upper, beta, alpha)
     lo = np.minimum(z_lo, z_hi)
     hi = np.maximum(z_lo, z_hi)
     return np.asarray(lo, dtype=np.float64), np.asarray(hi, dtype=np.float64)
@@ -1064,14 +1180,13 @@ def _check_hard_feasibility(
     pred_node = np.full(n, -1, dtype=np.int64)
     pred_edge = np.full(n, -1, dtype=np.int64)
     last_updated = -1
-    tol = 1e-12
 
     for _ in range(n):
         updated = False
         last_updated = -1
         for edge_index, edge in enumerate(edges):
-            cand = dist[edge.source] + edge.weight
-            if cand < dist[edge.target] - tol:
+            cand = _stable_sum_scalar(dist[edge.source], edge.weight)
+            if cand < dist[edge.target]:
                 dist[edge.target] = cand
                 pred_node[edge.target] = edge.source
                 pred_edge[edge.target] = edge_index
@@ -1148,7 +1263,7 @@ def _check_hard_feasibility(
 def _requires_admm(model: FitModel) -> bool:
     if model.feasible is not None:
         return True
-    if model.penalties:
+    if _active_scalar_penalties(model.penalties):
         return True
     return not isinstance(model.mismatch, SquaredLoss)
 
@@ -1159,23 +1274,13 @@ def _mismatch_derivatives(
     confidence: np.ndarray,
     mismatch: SquaredLoss | HuberLoss,
 ) -> tuple[np.ndarray, np.ndarray]:
-    residual = y - target
-    if isinstance(mismatch, SquaredLoss):
-        fp_y = 2.0 * confidence * residual
-        fpp_y = 2.0 * confidence
-        return fp_y, fpp_y
-    if isinstance(mismatch, HuberLoss):
-        delta = float(mismatch.delta)
-        abs_r = np.abs(residual)
-        quad = abs_r <= delta
-        fp_y = np.where(
-            quad,
-            confidence * residual,
-            confidence * delta * np.sign(residual),
-        )
-        fpp_y = np.where(quad, confidence, 0.0)
-        return fp_y, fpp_y
-    raise TypeError(f'unsupported mismatch: {type(mismatch)!r}')
+    _, first, second = _objective_mismatch_terms(
+        y,
+        target,
+        confidence,
+        mismatch,
+    )
+    return first, second
 
 
 def _penalty_derivatives(
@@ -1184,56 +1289,5 @@ def _penalty_derivatives(
     | ExponentialBoundaryPenalty
     | ReciprocalBoundaryPenalty,
 ) -> tuple[np.ndarray, np.ndarray]:
-    if isinstance(penalty, SoftIntervalPenalty):
-        lower = float(penalty.lower)
-        upper = float(penalty.upper)
-        strength = float(penalty.strength)
-        fp = np.zeros_like(y)
-        fpp = np.zeros_like(y)
-        lo_mask = y < lower
-        hi_mask = y > upper
-        if np.any(lo_mask):
-            fp[lo_mask] += 2.0 * strength * (y[lo_mask] - lower)
-            fpp[lo_mask] += 2.0 * strength
-        if np.any(hi_mask):
-            fp[hi_mask] += 2.0 * strength * (y[hi_mask] - upper)
-            fpp[hi_mask] += 2.0 * strength
-        return fp, fpp
-
-    if isinstance(penalty, ExponentialBoundaryPenalty):
-        lower = float(penalty.lower)
-        upper = float(penalty.upper)
-        margin = float(penalty.margin)
-        strength = float(penalty.strength)
-        tau = float(penalty.tau)
-        left = lower + margin
-        right = upper - margin
-        A = np.exp((left - y) / tau)
-        B = np.exp((y - right) / tau)
-        fp = strength * (-A + B) / tau
-        fpp = strength * (A + B) / (tau * tau)
-        return fp, fpp
-
-    if isinstance(penalty, ReciprocalBoundaryPenalty):
-        lower = float(penalty.lower)
-        upper = float(penalty.upper)
-        margin = float(penalty.margin)
-        strength = float(penalty.strength)
-        eps = float(penalty.epsilon)
-        left = lower + margin
-        right = upper - margin
-        fp = np.zeros_like(y)
-        fpp = np.zeros_like(y)
-        lo_mask = y < left
-        if np.any(lo_mask):
-            denom = np.maximum(y[lo_mask] - lower, eps)
-            fp[lo_mask] += -strength / (denom**2)
-            fpp[lo_mask] += 2.0 * strength / (denom**3)
-        hi_mask = y > right
-        if np.any(hi_mask):
-            denom = np.maximum(upper - y[hi_mask], eps)
-            fp[hi_mask] += strength / (denom**2)
-            fpp[hi_mask] += 2.0 * strength / (denom**3)
-        return fp, fpp
-
-    raise TypeError(f'unsupported penalty: {type(penalty)!r}')
+    _, first, second = _penalty_terms(y, penalty)
+    return first, second

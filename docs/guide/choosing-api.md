@@ -97,6 +97,7 @@ fit = separator.fit_weights_from_separators(
     points,
     observations,
     model=model,
+    solver='admm',
 )
 ```
 
@@ -144,7 +145,8 @@ The following are not implied:
 
 - scalable dense or arbitrary all-pairs observation graphs;
 - automatic sparse-backend selection;
-- sparse execution for Huber, hard-constrained, penalty, or active-set branches;
+- sparse execution for Huber, hard-constrained, positive-strength penalty, or
+  active-set branches;
 - prepared solvers or warm starts across changing frames;
 - molecular-dynamics trajectory throughput;
 - parallel forward tessellation, multiprocessing ownership semantics, GPU, or

@@ -36,7 +36,8 @@ def test_chemvoro_shaped_workflow_preserves_ids_metadata_and_layers() -> None:
     )
     assert fit.identification.effective_observation_components == ((0, 1),)
     assert not fit.identification.global_geometric_gauge_identified_by_data
-    assert fit.solver_termination.backend == 'analytic'
+    assert fit.solver_termination.solver == 'direct'
+    assert fit.solver_termination.linear_backend == 'dense'
 
     site_records = workflow['site_records']
     assert [row['site_id'] for row in site_records] == [205, 101]
@@ -89,7 +90,8 @@ def test_public_paper_regression_ladder_runs_without_sparse() -> None:
         'pair_not_realized': True,
         'unrealized_fit_max_residual': 0.0,
     }
-    assert results['active_set_diagnostics']['inner_backend'] == 'analytic'
+    assert results['active_set_diagnostics']['inner_solver'] == 'direct'
+    assert results['active_set_diagnostics']['inner_linear_backend'] == 'dense'
     assert results['active_set_diagnostics']['converged'] is True
     assert results['active_set_diagnostics']['termination'] == 'self_consistent'
     assert results['active_set_diagnostics']['final_active_mask'] == [
@@ -113,8 +115,10 @@ def test_ci_scale_static_sparse_downstream_case() -> None:
     assert result['available'] is True
     assert result['n_sites'] == 32
     assert result['n_observations'] > result['n_sites']
-    assert result['dense_backend'] == 'analytic'
-    assert result['sparse_backend'] == 'sparse'
+    assert result['dense_solver'] == 'direct'
+    assert result['dense_linear_backend'] == 'dense'
+    assert result['sparse_solver'] == 'direct'
+    assert result['sparse_linear_backend'] == 'sparse'
     assert result['max_prediction_disagreement'] < 1e-10
     assert result['objective_disagreement'] < 1e-12
 
@@ -147,9 +151,10 @@ def blocked_import(name, globals=None, locals=None, fromlist=(), level=0):
 
 builtins.__import__ = blocked_import
 from examples.chemvoro_workflow import run_workflow
-workflow = run_workflow(solver='analytic')
+workflow = run_workflow(solver='direct', linear_backend='dense')
 print(json.dumps({
-    'solver': workflow['fit'].solver_termination.backend,
+    'solver': workflow['fit'].solver_termination.solver,
+    'linear_backend': workflow['fit'].solver_termination.linear_backend,
     'ids': workflow['tessellation'].ids.tolist(),
 }))
 '''
@@ -161,7 +166,8 @@ print(json.dumps({
         text=True,
     )
     assert json.loads(completed.stdout) == {
-        'solver': 'analytic',
+        'solver': 'direct',
+        'linear_backend': 'dense',
         'ids': [205, 101],
     }
 

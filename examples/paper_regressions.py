@@ -22,23 +22,28 @@ except ModuleNotFoundError as exc:
 
 
 def exact_connected_recovery() -> dict[str, object]:
+    # Dyadic coordinates and weights make every source affine row exactly
+    # representable in binary64.  This example therefore tests exact recovery,
+    # rather than the separate structured-failure contract for an
+    # unrepresentable continuous zero optimum.
     points = np.array(
         [
             [0.0, 0.0, 0.0],
-            [1.2, 0.1, 0.0],
-            [2.1, 0.8, 0.2],
-            [2.8, 1.4, 0.6],
+            [1.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
         ],
         dtype=np.float64,
     )
-    expected_weights = np.array([0.30, -0.20, 0.10, -0.20])
+    expected_weights = np.array([0.25, -0.25, 0.125, -0.125])
     pairs = ((0, 1), (1, 2), (2, 3), (0, 2), (1, 3))
     rows = _compatible_fraction_rows(points, expected_weights, pairs)
     observations = inverse.resolve_separator_observations(points, rows)
     fit = inverse.fit_weights_from_separators(
         points,
         observations,
-        solver='analytic',
+        solver='direct',
+        linear_backend='dense',
         connectivity_check='diagnose',
     )
     observation_fit = fit.observation_view(observations)
@@ -74,7 +79,7 @@ def disconnected_and_zero_confidence() -> dict[str, object]:
             [0.0, 0.0, 0.0],
             [1.0, 0.0, 0.0],
             [8.0, 0.0, 0.0],
-            [9.5, 0.0, 0.0],
+            [9.0, 0.0, 0.0],
             [20.0, 0.0, 0.0],
         ],
         dtype=np.float64,
@@ -83,7 +88,7 @@ def disconnected_and_zero_confidence() -> dict[str, object]:
         points,
         [
             (0, 1, 0.25),
-            (2, 3, 0.70),
+            (2, 3, 0.75),
             (1, 2, 0.99),
         ],
         confidence=[1.0, 2.0, 0.0],
@@ -91,7 +96,8 @@ def disconnected_and_zero_confidence() -> dict[str, object]:
     fit = inverse.fit_weights_from_separators(
         points,
         observations,
-        solver='analytic',
+        solver='direct',
+        linear_backend='dense',
         connectivity_check='diagnose',
     )
     identification = fit.identification
@@ -174,7 +180,8 @@ def realization_and_periodic_images() -> dict[str, object]:
     periodic_fit = inverse.fit_weights_from_separators(
         periodic_points,
         periodic_observations,
-        solver='analytic',
+        solver='direct',
+        linear_backend='dense',
     )
     periodic_realization = separator.match_realized_pairs(
         periodic_points,
@@ -199,7 +206,8 @@ def realization_and_periodic_images() -> dict[str, object]:
     algebraic_fit = inverse.fit_weights_from_separators(
         points,
         unsupported_observation,
-        solver='analytic',
+        solver='direct',
+        linear_backend='dense',
     )
     fit_view = algebraic_fit.observation_view(unsupported_observation)
     assert fit_view.residuals is not None
@@ -239,7 +247,8 @@ def active_set_diagnostics() -> dict[str, object]:
             drop_after=1,
             max_iter=6,
         ),
-        fit_solver='analytic',
+        fit_solver='direct',
+        fit_linear_backend='dense',
         return_history=True,
         connectivity_check='diagnose',
         unaccounted_pair_check='diagnose',
@@ -248,7 +257,8 @@ def active_set_diagnostics() -> dict[str, object]:
     path = result.path
     assert path.history is not None and path.summary is not None
     assert path.summary.ever_fit_active_effective_graph_disconnected
-    assert result.inner_fit.solver_termination.backend == 'analytic'
+    assert result.inner_fit.solver_termination.solver == 'direct'
+    assert result.inner_fit.solver_termination.linear_backend == 'dense'
     assert termination.converged
     assert termination.status == 'self_consistent'
     np.testing.assert_array_equal(
@@ -263,7 +273,10 @@ def active_set_diagnostics() -> dict[str, object]:
         'ever_disconnected': (
             path.summary.ever_fit_active_effective_graph_disconnected
         ),
-        'inner_backend': result.inner_fit.solver_termination.backend,
+        'inner_solver': result.inner_fit.solver_termination.solver,
+        'inner_linear_backend': (
+            result.inner_fit.solver_termination.linear_backend
+        ),
     }
 
 
@@ -336,17 +349,21 @@ def dense_sparse_static_equivalence() -> dict[str, object]:
     dense = inverse.fit_weights_from_separators(
         inputs.points,
         observations,
-        solver='analytic',
+        solver='direct',
+        linear_backend='dense',
         connectivity_check='diagnose',
     )
     sparse = inverse.fit_weights_from_separators(
         inputs.points,
         observations,
-        solver='sparse',
+        solver='direct',
+        linear_backend='sparse',
         connectivity_check='diagnose',
     )
-    assert dense.solver_termination.backend == 'analytic'
-    assert sparse.solver_termination.backend == 'sparse'
+    assert dense.solver_termination.solver == 'direct'
+    assert dense.solver_termination.linear_backend == 'dense'
+    assert sparse.solver_termination.solver == 'direct'
+    assert sparse.solver_termination.linear_backend == 'sparse'
     assert dense.objective is not None and sparse.objective is not None
     assert dense.algebraic.edge_diagnostics is not None
     assert sparse.algebraic.edge_diagnostics is not None
@@ -384,8 +401,10 @@ def dense_sparse_static_equivalence() -> dict[str, object]:
         'available': True,
         'n_sites': int(inputs.points.shape[0]),
         'n_observations': observations.n_constraints,
-        'dense_backend': dense.solver_termination.backend,
-        'sparse_backend': sparse.solver_termination.backend,
+        'dense_solver': dense.solver_termination.solver,
+        'dense_linear_backend': dense.solver_termination.linear_backend,
+        'sparse_solver': sparse.solver_termination.solver,
+        'sparse_linear_backend': sparse.solver_termination.linear_backend,
         'max_prediction_disagreement': float(
             np.max(
                 np.abs(

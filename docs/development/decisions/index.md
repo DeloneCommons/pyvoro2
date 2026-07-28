@@ -19,10 +19,11 @@ Each record has a status:
 3. [Compatibility-first API evolution](0003-compatibility-first-evolution.md)
 4. [Canonical inverse namespace and separator organization](0004-canonical-inverse-namespace.md)
 5. [Common tessellation result contract](0005-tessellation-result-contract.md)
+6. [v0.8 is a cleanup-only compatibility-removal release](0006-v0.8-cleanup-release.md)
+7. [Separator inverse objective contract](0007-separator-objective-contract.md)
+8. [Separator solver and linear-backend selection](0008-separator-solver-and-linear-backend.md)
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the
 [development workflow](../development-workflow.md). Do not create a record for
 every small implementation choice.
-
-- [0006 — v0.8 is a cleanup-only compatibility-removal release](0006-v0.8-cleanup-release.md)

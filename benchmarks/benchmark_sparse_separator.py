@@ -127,9 +127,10 @@ def _require_optimal_fit(fit, *, backend: str) -> np.ndarray:
             f'{backend} public fit failed during benchmark: '
             f'status={fit.status!r}, detail={fit.status_detail!r}'
         )
-    if fit.solver != backend:
+    if fit.solver != 'direct' or fit.linear_backend != backend:
         raise RuntimeError(
-            f'{backend} public fit reported unexpected backend {fit.solver!r}'
+            f'{backend} public fit reported unexpected route '
+            f'{fit.solver!r}+{fit.linear_backend!r}'
         )
     return np.asarray(fit.weights, dtype=np.float64)
 
@@ -156,7 +157,8 @@ def run_case(case: BenchmarkCase, *, repeat: int) -> BenchmarkResult:
         lambda: inverse.fit_weights_from_separators(
             points,
             observations,
-            solver='sparse',
+            solver='direct',
+            linear_backend='sparse',
             connectivity_check='diagnose',
         ),
         repeat,
@@ -206,12 +208,13 @@ def run_case(case: BenchmarkCase, *, repeat: int) -> BenchmarkResult:
             lambda: inverse.fit_weights_from_separators(
                 points,
                 observations,
-                solver='analytic',
+                solver='direct',
+                linear_backend='dense',
                 connectivity_check='diagnose',
             ),
             repeat,
         )
-        _require_optimal_fit(dense_fit, backend='analytic')
+        _require_optimal_fit(dense_fit, backend='dense')
         objective_disagreement = abs(
             float(dense_fit.objective_breakdown.total)
             - float(sparse_fit.objective_breakdown.total)

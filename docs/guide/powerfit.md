@@ -214,6 +214,85 @@ Built-in pieces currently include:
 - `ReciprocalBoundaryPenalty(...)`
 - `L2Regularization(...)`
 
+For residual
+
+$$
+e_r(w)=\beta_r+\alpha_r(w_{i_r}-w_{j_r})-\mathrm{target}_r,
+$$
+
+the squared loss is $\frac12e_r^2$. Huber loss is
+
+$$
+\ell_\delta(e)=
+\begin{cases}
+\frac12e^2, & |e|\le\delta,\\
+\delta\left(|e|-\frac12\delta\right), & |e|>\delta.
+\end{cases}
+$$
+
+Row confidence multiplies only the mismatch loss. `L2Regularization` contributes
+
+$$
+\frac{\lambda}{2}\lVert w-w^{\mathrm{ref}}\rVert_2^2,
+$$
+
+so its gradient is $\lambda(w-w^{\mathrm{ref}})$ and its Hessian contribution
+is $\lambda I$. A reference with `strength=0` contributes nothing to the
+objective; the existing output-alignment policy may still use it to choose
+otherwise unidentified component offsets.
+
+`SoftIntervalPenalty(a, b, s)` contributes
+
+$$
+s\left(\max(a-y,0)^2+\max(y-b,0)^2\right),
+$$
+
+while `ExponentialBoundaryPenalty(a, b, m, s, tau)` contributes
+
+$$
+s\left[
+\exp\left(\frac{a+m-y}{\tau}\right)
++\exp\left(\frac{y-(b-m)}{\tau}\right)
+\right].
+$$
+
+Those existing strengths are not rescaled by a one-half factor. For one
+inward distance $d$, `ReciprocalBoundaryPenalty` uses
+
+$$
+q(d)=
+\begin{cases}
+0, & d\ge m,\\
+s(1/d-1/m), & \epsilon<d<m,\\
+s\left[(1/\epsilon-1/m)-(d-\epsilon)/\epsilon^2\right],
+  & d\le\epsilon,
+\end{cases}
+$$
+
+and contributes $q(y-a)+q(b-y)$. The linear branch is used at
+$d=\epsilon$ and the inactive branch at $d=m$. Value and first derivative are
+continuous at $\epsilon$; the derivative jumps at $m$, so no unique derivative
+is claimed there. The parameters require `upper > lower`, `margin > 0`,
+`0 < epsilon < margin`, `2 * margin <= upper - lower`, and `strength >= 0`.
+
+A scalar penalty with `strength=0` is mathematically absent. Its value and
+derivatives are exactly zero without evaluating dangerous branch expressions;
+it does not force ADMM, hide the quadratic operator, change graph coupling, or
+change the fitted solution. An exactly zero named report component may remain.
+
+For hard lower bound $a$, prediction $y$, and upper bound $b$, classification
+uses
+
+$$
+v=\max(a-y,y-b,0),
+\qquad
+t=10^{-12}+64\epsilon_{64}\max(|a|,|y|,|b|),
+$$
+
+where $\epsilon_{64}$ is float64 machine epsilon. The row is satisfied exactly
+when $v\le t$. This roundoff policy is also used by the hard-feasibility graph
+check and is separate from the ADMM stopping tolerances.
+
 ## Step 3: fit power weights
 
 ```python
@@ -224,9 +303,9 @@ fit = inverse.fit_weights_from_separators(
 )
 ```
 
-For squared-loss static fits, the default `solver='auto'` continues to choose
-the NumPy dense direct path. Select the optional SciPy sparse-direct path
-explicitly when the fixed observation graph is large and local:
+The default is a certified direct solve with dense NumPy linear algebra.
+Select sparse SciPy linear algebra explicitly when the fixed observation graph
+is large and local:
 
 ```bash
 python -m pip install "pyvoro2[sparse]"
@@ -236,23 +315,55 @@ python -m pip install "pyvoro2[sparse]"
 sparse_fit = inverse.fit_weights_from_separators(
     points,
     observations,
-    solver='sparse',
+    solver='direct',
+    linear_backend='sparse',
 )
-print(sparse_fit.solver_termination.backend)  # sparse
+print(sparse_fit.solver_termination.solver)          # direct
+print(sparse_fit.solver_termination.linear_backend)  # sparse
 ```
 
-`solver='analytic'` explicitly selects the dense quadratic path. There is no
-automatic size threshold: `auto` remains dense to preserve predictable
-dependency and solver-selection behavior. Sparse execution supports `SquaredLoss` with
-optional L2 regularization and no scalar penalties or hard restrictions.
-Huber mismatch, hard constraints, and scalar-penalty models continue to use the
-existing ADMM path and reject `solver='sparse'`.
+`solver='direct'` accepts a purely quadratic model. Huber mismatch, hard
+constraints, and positive-strength scalar penalties require
+`solver='admm'`. Whenever a component solve is required, explicit ADMM runs the
+iterative method, including for a purely quadratic model.
+`linear_backend='dense'` never imports SciPy;
+`linear_backend='sparse'` explicitly requires it. Neither route changes backend
+at a site-count threshold.
 
-The sparse path changes only matrix storage and direct linear algebra. It uses
-the same observation rows, periodic image labels, effective graph, component
-anchors, and final component-alignment policy as the dense path. The returned
-backend is inspectable through both `fit.solver` and
-`fit.solver_termination.backend`.
+All four quadratic method/backend combinations use one continuous-objective
+success contract. A floating objective that rounds to zero is not sufficient:
+the returned binary64 weights must either make every active source term exactly
+zero or pass the universal forward objective-gap certificate. Exact small-case
+helpers may propose or evaluate candidates, but coordinatewise rounding of an
+exact optimum is not treated as a separate discrete-optimality proof. A
+continuous optimum that cannot be represented accurately by the returned
+binary64 vector therefore produces `status='numerical_failure'` rather than a
+weaker meaning of `optimal`.
+
+The linear backend changes only matrix storage and weight-system linear
+algebra. Both backends use the same observation rows, periodic image labels,
+effective graph, component anchors, final component-alignment policy, and
+quadratic success certificate. The method and backend are inspectable through
+`fit.solver`, `fit.linear_backend`, and the corresponding fields on
+`fit.solver_termination`. A degenerate fit that needs no component solve, such
+as an empty observation set or an all-zero-confidence model with only singleton
+components, reports `solver='none'`, `linear_backend=None`, and `n_iter=0`.
+When ADMM has completed iterations but final quadratic certification fails,
+`n_iter` retains the completed iteration count in the structured numerical
+failure result.
+
+The v0.8 migration is:
+
+| Removed call | Current call |
+|---|---|
+| `solver='auto'` | `solver='direct', linear_backend='dense'` |
+| `solver='analytic'` | `solver='direct', linear_backend='dense'` |
+| `solver='sparse'` | `solver='direct', linear_backend='sparse'` |
+| `solver='admm'` | `solver='admm', linear_backend='dense'` |
+
+The removed ADMM keywords `max_iter`, `rho`, `tol_abs`, and `tol_rel` become
+`admm_max_iter`, `admm_rho`, `admm_abs_tol`, and `admm_rel_tol`. The active-set
+wrapper uses the same names with a `fit_` prefix.
 
 The result contains:
 
@@ -262,7 +373,8 @@ The result contains:
 - `edge_diagnostics` with quantities such as `z_obs`, `z_fit`, and weighted
   difference-space inconsistency summaries,
 - `objective_breakdown` with mismatch, penalty, and regularization totals for
-  the packaged candidate weights,
+  the packaged candidate weights, plus `hard_max_violation` and the
+  scale-aware `hard_max_tolerance` used for hard-bound classification,
 - solver/termination metadata including optional `status_detail`,
 - and explicit infeasibility reporting for contradictory hard constraints.
 
@@ -311,7 +423,12 @@ print(identification.component_offsets_selected_by_objective)
 print(identification.component_alignment_policy)
 
 termination = fit.solver_termination
-print(termination.status, termination.backend, termination.converged)
+print(
+    termination.status,
+    termination.solver,
+    termination.linear_backend,
+    termination.converged,
+)
 ```
 
 The identification view always reports
@@ -359,7 +476,7 @@ The complete mapping is:
 | Observation-space fit | `fit.observation_view(observations)` | `measurement`, `target`, `predicted*`, `residuals`, residual summaries, `used_shifts`; confidence comes from `observations` |
 | Objective contributions | `fit.objective` | `objective_breakdown` |
 | Algebraic diagnostics | `fit.algebraic` | `edge_diagnostics`, `connectivity` |
-| Fixed-solver termination | `fit.solver_termination` | `status`, `status_detail`, `solver`, `n_iter`, `converged`, `hard_feasible`, `conflict`, `warnings` |
+| Fixed-solver termination | `fit.solver_termination` | `status`, `status_detail`, `solver`, `linear_backend`, `n_iter`, `converged`, `hard_feasible`, `conflict`, `warnings` |
 | Requested-image matching and realized geometry | `realized.requested_image_matching`, `realized.geometry` | all `RealizedPairDiagnostics` fields |
 | Experimental outer-loop termination and path | `result.outer_termination`, `result.path` | active-set termination fields, `active_mask`, `marginal_constraints`, `history`, `path_summary` |
 
@@ -447,7 +564,8 @@ components can change the complete realized tessellation.
 The current solver therefore chooses and reports a component-alignment policy:
 
 - the numerical decomposition follows a model-coupling mask that includes
-  positive-confidence rows and rows touched by hard restrictions or penalties;
+  positive-confidence rows and rows touched by hard restrictions or
+  positive-strength penalties;
 - without positive regularization or a supplied reference, disconnected
   model-coupling components are centered to mean zero;
 - if a zero-strength regularization reference is supplied, disconnected
@@ -465,6 +583,13 @@ bound offsets, and penalties or numerical conventions may choose a returned
 representative without guaranteeing a unique optimum. None of those values is
 information identified by disconnected separator observations. Inspect
 realization results when cross-component competition matters.
+
+The experimental active-set wrapper carries offsets from one iterate to the
+next only for true zero-L2 gauge components. Its final post-refit alignment is
+kept only when exact binary64-input checks prove that all within-component
+weight differences are unchanged. Positive L2 removes this gauge, so the final
+certified L2 solution is returned without alignment to the previous outer
+iterate.
 
 Connectivity is computed on the graph of **site unknowns**, not on a graph of
 periodic images. A periodic shift changes the geometry of one observation row
@@ -521,7 +646,7 @@ assert np.allclose(
 )
 assert np.allclose(A @ fit.weights, b)
 
-# Optional conversion; SciPy is also used by solver='sparse'.
+# Optional conversion; SciPy is also used by linear_backend='sparse'.
 try:
     B_sparse = graph.incidence_sparse(format='csc')
     L_obs_sparse = operator.observation_laplacian_sparse(format='csr')
@@ -540,9 +665,15 @@ those columns back to the resolved input indices, while
 The view names the two systems separately:
 
 $$
+\rho_r=c_r\alpha_r^2,
+\qquad
+q_r=c_r\alpha_r(y_r^{\mathrm{obs}}-\beta_r),
+$$
+
+$$
 L_{\mathrm{obs}}=B\operatorname{diag}(\rho)B^\mathsf{T},
 \qquad
-b_{\mathrm{obs}}=B(\rho z^{\mathrm{obs}}),
+b_{\mathrm{obs}}=Bq,
 $$
 
 and, for L2 strength $\lambda$ and reference $w^{\mathrm{ref}}$,
@@ -556,7 +687,9 @@ $$
 There is no extra factor of two. Zero-confidence rows stay in `B` and in all
 row-facing arrays, but their informative mask is false and `rho` is zero, so
 they add nothing to $L_{\mathrm{obs}}$ or $b_{\mathrm{obs}}$ and do not connect
-informative components.
+informative components. The implementation constructs $q$ directly with
+scale-safe products; `z_obs` remains diagnostic and is not required to be
+representable for a finite normal system.
 
 Without positive L2 regularization, the observation-Laplacian nullity is the
 number of informative components, including isolated sites. One common null
@@ -575,14 +708,16 @@ for large **static** geometries. It does not provide trajectory processing, MD
 frame reuse, prepared solvers across changing frames, parallel tessellation,
 GPU/distributed execution, or scalable all-pairs observation construction.
 
-The fixed normal system is available only for `SquaredLoss` with no scalar
-penalties. Huber mismatch and scalar-penalty models still expose
-`problem.observation_graph`, but `problem.quadratic_operator` raises
-`ValueError` rather than claiming to represent their full objective. Hard
-interval or equality restrictions may coexist with the quadratic view; they
-remain separately visible through `problem.bounds`, and
-`operator.normal_equations_characterize_fit` is false because a constrained
-optimum need not solve the unconstrained normal equation.
+The fixed normal system is available only for `SquaredLoss` with no
+positive-strength scalar penalties. Zero-strength penalties are absent, so
+they do not hide this view. Huber mismatch and positive-strength
+scalar-penalty models still expose `problem.observation_graph`, but
+`problem.quadratic_operator` raises `ValueError` rather than claiming to
+represent their full objective. Hard interval or equality restrictions may
+coexist with the quadratic view; they remain separately visible through
+`problem.bounds`, and `operator.normal_equations_characterize_fit` is false
+because a constrained optimum need not solve the unconstrained normal
+equation.
 
 ## Step 4: check geometric realization
 
@@ -662,6 +797,8 @@ result = separator.solve_self_consistent_power_weights(
         max_iter=25,
         cycle_window=8,
     ),
+    fit_solver='admm',
+    fit_linear_backend='dense',
     return_history=True,
     return_boundary_measure=True,
     return_tessellation_diagnostics=True,
@@ -779,7 +916,7 @@ These report bundles stay plain-Python and JSON-friendly. They are useful when
 a downstream package wants a complete diagnostic payload for logging, caching,
 or UI work without manually unpacking NumPy-heavy result objects.
 
-Existing report sections map to the same layers without changing report keys:
+Report sections map to the same scientific layers:
 
 | Report section | Layer |
 |---|---|
@@ -792,6 +929,13 @@ Existing report sections map to the same layers without changing report keys:
 | realized `records`, `unrealized` | requested-image matching |
 | realized `unaccounted_pairs`, `tessellation_diagnostics`, and optional values in `records` | realized geometry |
 | active-set `fit`, `realized`, `diagnostics`, `summary`, `history`, and `path_summary` | final inner fit, final realization, candidate diagnostics, outer termination, and active-set path |
+
+The exact fit `objective_breakdown` fields are `total`, `mismatch`,
+`penalties_total`, `penalty_terms`, `regularization`,
+`hard_constraints_satisfied`, `hard_max_violation`, and
+`hard_max_tolerance`. The last two are respectively the maximum raw violation
+and the maximum rowwise tolerance actually used, or zero when no hard bounds
+exist.
 
 To serialize them directly:
 
@@ -843,6 +987,14 @@ result = separator.build_power_fit_result(
 This keeps `fit_weights_from_separators(...)` solver-owned while giving downstream
 code a public export of the mathematics, prediction formulas, objective
 evaluation, and result packaging.
+
+The result builder rejects `status='optimal'` or `converged=True` when any
+reported soft-objective component or total is NaN or infinite. Native solver
+paths turn such outcomes into `status='numerical_failure'`. Direct
+`problem.evaluate_objective(...)` may still return positive infinity for hard
+infeasibility or a genuine extended-real objective. Failure of the optional
+direct ADMM warm start falls back to the reference or zero initialization and
+does not by itself end the solve.
 
 ## Current scope
 

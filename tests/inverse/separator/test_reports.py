@@ -2,6 +2,36 @@ import json
 import numpy as np
 
 
+def test_no_work_fit_report_records_no_solver_or_linear_backend():
+    from pyvoro2.inverse.separator import (
+        build_fit_report,
+        dumps_report_json,
+        fit_weights_from_separators,
+        resolve_separator_observations,
+    )
+
+    points = np.array([[0.0, 0.0], [1.0, 0.0]], dtype=float)
+    observations = resolve_separator_observations(
+        points,
+        [],
+        allow_empty=True,
+    )
+    fit = fit_weights_from_separators(
+        points,
+        observations,
+        solver='admm',
+        linear_backend='dense',
+    )
+
+    report = build_fit_report(fit, observations)
+    payload = json.loads(dumps_report_json(report))
+    assert report['summary']['solver'] == 'none'
+    assert report['summary']['linear_backend'] is None
+    assert report['summary']['n_iter'] == 0
+    assert payload['summary']['solver'] == 'none'
+    assert payload['summary']['linear_backend'] is None
+
+
 def test_fit_report_exports_nested_plain_python_payload():
     from pyvoro2 import Box
     from pyvoro2.inverse.separator import (
@@ -37,6 +67,8 @@ def test_fit_report_exports_nested_plain_python_payload():
 
     assert report['summary']['status'] == 'infeasible_hard_constraints'
     assert report['summary']['is_infeasible'] is True
+    assert report['summary']['solver'] == 'none'
+    assert report['summary']['linear_backend'] is None
     assert report['conflict'] is not None
     assert report['conflict']['constraint_indices'] == [0, 1, 2]
     assert report['constraints'][0]['site_i'] == 10
@@ -71,6 +103,7 @@ def test_active_set_report_collects_nested_diagnostics_and_history():
         constraints,
         domain=box,
         model=FitModel(feasible=Interval(0.0, 1.0)),
+        fit_solver='admm',
         options=ActiveSetOptions(max_iter=5),
         return_history=True,
         return_tessellation_diagnostics=True,
@@ -164,6 +197,7 @@ def test_active_set_report_supports_planar_tessellation_diagnostics() -> None:
         constraints,
         domain=box,
         model=FitModel(feasible=Interval(0.0, 1.0)),
+        fit_solver='admm',
         options=ActiveSetOptions(max_iter=5),
         return_tessellation_diagnostics=True,
     )
@@ -196,6 +230,8 @@ def test_fit_report_includes_edge_diagnostics_and_algebraic_rows():
 
     report = build_fit_report(fit, constraints, use_ids=True)
 
+    assert report['summary']['solver'] == 'direct'
+    assert report['summary']['linear_backend'] == 'dense'
     assert report['edge_diagnostics']['z_obs'] == [-2.0]
     assert report['edge_diagnostics']['z_fit'] == [-2.0]
     assert report['edge_diagnostics']['residual'] == [0.0]

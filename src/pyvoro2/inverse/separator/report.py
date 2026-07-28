@@ -244,6 +244,7 @@ def _objective_breakdown_record(
             breakdown.hard_constraints_satisfied
         ),
         'hard_max_violation': float(breakdown.hard_max_violation),
+        'hard_max_tolerance': float(breakdown.hard_max_tolerance),
     }
 
 
@@ -303,7 +304,8 @@ def build_fit_report(
             'is_optimal': bool(result.is_optimal),
             'is_infeasible': bool(result.is_infeasible),
             'hard_feasible': bool(termination.hard_feasible),
-            'solver': termination.backend,
+            'solver': termination.solver,
+            'linear_backend': termination.linear_backend,
             'measurement': result.measurement,
             'n_constraints': int(constraints.n_constraints),
             'n_points': int(constraints.n_points),

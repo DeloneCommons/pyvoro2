@@ -48,10 +48,57 @@ a compatibility-only route and was not removed.
 - Distribution metadata validation now discovers wheel and source archives in
   Python and passes explicit paths to Twine, avoiding shell-glob differences
   across platforms.
+- Separator squared mismatch and the quadratic Huber branch now share
+  `0.5 * residual**2`, while L2 regularization is
+  `0.5 * strength * ||weights - reference||**2`. The direct dense and sparse
+  normal system remains `L_obs + strength * I`, so ordinary squared-loss/L2
+  fitted weights are unchanged; reported mismatch/L2 values and previously
+  inconsistent ADMM relative scaling are corrected. Scale-safe evaluation now
+  preserves finite weighted objective values and the direct quadratic row
+  curvature/RHS when unweighted intermediates exceed binary64 range.
+- Reciprocal boundary penalties now use a finite convex tangent continuation
+  at and below `epsilon`. Zero-strength scalar penalties are exact no-ops for
+  evaluation, coupling, backend selection, and quadratic-operator
+  availability.
+- Hard-bound status uses one shared scale-aware float64 measurement predicate,
+  whose accepted interval is mapped into Bellman–Ford difference bounds
+  without applying the measurement tolerance in weight-difference units.
+  `PowerFitObjectiveBreakdown` and fit-report JSON add
+  `hard_max_tolerance`, while `hard_max_violation` remains the raw maximum
+  violation. ADMM success also requires final hard-row satisfaction.
+- Solver-produced successful results require finite reported soft-objective
+  components and totals. The public result builder rejects falsely successful
+  non-finite packaging, and a linear-algebra failure in the optional direct
+  ADMM warm start falls back to the existing safe initialization. Large finite
+  residual and convergence summaries use scale-safe reductions.
+- Final quadratic binary64 weights are certified after public gauge
+  canonicalization. Exact-zero proof checks source residuals exactly; every
+  nonzero direct or quadratic-ADMM candidate requires a conservative
+  source-gradient/singular-value forward objective-gap bound. Unsupported
+  output resolution produces structured `numerical_failure`. Bounded exact
+  helpers apply that same continuous-objective rule: coordinatewise rounding
+  of an exact optimum is not treated as a separate binary64-lattice
+  certificate, and helper size limits cannot change the meaning of `optimal`.
+- Solver method and linear backend are now separate. The default is
+  `solver='direct', linear_backend='dense'`; explicit ADMM executes whenever a
+  component solve is required, dense routes never import SciPy, and explicit
+  sparse routes require SciPy. No-work fits report `solver='none'` and
+  `linear_backend=None`. Active-set fitting forwards both selections, and
+  results and reports record them separately. Structured ADMM failures retain
+  completed iteration counts, including failure of final quadratic
+  certification. The prerelease values `auto`, `analytic`, and solver value
+  `sparse` and the old unprefixed ADMM keyword names are removed.
+- Final active-set refits align only true zero-L2 gauge components and only
+  when exact binary64-input checks prove that every within-component weight
+  difference is unchanged. Positive L2 solutions are no longer shifted toward
+  a previous outer iterate after certification.
 
-These are API-contract consistency corrections from issue #31. They do not
-change the forward tessellation algorithms, separator objective formulas,
-solver defaults, gauge policy, result fields, record keys, or report schemas.
+The first four corrections above are API-contract consistency work from issue
+#31 and do not change forward tessellation algorithms. The separator objective
+and schema corrections are the approved prerelease correctness work from issue
+#36. They add no legacy scaling mode, public tolerance option, dependency, or
+new numerical method. ADMM results can change where the earlier mismatch/L2
+relative scaling was inconsistent.
 
 ## Packaging and platform support
 

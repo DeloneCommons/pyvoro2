@@ -514,19 +514,30 @@ rows remain columns but have zero effective weight and do not connect the
 informative graph.
 
 The quadratic view is conservative: it is available for `SquaredLoss` with
-optional L2 regularization and no scalar penalties. Hard bounds remain separate
-and the view explicitly distinguishes an unconstrained normal equation from a
-constrained optimum. Huber mismatch and scalar-penalty models retain graph
-inspection but do not expose a misleading fixed normal system.
+optional L2 regularization and no positive-strength scalar penalties.
+Zero-strength penalties are mathematically absent and do not hide the view.
+Hard bounds remain separate and the view explicitly distinguishes an
+unconstrained normal equation from a constrained optimum. Huber mismatch and
+positive-strength scalar-penalty models retain graph inspection but do not
+expose a misleading fixed normal system.
 
-SciPy is imported only when sparse conversion or explicit sparse solving is
-requested and is not a runtime dependency. Issue #17 reuses the same quadratic
-operator for `solver='sparse'`, removes one gauge anchor per unregularized
-effective component, and performs a SciPy sparse-direct solve. The default
-`solver='auto'` remains dense; the current API deliberately has no automatic
-size threshold. Sparse execution is limited to the primary fixed-observation
-quadratic path and does not extend ADMM, the active-set outer loop, or dynamic
-workflows.
+[ADR 0007](decisions/0007-separator-objective-contract.md) fixes the common
+objective semantics used by direct evaluation, quadratic solves, ADMM,
+packaging, and reports: squared/Huber quadratic mismatch and L2 use the
+conventional half factors; reciprocal penalties use a finite tangent
+continuation; zero-strength penalties are absent; hard bounds use one shared
+scale-aware float64 tolerance; and successful solver results require finite
+reported soft objectives.
+
+SciPy is imported only when sparse conversion or
+`linear_backend='sparse'` is explicitly requested and is not a runtime
+dependency. The public solver method and linear backend are independent:
+`solver='direct'` performs the certified quadratic solve, while
+`solver='admm'` executes ADMM and uses the selected backend for its weight
+system and optional warm start. Dense means NumPy and never imports SciPy;
+sparse means SciPy. There is no automatic or site-count-based backend switch,
+and the active-set outer loop forwards both selections without changing its
+own semantics.
 
 ### Layered inverse result contract
 

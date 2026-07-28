@@ -43,6 +43,49 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Corrected and centralized the separator inverse objective contract:
+  squared mismatch and the Huber quadratic branch now use
+  `0.5 * residual**2`; L2 uses
+  `0.5 * strength * ||weights - reference||**2`; reciprocal boundary
+  penalties use a finite convex tangent continuation below `epsilon`; and
+  zero-strength penalties are exact no-ops across evaluation, coupling,
+  backend selection, and quadratic-operator availability. The existing direct
+  dense/sparse normal system and ordinary squared-loss/L2 fitted weights
+  remain unchanged, while inconsistent ADMM scaling is corrected. Weighted
+  mismatch/L2 values and quadratic row curvature/RHS construction now preserve
+  finite binary64 results without overflowing unweighted intermediates.
+- Hard separator restrictions now use a shared scale-aware float64
+  absolute-plus-relative measurement predicate. Its accepted interval is
+  mapped into difference constraints without reapplying measurement tolerance
+  to Bellman–Ford path values. Objective breakdowns and fit reports add
+  `hard_max_tolerance` while retaining raw `hard_max_violation`; ADMM success
+  additionally requires final hard-row satisfaction.
+- Non-finite reported soft objectives can no longer be packaged or returned as
+  optimal/converged solver results, and supported linear-algebra failure of
+  the optional direct ADMM warm start now falls back to the safe
+  reference/zero initialization. Residual and ADMM convergence summaries use
+  scale-safe norm, sum-of-squares, RMS, and mean-absolute reductions.
+- Completed universal certification of final quadratic binary64 weights after
+  public gauge canonicalization. Exact-zero proof now checks source residuals
+  exactly, and every nonzero direct or quadratic-ADMM candidate requires a
+  conservative source-gradient/singular-value forward-gap bound; an
+  uncertifiable candidate returns structured `numerical_failure`. Bounded
+  exact helpers use the same continuous-objective certificate rather than an
+  output-resolution floor or an unproved coordinatewise-rounding certificate,
+  so private helper thresholds cannot change the meaning of `optimal`.
+- Separated separator solver method from linear backend. The default is now
+  `solver='direct', linear_backend='dense'`; explicit ADMM really iterates
+  whenever a component solve is required, dense routes never import SciPy, and
+  sparse direct/ADMM routes require it. Results, termination views, and
+  fit-report JSON record `solver` and `linear_backend` separately; no-work fits
+  report `solver='none'` and `linear_backend=None`. ADMM numerical failures
+  retain completed iteration counts, including failures raised during final
+  quadratic certification. The prerelease values `auto`, `analytic`, and
+  solver value `sparse`, along with the old ADMM keyword names, are removed.
+- Active-set final refits no longer shift positive-L2 solutions toward the
+  previous outer iterate. Zero-L2 component alignment is retained only when
+  exact binary64-input checks prove that all within-component differences are
+  unchanged, preserving the low-level optimality certificate.
 - Separator external IDs and raw observation endpoints now enforce the
   documented non-negative integer contract consistently, accepting Python and
   NumPy integers while rejecting lossy float, string, and boolean conversions.

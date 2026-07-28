@@ -53,19 +53,21 @@ init-only reconstruction channel, not a public result field or user input.
 `SeparatorIdentificationView.unconstrained_sites` contains sites isolated in
 the informative observation graph, which contains only positive-confidence
 separator rows. Zero-confidence rows remain excluded even when hard
-restrictions or penalties affect them: those terms may constrain or bound
-component offsets, but they are not observational identification. Positive L2
-regularization is the only currently supported additional objective reported as
-guaranteed to select otherwise free component offsets. The compatibility
+restrictions or positive-strength penalties affect them: those terms may
+constrain or bound component offsets, but they are not observational
+identification. Positive L2 regularization is the only currently supported
+additional objective reported as guaranteed to select otherwise free component
+offsets. The compatibility
 diagnostic `ConnectivityDiagnostics.unconstrained_points` retains its
 established candidate-graph meaning.
 
 The historical `SeparatorFitProblem.offset_identifying_constraint_mask` name
 is preserved for compatibility. That mask includes rows touched by hard
-restrictions or penalties because the numerical solver must keep coupled
-variables in one subproblem; it does not define the informative observation
-graph or claim unique offset selection. Exact hard equalities may fix offsets,
-but the current identification view does not provide a general
+restrictions or positive-strength penalties because the numerical solver must
+keep coupled variables in one subproblem. Zero-strength penalties are absent
+and do not affect the mask. The mask does not define the informative
+observation graph or claim unique offset selection. Exact hard equalities may
+fix offsets, but the current identification view does not provide a general
 constraint-identifiability classification.
 
 `global_representation_shift` is a backend representation choice made by adding
@@ -102,10 +104,16 @@ The explicit operator names distinguish
 
 ```text
 L_obs = B @ diag(rho) @ B.T
-b_obs = B @ (rho * z_obs)
+rho_r = confidence_r * alpha_r**2
+q_r   = confidence_r * alpha_r * (target_r - beta_r)
+b_obs = B @ q
 A     = L_obs + regularization_strength * I
 b     = b_obs + regularization_strength * regularization_reference
 ```
+
+`rho_r` and `q_r` are constructed directly with scale-safe products.
+`z_obs` is retained for diagnostics but is not used to reconstruct `q_r`,
+because the normal system can be finite when the implied difference is not.
 
 Use `observation_laplacian_matvec(...)` and
 `regularized_normal_matvec(...)` for matrix-free application,
@@ -115,14 +123,23 @@ Use `observation_laplacian_matvec(...)` and
 lazily; requesting sparse conversion without it raises an actionable
 `ImportError`. Matrix conversion alone does not select a solver.
 
-The primary fixed quadratic fit additionally accepts `solver='sparse'` for an
-optional SciPy sparse-direct solve. `solver='auto'` and `solver='analytic'`
-retain the dense NumPy quadratic path; the current API does not choose a sparse
-backend automatically. `SeparatorFitResult.solver` and
-`SeparatorFitResult.solver_termination.backend` report the path actually
-selected. Sparse execution is limited to unconstrained `SquaredLoss` with
-optional L2 regularization and no scalar penalties. It is not exposed through
-the experimental active-set outer solver or other inverse branches.
+`fit_weights_from_separators(...)` separates numerical method from linear
+backend. `solver='direct'` is the default certified quadratic solve;
+`solver='admm'` executes ADMM whenever a component solve is required and is
+required for Huber mismatch, hard restrictions, or positive-strength scalar
+penalties.
+`linear_backend='dense'` uses NumPy without importing SciPy, while
+`linear_backend='sparse'` explicitly requires SciPy. There is no site-count
+backend switch. `SeparatorFitResult` and `solver_termination` report `solver`
+and `linear_backend` separately. If no component solver or internal matrix
+backend runs, a successful degenerate fit reports `solver='none'`,
+`linear_backend=None`, and `n_iter=0`. The experimental active-set outer
+solver forwards the same choices through its `fit_*` keyword parameters.
+For a structured ADMM numerical failure after completed iterations, `n_iter`
+retains that completed count, including failure of final quadratic
+certification. Quadratic `status='optimal'` always refers to the continuous
+source objective: exact helper thresholds and coordinatewise rounding of an
+exact optimum do not define a separate binary64-lattice success mode.
 
 `match_realized_pairs(...)` accepts exactly one of mathematical `weights=` or
 backend-compatible `radii=`. The weight-first route is preferred and uses the
@@ -130,13 +147,28 @@ same global representation conversion as forward `compute(...)`; the selected
 shift is not a scientific inverse result. Existing radius-based calls remain
 compatible.
 
-`quadratic_operator` is available only for `SquaredLoss` with no scalar
-penalties. Optional L2 regularization is represented exactly. Hard interval or
-equality restrictions may coexist, but remain in `problem.bounds`; when they
-are present, `normal_equations_characterize_fit` is false because a constrained
-optimum need not satisfy the unconstrained equation. Huber mismatch and models
-with scalar penalties retain `observation_graph` but reject
+`quadratic_operator` is available only for `SquaredLoss` with no
+positive-strength scalar penalties. Zero-strength penalties are exact no-ops
+and do not hide the operator. Optional L2 regularization is represented
+exactly. Hard interval or equality restrictions may coexist, but remain in
+`problem.bounds`; when they are present,
+`normal_equations_characterize_fit` is false because a constrained optimum
+need not satisfy the unconstrained equation. Huber mismatch and models with
+positive-strength scalar penalties retain `observation_graph` but reject
 `quadratic_operator`.
+
+The exact `PowerFitObjectiveBreakdown` fields are `total`, `mismatch`,
+`penalties_total`, `penalty_terms`, `regularization`,
+`hard_constraints_satisfied`, `hard_max_violation`, and
+`hard_max_tolerance`. Mismatch uses the documented squared/Huber half-factor
+convention, L2 is `0.5 * strength * ||weights - reference||**2`, and
+`hard_max_tolerance` is the maximum shared float64 absolute-plus-relative
+classification tolerance actually used, or zero without hard-bound rows.
+See the
+[separator-fitting guide](../../guide/powerfit.md#step-2-define-the-fitting-model)
+and
+[ADR 0007](../../development/decisions/0007-separator-objective-contract.md)
+for the complete formulas.
 
 ::: pyvoro2.inverse.separator
 :::

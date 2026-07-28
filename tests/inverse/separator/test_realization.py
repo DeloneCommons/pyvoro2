@@ -77,7 +77,7 @@ def test_match_realized_pairs_flags_unrealized_constraints():
         constraints,
         model=FitModel(feasible=Interval(0.0, 1.0)),
         solver='admm',
-        max_iter=5000,
+        admm_max_iter=5000,
     )
     diag = match_realized_pairs(
         pts,

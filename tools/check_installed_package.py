@@ -254,15 +254,22 @@ def _run_workflows(repository_root: Path) -> None:
     fit = inverse.fit_weights_from_separators(
         points2,
         [(0, 1, 0.25)],
+        solver='direct',
+        linear_backend='dense',
         connectivity_check='diagnose',
     )
     if fit.status != 'optimal':
         raise InstalledPackageCheckError(
             f'the inverse smoke workflow returned status {fit.status!r}'
         )
-    if fit.solver != 'analytic':
+    if fit.solver != 'direct':
         raise InstalledPackageCheckError(
-            f'the inverse smoke workflow used {fit.solver!r}, not the analytic path'
+            f'the inverse smoke workflow used {fit.solver!r}, not the direct method'
+        )
+    if fit.linear_backend != 'dense':
+        raise InstalledPackageCheckError(
+            'the inverse smoke workflow used '
+            f'{fit.linear_backend!r}, not the dense backend'
         )
     for field_name in ('weights', 'radii', 'predicted'):
         values = getattr(fit, field_name)
@@ -275,7 +282,7 @@ def _run_workflows(repository_root: Path) -> None:
     print('planar workflow: TessellationResult with 2 cells')
     print('periodic workflow: planar unit-cell coverage with image shifts')
     print('weight/radius transforms: public routes round-trip finite values')
-    print('inverse workflow: optimal analytic fit with finite values')
+    print('inverse workflow: optimal direct+dense fit with finite values')
 
 
 def main() -> int:

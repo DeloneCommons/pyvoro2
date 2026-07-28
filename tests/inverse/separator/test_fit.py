@@ -10,7 +10,8 @@ def test_fit_weights_from_separators_fraction_two_points_analytic():
 
     assert np.allclose(res.weights[0] - res.weights[1], -2.0, atol=1e-10)
     assert np.allclose(res.predicted[0], 0.25, atol=1e-10)
-    assert res.solver == 'analytic'
+    assert res.solver == 'direct'
+    assert res.linear_backend == 'dense'
     assert res.status == 'optimal'
 
 
@@ -68,14 +69,18 @@ def test_fit_weights_from_separators_fraction_hard_interval_clips_prediction():
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     res = fit_weights_from_separators(
         pts,
-        [(0, 1, -0.2)],
+        [(0, 1, -0.25)],
         measurement='fraction',
         model=FitModel(feasible=Interval(0.0, 1.0)),
         solver='admm',
-        max_iter=5000,
+        admm_max_iter=5000,
     )
 
-    assert 0.0 <= res.predicted[0] <= 1.0
+    assert res.objective_breakdown.hard_constraints_satisfied is True
+    assert (
+        res.objective_breakdown.hard_max_violation
+        <= res.objective_breakdown.hard_max_tolerance
+    )
     assert np.allclose(res.predicted[0], 0.0, atol=1e-5)
 
 
@@ -118,16 +123,16 @@ def test_soft_interval_penalty_prefers_inside_interval():
 
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
 
-    res0 = fit_weights_from_separators(pts, [(0, 1, -0.2)], measurement='fraction')
-    assert np.allclose(res0.predicted[0], -0.2, atol=1e-10)
+    res0 = fit_weights_from_separators(pts, [(0, 1, -0.25)], measurement='fraction')
+    assert np.allclose(res0.predicted[0], -0.25, atol=1e-10)
 
     res = fit_weights_from_separators(
         pts,
-        [(0, 1, -0.2)],
+        [(0, 1, -0.25)],
         measurement='fraction',
         model=FitModel(penalties=(SoftIntervalPenalty(0.0, 1.0, 100.0),)),
         solver='admm',
-        max_iter=5000,
+        admm_max_iter=5000,
     )
 
     assert res.predicted[0] > res0.predicted[0]
@@ -149,7 +154,7 @@ def test_exponential_boundary_penalty_pushes_away_from_boundary():
         measurement='fraction',
         model=FitModel(feasible=Interval(0.0, 1.0)),
         solver='admm',
-        max_iter=5000,
+        admm_max_iter=5000,
     )
 
     res_repulse = fit_weights_from_separators(
@@ -169,7 +174,7 @@ def test_exponential_boundary_penalty_pushes_away_from_boundary():
             ),
         ),
         solver='admm',
-        max_iter=8000,
+        admm_max_iter=8000,
     )
 
     assert res_repulse.predicted[0] >= res_hard.predicted[0] - 1e-6
@@ -228,7 +233,7 @@ def test_huber_loss_is_available_as_an_alternative_mismatch():
         measurement='fraction',
         model=FitModel(mismatch=HuberLoss(delta=0.1)),
         solver='admm',
-        max_iter=5000,
+        admm_max_iter=5000,
     )
 
     assert res.status == 'optimal'

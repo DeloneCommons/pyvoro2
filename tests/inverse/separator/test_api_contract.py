@@ -6,6 +6,7 @@ from dataclasses import fields
 import inspect
 
 import numpy as np
+import pytest
 
 import pyvoro2 as pv
 import pyvoro2.planar as pv2
@@ -346,17 +347,19 @@ def test_inverse_entrypoint_signatures_and_defaults_are_characterized() -> None:
         ('model', None),
         ('r_min', 0.0),
         ('weight_shift', None),
-        ('solver', 'auto'),
-        ('max_iter', 2000),
-        ('rho', 1.0),
-        ('tol_abs', 1e-6),
-        ('tol_rel', 1e-5),
+        ('solver', 'direct'),
+        ('linear_backend', 'dense'),
+        ('admm_max_iter', 2000),
+        ('admm_rho', 1.0),
+        ('admm_abs_tol', 1e-6),
+        ('admm_rel_tol', 1e-5),
         ('connectivity_check', 'warn'),
     )
     assert _parameter_defaults(separator.build_power_fit_result) == (
         ('problem', REQUIRED),
         ('weights', REQUIRED),
         ('solver', 'external'),
+        ('linear_backend', None),
         ('status', 'optimal'),
         ('status_detail', None),
         ('converged', True),
@@ -395,11 +398,12 @@ def test_inverse_entrypoint_signatures_and_defaults_are_characterized() -> None:
         ('options', None),
         ('r_min', 0.0),
         ('weight_shift', None),
-        ('fit_solver', 'auto'),
-        ('fit_max_iter', 2000),
-        ('fit_rho', 1.0),
-        ('fit_tol_abs', 1e-6),
-        ('fit_tol_rel', 1e-5),
+        ('fit_solver', 'direct'),
+        ('fit_linear_backend', 'dense'),
+        ('fit_admm_max_iter', 2000),
+        ('fit_admm_rho', 1.0),
+        ('fit_admm_abs_tol', 1e-6),
+        ('fit_admm_rel_tol', 1e-5),
         ('return_history', False),
         ('return_cells', False),
         ('return_boundary_measure', False),
@@ -408,6 +412,26 @@ def test_inverse_entrypoint_signatures_and_defaults_are_characterized() -> None:
         ('connectivity_check', 'warn'),
         ('unaccounted_pair_check', 'warn'),
     )
+
+
+def test_removed_solver_values_and_admm_keyword_names_are_rejected() -> None:
+    points = np.array([[0.0, 0.0], [1.0, 0.0]])
+    rows = [(0, 1, 0.25)]
+
+    for removed in ('auto', 'analytic', 'sparse'):
+        with pytest.raises(ValueError, match='direct.*admm'):
+            separator.fit_weights_from_separators(
+                points,
+                rows,
+                solver=removed,
+            )
+    for removed_keyword in ('max_iter', 'rho', 'tol_abs', 'tol_rel'):
+        with pytest.raises(TypeError, match=removed_keyword):
+            separator.fit_weights_from_separators(
+                points,
+                rows,
+                **{removed_keyword: 1},
+            )
 
 
 def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
@@ -839,6 +863,7 @@ def test_public_inverse_result_fields_are_characterized() -> None:
         'converged',
         'conflict',
         'warnings',
+        'linear_backend',
         'status_detail',
         'connectivity',
         'edge_diagnostics',
@@ -929,6 +954,7 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
                 'regularization',
                 'hard_constraints_satisfied',
                 'hard_max_violation',
+                'hard_max_tolerance',
             ),
         ),
         (
@@ -1157,6 +1183,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
         'is_infeasible',
         'hard_feasible',
         'solver',
+        'linear_backend',
         'measurement',
         'n_constraints',
         'n_points',

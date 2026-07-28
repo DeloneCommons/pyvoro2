@@ -51,7 +51,7 @@ def test_feasible_fit_has_no_conflict_witness():
         measurement='fraction',
         model=FitModel(feasible=Interval(0.0, 1.0)),
         solver='admm',
-        max_iter=2000,
+        admm_max_iter=2000,
     )
 
     assert res.status in {'optimal', 'max_iter'}

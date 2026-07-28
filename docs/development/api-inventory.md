@@ -9,8 +9,10 @@
 - **Policy:** [API lifecycle and compatibility](api-lifecycle.md)
 - **Plan:** [active v0.8 development plan](plans/v0.8.md)
 - **Decisions:** [ADR 0004](decisions/0004-canonical-inverse-namespace.md),
-  [ADR 0005](decisions/0005-tessellation-result-contract.md), and
-  [ADR 0006](decisions/0006-v0.8-cleanup-release.md)
+  [ADR 0005](decisions/0005-tessellation-result-contract.md),
+  [ADR 0006](decisions/0006-v0.8-cleanup-release.md),
+  [ADR 0007](decisions/0007-separator-objective-contract.md), and
+  [ADR 0008](decisions/0008-separator-solver-and-linear-backend.md)
 
 This inventory is the authoritative v0.8 lifecycle contract for public imports,
 return routes, record schemas, defaults, and scientific semantics. It has been
@@ -536,17 +538,19 @@ the v0.8 namespace:
 |---|---|
 | `SeparatorObservations` (historical `PairBisectorConstraints`) | `n_points`, `i`, `j`, `shifts`, `target`, `confidence`, `measurement`, `distance`, `distance2`, `delta`, `target_fraction`, `target_position`, `input_index`, `explicit_shift`, `ids`, `warnings` |
 | `SeparatorFitProblem` (historical `PowerFitProblem`) | `constraints`, `model`, `alpha`, `beta`, `z_obs`, `edge_weight`, `regularization_strength`, `regularization_reference`, `offset_identifying_constraint_mask`, `bounds`, `connectivity`, `hard_feasible`, `hard_conflict` |
-| `SeparatorFitResult` (historical `PowerWeightFitResult`) | `status`, `hard_feasible`, `weights`, `radii`, `weight_shift`, `measurement`, `target`, `predicted`, `predicted_fraction`, `predicted_position`, `residuals`, `rms_residual`, `max_residual`, `used_shifts`, `solver`, `n_iter`, `converged`, `conflict`, `warnings`, `status_detail`, `connectivity`, `edge_diagnostics`, `objective_breakdown` |
+| `SeparatorFitResult` (historical `PowerWeightFitResult`) | `status`, `hard_feasible`, `weights`, `radii`, `weight_shift`, `measurement`, `target`, `predicted`, `predicted_fraction`, `predicted_position`, `residuals`, `rms_residual`, `max_residual`, `used_shifts`, `solver`, `n_iter`, `converged`, `conflict`, `warnings`, `linear_backend`, `status_detail`, `connectivity`, `edge_diagnostics`, `objective_breakdown` |
 | `RealizedPairDiagnostics` | `realized`, `unrealized`, `realized_same_shift`, `realized_other_shift`, `realized_shifts`, `endpoint_i_empty`, `endpoint_j_empty`, `boundary_measure`, `cells`, `tessellation_diagnostics`, `unaccounted_pairs`, `warnings` |
 | `PairConstraintDiagnostics` | `site_i`, `site_j`, `shift`, `target`, `confidence`, `predicted`, `predicted_fraction`, `predicted_position`, `residuals`, `active`, `realized`, `realized_same_shift`, `realized_other_shift`, `realized_shifts`, `endpoint_i_empty`, `endpoint_j_empty`, `boundary_measure`, `toggle_count`, `realized_toggle_count`, `first_realized_iter`, `last_realized_iter`, `marginal`, `status` |
 | `SelfConsistentPowerFitResult` | `constraints`, `fit`, `realized`, `diagnostics`, `active_mask`, `n_outer_iter`, `converged`, `termination`, `cycle_length`, `marginal_constraints`, `rms_residual_all`, `max_residual_all`, `tessellation_diagnostics`, `history`, `path_summary`, `warnings`, `connectivity` |
 
 `SeparatorFitProblem.offset_identifying_constraint_mask` retains its historical
-field name and values for numerical compatibility. It is the model-coupling
-mask used to decompose solver subproblems: positive-confidence rows are
-included, and hard restrictions or penalties make their affected rows part of
-the same numerical subproblem. It is not the informative observation mask and
-does not claim data identification or unique objective selection.
+field name. It is the model-coupling mask used to decompose solver subproblems:
+positive-confidence rows are
+included, and hard restrictions or positive-strength penalties make their
+affected rows part of the same numerical subproblem. Zero-strength penalties
+are mathematically absent and do not affect this mask. It is not the
+informative observation mask and does not claim data identification or unique
+objective selection.
 
 Supporting fields are exact as follows:
 
@@ -554,7 +558,8 @@ Supporting fields are exact as follows:
 |---|---|
 | `PowerFitBounds` | `measurement_lower`, `measurement_upper`, `difference_lower`, `difference_upper` |
 | `PowerFitPredictions` | `difference`, `fraction`, `position`, `measurement` |
-| `PowerFitObjectiveBreakdown` | `total`, `mismatch`, `penalties_total`, `penalty_terms`, `regularization`, `hard_constraints_satisfied`, `hard_max_violation` |
+| `PowerFitObjectiveBreakdown` | `total`, `mismatch`, `penalties_total`, `penalty_terms`, `regularization`, `hard_constraints_satisfied`, `hard_max_violation`, `hard_max_tolerance` |
+| `SeparatorSolverTerminationView` | `status`, `status_detail`, `solver`, `linear_backend`, `n_iter`, `converged`, `hard_feasible`, `conflict`, `warnings` |
 | `AlgebraicEdgeDiagnostics` | `alpha`, `beta`, `z_obs`, `z_fit`, `residual`, `edge_weight`, `weighted_l2`, `weighted_rmse`, `rmse`, `mae` |
 | `ConstraintGraphDiagnostics` | `n_points`, `n_constraints`, `n_edges`, `isolated_points`, `connected_components`, `fully_connected`; property `n_components` |
 | `ConnectivityDiagnostics` | `unconstrained_points`, `candidate_graph`, `effective_graph`, `active_graph=None`, `active_effective_graph=None`, `candidate_offsets_identified_by_data=False`, `active_offsets_identified_by_data=None`, `offsets_identified_in_objective=False`, `gauge_policy=''`, `messages=()` |
@@ -581,7 +586,7 @@ provisional, non-copying access paths:
 | Observations | `SeparatorFitResult.observation_view(observations)` | measurement targets, confidence from the supplied resolved observations, predictions in all existing forms, residuals/summaries, and requested shifts; the supplied set must be the originating or a fully equivalent resolved set |
 | Objective | `SeparatorFitResult.objective` | existing `objective_breakdown` object |
 | Algebraic diagnostics | `SeparatorFitResult.algebraic` | existing `edge_diagnostics` and `connectivity` objects; no graph-operator representation |
-| Fixed solver termination | `SeparatorFitResult.solver_termination` | status/detail, backend, iterations, convergence, hard feasibility, conflict, and warnings |
+| Fixed solver termination | `SeparatorFitResult.solver_termination` | status/detail, solver method, linear backend, iterations, convergence, hard feasibility, conflict, and warnings |
 | Requested-image matching | `RealizedPairDiagnostics.requested_image_matching` | any/same-shift/other-shift realization, realized shifts, and unrealized indices |
 | Realized geometry | `RealizedPairDiagnostics.geometry` | empty endpoints, optional boundary measure/cells/tessellation diagnostics, unaccounted pairs, and warnings |
 | Active-set organization | `SelfConsistentPowerFitResult.inner_fit`, `.final_realization`, `.candidate_diagnostics`, `.outer_termination`, `.path` | existing final objects, outer termination, active mask, marginals, history, and path summary |
@@ -592,23 +597,26 @@ two provisional computed properties:
 | Mathematical layer | Access path | Contract |
 |---|---|---|
 | Observation multigraph | `SeparatorFitProblem.observation_graph` | `SeparatorObservationGraphView` with site count, distinct observation rows, oriented endpoints, input indices, requested shifts, shared `alpha`, `beta`, `z_obs`, and `rho` arrays, a positive-confidence informative mask, existing connectivity, and dense/optional-SciPy incidence conversion |
-| Quadratic normal operator | `SeparatorFitProblem.quadratic_operator` | `SeparatorQuadraticOperatorView` with matrix-free and dense/optional-SciPy observation Laplacian and L2-regularized normal operators, `observation_rhs`, `regularized_normal_rhs`, regularization data, hard-bound metadata, and component/nullity interpretation |
+| Quadratic normal operator | `SeparatorFitProblem.quadratic_operator` | `SeparatorQuadraticOperatorView` with matrix-free and dense/optional-SciPy observation Laplacian and L2-regularized normal operators, scale-safe direct `observation_rhs = B @ q` for `q_r = confidence_r * alpha_r * (target_r - beta_r)`, `regularized_normal_rhs`, regularization data, hard-bound metadata, and component/nullity interpretation |
 
 The incidence matrix has shape `(n_sites, n_observations)` and column `r`
 equal to `+1` at `site_i[r]` and `-1` at `site_j[r]`. Every resolved row is a
 column, including repeats, periodic parallel observations, and zero-confidence
 rows. The latter have `informative_mask[r] == False` and `rho[r] == 0`, so they
 do not connect informative components or contribute to the observation
-Laplacian and right-hand side.
+Laplacian and right-hand side. `z_obs` remains diagnostic and is not required
+to reconstruct a finite normal RHS.
 
-The quadratic view is available only for `SquaredLoss` with no scalar
-penalties. Optional L2 regularization is included exactly. Hard interval or
-equality restrictions may coexist but remain visible through `problem.bounds`;
-the view reports that unconstrained normal equations do not characterize a
-constrained fit in general. Huber mismatch and models with scalar penalties
-retain the graph view but reject `quadratic_operator` rather than presenting a
-partial system as the full objective. Sparse conversion imports SciPy lazily;
-SciPy is neither a runtime dependency nor a solver backend in issue #14.
+The quadratic view is available only for `SquaredLoss` with no
+positive-strength scalar penalties. Zero-strength penalties are absent and do
+not hide the view. Optional L2 regularization is included exactly. Hard
+interval or equality restrictions may coexist but remain visible through
+`problem.bounds`; the view reports that unconstrained normal equations do not
+characterize a constrained fit in general. Huber mismatch and models with
+positive-strength scalar penalties retain the graph view but reject
+`quadratic_operator` rather than presenting a partial system as the full
+objective. Sparse conversion imports SciPy lazily; SciPy is neither a runtime
+dependency nor a solver backend in issue #14.
 
 The canonical `component_alignment_policy` view value is the same stored string
 as compatibility-facing `ConnectivityDiagnostics.gauge_policy`; only the access
@@ -635,10 +643,11 @@ survives shallow and deep copying, pickle round trips, and
 than an additional public dataclass field. To let `dataclasses.replace(...)`
 carry it, `inspect.signature(SeparatorFitResult)` includes the optional private
 keyword-only parameter `_originating_observations_init=None`; every established
-public parameter, default, positional call, and `dataclasses.fields(...)` entry
-is unchanged. Results constructed directly through the existing public field
-arguments, without that association, cannot safely combine unknown observation
-metadata with fitted predictions, so the accessor raises `ValueError`.
+public parameter, default, and positional call was unchanged by issue #13.
+Issue #36 subsequently adds the defaulted `linear_backend` dataclass field.
+Results constructed directly through the existing public field arguments,
+without that association, cannot safely combine unknown observation metadata
+with fitted predictions, so the accessor raises `ValueError`.
 
 The generated reference also documents these result/problem conveniences:
 
@@ -687,13 +696,15 @@ identification.
 
 | Report | Exact top-level keys | Exact summary keys |
 |---|---|---|
-| fit | `kind`, `summary`, `constraints`, `fit_records`, `edge_diagnostics`, `objective_breakdown`, `weights`, `radii`, `weight_shift`, `used_shifts`, `warnings`, `conflict`, `connectivity` | `status`, `is_optimal`, `is_infeasible`, `hard_feasible`, `solver`, `measurement`, `n_constraints`, `n_points`, `converged`, `status_detail`, `n_iter`, `rms_residual`, `max_residual`, `conflicting_constraint_indices` |
+| fit | `kind`, `summary`, `constraints`, `fit_records`, `edge_diagnostics`, `objective_breakdown`, `weights`, `radii`, `weight_shift`, `used_shifts`, `warnings`, `conflict`, `connectivity` | `status`, `is_optimal`, `is_infeasible`, `hard_feasible`, `solver`, `linear_backend`, `measurement`, `n_constraints`, `n_points`, `converged`, `status_detail`, `n_iter`, `rms_residual`, `max_residual`, `conflicting_constraint_indices` |
 | realized | `kind`, `summary`, `records`, `unrealized`, `unaccounted_pairs`, `warnings`, `tessellation_diagnostics` | `n_constraints`, `n_realized`, `n_same_shift`, `n_other_shift`, `n_unrealized`, `n_unaccounted_pairs` |
 | active set | `kind`, `summary`, `constraints`, `fit`, `realized`, `diagnostics`, `marginal_records`, `history`, `path_summary`, `tessellation_diagnostics`, `warnings`, `connectivity` | `termination`, `converged`, `n_outer_iter`, `cycle_length`, `n_constraints`, `n_active_final`, `n_realized_final`, `rms_residual_all`, `max_residual_all`, `marginal_constraint_indices` |
 
 Nested fit `edge_diagnostics` uses the fields of
 `AlgebraicEdgeDiagnostics`; `objective_breakdown` uses the fields of
-`PowerFitObjectiveBreakdown`. Connectivity records contain
+`PowerFitObjectiveBreakdown`: `total`, `mismatch`, `penalties_total`,
+`penalty_terms`, `regularization`, `hard_constraints_satisfied`,
+`hard_max_violation`, and `hard_max_tolerance`. Connectivity records contain
 `unconstrained_points`, candidate/effective/active graph records, both
 data-identification flags, `offsets_identified_in_objective`, `gauge_policy`,
 and `messages`. Graph records contain `n_points`, `n_constraints`, `n_edges`,
@@ -718,6 +729,9 @@ unaccounted pairs, optional record geometry, and tessellation diagnostics
 describe realized geometry. Active `fit`, `realized`, `diagnostics`, `summary`,
 `history`, and `path_summary` describe the final inner fit, final realization,
 per-candidate diagnostics, outer termination, and active-set path.
+Issue #36 subsequently adds the approved nested
+`objective_breakdown.hard_max_tolerance` key and separates the fit-summary
+`solver` and `linear_backend` fields.
 
 ### Historical calls exercised by repository examples
 
@@ -886,8 +900,9 @@ resolve_separator_observations(
 fit_weights_from_separators(
     points, constraints, *, measurement='fraction', domain=None, ids=None,
     index_mode='index', image='nearest', image_search=1, confidence=None,
-    model=None, r_min=0.0, weight_shift=None, solver='auto',
-    max_iter=2000, rho=1.0, tol_abs=1e-6, tol_rel=1e-5,
+    model=None, r_min=0.0, weight_shift=None, solver='direct',
+    linear_backend='dense', admm_max_iter=2000, admm_rho=1.0,
+    admm_abs_tol=1e-6, admm_rel_tol=1e-5,
     connectivity_check='warn',
 )
 
@@ -900,7 +915,8 @@ The principal advanced calls are:
 ```text
 build_power_fit_problem(constraints, *, model=None)
 build_power_fit_result(
-    problem, weights, *, solver='external', status='optimal',
+    problem, weights, *, solver='external', linear_backend=None,
+    status='optimal',
     status_detail=None, converged=True, n_iter=0, warnings=(),
     canonicalize_gauge=True, r_min=0.0, weight_shift=None,
 )
@@ -914,8 +930,9 @@ solve_self_consistent_power_weights(
     points, constraints, *, measurement='fraction', domain, ids=None,
     index_mode='index', image='nearest', image_search=1, confidence=None,
     model=None, active0=None, options=None, r_min=0.0, weight_shift=None,
-    fit_solver='auto', fit_max_iter=2000, fit_rho=1.0,
-    fit_tol_abs=1e-6, fit_tol_rel=1e-5,
+    fit_solver='direct', fit_linear_backend='dense',
+    fit_admm_max_iter=2000, fit_admm_rho=1.0,
+    fit_admm_abs_tol=1e-6, fit_admm_rel_tol=1e-5,
     return_history=False, return_cells=False,
     return_boundary_measure=False, return_tessellation_diagnostics=False,
     tessellation_check='diagnose', connectivity_check='warn',
@@ -924,16 +941,21 @@ solve_self_consistent_power_weights(
 ```
 
 `match_realized_pairs(...)` requires exactly one of `weights=` and `radii=`.
-The active-set `fit_solver` accepts `auto`, `analytic`, or `admm`; it does not
-expose the separate static sparse solver branch. Report helper defaults and
-the objective/model/active-set constructor defaults are exactly those listed
-in the retained constructor table above.
+The active-set wrapper forwards the same method and linear-backend choices
+through the `fit_*` parameters. Report helper defaults and the
+objective/model/active-set constructor defaults are exactly those listed in
+the retained constructor table above.
 
-SciPy is optional. `solver='auto'` remains dense and never imports SciPy by
-policy. Explicit `solver='sparse'` and explicit sparse matrix conversion import
-SciPy lazily and raise an actionable `ImportError` when it is absent. Sparse
-solving is provisional and limited to the static unconstrained squared-loss
-branch with optional L2 regularization and no scalar penalties.
+SciPy is optional. `linear_backend='dense'` uses NumPy and never imports SciPy.
+Explicit `linear_backend='sparse'` and explicit sparse matrix conversion import
+SciPy lazily and raise an actionable `ImportError` when it is absent. There is
+no site-count backend selection. Direct solving accepts only purely quadratic
+models; ADMM is required for Huber mismatch, hard restrictions, and active
+scalar penalties, and explicit ADMM also executes for a quadratic model
+whenever a component solve is required.
+Degenerate fits that need no component solve, including empty observation sets
+and models with only singleton components, report `solver='none'`,
+`linear_backend=None`, and `n_iter=0`.
 
 ## Accepted v0.8 contract decisions
 
@@ -947,11 +969,18 @@ The following boundaries are already accepted:
   `pyvoro2.TessellationResult` by default;
 - `output='cells'` is the explicit supported raw-output route;
 - `TessellationResult` is the only planar structured-result name;
-- deep immutability of nested raw records is not part of the contract.
+- deep immutability of nested raw records is not part of the contract;
+- squared mismatch, quadratic Huber mismatch, and L2 regularization use the
+  accepted half-factor objective convention;
+- zero-strength scalar penalties are absent, hard bounds use the shared
+  float64 scale-aware tolerance, and successful solver results have finite
+  reported soft objectives.
 
 See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 [ADR 0005](decisions/0005-tessellation-result-contract.md), as refined by
-[ADR 0006](decisions/0006-v0.8-cleanup-release.md).
+[ADR 0006](decisions/0006-v0.8-cleanup-release.md), together with
+[ADR 0007](decisions/0007-separator-objective-contract.md) and
+[ADR 0008](decisions/0008-separator-solver-and-linear-backend.md).
 
 ## Lifecycle summary for the v0.8 API
 
@@ -965,7 +994,7 @@ See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 | `pyvoro2.inverse` preferred high-level separator workflow | Stable | Validated normal observations/fit entry point for applications and chemvoro-shaped workflows. |
 | `pyvoro2.inverse.separator` advanced problem and operator views | Provisional | Public for research use, but may evolve before v0.9 prescribed measures and v0.10 mixed problems. |
 | Realization-aware active-set API | Experimental | Practical outer algorithm; no universal convergence claim. |
-| Optional sparse quadratic backend | Provisional | Explicit `solver='sparse'` is validated for the primary static quadratic fit; `auto` remains dense and unsupported branches reject sparse selection. |
+| Optional sparse linear backend | Provisional | Explicit `linear_backend='sparse'` supports direct quadratic solving and ADMM weight systems; it requires SciPy and is never selected by site count. |
 | v0.7-only inverse and planar transition routes | Removed | Ordinary import, attribute, or argument failure; replacements are in the migration guide. |
 | `pyvoro2._internal`, native extensions, and solver-internal modules | Internal | No compatibility guarantee; `_internal` has no package-level convenience exports. |
 
@@ -1224,14 +1253,36 @@ The accepted provisional advanced surfaces include:
 - layered fixed-fit and realization views that reference existing result data;
 - realization matching and record/report builders.
 
+Issue #36 freezes the separator objective semantics. For
+`e = beta + alpha * (w_i - w_j) - target`, squared loss is
+`0.5 * e**2`; Huber loss is `0.5 * e**2` for `abs(e) <= delta` and
+`delta * (abs(e) - 0.5 * delta)` otherwise. Confidence multiplies only
+mismatch. L2 is
+`0.5 * strength * ||weights - reference||**2`, so the normal system remains
+`A = L_obs + strength * I` and
+`b = b_obs + strength * reference`.
+
+Soft-interval and exponential strengths retain their existing meanings.
+For reciprocal inward distance `d`, the contribution is zero for
+`d >= margin`, `strength * (1 / d - 1 / margin)` for
+`epsilon < d < margin`, and
+`strength * ((1 / epsilon - 1 / margin)
+- (d - epsilon) / epsilon**2)` for `d <= epsilon`; lower and upper
+contributions are summed. Zero-strength penalties are exact no-ops. Hard rows
+use
+`1e-12 + 64 * finfo(float64).eps * max(abs(lower), abs(prediction),
+abs(upper))`, and successful solver results require finite reported
+soft-objective components and totals. ADR 0007 records the derivative,
+continuation, and compatibility rationale.
+
 The realization matcher accepts weight-first and radius-representation inputs
 as mutually exclusive current routes. New workflows use fitted mathematical
 weights; direct radii remain a supported advanced representation input.
 
 The active-set outer workflow and its path/result types remain **experimental**.
-The explicit SciPy sparse quadratic backend is **provisional**: it is supported
-for large static sparse quadratic graphs but does not extend to Huber, hard,
-penalty, or active-set branches.
+The explicit SciPy sparse linear backend is **provisional**. It supports direct
+quadratic solving and ADMM weight systems, including active-set forwarding,
+without changing the solver method.
 
 During v0.7, `pyvoro2.powerfit.__all__` remained the exact 42-name historical
 list recorded in the v0.6.3 baseline section. It did not export the canonical
@@ -1418,6 +1469,15 @@ The following are API even when no dedicated Python class represents them:
   the informative observation graph; hard restrictions and penalties may
   constrain their predicted values but remain separate from data
   identification;
+- row confidence multiplies only separator mismatch; squared mismatch and the
+  Huber quadratic branch are `0.5 * residual**2`, while L2 regularization is
+  `0.5 * strength * ||weights - reference||**2`;
+- zero-strength scalar penalties do not affect objective values, coupling,
+  backend selection, or quadratic-operator availability;
+- `hard_max_violation` is a raw violation and `hard_max_tolerance` records the
+  maximum shared absolute-plus-relative float64 tolerance used;
+- optimal or converged solver results have finite reported soft-objective
+  components and totals;
 - algebraic fit does not imply realized-boundary support;
 - empty/hidden cells are represented deterministically according to the chosen
   output route;

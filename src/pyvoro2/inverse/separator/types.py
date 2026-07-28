@@ -164,6 +164,13 @@ class PowerFitPredictions:
 
 @dataclass(frozen=True, slots=True)
 class PowerFitObjectiveBreakdown:
+    """Reported soft-objective terms and hard-bound classification.
+
+    ``hard_max_violation`` is the maximum raw rowwise violation.
+    ``hard_max_tolerance`` is the maximum absolute-plus-relative tolerance
+    used to classify hard bounds, or zero when no hard-bound row exists.
+    """
+
     total: float
     mismatch: float
     penalties_total: float
@@ -171,6 +178,7 @@ class PowerFitObjectiveBreakdown:
     regularization: float
     hard_constraints_satisfied: bool
     hard_max_violation: float
+    hard_max_tolerance: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -315,7 +323,8 @@ class SeparatorSolverTerminationView:
 
     status: str
     status_detail: str | None
-    backend: str
+    solver: str
+    linear_backend: str | None
     n_iter: int
     converged: bool
     hard_feasible: bool
@@ -414,6 +423,7 @@ class SeparatorFitResult(_ObservationBoundResult):
     converged: bool
     conflict: HardConstraintConflict | None
     warnings: tuple[str, ...]
+    linear_backend: str | None = None
     status_detail: str | None = None
     connectivity: ConnectivityDiagnostics | None = None
     edge_diagnostics: AlgebraicEdgeDiagnostics | None = None
@@ -587,7 +597,8 @@ class SeparatorFitResult(_ObservationBoundResult):
         return SeparatorSolverTerminationView(
             status=self.status,
             status_detail=self.status_detail,
-            backend=self.solver,
+            solver=self.solver,
+            linear_backend=self.linear_backend,
             n_iter=self.n_iter,
             converged=self.converged,
             hard_feasible=self.hard_feasible,

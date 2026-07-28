@@ -6,6 +6,11 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ._numerics import (
+    _stable_incidence_accumulate,
+    _stable_scaled_difference,
+    _stable_sum_products,
+)
 from .types import ConnectivityDiagnostics, ConstraintGraphDiagnostics, PowerFitBounds
 
 
@@ -154,10 +159,12 @@ class SeparatorQuadraticOperatorView:
 
     Obtain this provisional view from
     :attr:`SeparatorFitProblem.quadratic_operator`.  It is available only for
-    ``SquaredLoss`` with no scalar penalties.  Hard restrictions may still be
-    present; in that case the matrices describe the quadratic objective while
-    ``SeparatorFitProblem.bounds`` separately defines feasibility, and the
-    unconstrained normal equation need not hold at a constrained optimum.
+    ``SquaredLoss`` with no positive-strength scalar penalties.  A
+    zero-strength penalty is absent from the objective.  Hard restrictions may
+    still be present; in that case the matrices describe the quadratic
+    objective while ``SeparatorFitProblem.bounds`` separately defines
+    feasibility, and the unconstrained normal equation need not hold at a
+    constrained optimum.
     """
 
     observation_graph: SeparatorObservationGraphView
@@ -222,13 +229,17 @@ class SeparatorQuadraticOperatorView:
 
         graph = self.observation_graph
         value = _vector(vector, int(graph.n_sites), name='vector')
-        edge_value = graph.rho * (
-            value[graph.site_i] - value[graph.site_j]
+        edge_value = _stable_scaled_difference(
+            value[graph.site_i],
+            value[graph.site_j],
+            graph.rho,
         )
-        result = np.zeros(int(graph.n_sites), dtype=np.float64)
-        np.add.at(result, graph.site_i, edge_value)
-        np.add.at(result, graph.site_j, -edge_value)
-        return result
+        return _stable_incidence_accumulate(
+            int(graph.n_sites),
+            graph.site_i,
+            graph.site_j,
+            edge_value,
+        )
 
     def regularized_normal_matvec(self, vector: np.ndarray) -> np.ndarray:
         """Apply ``A = L_obs + regularization_strength * I``."""
@@ -238,7 +249,12 @@ class SeparatorQuadraticOperatorView:
         result = self.observation_laplacian_matvec(value)
         strength = float(self.regularization_strength)
         if strength > 0.0:
-            result += strength * value
+            result = _stable_sum_products(
+                (
+                    (result,),
+                    (strength, value),
+                )
+            )
         return result
 
     def observation_laplacian_dense(self) -> np.ndarray:

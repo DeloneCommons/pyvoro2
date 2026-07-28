@@ -123,7 +123,8 @@ def test_successful_fit_views_share_existing_arrays_and_values() -> None:
     termination = fit.solver_termination
     assert termination.status == fit.status
     assert termination.status_detail == fit.status_detail
-    assert termination.backend == fit.solver
+    assert termination.solver == fit.solver
+    assert termination.linear_backend == fit.linear_backend
     assert termination.n_iter == fit.n_iter
     assert termination.converged is fit.converged
     assert termination.hard_feasible is fit.hard_feasible
@@ -298,28 +299,42 @@ def test_model_terms_do_not_claim_observational_offset_identification() -> None:
         [(0, 1, 0.25), (1, 2, 0.75)],
         confidence=[1.0, 0.0],
     )
-    models = (
-        separator.FitModel(feasible=separator.Interval(0.0, 1.0)),
-        separator.FitModel(
-            penalties=(separator.SoftIntervalPenalty(0.0, 1.0, 1.0),)
+    cases = (
+        (
+            separator.FitModel(feasible=separator.Interval(0.0, 1.0)),
+            [True, True],
+            (),
+            np.array([0.0, 2.0, 2.0]),
         ),
-        separator.FitModel(
-            penalties=(separator.SoftIntervalPenalty(0.0, 1.0, 0.0),)
+        (
+            separator.FitModel(
+                penalties=(separator.SoftIntervalPenalty(0.0, 1.0, 1.0),)
+            ),
+            [True, True],
+            (),
+            np.array([0.0, 2.0, 2.0]),
+        ),
+        (
+            separator.FitModel(
+                penalties=(separator.SoftIntervalPenalty(0.0, 1.0, 0.0),)
+            ),
+            [True, False],
+            (0, 2),
+            np.array([-1.0, 1.0, 0.0]),
         ),
     )
-    for model in models:
+    for model, expected_mask, expected_anchors, expected_canonical in cases:
         problem = separator.build_power_fit_problem(observations, model=model)
-        # The historical problem mask still includes model-coupled rows for
-        # numerical decomposition, but it no longer defines identification.
+        # Only mathematically present model terms couple zero-confidence rows.
         np.testing.assert_array_equal(
             problem.offset_identifying_constraint_mask,
-            [True, True],
+            expected_mask,
         )
-        assert problem.suggested_anchor_indices == ()
+        assert problem.suggested_anchor_indices == expected_anchors
         candidate_weights = np.array([0.0, 2.0, 2.0])
         np.testing.assert_array_equal(
             problem.canonicalize_gauge(candidate_weights),
-            candidate_weights,
+            expected_canonical,
         )
         constrained = inverse.fit_weights_from_separators(
             points,
@@ -402,6 +417,7 @@ def test_active_set_identification_uses_informative_rows_only() -> None:
             confidence=[1.0, 0.0],
             domain=box,
             model=model,
+            fit_solver='admm',
             options=separator.ActiveSetOptions(max_iter=5),
             return_history=True,
             connectivity_check='diagnose',

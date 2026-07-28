@@ -8,6 +8,11 @@ from typing import Literal, Sequence
 import numpy as np
 
 from ..._internal.weight_transforms import weights_to_radii
+from ._numerics import (
+    _stable_sum,
+    _stable_sum_products_sign,
+    _stable_sum_scalar,
+)
 from .constraints import (
     _external_id_label,
     _validated_ids_array,
@@ -18,6 +23,7 @@ from .model import FitModel
 from .realize import RealizedPairDiagnostics, match_realized_pairs
 from .problem import (
     _build_active_set_connectivity_diagnostics,
+    _standalone_gauge_policy_description,
     build_power_fit_problem,
     build_power_fit_result,
 )
@@ -325,11 +331,12 @@ def solve_self_consistent_power_weights(
     options: ActiveSetOptions | None = None,
     r_min: float = 0.0,
     weight_shift: float | None = None,
-    fit_solver: Literal['auto', 'analytic', 'admm'] = 'auto',
-    fit_max_iter: int = 2000,
-    fit_rho: float = 1.0,
-    fit_tol_abs: float = 1e-6,
-    fit_tol_rel: float = 1e-5,
+    fit_solver: Literal['direct', 'admm'] = 'direct',
+    fit_linear_backend: Literal['dense', 'sparse'] = 'dense',
+    fit_admm_max_iter: int = 2000,
+    fit_admm_rho: float = 1.0,
+    fit_admm_abs_tol: float = 1e-6,
+    fit_admm_rel_tol: float = 1e-5,
     return_history: bool = False,
     return_cells: bool = False,
     return_boundary_measure: bool = False,
@@ -344,8 +351,12 @@ def solve_self_consistent_power_weights(
     pts = np.asarray(points, dtype=float)
     if pts.ndim != 2 or pts.shape[1] <= 0:
         raise ValueError('points must have shape (n, d) with d >= 1')
-    if fit_solver not in ('auto', 'analytic', 'admm'):
-        raise ValueError('fit_solver must be auto, analytic, or admm')
+    if fit_solver not in ('direct', 'admm'):
+        raise ValueError("fit_solver must be 'direct' or 'admm'")
+    if fit_linear_backend not in ('dense', 'sparse'):
+        raise ValueError(
+            "fit_linear_backend must be 'dense' or 'sparse'"
+        )
     if connectivity_check not in ('none', 'diagnose', 'warn', 'raise'):
         raise ValueError(
             'connectivity_check must be none, diagnose, warn, or raise'
@@ -404,7 +415,7 @@ def solve_self_consistent_power_weights(
     last_realized_iter = np.full(m, -1, dtype=np.int64)
     history_rows: list[ActiveSetIteration] = []
     path_acc = _ActiveSetPathAccumulator()
-    gauge_policy = _self_consistent_gauge_policy_description()
+    gauge_policy = _self_consistent_gauge_policy_description(model)
     prev_weights_eval: np.ndarray | None = None
     prev_realized_same: np.ndarray | None = None
     seen_masks: dict[bytes, int] = {active.tobytes(): 0}
@@ -429,10 +440,11 @@ def solve_self_consistent_power_weights(
             r_min=r_min,
             weight_shift=weight_shift,
             solver=fit_solver,
-            max_iter=fit_max_iter,
-            rho=fit_rho,
-            tol_abs=fit_tol_abs,
-            tol_rel=fit_tol_rel,
+            linear_backend=fit_linear_backend,
+            admm_max_iter=fit_admm_max_iter,
+            admm_rho=fit_admm_rho,
+            admm_abs_tol=fit_admm_abs_tol,
+            admm_rel_tol=fit_admm_rel_tol,
             connectivity_check='diagnose',
         )
         if fit.weights is None:
@@ -665,10 +677,11 @@ def solve_self_consistent_power_weights(
         r_min=r_min,
         weight_shift=weight_shift,
         solver=fit_solver,
-        max_iter=fit_max_iter,
-        rho=fit_rho,
-        tol_abs=fit_tol_abs,
-        tol_rel=fit_tol_rel,
+        linear_backend=fit_linear_backend,
+        admm_max_iter=fit_admm_max_iter,
+        admm_rho=fit_admm_rho,
+        admm_abs_tol=fit_admm_abs_tol,
+        admm_rel_tol=fit_admm_rel_tol,
         connectivity_check='diagnose',
     )
     warnings_list.extend(final_fit.warnings)
@@ -811,6 +824,15 @@ def solve_self_consistent_power_weights(
 def _align_weights_to_reference(
     weights: np.ndarray, reference: np.ndarray, comps: list[list[int]]
 ) -> np.ndarray:
+    """Align true gauge components without changing binary64 differences.
+
+    A mathematically uniform shift can round differently at distinct
+    coordinates.  The final low-level fit has already been certified, so an
+    alignment is accepted only when exact binary64-input arithmetic proves
+    that every component contrast to one anchor is unchanged.  Otherwise the
+    certified component is retained verbatim.
+    """
+
     aligned = np.asarray(weights, dtype=np.float64).copy()
     ref = np.asarray(reference, dtype=np.float64)
     if aligned.shape != ref.shape:
@@ -819,8 +841,30 @@ def _align_weights_to_reference(
         idx = np.asarray(comp, dtype=np.int64)
         if idx.size == 0:
             continue
-        shift = float(np.mean(aligned[idx] - ref[idx]))
-        aligned[idx] -= shift
+        current = aligned[idx].copy()
+        difference = _stable_sum(current, -ref[idx])
+        if not np.all(np.isfinite(difference)):
+            continue
+        shift = _stable_sum_scalar(
+            *(float(value) / int(idx.size) for value in difference)
+        )
+        if not np.isfinite(shift):
+            continue
+        proposed = _stable_sum(current, -shift)
+        if not np.all(np.isfinite(proposed)):
+            continue
+        anchor_before = float(current[0])
+        anchor_after = float(proposed[0])
+        contrast_change_sign = _stable_sum_products_sign(
+            (
+                (proposed,),
+                (-1.0, anchor_after),
+                (-1.0, current),
+                (anchor_before,),
+            )
+        )
+        if np.all(contrast_change_sign == 0):
+            aligned[idx] = proposed
     return aligned
 
 
@@ -829,10 +873,17 @@ def _active_alignment_components(
     model: FitModel,
 ) -> list[list[int]]:
     problem = build_power_fit_problem(constraints, model=model)
+    if problem.regularization_strength > 0.0:
+        # Positive L2 fixes every component mean and removes the additive
+        # gauge.  Aligning such a solution to a previous iterate changes the
+        # authoritative objective and invalidates its optimality certificate.
+        return []
     return problem._model_coupling_components()
 
 
-def _self_consistent_gauge_policy_description() -> str:
+def _self_consistent_gauge_policy_description(model: FitModel) -> str:
+    if float(model.regularization.strength) > 0.0:
+        return _standalone_gauge_policy_description(model)
     return (
         'each active model-coupling component is aligned to the previous '
         'iterate; the first iterate falls back to the standalone solver and '
@@ -942,6 +993,7 @@ def _rebuild_fit_with_weights(
         problem,
         weights,
         solver=fit.solver,
+        linear_backend=fit.linear_backend,
         status=fit.status,
         status_detail=fit.status_detail,
         converged=fit.converged,

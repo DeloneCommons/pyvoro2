@@ -46,18 +46,42 @@ def test_powerfit_constraint_ids_must_match_points_and_be_unique():
         )
 
 
-def test_zero_confidence_constraints_do_not_crash_quadratic_fit():
+@pytest.mark.parametrize('requested_solver', ['direct', 'admm'])
+def test_zero_confidence_constraints_do_not_report_solver_execution(
+    monkeypatch,
+    requested_solver,
+):
+    import pyvoro2.inverse.separator.solver as solver_module
     from pyvoro2.inverse.separator import fit_weights_from_separators
 
+    def unexpected_solver(*args, **kwargs):
+        raise AssertionError('a component solver ran for a no-work fit')
+
+    monkeypatch.setattr(
+        solver_module,
+        '_solve_component_direct',
+        unexpected_solver,
+    )
+    monkeypatch.setattr(
+        solver_module,
+        '_solve_component_admm',
+        unexpected_solver,
+    )
     pts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
     res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
         confidence=[0.0],
+        solver=requested_solver,
     )
 
     assert res.status == 'optimal'
+    assert res.solver == 'none'
+    assert res.linear_backend is None
+    assert res.n_iter == 0
+    assert res.solver_termination.solver == 'none'
+    assert res.solver_termination.linear_backend is None
     assert np.allclose(res.weights, np.array([0.0, 0.0]))
     assert np.allclose(res.predicted_fraction, np.array([0.5]))
     assert any('zero-confidence' in msg for msg in res.warnings)
@@ -128,7 +152,7 @@ def test_huber_admm_handles_medium_size_sparse_outliers():
         pts,
         noisy,
         measurement='fraction',
-        solver='analytic',
+        solver='direct',
     )
     huber = fit_weights_from_separators(
         pts,
@@ -136,7 +160,7 @@ def test_huber_admm_handles_medium_size_sparse_outliers():
         measurement='fraction',
         model=FitModel(mismatch=HuberLoss(delta=0.01)),
         solver='admm',
-        max_iter=4000,
+        admm_max_iter=4000,
     )
 
     def _centered_weight_rmse(weights: np.ndarray) -> float:
@@ -166,7 +190,12 @@ def test_huber_admm_handles_medium_size_sparse_outliers():
     )
 
 
-def test_empty_resolved_constraints_use_regularization_only_solution():
+@pytest.mark.parametrize('requested_solver', ['direct', 'admm'])
+def test_empty_resolved_constraints_use_regularization_only_solution(
+    monkeypatch,
+    requested_solver,
+):
+    import pyvoro2.inverse.separator.solver as solver_module
     from pyvoro2.inverse.separator import (
         FitModel,
         L2Regularization,
@@ -190,9 +219,32 @@ def test_empty_resolved_constraints_use_regularization_only_solution():
         )
     )
 
-    res = fit_weights_from_separators(pts, constraints, model=model)
+    def unexpected_solver(*args, **kwargs):
+        raise AssertionError('a component solver ran for an empty fit')
+
+    monkeypatch.setattr(
+        solver_module,
+        '_solve_component_direct',
+        unexpected_solver,
+    )
+    monkeypatch.setattr(
+        solver_module,
+        '_solve_component_admm',
+        unexpected_solver,
+    )
+    res = fit_weights_from_separators(
+        pts,
+        constraints,
+        model=model,
+        solver=requested_solver,
+    )
 
     assert res.status == 'optimal'
+    assert res.solver == 'none'
+    assert res.linear_backend is None
+    assert res.n_iter == 0
+    assert res.solver_termination.solver == 'none'
+    assert res.solver_termination.linear_backend is None
     assert np.allclose(res.weights, np.array([3.0, 5.0]))
     assert any('regularization-only' in msg for msg in res.warnings)
 
@@ -217,13 +269,13 @@ def test_fit_weights_from_separators_reports_internal_solver_failure(
     def boom(*args, **kwargs):
         raise np.linalg.LinAlgError('synthetic failure')
 
-    monkeypatch.setattr(solver_mod, '_solve_component_analytic', boom)
+    monkeypatch.setattr(solver_mod, '_solve_component_direct', boom)
 
     res = fit_weights_from_separators(
         pts,
         [(0, 1, 0.25)],
         measurement='fraction',
-        solver='analytic',
+        solver='direct',
     )
 
     assert res.status == 'numerical_failure'
@@ -258,7 +310,7 @@ def test_active_set_propagates_numerical_failure(monkeypatch):
             rms_residual=None,
             max_residual=None,
             used_shifts=constraints.shifts.copy(),
-            solver='analytic',
+            solver='direct',
             n_iter=0,
             converged=False,
             conflict=None,

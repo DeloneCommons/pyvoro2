@@ -14,7 +14,7 @@ def test_self_consistent_solver_rejects_sparse_inner_backend():
 
     with pytest.raises(
         ValueError,
-        match='fit_solver must be auto, analytic, or admm',
+        match="fit_solver must be 'direct' or 'admm'",
     ):
         solve_self_consistent_power_weights(
             points,
@@ -249,6 +249,7 @@ def test_self_consistent_result_exports_records_with_ids():
         measurement='fraction',
         domain=box,
         model=FitModel(feasible=Interval(0.0, 1.0)),
+        fit_solver='admm',
         options=ActiveSetOptions(add_after=1, drop_after=1, max_iter=3),
     )
 
@@ -368,8 +369,10 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
         dtype=float,
     )
     domain = Box(((-5.0, 15.0), (-5.0, 5.0), (-5.0, 5.0)))
+    forwarded: list[dict[str, object]] = []
 
     def fake_fit_weights_from_separators(points, constraints, **kwargs):
+        forwarded.append(kwargs)
         if constraints.n_constraints == 3:
             weights = np.array([10.0, 12.0, 30.0, 28.0], dtype=float)
         else:
@@ -390,7 +393,8 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
             rms_residual=0.0,
             max_residual=0.0,
             used_shifts=constraints.shifts.copy(),
-            solver='analytic',
+            solver='admm',
+            linear_backend='sparse',
             n_iter=0,
             converged=True,
             conflict=None,
@@ -426,6 +430,12 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
         [(0, 1, 0.5), (2, 3, 0.5), (0, 2, 0.5)],
         measurement='fraction',
         domain=domain,
+        fit_solver='admm',
+        fit_linear_backend='sparse',
+        fit_admm_max_iter=123,
+        fit_admm_rho=2.5,
+        fit_admm_abs_tol=3.0e-7,
+        fit_admm_rel_tol=4.0e-6,
         options=ActiveSetOptions(add_after=1, drop_after=1, max_iter=5),
         connectivity_check='diagnose',
         unaccounted_pair_check='diagnose',
@@ -435,6 +445,14 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
     assert np.allclose(res.fit.weights, np.array([10.0, 12.0, 30.0, 28.0]))
     assert np.allclose(res.fit.weights[:2], np.array([10.0, 12.0]))
     assert np.allclose(res.fit.weights[2:], np.array([30.0, 28.0]))
+    assert forwarded
+    for kwargs in forwarded:
+        assert kwargs['solver'] == 'admm'
+        assert kwargs['linear_backend'] == 'sparse'
+        assert kwargs['admm_max_iter'] == 123
+        assert kwargs['admm_rho'] == 2.5
+        assert kwargs['admm_abs_tol'] == 3.0e-7
+        assert kwargs['admm_rel_tol'] == 4.0e-6
 
 
 def test_self_consistent_solver_reports_transient_path_disconnectivity():
@@ -554,3 +572,115 @@ def test_self_consistent_solver_tracks_transient_unaccounted_pairs(
     assert res.history[0].n_unaccounted_pairs == 1
     assert res.realized.unaccounted_pairs == tuple()
     assert all('candidate-absent point pairs' not in msg for msg in res.warnings)
+
+
+def test_active_alignment_rejects_binary64_shift_that_changes_contrast() -> None:
+    from pyvoro2.inverse.separator.active import _align_weights_to_reference
+
+    weights = np.array([0.0, -0.5], dtype=np.float64)
+    reference = np.array([2.0**53, 2.0**53], dtype=np.float64)
+
+    aligned = _align_weights_to_reference(weights, reference, [[0, 1]])
+
+    np.testing.assert_array_equal(aligned, weights)
+
+
+def test_self_consistent_final_refit_does_not_align_positive_l2_components(
+    monkeypatch,
+) -> None:
+    import pyvoro2.inverse.separator.active as active_mod
+    from pyvoro2 import Box
+    from pyvoro2.inverse.separator import (
+        ActiveSetOptions,
+        FitModel,
+        L2Regularization,
+        fit_weights_from_separators,
+    )
+    from pyvoro2.inverse.separator.realize import RealizedPairDiagnostics
+
+    points = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [11.0, 0.0, 0.0],
+        ],
+        dtype=np.float64,
+    )
+    domain = Box(((-5.0, 15.0), (-5.0, 5.0), (-5.0, 5.0)))
+    rows = [(0, 1, 0.5), (2, 3, 0.5), (1, 2, 0.75)]
+    model = FitModel(
+        regularization=L2Regularization(
+            strength=1.0,
+            reference=np.zeros(4, dtype=np.float64),
+        )
+    )
+
+    def fake_match_realized_pairs(*args, **kwargs):
+        same = np.array([True, True, False], dtype=bool)
+        return RealizedPairDiagnostics(
+            realized=same.copy(),
+            unrealized=(2,),
+            realized_same_shift=same.copy(),
+            realized_other_shift=np.zeros(3, dtype=bool),
+            realized_shifts=(((0, 0, 0),), ((0, 0, 0),), tuple()),
+            endpoint_i_empty=np.zeros(3, dtype=bool),
+            endpoint_j_empty=np.zeros(3, dtype=bool),
+            boundary_measure=None,
+            cells=None,
+            tessellation_diagnostics=None,
+            unaccounted_pairs=tuple(),
+            warnings=tuple(),
+        )
+
+    monkeypatch.setattr(
+        active_mod,
+        'match_realized_pairs',
+        fake_match_realized_pairs,
+    )
+
+    result = active_mod.solve_self_consistent_power_weights(
+        points,
+        rows,
+        measurement='fraction',
+        domain=domain,
+        model=model,
+        options=ActiveSetOptions(
+            add_after=1,
+            drop_after=1,
+            max_iter=5,
+        ),
+        connectivity_check='diagnose',
+    )
+    independent = fit_weights_from_separators(
+        points,
+        rows[:2],
+        measurement='fraction',
+        model=model,
+        connectivity_check='diagnose',
+    )
+
+    assert result.termination == 'self_consistent'
+    np.testing.assert_array_equal(
+        result.active_mask,
+        np.array([True, True, False]),
+    )
+    assert result.fit.status == 'optimal'
+    assert result.fit.objective_breakdown is not None
+    assert result.fit.objective_breakdown.total == 0.0
+    np.testing.assert_array_equal(result.fit.weights, np.zeros(4))
+    np.testing.assert_array_equal(result.fit.weights, independent.weights)
+    assert result.connectivity is not None
+    assert result.connectivity.gauge_policy == (
+        'positive L2 regularization selects weights relative to the supplied '
+        'reference'
+    )
+    assert any(
+        'component offsets are selected by the objective' in message
+        for message in result.connectivity.messages
+    )
+    assert all(
+        'component offsets are preserved by the self-consistent gauge policy'
+        not in message
+        for message in result.connectivity.messages
+    )

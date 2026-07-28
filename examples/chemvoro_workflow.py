@@ -12,7 +12,11 @@ import pyvoro2.inverse as inverse
 import pyvoro2.inverse.separator as separator
 
 
-def run_workflow(*, solver: str = 'analytic') -> dict[str, object]:
+def run_workflow(
+    *,
+    solver: str = 'direct',
+    linear_backend: str = 'dense',
+) -> dict[str, object]:
     """Fit and realize a small periodic system using external IDs throughout."""
 
     points = np.array(
@@ -49,6 +53,7 @@ def run_workflow(*, solver: str = 'analytic') -> dict[str, object]:
         points,
         observations,
         solver=solver,
+        linear_backend=linear_backend,
         connectivity_check='diagnose',
     )
     state = fit.state
@@ -142,7 +147,8 @@ def _summary(workflow: dict[str, object]) -> dict[str, object]:
     tessellation = workflow['tessellation']
     realization = workflow['realization']
     return {
-        'solver': fit.solver_termination.backend,
+        'solver': fit.solver_termination.solver,
+        'linear_backend': fit.solver_termination.linear_backend,
         'site_ids': [int(value) for value in tessellation.ids],
         'mathematical_weights': fit.state.mathematical_weights.tolist(),
         'global_representation_shift': (

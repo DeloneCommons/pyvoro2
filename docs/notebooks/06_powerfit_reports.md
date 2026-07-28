@@ -98,6 +98,7 @@ fit = inverse.fit_weights_from_separators(
     points,
     observations,
     model=model,
+    solver="admm",
 )
 
 fit_rows = fit.to_records(observations, use_ids=True)
@@ -146,6 +147,7 @@ result = separator.solve_self_consistent_power_weights(
     observations,
     domain=box,
     model=model,
+    fit_solver="admm",
     options=separator.ActiveSetOptions(
         add_after=1,
         drop_after=2,

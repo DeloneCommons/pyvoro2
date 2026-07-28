@@ -95,7 +95,8 @@ def test_noisy_analytic_fit_satisfies_normal_equations_and_predictions() -> None
     graph = problem.observation_graph
     incidence = graph.incidence_dense()
 
-    assert fit.solver == 'analytic'
+    assert fit.solver == 'direct'
+    assert fit.linear_backend == 'dense'
     assert fit.weights is not None
     np.testing.assert_allclose(
         operator.regularized_normal_matvec(fit.weights),
@@ -341,8 +342,17 @@ def test_nonquadratic_rejection_and_constrained_metadata() -> None:
         ),
     )
     assert penalty_problem.observation_graph.n_observations == 1
+    zero_penalty_operator = penalty_problem.quadratic_operator
+    assert zero_penalty_operator.represents_full_quadratic_objective is True
+
+    positive_penalty_problem = separator.build_power_fit_problem(
+        observations,
+        model=separator.FitModel(
+            penalties=(separator.SoftIntervalPenalty(0.0, 1.0, 1.0),)
+        ),
+    )
     with pytest.raises(ValueError, match='scalar penalties'):
-        _ = penalty_problem.quadratic_operator
+        _ = positive_penalty_problem.quadratic_operator
 
     constrained_problem = separator.build_power_fit_problem(
         observations,
@@ -359,7 +369,7 @@ def test_nonquadratic_rejection_and_constrained_metadata() -> None:
         observations,
         model=constrained_problem.model,
         solver='admm',
-        max_iter=5000,
+        admm_max_iter=5000,
     )
     assert fit.weights is not None
     assert not np.allclose(

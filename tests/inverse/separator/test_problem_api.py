@@ -90,6 +90,8 @@ def test_build_power_fit_result_round_trips_native_weights_and_reports_objective
 
     assert np.allclose(rebuilt.weights, fit.weights)
     assert np.allclose(rebuilt.predicted, fit.predicted)
+    assert rebuilt.solver == 'external-lbfgsb'
+    assert rebuilt.linear_backend is None
     assert rebuilt.objective_breakdown is not None
     assert rebuilt.objective_breakdown.hard_constraints_satisfied is True
     assert rebuilt.objective_breakdown.total == 0.0
