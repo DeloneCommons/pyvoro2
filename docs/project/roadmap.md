@@ -77,8 +77,7 @@ The removal decision is based on clean architecture and usability, not on
 preserving hypothetical historical callers. `output='cells'` remains an
 explicit useful raw-data mode unless a separate future decision changes it.
 
-See the active [v0.8 technical-maintenance plan](../development/plans/v0.8.md) and
-[ADR 0006](../development/decisions/0006-v0.8-cleanup-release.md).
+See the active [v0.8 technical-maintenance plan](../development/plans/v0.8.md), its [pre-release audit remediation plan](../development/plans/v0.8-remediation.md), the [integrated audit](../development/audits/v0.8-pre-release.md), and [ADR 0006](../development/decisions/0006-v0.8-cleanup-release.md). Final qualification in issue #33 is blocked by remediation tracker [#35](https://github.com/DeloneCommons/pyvoro2/issues/35).
 
 ## v0.9 — Prescribed cell measures
 

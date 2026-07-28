@@ -1,12 +1,13 @@
 # v0.8.0 release notes
 
-- **Release status:** prepared for release qualification; not yet published
+- **Release status:** pre-release remediation active under [issue #35](https://github.com/DeloneCommons/pyvoro2/issues/35); final qualification in issue #33 has not begun
 - **Release type:** feature-free technical maintenance
 - **Previous release:** v0.7.0
 
-v0.8.0 completes the compatibility removals announced for v0.7, qualifies
-standard CPython 3.14 and the full binary distribution matrix, and makes the
-documented public contract match the reorganized source tree. It does not add a
+v0.8.0 is intended to complete the compatibility removals announced for v0.7, qualify
+standard CPython 3.14 and the full binary distribution matrix, and make the
+documented public contract match the reorganized source tree. These claims remain
+pending until the audit remediation and final qualification are complete. It does not add a
 new numerical method, inverse observation family, domain type, or solver.
 Prescribed cell measures remain planned for v0.9, and mixed separator-plus-
 measure fitting remains planned for v0.10.

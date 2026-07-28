@@ -12,13 +12,13 @@ contributors, reviewers, coding agents, and downstream package authors.
 | How do I use the current package? | [User guide](../guide/concepts.md) and [API reference](../reference/index.md) |
 | What mathematics does it implement? | [Theory](../theory/index.md) |
 | How does work move from proposal to release? | [Development workflow](development-workflow.md) |
-| What work is planned next? | [Development plans](plans/index.md); the [v0.7 plan](plans/archive/v0.7.md) is archived and the [v0.8 cleanup plan](plans/v0.8.md) is active |
+| What work is planned next? | [Development plans](plans/index.md); the [v0.8 cleanup plan](plans/v0.8.md) and its [audit remediation plan](plans/v0.8-remediation.md) are active |
 | Which concrete APIs are stable, provisional, experimental, removed, or internal? | [v0.8 API inventory](api-inventory.md) and [API lifecycle](api-lifecycle.md) |
 | How should repository documentation be written? | [Documentation conventions](documentation-conventions.md) |
 | How are modules and layers organized? | [Architecture](architecture.md) |
 | Why was a durable choice made? | [Decision records](decisions/index.md) |
 | What is planned over several releases? | [Roadmap](../project/roadmap.md) |
-| What concrete work is in progress? | GitHub issues and milestones |
+| What concrete work is in progress? | [v0.8 pre-release audit](audits/v0.8-pre-release.md), [remediation plan](plans/v0.8-remediation.md), GitHub issues, and milestones |
 | How do I prepare a change? | [`CONTRIBUTING.md`](https://github.com/DeloneCommons/pyvoro2/blob/main/CONTRIBUTING.md) |
 | What changed historically? | [Changelog](../about/changelog.md) |
 | What is included in v0.8.0? | [v0.8.0 release notes](../project/release-notes-v0.8.md) |
@@ -31,7 +31,8 @@ behavior. User guides and reference pages describe that behavior for callers.
 Accepted decision records and architecture documentation define durable
 boundaries. An **active** development plan defines approved release scope and
 gates. The v0.7 plan is **Completed** and archived; the v0.8
-technical-maintenance plan is **Active**. The roadmap describes version-level
+technical-maintenance plan and its audit-remediation workstream are **Active**.
+The audit work is tracked by [issue #35](https://github.com/DeloneCommons/pyvoro2/issues/35); release qualification in issue #33 is blocked until that tracker closes. The roadmap describes version-level
 direction rather than current functionality.
 
 Detailed progress belongs in GitHub issues. The API inventory is updated with

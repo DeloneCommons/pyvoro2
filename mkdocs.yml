@@ -76,12 +76,16 @@ nav:
           - Overview: development/plans/index.md
           - v0.7 archived plan: development/plans/archive/v0.7.md
           - v0.8 active cleanup plan: development/plans/v0.8.md
+          - v0.8 audit remediation plan: development/plans/v0.8-remediation.md
           - Plan template: development/plans/template.md
           - Archive: development/plans/archive/index.md
       - Documentation conventions: development/documentation-conventions.md
       - Architecture: development/architecture.md
       - API lifecycle: development/api-lifecycle.md
       - v0.8 API inventory: development/api-inventory.md
+      - Development audits:
+          - Overview: development/audits/index.md
+          - v0.8 final pre-release audit: development/audits/v0.8-pre-release.md
       - Decision records:
           - Overview: development/decisions/index.md
           - Project scope and layering: development/decisions/0001-project-scope-and-layering.md
