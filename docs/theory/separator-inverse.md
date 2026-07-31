@@ -473,6 +473,56 @@ boundaries by the same exact-sign rule. Mean-absolute diagnostics use
 exponent-aware normalization and omit only ratios too small to affect the
 rounded result, without executing an underflowing division.
 
+### Certified scalar proximal coordinates
+
+For a fixed ADMM measurement coordinate, the implemented scalar problem is
+
+\[
+\min_{a\le y\le b}
+c\,\ell(y-y^{\mathrm{obs}})
++\sum_p p(y)+\frac{\rho}{2}(y-v)^2,
+\qquad \rho>0.
+\]
+
+The positive quadratic makes this objective strongly convex and coercive, so
+it has one continuous minimizer on bounded, equality, one-sided, and fully
+unbounded domains. The scalar solver represents the one-sided derivative as
+\([\hat g_-,\hat g_+]\). If \(S\) bounds the magnitude of its evaluated
+contributions and \(E\) is their floating evaluation allowance, it widens the
+interval to \(G_-=\hat g_--E\), \(G_+=\hat g_++E\) and uses
+
+\[
+\tau_{\mathrm{KKT}}
+=8\operatorname{ulp}(0)+64\epsilon_{64}S.
+\]
+
+The interior residual is \(\max(G_-,-G_+,0)\). At a lower endpoint it is
+\(\max(-G_+,0)\), and at an upper endpoint it is
+\(\max(G_-,0)\). A successful point must put that residual within the
+non-configurable tolerance. Reciprocal margin activations use their convex
+subgradient intervals: \([-s/m^2,0]\) at the lower activation and
+\([0,s/m^2]\) at the upper activation.
+
+Exact rational breakpoint locations cover Huber thresholds, soft boundaries,
+reciprocal epsilon and margin transitions, and finite hard bounds. If a real
+breakpoint is not binary64, both neighboring floats are checked. The solver
+first checks endpoints, the vectorized mismatch-only candidate, and those
+breakpoint candidates. It then maintains a certified negative-left,
+positive-right derivative bracket. Safeguarded Newton is confined to one
+smooth piece; otherwise ordered-binary64 bisection guarantees a new float.
+Exponential contributions use a common signed-log scale, so raw individual
+overflow does not turn a meaningful derivative sign into `nan`.
+
+Success requires an equality certificate, a point-KKT certificate, or
+localization between adjacent feasible binary64 values with the required
+opposite derivative signs. The selected point, its feasible `nextafter`
+neighbors, finite bounds, and breakpoint candidates are compared through the
+authoritative objective before return. Reaching an expansion or iteration
+limit is never success. An uncertified coordinate becomes the existing
+structured `numerical_failure`, including row and last-certificate evidence;
+an attempted but failed proximal update is not counted as a completed ADMM
+iteration.
+
 ## Hard interval and equality restrictions
 
 An admissible interval in measurement space,

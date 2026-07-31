@@ -88,6 +88,13 @@ a compatibility-only route and was not removed.
   completed iteration counts, including failure of final quadratic
   certification. The prerelease values `auto`, `analytic`, and solver value
   `sparse` and the old unprefixed ADMM keyword names are removed.
+- Scalar ADMM proximal coordinates with positive-strength penalties now use a
+  certified private bounded solver. It preserves the approved objective,
+  handles exact branch breakpoints and raw exponential overflow, and succeeds
+  only through equality, point-KKT, or adjacent-binary64-bracket evidence.
+  Exhaustion returns the existing structured `numerical_failure` rather than
+  the last iterate. Mismatch-only and zero-strength rows retain the vectorized
+  path, and no public option, result field, dependency, or ADMM default changes.
 - Final active-set refits align only true zero-L2 gauge components and only
   when exact binary64-input checks prove that every within-component weight
   difference is unchanged. Positive L2 solutions are no longer shifted toward
@@ -96,9 +103,11 @@ a compatibility-only route and was not removed.
 The first four corrections above are API-contract consistency work from issue
 #31 and do not change forward tessellation algorithms. The separator objective
 and schema corrections are the approved prerelease correctness work from issue
-#36. They add no legacy scaling mode, public tolerance option, dependency, or
-new numerical method. ADMM results can change where the earlier mismatch/L2
-relative scaling was inconsistent.
+#36. The scalar proximal correction is the approved implementation work from
+issue #37 and adds no public tolerance option, dependency, or solver method.
+These changes add no legacy scaling mode. ADMM results can change where the
+earlier mismatch/L2 relative scaling was inconsistent or the former scalar
+loop returned an uncertified iterate.
 
 ## Packaging and platform support
 

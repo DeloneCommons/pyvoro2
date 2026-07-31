@@ -352,6 +352,21 @@ When ADMM has completed iterations but final quadratic certification fails,
 `n_iter` retains the completed iteration count in the structured numerical
 failure result.
 
+ADMM scalar updates are themselves certified. Mismatch-only squared and Huber
+rows keep their vectorized proximal path. A row that needs a positive-strength
+scalar penalty uses a private bracketed solver with exact branch breakpoints,
+rigorous one-sided derivative enclosures, scaled binary64 exponential
+evaluation, and safeguarded Newton/ordered-float bisection. It returns a
+coordinate only with proved exact point signs or an adjacent numeric-float sign
+bracket. Adjacent endpoints are selected by a direct termwise objective
+difference. A bracket, evaluation,
+expansion, or iteration failure produces `status='numerical_failure'` with no
+stale weights or objective breakdown; `status_detail` identifies the original
+and component-local observation rows and retains scalar iteration, expansion,
+candidate, bracket, derivative, localization, and fallback evidence. A failure
+during ADMM attempt `k` normally records
+only the `k - 1` iterations that completed.
+
 The v0.8 migration is:
 
 | Removed call | Current call |

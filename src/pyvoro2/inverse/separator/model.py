@@ -9,6 +9,7 @@ used to fit power weights from those constraints.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from fractions import Fraction
 from typing import Sequence
 
 import numpy as np
@@ -109,9 +110,10 @@ class ExponentialBoundaryPenalty(ScalarPenalty):
             raise ValueError('ExponentialBoundaryPenalty.strength must be >= 0')
         if float(self.tau) <= 0.0:
             raise ValueError('ExponentialBoundaryPenalty.tau must be > 0')
-        if float(self.lower) + float(self.margin) > float(self.upper) - float(
-            self.margin
-        ):
+        lower = Fraction.from_float(float(self.lower))
+        upper = Fraction.from_float(float(self.upper))
+        margin = Fraction.from_float(float(self.margin))
+        if lower + margin > upper - margin:
             raise ValueError('ExponentialBoundaryPenalty margin is too large')
 
 

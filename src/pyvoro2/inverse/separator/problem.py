@@ -1279,6 +1279,7 @@ def _mismatch_derivatives(
         target,
         confidence,
         mismatch,
+        evaluate_value=False,
     )
     return first, second
 
@@ -1289,5 +1290,9 @@ def _penalty_derivatives(
     | ExponentialBoundaryPenalty
     | ReciprocalBoundaryPenalty,
 ) -> tuple[np.ndarray, np.ndarray]:
-    _, first, second = _penalty_terms(y, penalty)
+    _, first, second = _penalty_terms(
+        y,
+        penalty,
+        evaluate_value=False,
+    )
     return first, second

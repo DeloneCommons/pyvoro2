@@ -12,7 +12,8 @@
   [ADR 0005](decisions/0005-tessellation-result-contract.md),
   [ADR 0006](decisions/0006-v0.8-cleanup-release.md),
   [ADR 0007](decisions/0007-separator-objective-contract.md), and
-  [ADR 0008](decisions/0008-separator-solver-and-linear-backend.md)
+  [ADR 0008](decisions/0008-separator-solver-and-linear-backend.md), and
+  [ADR 0009](decisions/0009-certified-scalar-proximal-solver.md)
 
 This inventory is the authoritative v0.8 lifecycle contract for public imports,
 return routes, record schemas, defaults, and scientific semantics. It has been
@@ -974,13 +975,17 @@ The following boundaries are already accepted:
   accepted half-factor objective convention;
 - zero-strength scalar penalties are absent, hard bounds use the shared
   float64 scale-aware tolerance, and successful solver results have finite
-  reported soft objectives.
+  reported soft objectives;
+- positive-strength scalar-penalty proximal coordinates succeed only with
+  private proved exact point signs or an adjacent numeric-binary64 sign bracket,
+  while an uncertified attempt maps to the existing `numerical_failure` schema.
 
 See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 [ADR 0005](decisions/0005-tessellation-result-contract.md), as refined by
 [ADR 0006](decisions/0006-v0.8-cleanup-release.md), together with
 [ADR 0007](decisions/0007-separator-objective-contract.md) and
-[ADR 0008](decisions/0008-separator-solver-and-linear-backend.md).
+[ADR 0008](decisions/0008-separator-solver-and-linear-backend.md), and
+[ADR 0009](decisions/0009-certified-scalar-proximal-solver.md).
 
 ## Lifecycle summary for the v0.8 API
 
@@ -1274,6 +1279,19 @@ use
 abs(upper))`, and successful solver results require finite reported
 soft-objective components and totals. ADR 0007 records the derivative,
 continuation, and compatibility rationale.
+
+Issue #37 replaces the scalar penalty proximal loop without changing that
+objective or any public name/default/schema. The private solver compiles one
+positive-strength term kernel once, evaluates complete source expressions,
+represents exact structural breakpoints and one-sided reciprocal-margin
+derivatives, and brackets rigorous derivative signs. It accepts only proved
+exact point signs or adjacent numeric-binary64 localization. Scaled binary64
+accumulation preserves determinable exponential signs through raw overflow;
+bounded 80/160-digit work resolves only rare ambiguities. Direct termwise
+objective differences select adjacent endpoints. Exhaustion or unresolved
+evaluation becomes the existing structured `numerical_failure`; a failed
+proximal attempt does not increment completed ADMM iterations. ADR 0009 records
+the private numerical contract.
 
 The realization matcher accepts weight-first and radius-representation inputs
 as mutually exclusive current routes. New workflows use fitted mathematical

@@ -28,6 +28,15 @@ from ._numerics import (
     _stable_sum_scalar,
     _stable_weighted_average,
 )
+from ._scalar_prox import (
+    _batch_spec_supported,
+    _compile_scalar_prox_spec,
+    _penalties_inactive_at,
+    _ScalarProxError,
+    _ScalarProxSpec,
+    _solve_scalar_prox_batch_ordinary,
+    _solve_scalar_prox_coordinate,
+)
 from ._quadratic import (
     QuadraticNumericalError,
     QuadraticWeightSystem,
@@ -45,9 +54,7 @@ from .model import FitModel, HuberLoss, SquaredLoss
 from .problem import (
     _compute_edge_diagnostics,
     _connected_components,
-    _mismatch_derivatives,
     _NonFiniteOptimalObjectiveError,
-    _penalty_derivatives,
     _requires_admm,
     _soft_objective_is_finite,
     SeparatorFitProblem,
@@ -588,6 +595,7 @@ def _fit_power_weights_resolved(
                             if accepted_hard_bounds is None
                             else accepted_hard_bounds[1][mask]
                         ),
+                        row_indices=np.flatnonzero(mask),
                     )
                 except _IterativeNumericalFailure as exc:
                     n_iter_max = max(n_iter_max, exc.n_iter)
@@ -855,6 +863,7 @@ def _solve_component_admm(
     y_hi: np.ndarray | None,
     accepted_y_lo: np.ndarray | None,
     accepted_y_hi: np.ndarray | None,
+    row_indices: np.ndarray,
 ) -> tuple[np.ndarray, int, bool]:
     n_c = int(np.max(np.maximum(I, J))) + 1
     m_c = I.shape[0]
@@ -930,6 +939,15 @@ def _solve_component_admm(
     u = np.zeros(m_c, dtype=np.float64)
     converged = False
     iteration = 0
+    completed_iterations = 0
+    prox_spec = None
+    if _active_scalar_penalties(model.penalties):
+        try:
+            prox_spec = _compile_scalar_prox_spec(model)
+        except (TypeError, ValueError) as exc:
+            raise _NumericalFailure(
+                f'invalid compiled scalar proximal objective: {exc}'
+            ) from exc
 
     try:
         for iteration in range(1, max_iter + 1):
@@ -979,6 +997,8 @@ def _solve_component_admm(
                 rho=rho,
                 y_lo=prox_lower,
                 y_hi=prox_upper,
+                spec=prox_spec,
+                row_indices=row_indices,
             )
             r = _stable_affine_residual(
                 beta,
@@ -1051,8 +1071,10 @@ def _solve_component_admm(
                 and s_norm <= eps_dual
                 and hard_satisfied
             ):
+                completed_iterations = iteration
                 converged = True
                 break
+            completed_iterations = iteration
 
         if best_huber_w is not None:
             final_huber_objective = _mismatch_component_objective(
@@ -1096,9 +1118,9 @@ def _solve_component_admm(
     ) as exc:
         raise _IterativeNumericalFailure(
             str(exc),
-            n_iter=iteration,
+            n_iter=completed_iterations,
         ) from exc
-    return w, iteration, converged
+    return w, completed_iterations, converged
 
 
 def _prox_measurement_mismatch_only(
@@ -1152,6 +1174,8 @@ def _prox_measurement_objective(
     rho: float,
     y_lo: np.ndarray | None,
     y_hi: np.ndarray | None,
+    spec: _ScalarProxSpec | None = None,
+    row_indices: np.ndarray | None = None,
 ) -> np.ndarray:
     y = _prox_measurement_mismatch_only(
         v,
@@ -1167,35 +1191,128 @@ def _prox_measurement_objective(
     active_penalties = _active_scalar_penalties(model.penalties)
     if not active_penalties:
         return y
-
-    for _ in range(60):
-        fp_y, fpp_y = _mismatch_derivatives(y, target, confidence, model.mismatch)
-        for penalty in active_penalties:
-            p_fp_y, p_fpp_y = _penalty_derivatives(y, penalty)
-            fp_y = fp_y + p_fp_y
-            fpp_y = fpp_y + p_fpp_y
-
-        g = _stable_sum(
-            fp_y,
-            _stable_scaled_difference(y, v, rho),
-        )
-        gp = _stable_sum(fpp_y, rho)
-        if not np.all(np.isfinite(gp)) or np.any(np.abs(gp) < 1e-18):
+    if spec is None:
+        try:
+            spec = _compile_scalar_prox_spec(model)
+        except (TypeError, ValueError) as exc:
             raise _NumericalFailure(
-                'prox Newton derivative became singular or non-finite'
+                f'invalid compiled scalar proximal objective: {exc}'
+            ) from exc
+    original_rows = (
+        np.arange(y.shape[0], dtype=np.int64)
+        if row_indices is None
+        else np.asarray(row_indices, dtype=np.int64)
+    )
+    if original_rows.shape != y.shape:
+        raise _NumericalFailure('scalar proximal row metadata shape mismatch')
+
+    batch_certified = np.zeros(y.shape, dtype=bool)
+    needs_general = np.fromiter(
+        (
+            not _penalties_inactive_at(spec, float(candidate))
+            for candidate in y
+        ),
+        dtype=bool,
+        count=y.shape[0],
+    )
+    general_indices = np.flatnonzero(needs_general)
+    general_keys = {
+        (
+            float(target[index]),
+            float(confidence[index]),
+            float(v[index]),
+            float('-inf') if y_lo is None else float(y_lo[index]),
+            float('inf') if y_hi is None else float(y_hi[index]),
+        )
+        for index in general_indices
+    }
+    if len(general_keys) >= 8 and _batch_spec_supported(spec):
+        batch_lower = (
+            np.full(general_indices.size, -np.inf, dtype=np.float64)
+            if y_lo is None
+            else np.asarray(y_lo[general_indices], dtype=np.float64)
+        )
+        batch_upper = (
+            np.full(general_indices.size, np.inf, dtype=np.float64)
+            if y_hi is None
+            else np.asarray(y_hi[general_indices], dtype=np.float64)
+        )
+        batch_outcome = _solve_scalar_prox_batch_ordinary(
+            spec=spec,
+            initial=y[general_indices],
+            target=target[general_indices],
+            confidence=confidence[general_indices],
+            v=v[general_indices],
+            rho=float(rho),
+            lower=batch_lower,
+            upper=batch_upper,
+        )
+        for batch_index, result in enumerate(batch_outcome.results):
+            if result is None:
+                continue
+            local_index = int(general_indices[batch_index])
+            y[local_index] = result.value
+            batch_certified[local_index] = True
+
+    coordinate_cache: dict[
+        tuple[float, float, float, float, float],
+        float,
+    ] = {}
+    for local_index in range(y.shape[0]):
+        if batch_certified[local_index]:
+            continue
+        candidate = float(y[local_index])
+        if _penalties_inactive_at(spec, candidate):
+            continue
+        lower = (
+            float('-inf')
+            if y_lo is None
+            else float(y_lo[local_index])
+        )
+        upper = (
+            float('inf')
+            if y_hi is None
+            else float(y_hi[local_index])
+        )
+        cache_key = (
+            float(target[local_index]),
+            float(confidence[local_index]),
+            float(v[local_index]),
+            lower,
+            upper,
+        )
+        cached = coordinate_cache.get(cache_key)
+        if cached is not None:
+            y[local_index] = cached
+            continue
+        try:
+            result = _solve_scalar_prox_coordinate(
+                spec=spec,
+                target=float(target[local_index]),
+                confidence=float(confidence[local_index]),
+                v=float(v[local_index]),
+                rho=float(rho),
+                lower=lower,
+                upper=upper,
             )
-        step = g / gp
-        if not np.all(np.isfinite(step)):
-            raise _NumericalFailure('prox Newton step became non-finite')
-        y_new = _stable_scaled_difference(y, step, 1.0)
-        if y_lo is not None:
-            y_new = np.maximum(y_new, y_lo)
-        if y_hi is not None:
-            y_new = np.minimum(y_new, y_hi)
-        if float(np.max(np.abs(step))) < 1e-12:
-            y = y_new
-            break
-        y = y_new
+        except _ScalarProxError as exc:
+            failure = exc.failure
+            raise _NumericalFailure(
+                'scalar proximal failure for observation row '
+                f'{int(original_rows[local_index])} '
+                f'(component-local row {local_index}): '
+                f'reason={failure.reason}; scalar_iterations='
+                f'{failure.scalar_iterations}; expansions='
+                f'{failure.expansion_count}; last_candidate='
+                f'{failure.last_candidate!r}; last_finite_bracket='
+                f'{failure.last_finite_bracket!r}; '
+                f'last_derivative_enclosure='
+                f'{failure.last_derivative_enclosure!r}; '
+                f'localization_bound={failure.localization_bound!r}; '
+                f'fallback_count={failure.fallback_count}'
+            ) from exc
+        y[local_index] = result.value
+        coordinate_cache[cache_key] = result.value
     return y
 
 

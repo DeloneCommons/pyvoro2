@@ -539,6 +539,23 @@ sparse means SciPy. There is no automatic or site-count-based backend switch,
 and the active-set outer loop forwards both selections without changing its
 own semantics.
 
+[ADR 0009](decisions/0009-certified-scalar-proximal-solver.md) defines the
+private scalar update used by ADMM. Ordinary mismatch-only squared and Huber
+rows remain vectorized. Rows that need positive-strength scalar-penalty work
+use a compiled coordinate specification, exact structural breakpoints,
+one-sided derivative enclosures, scaled binary64 accumulation, and a certified
+sign bracket backed by one compiled term kernel. A coordinate succeeds only
+through proved exact point signs or localization between adjacent numeric
+binary64 values; exhaustion and unresolved evaluation become the existing
+structured `numerical_failure`. Adjacent endpoints are selected by a direct
+termwise objective difference, and high precision is a bounded ambiguity
+fallback rather than an iteration path: algebraic signs are exact dyadic
+decisions and transcendental signs require an outward interval excluding zero.
+Adjacent private certificates retain both endpoint enclosures and resolved
+signs. Solver and
+linear-backend APIs, ADMM decomposition/stopping options, result schemas, and
+active-set semantics are unchanged.
+
 ### Layered inverse result contract
 
 The current result vocabulary keeps these concerns distinct:

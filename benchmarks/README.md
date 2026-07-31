@@ -1,5 +1,27 @@
 # Static quadratic separator benchmarks
 
+## Certified scalar proximal benchmark
+
+`benchmark_scalar_prox.py` is the deterministic performance gate for the
+ordinary positive-penalty coordinate path. It precompiles the canonical
+models, performs one warm-up, and reports median timings for 1, 10, 100, and
+1000 identical and heterogeneous rows. Routing counters instrument the actual
+batch and scalar functions: each size records its coordinate-key count,
+batch-eligible and batch-certified rows, scalar dispatches, high-precision
+fallback decisions, structured failures, and branches observed at the returned
+coordinates:
+
+```bash
+python benchmarks/benchmark_scalar_prox.py --repeats 5
+```
+
+The command exits nonzero if a frozen absolute or scaling limit is exceeded.
+It also requires one cached scalar dispatch for every identical case and, for
+the 10/100/1000 heterogeneous cases, complete batch certification with no
+scalar dispatch, high-precision fallback, or structured failure.
+
+## Static quadratic separator benchmark
+
 `benchmark_sparse_separator.py` characterizes the optional sparse-direct path
 on deterministic, molecular-shaped k-nearest-neighbor graphs. It measures
 matrix assembly, direct solve time, complete public-fit time, matrix storage,

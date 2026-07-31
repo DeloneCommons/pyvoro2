@@ -86,6 +86,28 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   retain completed iteration counts, including failures raised during final
   quadratic certification. The prerelease values `auto`, `analytic`, and
   solver value `sparse`, along with the old ADMM keyword names, are removed.
+- Replaced the unbracketed scalar ADMM proximal Newton loop with a certified
+  private bounded solver. One compiled term kernel now gives private solving,
+  public evaluation, objective breakdowns, reports, and JSON the same complete-
+  expression semantics. Positive-strength penalty rows use rigorous one-sided
+  derivative enclosures, exact point signs or adjacent numeric-float sign
+  brackets, direct termwise endpoint differences, and a binary64/scaled common
+  path with exact algebraic fallback signs and bounded outward transcendental
+  intervals. Derived twofold-ball radii now remain authoritative through
+  cancellation, base-two accumulation, certified `ln(2)` range reduction, and
+  polynomial exponential bounds; Huber endpoint comparisons use direct branch
+  partitions instead of subtracting complete values. Heterogeneous ordinary
+  penalty rows share a vectorized form of the same ball algebra, with every
+  exceptional or unresolved row routed to the certified scalar path. Batch
+  routing is invariant under caller NumPy exception policy, excludes
+  unsupported reciprocal rows before array arithmetic, and preserves ordinary
+  neighbor lanes when one row is exceptional. Scalar and batch certificates
+  retain common endpoint enclosures and signs plus reconstructable direct-
+  difference selection and fallback provenance. Exhaustion and unresolved
+  evaluation return the existing structured
+  `numerical_failure` with complete candidate/bracket/fallback detail and
+  completed-iteration accounting; ordinary mismatch-only and zero-strength
+  rows retain their vectorized fast path.
 - Active-set final refits no longer shift positive-L2 solutions toward the
   previous outer iterate. Zero-L2 component alignment is retained only when
   exact binary64-input checks prove that all within-component differences are

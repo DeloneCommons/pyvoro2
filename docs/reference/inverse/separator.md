@@ -140,6 +140,15 @@ retains that completed count, including failure of final quadratic
 certification. Quadratic `status='optimal'` always refers to the continuous
 source objective: exact helper thresholds and coordinatewise rounding of an
 exact optimum do not define a separate binary64-lattice success mode.
+Positive-strength scalar-penalty coordinates are solved by a private certified
+bounded solver. Proved exact point signs and adjacent numeric-binary64 sign
+brackets are the only successful scalar exits; expansion, iteration, or bounded
+ambiguity exhaustion maps to the existing `numerical_failure` result. One
+compiled term kernel supplies scalar, public objective, breakdown, report, and
+JSON semantics. Failure detail includes original and component-local row
+indices plus private scalar counts, last candidate and bracket, derivative or
+localization evidence, and fallback count. Public solver options and
+result/report fields are not extended.
 
 `match_realized_pairs(...)` accepts exactly one of mathematical `weights=` or
 backend-compatible `radii=`. The weight-first route is preferred and uses the

@@ -3,19 +3,1329 @@
 from __future__ import annotations
 
 import math
+import struct
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from fractions import Fraction
 
 import numpy as np
 
 
 _FLOAT_MAX = np.finfo(np.float64).max
+_FLOAT_TINY = np.finfo(np.float64).tiny
 _FLOAT_EPSILON = np.finfo(np.float64).eps
 _CONDITIONING_RELATIVE_LIMIT = math.sqrt(_FLOAT_EPSILON)
 _AFFINE_CONDITIONING_RELATIVE_LIMIT = 64.0 * _FLOAT_EPSILON
 _NORMAL_MIN_EXPONENT = -1021
 _NORMAL_MAX_EXPONENT = 1023
 _SPLITTER = 134217729.0
+_SIGN_BIT = 1 << 63
+_UINT64_MASK = (1 << 64) - 1
+_ORDERED_ZERO = _SIGN_BIT
+_SPLIT_LOW_BITS = 26
+
+
+@dataclass(frozen=True, slots=True)
+class _DoubleDouble:
+    """Two-term nonoverlapping binary64 expansion.
+
+    The expansion is used only on the ordinary scalar-kernel path.  It keeps
+    the rounding correction from affine products, ratios, and cancellation in
+    binary64 storage; it is not an arbitrary-precision number.
+    """
+
+    high: float
+    low: float = 0.0
+
+    @property
+    def value(self) -> float:
+        return math.fsum((self.high, self.low))
+
+
+@dataclass(frozen=True, slots=True)
+class _TwofoldBall:
+    """A normalized two-limb center with an explicit outward radius.
+
+    The represented real set is ``high + low +/- radius``.  Finite source
+    binary64 values enter as exact point balls.  Every operation below either
+    carries all discarded expansion limbs and input radii into ``radius`` or
+    returns :meth:`unresolved`; a naked center is never certificate evidence.
+
+    ``resolved`` is deliberately explicit.  Exceptional arithmetic may be
+    evaluated by the bounded exact fallback, but it may not manufacture an
+    ordinary sign from a non-finite or unproved center operation.
+    """
+
+    high: float
+    low: float = 0.0
+    radius: float = 0.0
+    resolved: bool = True
+
+    @classmethod
+    def point(cls, value: float) -> '_TwofoldBall':
+        scalar = float(value)
+        if not math.isfinite(scalar):
+            return cls.unresolved()
+        return cls(scalar, 0.0, 0.0, True)
+
+    @classmethod
+    def unresolved(cls) -> '_TwofoldBall':
+        return cls(0.0, 0.0, math.inf, False)
+
+    @property
+    def center(self) -> _DoubleDouble:
+        return _DoubleDouble(self.high, self.low)
+
+    @property
+    def center_value(self) -> float:
+        if not self.resolved:
+            return math.nan
+        return math.fsum((self.high, self.low))
+
+    def physical_bounds(self) -> tuple[float, float]:
+        """Return directed binary64 bounds for the complete ball."""
+
+        if (
+            not self.resolved
+            or not math.isfinite(self.high)
+            or not math.isfinite(self.low)
+            or not math.isfinite(self.radius)
+            or self.radius < 0.0
+        ):
+            return -math.inf, math.inf
+        lower = _down_add(_down_add(self.high, self.low), -self.radius)
+        upper = _up_add(_up_add(self.high, self.low), self.radius)
+        return lower, upper
+
+    @property
+    def strictly_negative(self) -> bool:
+        return self.physical_bounds()[1] < 0.0
+
+    @property
+    def strictly_positive(self) -> bool:
+        return self.physical_bounds()[0] > 0.0
+
+
+@dataclass(frozen=True, slots=True)
+class _BinaryScaledBall:
+    """A twofold ball multiplied by an exact power of two.
+
+    Signs are decided from the normalized ball and therefore never require
+    materializing an overflowing physical value.  Physical conversion exists
+    only for diagnostics and is directed at the ``ldexp`` boundary.
+    """
+
+    ball: _TwofoldBall
+    exponent: int = 0
+
+    @classmethod
+    def unresolved(cls) -> '_BinaryScaledBall':
+        return cls(_TwofoldBall.unresolved(), 0)
+
+    @property
+    def lower(self) -> float:
+        return self.ball.physical_bounds()[0]
+
+    @property
+    def upper(self) -> float:
+        return self.ball.physical_bounds()[1]
+
+    @property
+    def strictly_negative(self) -> bool:
+        return self.ball.strictly_negative
+
+    @property
+    def strictly_positive(self) -> bool:
+        return self.ball.strictly_positive
+
+    @property
+    def center_value(self) -> float:
+        return self.ball.center_value
+
+    @property
+    def log_scale(self) -> float:
+        """Legacy proposal-only view; never used to authorize a sign."""
+
+        return self.exponent * math.log(2.0)
+
+    def physical_bounds(self) -> tuple[float, float]:
+        lower, upper = self.ball.physical_bounds()
+        if not math.isfinite(lower) or not math.isfinite(upper):
+            return lower, upper
+        return (
+            _directed_ldexp(lower, self.exponent, upward=False),
+            _directed_ldexp(upper, self.exponent, upward=True),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class _ArrayBall:
+    """Vectorized twofold balls for heterogeneous ordinary proximal rows."""
+
+    high: np.ndarray
+    low: np.ndarray
+    radius: np.ndarray
+    resolved: np.ndarray
+
+    @classmethod
+    def points(cls, values: object) -> '_ArrayBall':
+        high = np.asarray(values, dtype=np.float64)
+        return cls(
+            high=high,
+            low=np.zeros_like(high),
+            radius=np.zeros_like(high),
+            resolved=np.isfinite(high),
+        )
+
+    def physical_bounds(self) -> tuple[np.ndarray, np.ndarray]:
+        lower = _array_down_add(
+            _array_down_add(self.high, self.low),
+            -self.radius,
+        )
+        upper = _array_up_add(
+            _array_up_add(self.high, self.low),
+            self.radius,
+        )
+        lower = np.where(self.resolved, lower, -np.inf)
+        upper = np.where(self.resolved, upper, np.inf)
+        return lower, upper
+
+
+@dataclass(frozen=True, slots=True)
+class _ScaledEnclosure:
+    """Outward interval stored relative to one natural-log scale."""
+
+    lower: float
+    upper: float
+    log_scale: float
+
+    @property
+    def strictly_negative(self) -> bool:
+        return self.upper < 0.0
+
+    @property
+    def strictly_positive(self) -> bool:
+        return self.lower > 0.0
+
+    def physical_bounds(self) -> tuple[float, float]:
+        lower = _scaled_physical_float(self.lower, self.log_scale)
+        upper = _scaled_physical_float(self.upper, self.log_scale)
+        if not math.isfinite(lower) or not math.isfinite(upper):
+            return lower, upper
+        magnitude = max(abs(lower), abs(upper))
+        log_rounding = (
+            16.0
+            * _FLOAT_EPSILON
+            * (1.0 + abs(self.log_scale))
+            * magnitude
+        )
+        radius = log_rounding + 4.0 * max(
+            math.ulp(lower),
+            math.ulp(upper),
+        )
+        return (
+            math.nextafter(lower - radius, -math.inf),
+            math.nextafter(upper + radius, math.inf),
+        )
+
+
+def _float_to_ordered_int(value: float) -> int:
+    """Map a numeric binary64 value to a monotone lattice integer.
+
+    The two encodings of zero intentionally map to the same key.  Negative
+    keys are shifted by one so ``-minimum_subnormal``, numeric zero, and
+    ``+minimum_subnormal`` are consecutive lattice points.
+    """
+
+    scalar = float(value)
+    if math.isnan(scalar):
+        raise ValueError('ordered binary64 values cannot be NaN')
+    if scalar == 0.0:
+        return _ORDERED_ZERO
+    bits = struct.unpack('>Q', struct.pack('>d', scalar))[0]
+    if bits & _SIGN_BIT:
+        return ((~bits) & _UINT64_MASK) + 1
+    return bits | _SIGN_BIT
+
+
+def _ordered_int_to_float(value: int) -> float:
+    """Invert :func:`_float_to_ordered_int`."""
+
+    ordered = int(value)
+    if not 0 <= ordered <= _UINT64_MASK:
+        raise ValueError('ordered binary64 integer is out of range')
+    if ordered == _ORDERED_ZERO:
+        return 0.0
+    if ordered > _ORDERED_ZERO:
+        bits = ordered & ~_SIGN_BIT
+    else:
+        raw_ordered = ordered - 1
+        if raw_ordered < 0:
+            raise ValueError('ordered integer is below the numeric lattice')
+        bits = (~raw_ordered) & _UINT64_MASK
+    scalar = struct.unpack('>d', struct.pack('>Q', bits))[0]
+    if math.isnan(scalar):
+        raise ValueError('ordered integer maps to NaN')
+    return scalar
+
+
+def _ordered_float_midpoint(lower: float, upper: float) -> float:
+    """Return a representable binary64 point strictly between two values."""
+
+    lower_key = _float_to_ordered_int(lower)
+    upper_key = _float_to_ordered_int(upper)
+    if not float(lower) < float(upper) or lower_key >= upper_key:
+        raise ValueError('ordered midpoint requires lower < upper')
+    if upper_key - lower_key <= 1:
+        raise ValueError('ordered midpoint requires a non-adjacent interval')
+    middle_key = lower_key + (upper_key - lower_key) // 2
+    if middle_key == lower_key:
+        middle_key += 1
+    result = _ordered_int_to_float(middle_key)
+    if not float(lower) < result < float(upper):
+        raise ArithmeticError('ordered midpoint did not contract numerically')
+    return result
+
+
+def _ordered_floats_adjacent(lower: float, upper: float) -> bool:
+    """Return whether no binary64 value lies strictly between the inputs."""
+
+    if not float(lower) < float(upper):
+        return False
+    return (
+        _float_to_ordered_int(upper)
+        - _float_to_ordered_int(lower)
+        == 1
+    )
+
+
+def _two_sum_scalar(left: float, right: float) -> _DoubleDouble:
+    """Return the exact finite binary64 sum as a two-term expansion."""
+
+    high = float(left) + float(right)
+    virtual_right = high - float(left)
+    low = (
+        float(left) - (high - virtual_right)
+        + (float(right) - virtual_right)
+    )
+    return _DoubleDouble(high, low)
+
+
+def _split_scalar(value: float) -> tuple[float, float]:
+    """Split one finite value without an overflowing arithmetic multiplier."""
+
+    scalar = float(value)
+    if scalar == 0.0:
+        return scalar, scalar
+    if not math.isfinite(scalar):
+        return scalar, 0.0
+    bits = struct.unpack('>Q', struct.pack('>d', scalar))[0]
+    high_bits = bits & ~((1 << _SPLIT_LOW_BITS) - 1)
+    high = struct.unpack('>d', struct.pack('>Q', high_bits))[0]
+    return high, scalar - high
+
+
+def _two_product_scalar(left: float, right: float) -> _DoubleDouble:
+    """Return a product and its representable exact rounding correction."""
+
+    left_value = float(left)
+    right_value = float(right)
+    high = left_value * right_value
+    if not math.isfinite(high) or left_value == 0.0 or right_value == 0.0:
+        return _DoubleDouble(high, 0.0)
+    if abs(high) < _FLOAT_TINY:
+        return _DoubleDouble(high, 0.0)
+
+    left_mantissa, left_exponent = math.frexp(left_value)
+    right_mantissa, right_exponent = math.frexp(right_value)
+    mantissa_product = left_mantissa * right_mantissa
+    left_scaled = _SPLITTER * left_mantissa
+    left_high = left_scaled - (left_scaled - left_mantissa)
+    left_low = left_mantissa - left_high
+    right_scaled = _SPLITTER * right_mantissa
+    right_high = right_scaled - (right_scaled - right_mantissa)
+    right_low = right_mantissa - right_high
+    mantissa_error = (
+        (
+            (left_high * right_high - mantissa_product)
+            + left_high * right_low
+        )
+        + left_low * right_high
+        + left_low * right_low
+    )
+    try:
+        low = math.ldexp(
+            mantissa_error,
+            left_exponent + right_exponent,
+        )
+    except OverflowError:
+        low = 0.0
+    return _DoubleDouble(high, low)
+
+
+def _dd_normalize(high: float, low: float) -> _DoubleDouble:
+    summed = _two_sum_scalar(float(high), float(low))
+    return _DoubleDouble(summed.high, summed.low)
+
+
+def _dd_add(left: _DoubleDouble, right: _DoubleDouble) -> _DoubleDouble:
+    """Add two short expansions with one final error-free normalization."""
+
+    high = _two_sum_scalar(left.high, right.high)
+    low = math.fsum((left.low, right.low, high.low))
+    return _dd_normalize(high.high, low)
+
+
+def _dd_negate(value: _DoubleDouble) -> _DoubleDouble:
+    return _DoubleDouble(-value.high, -value.low)
+
+
+def _dd_difference(left: float, right: float) -> _DoubleDouble:
+    return _two_sum_scalar(float(left), -float(right))
+
+
+def _dd_multiply_float(value: _DoubleDouble, factor: float) -> _DoubleDouble:
+    """Multiply an expansion by one binary64 factor."""
+
+    main = _two_product_scalar(value.high, float(factor))
+    if not math.isfinite(main.high):
+        return _DoubleDouble(main.high, 0.0)
+    correction = value.low * float(factor)
+    try:
+        low = math.fsum((main.low, correction))
+    except OverflowError:
+        low = correction
+    if not math.isfinite(low):
+        return _DoubleDouble(low, 0.0)
+    return _dd_normalize(main.high, low)
+
+
+def _dd_multiply(
+    left: _DoubleDouble,
+    right: _DoubleDouble,
+) -> _DoubleDouble:
+    """Multiply two short expansions to double-double accuracy."""
+
+    main = _two_product_scalar(left.high, right.high)
+    if not math.isfinite(main.high):
+        return _DoubleDouble(main.high, 0.0)
+    try:
+        correction = math.fsum(
+            (
+                main.low,
+                left.high * right.low,
+                left.low * right.high,
+                left.low * right.low,
+            )
+        )
+    except OverflowError:
+        return _DoubleDouble(
+            math.copysign(math.inf, left.high * right.high),
+            0.0,
+        )
+    if not math.isfinite(correction):
+        return _DoubleDouble(correction, 0.0)
+    return _dd_normalize(main.high, correction)
+
+
+def _dd_divide_float(value: _DoubleDouble, divisor: float) -> _DoubleDouble:
+    """Divide an expansion by a finite nonzero binary64 divisor."""
+
+    denominator = float(divisor)
+    if denominator == 0.0 or not math.isfinite(denominator):
+        return _DoubleDouble(value.value / denominator, 0.0)
+    quotient = value.high / denominator
+    if not math.isfinite(quotient):
+        return _DoubleDouble(quotient, 0.0)
+    product = _two_product_scalar(quotient, denominator)
+    residual = math.fsum(
+        (value.high, -product.high, value.low, -product.low)
+    )
+    correction = residual / denominator
+    return _dd_normalize(quotient, correction)
+
+
+def _dd_divide(
+    numerator: _DoubleDouble,
+    denominator: _DoubleDouble,
+) -> _DoubleDouble:
+    """Divide two finite short expansions to double-double accuracy."""
+
+    divisor = denominator.value
+    if divisor == 0.0 or not math.isfinite(divisor):
+        return _DoubleDouble(numerator.value / divisor, 0.0)
+    first = numerator.high / denominator.high
+    if not math.isfinite(first):
+        return _DoubleDouble(first, 0.0)
+    product = _dd_multiply_float(denominator, first)
+    residual = _dd_add(numerator, _dd_negate(product))
+    second = residual.value / divisor
+    return _dd_normalize(first, second)
+
+
+def _dd_sum(values: Iterable[_DoubleDouble]) -> _DoubleDouble:
+    """Accumulate short expansions without discarding cancelling low parts."""
+
+    parts: list[float] = []
+    for value in values:
+        parts.extend((value.high, value.low))
+    if not parts:
+        return _DoubleDouble(0.0, 0.0)
+    if any(not math.isfinite(part) for part in parts):
+        return _DoubleDouble(_stable_sum_scalar(*parts), 0.0)
+    exact_total: Fraction | None = None
+    try:
+        total = math.fsum(parts)
+    except OverflowError:
+        exact_total = sum((_fraction(part) for part in parts), Fraction(0))
+        try:
+            total = float(exact_total)
+        except OverflowError:
+            return _DoubleDouble(
+                -math.inf if exact_total < 0 else math.inf,
+                0.0,
+            )
+    if not math.isfinite(total):
+        return _DoubleDouble(total, 0.0)
+    # ``fsum`` gives the correctly rounded leading limb.  Summing the source
+    # expansion again with that limb negated recovers the rounding residual;
+    # attaching zero would round the complete expression prematurely.
+    try:
+        residual = math.fsum((*parts, -total))
+    except OverflowError:
+        if exact_total is None:
+            exact_total = sum(
+                (_fraction(part) for part in parts),
+                Fraction(0),
+            )
+        residual = float(exact_total - _fraction(total))
+    return _dd_normalize(total, residual)
+
+
+def _down_add(left: float, right: float) -> float:
+    """Round one finite-source addition toward negative infinity."""
+
+    left_value = float(left)
+    right_value = float(right)
+    value = left_value + right_value
+    if math.isnan(value):
+        return -math.inf
+    if value == math.inf:
+        return _FLOAT_MAX
+    if value == -math.inf:
+        return -math.inf
+    exact = _two_sum_scalar(left_value, right_value)
+    return (
+        math.nextafter(value, -math.inf)
+        if exact.low < 0.0
+        else value
+    )
+
+
+def _up_add(left: float, right: float) -> float:
+    """Round one finite-source addition toward positive infinity."""
+
+    left_value = float(left)
+    right_value = float(right)
+    value = left_value + right_value
+    if math.isnan(value):
+        return math.inf
+    if value == math.inf:
+        return value
+    if value == -math.inf:
+        return -_FLOAT_MAX
+    exact = _two_sum_scalar(left_value, right_value)
+    return (
+        math.nextafter(value, math.inf)
+        if exact.low > 0.0
+        else value
+    )
+
+
+def _up_multiply_nonnegative(left: float, right: float) -> float:
+    """Upper bound a product of two nonnegative finite binary64 values."""
+
+    if left < 0.0 or right < 0.0:
+        raise ValueError('nonnegative directed product received a negative')
+    if left == 0.0 or right == 0.0:
+        return 0.0
+    value = left * right
+    if not math.isfinite(value):
+        return math.inf
+    return math.nextafter(value, math.inf)
+
+
+def _up_divide_nonnegative(numerator: float, denominator: float) -> float:
+    """Upper bound a nonnegative quotient with a positive denominator."""
+
+    if numerator < 0.0 or not denominator > 0.0:
+        raise ValueError('directed quotient requires numerator >= 0, divisor > 0')
+    if numerator == 0.0:
+        return 0.0
+    value = numerator / denominator
+    if not math.isfinite(value):
+        return math.inf
+    return math.nextafter(value, math.inf)
+
+
+def _directed_ldexp(value: float, exponent: int, *, upward: bool) -> float:
+    """Scale by an exact power of two and round in one chosen direction."""
+
+    scalar = float(value)
+    if scalar == 0.0 or not math.isfinite(scalar):
+        return scalar
+    try:
+        result = math.ldexp(scalar, int(exponent))
+    except OverflowError:
+        if scalar > 0.0:
+            return math.inf if upward else _FLOAT_MAX
+        return -_FLOAT_MAX if upward else -math.inf
+    if result == 0.0 or abs(result) < np.finfo(np.float64).tiny:
+        direction = math.inf if upward else -math.inf
+        return math.nextafter(result, direction)
+    return result
+
+
+def _grow_exact_expansion(
+    expansion: list[float],
+    term: float,
+) -> list[float] | None:
+    """Add one limb to an exact floating expansion using only ``two_sum``."""
+
+    if not math.isfinite(term):
+        return None
+    accumulator = float(term)
+    grown: list[float] = []
+    for component in expansion:
+        pair = _two_sum_scalar(accumulator, component)
+        if not math.isfinite(pair.high) or not math.isfinite(pair.low):
+            return None
+        if pair.low != 0.0:
+            grown.append(pair.low)
+        accumulator = pair.high
+    if accumulator != 0.0 or not grown:
+        grown.append(accumulator)
+    return grown
+
+
+def _exact_expansion(terms: Iterable[float]) -> list[float] | None:
+    """Return an exact expansion of a finite sequence, or ``None``."""
+
+    expansion: list[float] = []
+    for term in terms:
+        grown = _grow_exact_expansion(expansion, float(term))
+        if grown is None:
+            return None
+        expansion = grown
+    return expansion or [0.0]
+
+
+def _ball_from_expansion(
+    terms: Iterable[float],
+    *,
+    radius: float = 0.0,
+) -> _TwofoldBall:
+    """Compress an exact expansion to two limbs and bound every discard."""
+
+    if not math.isfinite(radius) or radius < 0.0:
+        return _TwofoldBall.unresolved()
+    expansion = _exact_expansion(terms)
+    if expansion is None:
+        return _TwofoldBall.unresolved()
+    ordered = sorted(expansion, key=abs, reverse=True)
+    first = ordered[0]
+    second = ordered[1] if len(ordered) > 1 else 0.0
+    center = _two_sum_scalar(first, second)
+    if not math.isfinite(center.high) or not math.isfinite(center.low):
+        return _TwofoldBall.unresolved()
+    outward = float(radius)
+    for limb in ordered[2:]:
+        outward = _up_add(outward, abs(limb))
+        if not math.isfinite(outward):
+            return _TwofoldBall.unresolved()
+    return _TwofoldBall(center.high, center.low, outward, True)
+
+
+def _ball_from_fraction(value: Fraction) -> _TwofoldBall:
+    """Enclose one exact rational with a two-limb dyadic center."""
+
+    try:
+        high = float(value)
+    except OverflowError:
+        return _TwofoldBall.unresolved()
+    if not math.isfinite(high):
+        return _TwofoldBall.unresolved()
+    remainder = value - Fraction.from_float(high)
+    try:
+        low = float(remainder)
+    except OverflowError:
+        return _TwofoldBall.unresolved()
+    if not math.isfinite(low):
+        return _TwofoldBall.unresolved()
+    remaining = remainder - Fraction.from_float(low)
+    radius = float(abs(remaining))
+    if Fraction.from_float(radius) < abs(remaining):
+        radius = math.nextafter(radius, math.inf)
+    return _ball_from_expansion((high, low), radius=radius)
+
+
+def _ball_negate(value: _TwofoldBall) -> _TwofoldBall:
+    if not value.resolved:
+        return _TwofoldBall.unresolved()
+    return _TwofoldBall(-value.high, -value.low, value.radius, True)
+
+
+def _ball_from_leading_and_corrections(
+    leading: float,
+    corrections: Iterable[float],
+    *,
+    radius: float,
+) -> _TwofoldBall:
+    """Keep two leading limbs and attach every exact discarded residual."""
+
+    if not math.isfinite(leading) or not math.isfinite(radius):
+        return _TwofoldBall.unresolved()
+    parts = tuple(float(term) for term in corrections)
+    if any(not math.isfinite(term) for term in parts):
+        return _TwofoldBall.unresolved()
+    correction = sum(parts, 0.0)
+    if not math.isfinite(correction):
+        return _TwofoldBall.unresolved()
+    count = len(parts)
+    # A sequential sum of ``count`` finite values has absolute error at most
+    # gamma_n times its 1-norm, with an added minimum-subnormal allowance for
+    # every rounded operation.  Using epsilon rather than unit roundoff makes
+    # this bound deliberately one factor of two conservative.
+    product = count * _FLOAT_EPSILON
+    gamma = math.nextafter(product / (1.0 - product), math.inf)
+    l1_upper = 0.0
+    for term in parts:
+        l1_upper = _up_add(l1_upper, abs(term))
+    if not math.isfinite(l1_upper):
+        return _TwofoldBall.unresolved()
+    summation_radius = _up_multiply_nonnegative(gamma, l1_upper)
+    summation_radius = _up_add(
+        summation_radius,
+        sum(term != 0.0 for term in parts) * math.ulp(0.0),
+    )
+    outward = _up_add(radius, summation_radius)
+    center = _two_sum_scalar(leading, correction)
+    if not math.isfinite(center.high) or not math.isfinite(center.low):
+        return _TwofoldBall.unresolved()
+    return _TwofoldBall(center.high, center.low, outward, True)
+
+
+def _ball_add(left: _TwofoldBall, right: _TwofoldBall) -> _TwofoldBall:
+    """Add balls, retaining both input radii and all compression limbs."""
+
+    if not left.resolved or not right.resolved:
+        return _TwofoldBall.unresolved()
+    leading = _two_sum_scalar(left.high, right.high)
+    return _ball_from_leading_and_corrections(
+        leading.high,
+        (leading.low, left.low, right.low),
+        radius=_up_add(left.radius, right.radius),
+    )
+
+
+def _ball_subtract(left: _TwofoldBall, right: _TwofoldBall) -> _TwofoldBall:
+    return _ball_add(left, _ball_negate(right))
+
+
+def _two_product_terms(left: float, right: float) -> tuple[float, ...] | None:
+    """Return an exact normal product expansion or mark it unsupported."""
+
+    if left == 0.0 or right == 0.0:
+        return (0.0,)
+    product = _two_product_scalar(left, right)
+    if not math.isfinite(product.high) or not math.isfinite(product.low):
+        return None
+    if abs(product.high) < _FLOAT_TINY:
+        # The EFT correction may itself lie below the binary64 lattice.  An
+        # exact fallback is preferable to guessing a subnormal remainder.
+        return None
+    return (product.high, product.low)
+
+
+def _two_product_subnormal_allowance(
+    left: float,
+    right: float,
+    low: float,
+) -> float:
+    """Bound only an actually material correction scaled through underflow."""
+
+    if low != 0.0:
+        return math.ulp(0.0) if abs(low) < _FLOAT_TINY else 0.0
+    left_mantissa, _left_exponent = math.frexp(left)
+    right_mantissa, _right_exponent = math.frexp(right)
+    mantissa_product = left_mantissa * right_mantissa
+    left_scaled = _SPLITTER * left_mantissa
+    left_high = left_scaled - (left_scaled - left_mantissa)
+    left_low = left_mantissa - left_high
+    right_scaled = _SPLITTER * right_mantissa
+    right_high = right_scaled - (right_scaled - right_mantissa)
+    right_low = right_mantissa - right_high
+    mantissa_error = (
+        (left_high * right_high - mantissa_product)
+        + left_high * right_low
+        + left_low * right_high
+        + left_low * right_low
+    )
+    return math.ulp(0.0) if mantissa_error != 0.0 else 0.0
+
+
+def _ball_abs_center_upper(value: _TwofoldBall) -> float:
+    if not value.resolved:
+        return math.inf
+    return _up_add(abs(value.high), abs(value.low))
+
+
+def _ball_multiply(left: _TwofoldBall, right: _TwofoldBall) -> _TwofoldBall:
+    """Multiply balls with the complete bilinear radius formula."""
+
+    if not left.resolved or not right.resolved:
+        return _TwofoldBall.unresolved()
+    main_terms = _two_product_terms(left.high, right.high)
+    if main_terms is None:
+        return _TwofoldBall.unresolved()
+    leading = main_terms[0]
+    corrections = list(main_terms[1:])
+    product_rounding_radius = (
+        _two_product_subnormal_allowance(
+            left.high,
+            right.high,
+            main_terms[1],
+        )
+        if len(main_terms) > 1
+        else 0.0
+    )
+    for left_limb, right_limb in (
+        (left.high, right.low),
+        (left.low, right.high),
+        (left.low, right.low),
+    ):
+        if left_limb == 0.0 or right_limb == 0.0:
+            corrections.append(0.0)
+            continue
+        product = left_limb * right_limb
+        if not math.isfinite(product):
+            return _TwofoldBall.unresolved()
+        corrections.append(product)
+        rounding = math.ulp(product) if product != 0.0 else math.ulp(0.0)
+        product_rounding_radius = _up_add(
+            product_rounding_radius,
+            rounding,
+        )
+    left_magnitude = _ball_abs_center_upper(left)
+    right_magnitude = _ball_abs_center_upper(right)
+    radius = _up_add(
+        _up_multiply_nonnegative(left_magnitude, right.radius),
+        _up_multiply_nonnegative(right_magnitude, left.radius),
+    )
+    radius = _up_add(
+        radius,
+        _up_multiply_nonnegative(left.radius, right.radius),
+    )
+    radius = _up_add(radius, product_rounding_radius)
+    return _ball_from_leading_and_corrections(
+        leading,
+        corrections,
+        radius=radius,
+    )
+
+
+def _ball_square(value: _TwofoldBall) -> _TwofoldBall:
+    return _ball_multiply(value, value)
+
+
+def _ball_integer_scale(value: _TwofoldBall, factor: int) -> _TwofoldBall:
+    integer = int(factor)
+    if abs(integer) > 2**53:
+        return _TwofoldBall.unresolved()
+    return _ball_multiply(value, _TwofoldBall.point(float(integer)))
+
+
+def _ball_ldexp(value: _TwofoldBall, exponent: int) -> _TwofoldBall:
+    """Scale a ball by ``2**exponent`` with explicit range handling."""
+
+    if not value.resolved:
+        return _TwofoldBall.unresolved()
+    power = int(exponent)
+    if power == 0:
+        return value
+    try:
+        high = math.ldexp(value.high, power)
+        low = math.ldexp(value.low, power)
+        radius = math.ldexp(value.radius, power)
+    except OverflowError:
+        return _TwofoldBall.unresolved()
+    if not all(math.isfinite(part) for part in (high, low, radius)):
+        return _TwofoldBall.unresolved()
+    tiny = np.finfo(np.float64).tiny
+    exact_scaling = all(
+        source == 0.0 or abs(scaled) >= tiny
+        for source, scaled in (
+            (value.high, high),
+            (value.low, low),
+            (value.radius, radius),
+        )
+    )
+    if exact_scaling:
+        return _TwofoldBall(high, low, radius, True)
+
+    # Gradual underflow can discard a limb or radius.  Reconstruct a
+    # conservative ball from directed physical endpoints in this exceptional
+    # regime; ordinary normalized work never pays this first-order widening.
+    lower, upper = value.physical_bounds()
+    if not math.isfinite(lower) or not math.isfinite(upper):
+        return _TwofoldBall.unresolved()
+    scaled_lower = _directed_ldexp(lower, power, upward=False)
+    scaled_upper = _directed_ldexp(upper, power, upward=True)
+    if not math.isfinite(scaled_lower) or not math.isfinite(scaled_upper):
+        return _TwofoldBall.unresolved()
+    center = _ball_from_expansion((high, low))
+    if not center.resolved:
+        return center
+    left_gap = _up_add(_up_add(center.high, center.low), -scaled_lower)
+    right_gap = _up_add(_up_add(scaled_upper, -center.high), -center.low)
+    radius = max(0.0, left_gap, right_gap)
+    return _TwofoldBall(center.high, center.low, radius, True)
+
+
+def _ball_divide(
+    numerator: _TwofoldBall,
+    denominator: _TwofoldBall,
+) -> _TwofoldBall:
+    """Divide through a residual proof after excluding zero."""
+
+    if not numerator.resolved or not denominator.resolved:
+        return _TwofoldBall.unresolved()
+    denominator_lower, denominator_upper = denominator.physical_bounds()
+    if denominator_lower <= 0.0 <= denominator_upper:
+        return _TwofoldBall.unresolved()
+    minimum_denominator = min(
+        abs(denominator_lower),
+        abs(denominator_upper),
+    )
+    if not minimum_denominator > 0.0:
+        return _TwofoldBall.unresolved()
+    if denominator.high == 0.0:
+        return _TwofoldBall.unresolved()
+    first = numerator.high / denominator.high
+    if not math.isfinite(first):
+        return _TwofoldBall.unresolved()
+    first_ball = _TwofoldBall.point(first)
+    first_residual = _ball_subtract(
+        numerator,
+        _ball_multiply(denominator, first_ball),
+    )
+    if not first_residual.resolved:
+        return _TwofoldBall.unresolved()
+    denominator_center = denominator.center_value
+    correction = first_residual.center_value / denominator_center
+    if not math.isfinite(correction):
+        return _TwofoldBall.unresolved()
+    proposal = _ball_from_expansion((first, correction))
+    if not proposal.resolved:
+        return proposal
+    point_proposal = _TwofoldBall(
+        proposal.high,
+        proposal.low,
+        0.0,
+        True,
+    )
+    residual = _ball_subtract(
+        numerator,
+        _ball_multiply(denominator, point_proposal),
+    )
+    if not residual.resolved:
+        return _TwofoldBall.unresolved()
+    residual_lower, residual_upper = residual.physical_bounds()
+    residual_magnitude = max(abs(residual_lower), abs(residual_upper))
+    radius = _up_divide_nonnegative(
+        residual_magnitude,
+        minimum_denominator,
+    )
+    return _TwofoldBall(proposal.high, proposal.low, radius, True)
+
+
+def _ball_reciprocal(value: _TwofoldBall) -> _TwofoldBall:
+    return _ball_divide(_TwofoldBall.point(1.0), value)
+
+
+def _binary_scaled_from_ball(value: _TwofoldBall) -> _BinaryScaledBall:
+    """Normalize a finite ball without changing its represented set."""
+
+    if not value.resolved:
+        return _BinaryScaledBall.unresolved()
+    lower, upper = value.physical_bounds()
+    magnitude = max(abs(lower), abs(upper))
+    if magnitude == 0.0:
+        return _BinaryScaledBall(value, 0)
+    if not math.isfinite(magnitude):
+        return _BinaryScaledBall.unresolved()
+    _mantissa, exponent = math.frexp(magnitude)
+    scaled = _ball_ldexp(value, -exponent)
+    if not scaled.resolved:
+        return _BinaryScaledBall.unresolved()
+    return _BinaryScaledBall(scaled, exponent)
+
+
+def _binary_scaled_multiply(
+    left: _BinaryScaledBall,
+    right: _BinaryScaledBall,
+) -> _BinaryScaledBall:
+    product = _ball_multiply(left.ball, right.ball)
+    normalized = _binary_scaled_from_ball(product)
+    if not normalized.ball.resolved:
+        return normalized
+    return _BinaryScaledBall(
+        normalized.ball,
+        left.exponent + right.exponent + normalized.exponent,
+    )
+
+
+def _binary_scaled_negate(value: _BinaryScaledBall) -> _BinaryScaledBall:
+    return _BinaryScaledBall(_ball_negate(value.ball), value.exponent)
+
+
+def _binary_scaled_divide(
+    numerator: _BinaryScaledBall,
+    denominator: _BinaryScaledBall,
+) -> _BinaryScaledBall:
+    quotient = _ball_divide(numerator.ball, denominator.ball)
+    normalized = _binary_scaled_from_ball(quotient)
+    if not normalized.ball.resolved:
+        return normalized
+    return _BinaryScaledBall(
+        normalized.ball,
+        numerator.exponent - denominator.exponent + normalized.exponent,
+    )
+
+
+def _binary_scaled_sum(
+    values: Iterable[_BinaryScaledBall],
+) -> _BinaryScaledBall:
+    """Accumulate signed scaled balls without logarithms or ``inf-inf``."""
+
+    material = tuple(values)
+    if not material:
+        return _BinaryScaledBall(_TwofoldBall.point(0.0), 0)
+    if any(not value.ball.resolved for value in material):
+        return _BinaryScaledBall.unresolved()
+    exponent = max(value.exponent for value in material)
+    total = _TwofoldBall.point(0.0)
+    for value in material:
+        aligned = _ball_ldexp(value.ball, value.exponent - exponent)
+        total = _ball_add(total, aligned)
+        if not total.resolved:
+            return _BinaryScaledBall.unresolved()
+    normalized = _binary_scaled_from_ball(total)
+    if not normalized.ball.resolved:
+        return normalized
+    return _BinaryScaledBall(normalized.ball, exponent + normalized.exponent)
+
+
+def _array_two_sum(
+    left: np.ndarray,
+    right: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    high = left + right
+    virtual_right = high - left
+    low = left - (high - virtual_right) + (right - virtual_right)
+    return high, low
+
+
+def _array_down_add(left: np.ndarray, right: np.ndarray) -> np.ndarray:
+    high, low = _array_two_sum(left, right)
+    return np.where(low < 0.0, np.nextafter(high, -np.inf), high)
+
+
+def _array_up_add(left: np.ndarray, right: np.ndarray) -> np.ndarray:
+    high, low = _array_two_sum(left, right)
+    return np.where(low > 0.0, np.nextafter(high, np.inf), high)
+
+
+def _array_up_nonnegative_product(
+    left: np.ndarray,
+    right: np.ndarray,
+) -> np.ndarray:
+    product = left * right
+    return np.where(
+        (left == 0.0) | (right == 0.0),
+        0.0,
+        np.nextafter(product, np.inf),
+    )
+
+
+def _array_two_product(
+    left: np.ndarray,
+    right: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Vectorized Dekker product on finite normal mantissa products."""
+
+    high = left * right
+    left_mantissa, left_exponent = np.frexp(left)
+    right_mantissa, right_exponent = np.frexp(right)
+    mantissa_product = left_mantissa * right_mantissa
+    left_scaled = _SPLITTER * left_mantissa
+    left_high = left_scaled - (left_scaled - left_mantissa)
+    left_low = left_mantissa - left_high
+    right_scaled = _SPLITTER * right_mantissa
+    right_high = right_scaled - (right_scaled - right_mantissa)
+    right_low = right_mantissa - right_high
+    mantissa_error = (
+        (left_high * right_high - mantissa_product)
+        + left_high * right_low
+        + left_low * right_high
+        + left_low * right_low
+    )
+    exponent = np.asarray(left_exponent + right_exponent, dtype=np.intc)
+    low = np.ldexp(mantissa_error, exponent)
+    resolved = np.isfinite(high) & np.isfinite(low)
+    material = (left != 0.0) & (right != 0.0)
+    resolved &= ~material | (np.abs(high) >= _FLOAT_TINY)
+    subnormal_correction = (
+        material
+        & (mantissa_error != 0.0)
+        & (np.abs(low) < _FLOAT_TINY)
+    )
+    return high, low, resolved, subnormal_correction
+
+
+def _array_ball_negate(value: _ArrayBall) -> _ArrayBall:
+    return _ArrayBall(-value.high, -value.low, value.radius, value.resolved)
+
+
+def _array_ball_add(left: _ArrayBall, right: _ArrayBall) -> _ArrayBall:
+    leading, leading_low = _array_two_sum(left.high, right.high)
+    parts = np.stack((leading_low, left.low, right.low), axis=0)
+    correction = np.sum(parts, axis=0)
+    count = parts.shape[0]
+    gamma = math.nextafter(
+        count * _FLOAT_EPSILON / (1.0 - count * _FLOAT_EPSILON),
+        math.inf,
+    )
+    l1_upper = np.zeros_like(leading)
+    for part in parts:
+        l1_upper = _array_up_add(l1_upper, np.abs(part))
+    summation_radius = np.nextafter(gamma * l1_upper, np.inf)
+    summation_radius = _array_up_add(
+        summation_radius,
+        np.count_nonzero(parts, axis=0) * math.ulp(0.0),
+    )
+    center_high, center_low = _array_two_sum(leading, correction)
+    radius = _array_up_add(
+        _array_up_add(left.radius, right.radius),
+        summation_radius,
+    )
+    resolved = (
+        left.resolved
+        & right.resolved
+        & np.isfinite(center_high)
+        & np.isfinite(center_low)
+        & np.isfinite(radius)
+    )
+    return _ArrayBall(center_high, center_low, radius, resolved)
+
+
+def _array_ball_subtract(left: _ArrayBall, right: _ArrayBall) -> _ArrayBall:
+    return _array_ball_add(left, _array_ball_negate(right))
+
+
+def _array_ball_multiply(left: _ArrayBall, right: _ArrayBall) -> _ArrayBall:
+    leading, main_low, product_resolved, subnormal_correction = (
+        _array_two_product(
+            left.high,
+            right.high,
+        )
+    )
+    cross = np.stack(
+        (
+            main_low,
+            left.high * right.low,
+            left.low * right.high,
+            left.low * right.low,
+        ),
+        axis=0,
+    )
+    correction = np.sum(cross, axis=0)
+    count = cross.shape[0]
+    gamma = math.nextafter(
+        count * _FLOAT_EPSILON / (1.0 - count * _FLOAT_EPSILON),
+        math.inf,
+    )
+    l1_upper = np.zeros_like(leading)
+    for part in cross:
+        l1_upper = _array_up_add(l1_upper, np.abs(part))
+    summation_radius = np.nextafter(gamma * l1_upper, np.inf)
+    summation_radius = _array_up_add(
+        summation_radius,
+        np.count_nonzero(cross, axis=0) * math.ulp(0.0),
+    )
+    cross_rounding = np.where(
+        product_resolved & subnormal_correction,
+        math.ulp(0.0),
+        0.0,
+    )
+    for product, left_limb, right_limb in (
+        (cross[1], left.high, right.low),
+        (cross[2], left.low, right.high),
+        (cross[3], left.low, right.low),
+    ):
+        material = (left_limb != 0.0) & (right_limb != 0.0)
+        ulp = np.abs(np.spacing(product))
+        ulp = np.where(material & (product == 0.0), math.ulp(0.0), ulp)
+        cross_rounding = _array_up_add(cross_rounding, ulp)
+    center_high, center_low = _array_two_sum(leading, correction)
+    left_magnitude = _array_up_add(np.abs(left.high), np.abs(left.low))
+    right_magnitude = _array_up_add(np.abs(right.high), np.abs(right.low))
+    radius = _array_up_add(
+        _array_up_nonnegative_product(left_magnitude, right.radius),
+        _array_up_nonnegative_product(right_magnitude, left.radius),
+    )
+    radius = _array_up_add(
+        radius,
+        _array_up_nonnegative_product(left.radius, right.radius),
+    )
+    radius = _array_up_add(radius, summation_radius)
+    radius = _array_up_add(radius, cross_rounding)
+    resolved = (
+        left.resolved
+        & right.resolved
+        & product_resolved
+        & np.isfinite(center_high)
+        & np.isfinite(center_low)
+        & np.isfinite(radius)
+    )
+    return _ArrayBall(center_high, center_low, radius, resolved)
+
+
+def _array_ball_divide(
+    numerator: _ArrayBall,
+    denominator: _ArrayBall,
+) -> _ArrayBall:
+    denominator_lower, denominator_upper = denominator.physical_bounds()
+    excludes_zero = (denominator_lower > 0.0) | (denominator_upper < 0.0)
+    minimum_denominator = np.minimum(
+        np.abs(denominator_lower),
+        np.abs(denominator_upper),
+    )
+    first = numerator.high / denominator.high
+    first_ball = _ArrayBall.points(first)
+    first_residual = _array_ball_subtract(
+        numerator,
+        _array_ball_multiply(denominator, first_ball),
+    )
+    denominator_center = denominator.high + denominator.low
+    correction = (
+        first_residual.high + first_residual.low
+    ) / denominator_center
+    proposal_high, proposal_low = _array_two_sum(first, correction)
+    proposal = _ArrayBall(
+        proposal_high,
+        proposal_low,
+        np.zeros_like(proposal_high),
+        np.isfinite(proposal_high) & np.isfinite(proposal_low),
+    )
+    residual = _array_ball_subtract(
+        numerator,
+        _array_ball_multiply(denominator, proposal),
+    )
+    residual_lower, residual_upper = residual.physical_bounds()
+    residual_magnitude = np.maximum(
+        np.abs(residual_lower),
+        np.abs(residual_upper),
+    )
+    radius = np.nextafter(
+        residual_magnitude / minimum_denominator,
+        np.inf,
+    )
+    resolved = (
+        numerator.resolved
+        & denominator.resolved
+        & excludes_zero
+        & proposal.resolved
+        & residual.resolved
+        & np.isfinite(radius)
+    )
+    return _ArrayBall(proposal_high, proposal_low, radius, resolved)
+
+
+def _scaled_signed_enclosure(
+    terms: Sequence[tuple[int, float, float]],
+) -> _ScaledEnclosure:
+    """Accumulate signed log-magnitude terms with an outward binary64 bound.
+
+    Each term is ``(sign, log(abs(value)), relative_error_bound)``.  The
+    common scale prevents raw overflow, while ``fsum`` retains cancellation.
+    """
+
+    if any(
+        not math.isfinite(log_abs) or not math.isfinite(relative_error)
+        for _sign, log_abs, relative_error in terms
+    ):
+        return _ScaledEnclosure(-math.inf, math.inf, 0.0)
+    material = tuple(
+        term
+        for term in terms
+        if term[0] or term[2] > 0.0
+    )
+    if not material:
+        return _ScaledEnclosure(0.0, 0.0, 0.0)
+    scale = max(term[1] for term in material)
+    scaled_values: list[float] = []
+    error_terms: list[float] = []
+    for sign, log_abs, relative_error in material:
+        offset = log_abs - scale
+        magnitude = 0.0 if offset < -746.0 else math.exp(offset)
+        if sign > 0:
+            scaled_values.append(magnitude)
+        elif sign < 0:
+            scaled_values.append(-magnitude)
+        else:
+            scaled_values.append(0.0)
+        error_terms.append(abs(magnitude) * max(0.0, relative_error))
+    center = math.fsum(scaled_values)
+    l1 = math.fsum(abs(value) for value in scaled_values)
+    radius = math.fsum(error_terms) + 16.0 * _FLOAT_EPSILON * l1
+    radius += 4.0 * math.ulp(center) if math.isfinite(center) else math.inf
+    lower = math.nextafter(center - radius, -math.inf)
+    upper = math.nextafter(center + radius, math.inf)
+    return _ScaledEnclosure(lower, upper, scale)
+
+
+def _scaled_physical_float(value: float, log_scale: float) -> float:
+    """Convert one scaled value to binary64 without unsafe overflow work."""
+
+    scalar = float(value)
+    if scalar == 0.0:
+        return scalar
+    log_abs = math.log(abs(scalar)) + float(log_scale)
+    if log_abs > math.log(_FLOAT_MAX):
+        return math.copysign(math.inf, scalar)
+    if log_abs < math.log(math.ulp(0.0)) - 2.0:
+        return math.copysign(0.0, scalar)
+    return math.copysign(math.exp(log_abs), scalar)
+
+
+def _fraction_float_neighbors(value: Fraction) -> tuple[float, float]:
+    """Return the bracketing binary64 values for an exact finite rational."""
+
+    rounded = float(value)
+    if not math.isfinite(rounded):
+        endpoint = math.copysign(_FLOAT_MAX, rounded)
+        if value == Fraction.from_float(endpoint):
+            return endpoint, endpoint
+        if rounded > 0.0:
+            return endpoint, float('inf')
+        return float('-inf'), endpoint
+    rounded_fraction = Fraction.from_float(rounded)
+    if rounded_fraction == value:
+        return rounded, rounded
+    if rounded_fraction < value:
+        return rounded, math.nextafter(rounded, float('inf'))
+    return math.nextafter(rounded, float('-inf')), rounded
 
 
 def _ldexp(
@@ -371,16 +1681,24 @@ def _normal_product_parts(
     return mantissa, exponent, normal
 
 
-def _stable_product(*factors: object) -> np.ndarray:
+def _stable_product(
+    *factors: object,
+    return_exceptional: bool = False,
+) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
     """Vectorized product with scalar fallbacks only for exceptional rows."""
 
     arrays = np.broadcast_arrays(
         *(np.asarray(value, dtype=np.float64) for value in factors)
     )
     if not arrays:
-        return np.asarray(1.0, dtype=np.float64)
+        result = np.asarray(1.0, dtype=np.float64)
+        if return_exceptional:
+            return result, np.asarray(False)
+        return result
     result, direct = _direct_product(arrays)
     if np.all(direct):
+        if return_exceptional:
+            return result, ~direct
         return result
     zero = np.logical_or.reduce(
         tuple(array == 0.0 for array in arrays)
@@ -409,6 +1727,8 @@ def _stable_product(*factors: object) -> np.ndarray:
         result.flat[flat_index] = _stable_product_scalar(
             *(float(array.flat[flat_index]) for array in arrays)
         )
+    if return_exceptional:
+        return result, ~direct
     return result
 
 
@@ -621,16 +1941,24 @@ def _two_product_error(
 ) -> np.ndarray:
     """Return the exact ordinary-product rounding error via Dekker splitting."""
 
-    left_high, left_low = _split_product_operand(left)
-    right_high, right_low = _split_product_operand(right)
-    return (
+    left_mantissa, left_exponent = np.frexp(left)
+    right_mantissa, right_exponent = np.frexp(right)
+    left_scaled = _SPLITTER * left_mantissa
+    left_high = left_scaled - (left_scaled - left_mantissa)
+    left_low = left_mantissa - left_high
+    right_scaled = _SPLITTER * right_mantissa
+    right_high = right_scaled - (right_scaled - right_mantissa)
+    right_low = right_mantissa - right_high
+    mantissa_product = left_mantissa * right_mantissa
+    mantissa_error = (
         (
-            (left_high * right_high - product)
+            (left_high * right_high - mantissa_product)
             + left_high * right_low
         )
         + left_low * right_high
         + left_low * right_low
     )
+    return _ldexp(mantissa_error, left_exponent + right_exponent)
 
 
 def _compensated_affine_residual(
@@ -729,9 +2057,13 @@ def _stable_sum_products(
         width = len(product)
         broadcast_products.append(tuple(broadcast[offset:offset + width]))
         offset += width
-    product_values = tuple(
-        _stable_product(*product)
+    product_outputs = tuple(
+        _stable_product(*product, return_exceptional=True)
         for product in broadcast_products
+    )
+    product_values = tuple(output[0] for output in product_outputs)
+    product_exceptional = np.logical_or.reduce(
+        tuple(output[1] for output in product_outputs)
     )
     result = _stable_sum(*product_values)
     vanished_product = np.zeros(result.shape, dtype=bool)
@@ -743,7 +2075,7 @@ def _stable_sum_products(
             tuple(np.isfinite(array) & (array != 0.0) for array in product)
         )
         vanished_product |= finite_nonzero & (product_value == 0.0)
-    exceptional = _cancellation_risk(
+    exceptional = product_exceptional | _cancellation_risk(
         result,
         product_values,
         operation_count=(
@@ -971,7 +2303,8 @@ def _stable_scaled_difference(
     left: object,
     right: object,
     *scale_factors: object,
-) -> np.ndarray:
+    return_exceptional: bool = False,
+) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
     """Vectorized ``prod(scale_factors) * (left - right)``."""
 
     arrays = np.broadcast_arrays(
@@ -988,12 +2321,17 @@ def _stable_scaled_difference(
     )
     difference_safe = _can_subtract(left_array, right_array)
     ordinary = difference_safe & ~zero_scale
+    product_exceptional = np.zeros(result.shape, dtype=bool)
     if np.any(ordinary):
         difference = np.zeros_like(result)
         difference[ordinary] = (
             left_array[ordinary] - right_array[ordinary]
         )
-        product = _stable_product(*scale_arrays, difference)
+        product, product_exceptional = _stable_product(
+            *scale_arrays,
+            difference,
+            return_exceptional=True,
+        )
         result[ordinary] = product[ordinary]
     exceptional = ~difference_safe & ~zero_scale
     for flat_index in np.flatnonzero(exceptional):
@@ -1002,6 +2340,8 @@ def _stable_scaled_difference(
             float(right_array.flat[flat_index]),
             *(float(array.flat[flat_index]) for array in scale_arrays),
         )
+    if return_exceptional:
+        return result, exceptional | (ordinary & product_exceptional)
     return result
 
 

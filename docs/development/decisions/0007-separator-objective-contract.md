@@ -267,10 +267,28 @@ Their strengths are not rescaled to follow the mismatch and L2 half-factor
 convention. Positive soft-interval values and first derivatives apply strength
 while forming the active-boundary displacement, so a finite scaled quadratic
 term is not lost to an overflowing unscaled difference. Stable
-positive-strength exponential evaluation remains a separate scalar-solver
-workstream. Objective breakdowns derive soft-interval displacements directly
-from \(\beta+\alpha w_i-\alpha w_j\) and the active boundary, rather than from
-a rounded stored prediction.
+positive-strength exponential evaluation is defined by ADR 0009. Objective
+breakdowns derive soft-interval displacements directly from
+\(\beta+\alpha w_i-\alpha w_j\) and the active boundary, rather than from a
+rounded stored prediction.
+
+All binary64 inputs denote their exact real dyadic values. A compound source
+expression is evaluated as that complete expression before a derived
+intermediate is rounded. In particular, the exponential numerators are
+\(a+m-y\) and \(y-(b-m)\); implementations must not first store rounded
+binary64 values for \(a+m\) or \(b-m\). The same complete-expression rule
+governs validation, branch predicates, breakpoints, scalar solving, direct and
+affine objective evaluation, result breakdowns, reports, and JSON. A
+mathematically finite source value is evaluated in a range-safe order. A value
+outside the finite binary64 range is positive infinity, not a clipped finite
+surrogate.
+
+One compiled private term kernel owns scalar-penalty values, one-sided
+derivative and curvature enclosures, structural branches and breakpoints, and
+direct candidate differences. Vectorized ordinary adapters may batch those
+shared primitives, but are not a second objective definition. ADR 0009 fixes
+the numerical enclosure, certification, fallback, and performance contract for
+that kernel.
 
 For one inward boundary distance \(d\), reciprocal repulsion is
 

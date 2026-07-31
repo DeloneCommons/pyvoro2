@@ -96,6 +96,7 @@ nav:
           - v0.8 cleanup release: development/decisions/0006-v0.8-cleanup-release.md
           - Separator inverse objective contract: development/decisions/0007-separator-objective-contract.md
           - Separator solver and linear-backend selection: development/decisions/0008-separator-solver-and-linear-backend.md
+          - Certified scalar proximal solver: development/decisions/0009-certified-scalar-proximal-solver.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md
