@@ -21,6 +21,7 @@ from typing import Literal, Sequence
 import numpy as np
 
 from ._numerics import (
+    _ldexp,
     _finite_product_exponents,
     _power_scaled_product,
     _stable_incidence_accumulate,
@@ -354,7 +355,7 @@ def _power_scaled_product_parts(
             + int(power)
         )
         with np.errstate(over='ignore', under='ignore', invalid='ignore'):
-            low[ordinary] = np.ldexp(error_part, exponent)
+            low[ordinary] = _ldexp(error_part, exponent)
 
     exceptional = (
         np.isfinite(left_array)
@@ -2169,7 +2170,7 @@ def _extended_gradient_norm_upper(
             prepared.anchor,
         )
     with np.errstate(over='ignore', under='ignore', invalid='ignore'):
-        coordinate_upper = np.ldexp(
+        coordinate_upper = _ldexp(
             coordinate_upper,
             prepared.variable_exponent - 2 * prepared.design_exponent,
         )

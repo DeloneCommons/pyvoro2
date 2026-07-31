@@ -18,6 +18,25 @@ _NORMAL_MAX_EXPONENT = 1023
 _SPLITTER = 134217729.0
 
 
+def _ldexp(
+    mantissa: object,
+    exponent: object,
+) -> np.ndarray:
+    """Apply ``np.ldexp`` through its portable C-``int`` exponent loop.
+
+    NumPy 1.x defines binary floating-point ``ldexp`` loops for C ``int``
+    and C ``long`` exponents.  Both are 32-bit on Windows, so an internal
+    ``int64`` exponent accumulator cannot be passed under safe casting there.
+    The callers keep wider accumulators and narrow only at this ufunc boundary,
+    after the relevant binary-floating-point range checks.
+    """
+
+    return np.ldexp(
+        mantissa,
+        np.asarray(exponent, dtype=np.intc),
+    )
+
+
 def _stable_product_scalar(*factors: float) -> float:
     """Multiply finite scalars without avoidable intermediate range loss."""
 
@@ -372,7 +391,7 @@ def _stable_product(*factors: object) -> np.ndarray:
     mantissa, exponent, normal = _normal_product_parts(exceptional_arrays)
     exceptional_result = np.empty(mantissa.shape, dtype=np.float64)
     if np.any(normal):
-        exceptional_result[normal] = np.ldexp(
+        exceptional_result[normal] = _ldexp(
             mantissa[normal],
             exponent[normal],
         )
@@ -434,7 +453,7 @@ def _stable_ratio_product(
     )
     result = np.zeros(shape, dtype=np.float64)
     if np.any(normal):
-        result[normal] = np.ldexp(mantissa[normal], exponent[normal])
+        result[normal] = _ldexp(mantissa[normal], exponent[normal])
     exceptional = ~normal & ~(
         numerator_zero
         & np.logical_and.reduce(
@@ -491,7 +510,7 @@ def _stable_normalized_ratio(
     )
     material_result = np.empty(ratio_part.shape, dtype=np.float64)
     if np.any(normal):
-        material_result[normal] = np.ldexp(
+        material_result[normal] = _ldexp(
             ratio_part[normal],
             ratio_exponent[normal],
         )
@@ -591,7 +610,7 @@ def _split_product_operand(
     mantissa, exponent = np.frexp(values)
     scaled = _SPLITTER * mantissa
     high_mantissa = scaled - (scaled - mantissa)
-    high = np.ldexp(high_mantissa, exponent)
+    high = _ldexp(high_mantissa, exponent)
     return high, values - high
 
 
@@ -855,7 +874,7 @@ def _power_scaled_product(
     )
     result = np.zeros(shape, dtype=np.float64)
     if np.any(normal):
-        result[normal] = np.ldexp(mantissa[normal], exponent[normal])
+        result[normal] = _ldexp(mantissa[normal], exponent[normal])
     exceptional = ~normal & ~zero
     for flat_index in np.flatnonzero(exceptional):
         result.flat[flat_index] = _power_scaled_product_scalar(

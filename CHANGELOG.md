@@ -43,6 +43,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Normalized vectorized `numpy.ldexp` exponents to NumPy's platform C-`int`
+  dtype at the ufunc boundary, preserving wide internal exponent accumulation
+  and restoring separator inverse workflows on Windows with Python 3.10 and
+  NumPy 1.26.
 - Corrected and centralized the separator inverse objective contract:
   squared mismatch and the Huber quadratic branch now use
   `0.5 * residual**2`; L2 uses
