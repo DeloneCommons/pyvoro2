@@ -10,9 +10,11 @@
 #include <vector>
 
 #include "voro++.hh"
+#include "native_preconditions.hpp"
 
 namespace py = pybind11;
 using namespace voro;
+namespace native = pyvoro2::native_preconditions;
 
 namespace {
 
@@ -179,42 +181,27 @@ py::list compute_cells_impl(ContainerT& con, LoopT& loop, const OutputOpts& opts
   return cells;
 }
 
-void check_points(const py::array_t<double>& points) {
-  if (points.ndim() != 2 || points.shape(1) != 3) {
-    throw py::value_error("points must have shape (n, 3)");
-  }
-}
-
-void check_ids(const py::array_t<int>& ids, py::ssize_t n) {
-  if (ids.ndim() != 1 || ids.shape(0) != n) {
-    throw py::value_error("ids must have shape (n,)");
-  }
-}
-
-void check_radii(const py::array_t<double>& radii, py::ssize_t n) {
-  if (radii.ndim() != 1 || radii.shape(0) != n) {
-    throw py::value_error("radii must have shape (n,)");
-  }
-}
-
-
-void check_ghost_radii(const py::array_t<double>& ghost_radii, py::ssize_t m) {
-  if (ghost_radii.ndim() != 1 || ghost_radii.shape(0) != m) {
-    throw py::value_error("ghost_radii must have shape (m,)");
-  }
-}
-
-
-void check_queries(const py::array_t<double>& queries) {
-  if (queries.ndim() != 2 || queries.shape(1) != 3) {
-    throw py::value_error("queries must have shape (m, 3)");
-  }
-}
-
 }  // namespace
 
 PYBIND11_MODULE(_core, m) {
   m.doc() = "pyvoro2 core bindings (Voro++)";
+  m.attr("_EAGER_ALLOCATION_LIMIT_BYTES") =
+      py::int_(native::eager_allocation_limit_bytes);
+  m.def("_test_checked_count", [](py::ssize_t value) {
+    return native::checked_int(value, "test count");
+  });
+  m.def("_test_checked_int_add", [](int lhs, int rhs) {
+    return native::checked_int_add(lhs, rhs, "test addition");
+  });
+  m.def("_test_checked_int_multiply", [](int lhs, int rhs) {
+    return native::checked_int_multiply(lhs, rhs, "test multiplication");
+  });
+  m.def("_test_allocation_estimate", [](std::size_t bytes) {
+    native::ByteEstimate estimate;
+    estimate.add_bytes(bytes, "test byte accumulation");
+    estimate.enforce_limit();
+    return estimate.total();
+  });
 
   m.def(
       "compute_box_standard",
@@ -225,9 +212,9 @@ PYBIND11_MODULE(_core, m) {
          std::array<bool, 3> periodic,
          int init_mem,
          std::tuple<bool, bool, bool> opts_tuple) {
-        check_points(points);
+        native::preflight_box<3>(points, ids, nullptr, bounds, blocks,
+                                 periodic, init_mem, 3);
         const auto n = points.shape(0);
-        check_ids(ids, n);
         const auto opts = parse_opts(opts_tuple);
 
         auto p = points.unchecked<2>();
@@ -272,10 +259,9 @@ PYBIND11_MODULE(_core, m) {
          std::array<bool, 3> periodic,
          int init_mem,
          std::tuple<bool, bool, bool> opts_tuple) {
-        check_points(points);
+        native::preflight_box<3>(points, ids, &radii, bounds, blocks,
+                                 periodic, init_mem, 4);
         const auto n = points.shape(0);
-        check_ids(ids, n);
-        check_radii(radii, n);
         const auto opts = parse_opts(opts_tuple);
 
         auto p = points.unchecked<2>();
@@ -321,9 +307,9 @@ PYBIND11_MODULE(_core, m) {
          std::array<int, 3> blocks,
          int init_mem,
          std::tuple<bool, bool, bool> opts_tuple) {
-        check_points(points);
+        native::preflight_periodic_3d(points, ids, nullptr, cell_params,
+                                      blocks, init_mem, 3);
         const auto n = points.shape(0);
-        check_ids(ids, n);
         const auto opts = parse_opts(opts_tuple);
 
         auto p = points.unchecked<2>();
@@ -363,10 +349,9 @@ PYBIND11_MODULE(_core, m) {
          std::array<int, 3> blocks,
          int init_mem,
          std::tuple<bool, bool, bool> opts_tuple) {
-        check_points(points);
+        native::preflight_periodic_3d(points, ids, &radii, cell_params,
+                                      blocks, init_mem, 4);
         const auto n = points.shape(0);
-        check_ids(ids, n);
-        check_radii(radii, n);
         const auto opts = parse_opts(opts_tuple);
 
         auto p = points.unchecked<2>();
@@ -409,10 +394,9 @@ m.def(
        std::array<bool, 3> periodic,
        int init_mem,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-      check_points(points);
+      native::preflight_box<3>(points, ids, nullptr, bounds, blocks, periodic,
+                               init_mem, 3, &queries);
       const auto n = points.shape(0);
-      check_ids(ids, n);
-      check_queries(queries);
 
       auto p = points.unchecked<2>();
       auto id = ids.unchecked<1>();
@@ -478,11 +462,9 @@ m.def(
        std::array<bool, 3> periodic,
        int init_mem,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-      check_points(points);
+      native::preflight_box<3>(points, ids, &radii, bounds, blocks, periodic,
+                               init_mem, 4, &queries);
       const auto n = points.shape(0);
-      check_ids(ids, n);
-      check_radii(radii, n);
-      check_queries(queries);
 
       auto p = points.unchecked<2>();
       auto id = ids.unchecked<1>();
@@ -548,10 +530,9 @@ m.def(
        std::array<int, 3> blocks,
        int init_mem,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-      check_points(points);
+      native::preflight_periodic_3d(points, ids, nullptr, cell_params, blocks,
+                                    init_mem, 3, &queries);
       const auto n = points.shape(0);
-      check_ids(ids, n);
-      check_queries(queries);
 
       auto p = points.unchecked<2>();
       auto id = ids.unchecked<1>();
@@ -612,11 +593,9 @@ m.def(
        std::array<int, 3> blocks,
        int init_mem,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-      check_points(points);
+      native::preflight_periodic_3d(points, ids, &radii, cell_params, blocks,
+                                    init_mem, 4, &queries);
       const auto n = points.shape(0);
-      check_ids(ids, n);
-      check_radii(radii, n);
-      check_queries(queries);
 
       auto p = points.unchecked<2>();
       auto id = ids.unchecked<1>();
@@ -682,10 +661,9 @@ m.def(
        int init_mem,
        std::tuple<bool, bool, bool> opts_tuple,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-      check_points(points);
+      native::preflight_box<3>(points, ids, nullptr, bounds, blocks, periodic,
+                               init_mem, 3, &queries);
       const auto n = points.shape(0);
-      check_ids(ids, n);
-      check_queries(queries);
 
       const auto opts = parse_opts(opts_tuple);
 
@@ -753,13 +731,10 @@ m.def(
        std::tuple<bool, bool, bool> opts_tuple,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries,
        py::array_t<double, py::array::c_style | py::array::forcecast> ghost_radii) {
-      check_points(points);
+      native::preflight_box<3>(points, ids, &radii, bounds, blocks, periodic,
+                               init_mem, 4, &queries, &ghost_radii);
       const auto n = points.shape(0);
-      check_ids(ids, n);
-      check_radii(radii, n);
-      check_queries(queries);
       const py::ssize_t m = queries.shape(0);
-      check_ghost_radii(ghost_radii, m);
 
       const auto opts = parse_opts(opts_tuple);
 
@@ -829,10 +804,9 @@ m.def(
        int init_mem,
        std::tuple<bool, bool, bool> opts_tuple,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-      check_points(points);
+      native::preflight_periodic_3d(points, ids, nullptr, cell_params, blocks,
+                                    init_mem, 3, &queries);
       const auto n = points.shape(0);
-      check_ids(ids, n);
-      check_queries(queries);
 
       const auto opts = parse_opts(opts_tuple);
 
@@ -895,13 +869,10 @@ m.def(
        std::tuple<bool, bool, bool> opts_tuple,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries,
        py::array_t<double, py::array::c_style | py::array::forcecast> ghost_radii) {
-      check_points(points);
+      native::preflight_periodic_3d(points, ids, &radii, cell_params, blocks,
+                                    init_mem, 4, &queries, &ghost_radii);
       const auto n = points.shape(0);
-      check_ids(ids, n);
-      check_radii(radii, n);
-      check_queries(queries);
       const py::ssize_t m = queries.shape(0);
-      check_ghost_radii(ghost_radii, m);
 
       const auto opts = parse_opts(opts_tuple);
 

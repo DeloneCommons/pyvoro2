@@ -10,9 +10,11 @@
 #include <vector>
 
 #include "voro++_2d.hh"
+#include "native_preconditions.hpp"
 
 namespace py = pybind11;
 using namespace voro;
+namespace native = pyvoro2::native_preconditions;
 
 namespace {
 
@@ -24,39 +26,6 @@ struct OutputOpts {
 
 OutputOpts parse_opts(const std::tuple<bool, bool, bool>& opts) {
   return OutputOpts{std::get<0>(opts), std::get<1>(opts), std::get<2>(opts)};
-}
-
-void check_points(const py::array_t<double>& points) {
-  if (points.ndim() != 2 || points.shape(1) != 2) {
-    throw py::value_error("points must have shape (n, 2)");
-  }
-}
-
-void check_ids(const py::array_t<int>& ids, py::ssize_t n) {
-  if (ids.ndim() != 1 || ids.shape(0) != n) {
-    throw py::value_error("ids must have shape (n,)");
-  }
-}
-
-void check_radii(const py::array_t<double>& radii, py::ssize_t n) {
-  if (radii.ndim() != 1 || radii.shape(0) != n) {
-    throw py::value_error("radii must have shape (n,)");
-  }
-}
-
-void check_queries(const py::array_t<double>& queries) {
-  if (queries.ndim() != 2 || queries.shape(1) != 2) {
-    throw py::value_error("queries must have shape (m, 2)");
-  }
-}
-
-void check_ghost_radii(
-    const py::array_t<double>& ghost_radii,
-    py::ssize_t m
-) {
-  if (ghost_radii.ndim() != 1 || ghost_radii.shape(0) != m) {
-    throw py::value_error("ghost_radii must have shape (m,)");
-  }
 }
 
 py::dict build_cell_dict(
@@ -212,9 +181,9 @@ PYBIND11_MODULE(_core2d, m) {
          std::array<bool, 2> periodic,
          int init_mem,
          std::tuple<bool, bool, bool> opts_tuple) {
-        check_points(points);
+        native::preflight_box<2>(points, ids, nullptr, bounds, blocks,
+                                 periodic, init_mem, 2);
         const auto n = points.shape(0);
-        check_ids(ids, n);
         const auto opts = parse_opts(opts_tuple);
 
         auto p = points.unchecked<2>();
@@ -254,10 +223,9 @@ PYBIND11_MODULE(_core2d, m) {
          std::array<bool, 2> periodic,
          int init_mem,
          std::tuple<bool, bool, bool> opts_tuple) {
-        check_points(points);
+        native::preflight_box<2>(points, ids, &radii, bounds, blocks,
+                                 periodic, init_mem, 3);
         const auto n = points.shape(0);
-        check_ids(ids, n);
-        check_radii(radii, n);
         const auto opts = parse_opts(opts_tuple);
 
         auto p = points.unchecked<2>();
@@ -298,10 +266,9 @@ PYBIND11_MODULE(_core2d, m) {
          std::array<bool, 2> periodic,
          int init_mem,
          py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-        check_points(points);
+        native::preflight_box<2>(points, ids, nullptr, bounds, blocks,
+                                 periodic, init_mem, 2, &queries);
         const auto n = points.shape(0);
-        check_ids(ids, n);
-        check_queries(queries);
 
         auto p = points.unchecked<2>();
         auto id = ids.unchecked<1>();
@@ -363,11 +330,9 @@ PYBIND11_MODULE(_core2d, m) {
          std::array<bool, 2> periodic,
          int init_mem,
          py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-        check_points(points);
+        native::preflight_box<2>(points, ids, &radii, bounds, blocks,
+                                 periodic, init_mem, 3, &queries);
         const auto n = points.shape(0);
-        check_ids(ids, n);
-        check_radii(radii, n);
-        check_queries(queries);
 
         auto p = points.unchecked<2>();
         auto id = ids.unchecked<1>();
@@ -431,10 +396,10 @@ PYBIND11_MODULE(_core2d, m) {
          int init_mem,
          std::tuple<bool, bool, bool> opts_tuple,
          py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-        check_points(points);
+        native::preflight_box<2>(points, ids, nullptr, bounds, blocks,
+                                 periodic, init_mem, 2, &queries, nullptr,
+                                 true);
         const auto n = points.shape(0);
-        check_ids(ids, n);
-        check_queries(queries);
         const auto opts = parse_opts(opts_tuple);
 
         auto p = points.unchecked<2>();
@@ -489,13 +454,11 @@ PYBIND11_MODULE(_core2d, m) {
          std::tuple<bool, bool, bool> opts_tuple,
          py::array_t<double, py::array::c_style | py::array::forcecast> queries,
          py::array_t<double, py::array::c_style | py::array::forcecast> ghost_radii) {
-        check_points(points);
+        native::preflight_box<2>(points, ids, &radii, bounds, blocks,
+                                 periodic, init_mem, 3, &queries,
+                                 &ghost_radii, true);
         const auto n = points.shape(0);
-        check_ids(ids, n);
-        check_radii(radii, n);
-        check_queries(queries);
         const py::ssize_t m_q = queries.shape(0);
-        check_ghost_radii(ghost_radii, m_q);
         const auto opts = parse_opts(opts_tuple);
 
         auto p = points.unchecked<2>();
