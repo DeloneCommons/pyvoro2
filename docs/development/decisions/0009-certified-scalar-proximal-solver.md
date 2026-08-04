@@ -188,10 +188,11 @@ ball operations. Derivative/curvature ratios are formed in their common scale.
 A mathematically finite source value is evaluated stably. A value outside the
 finite binary64 range is positive infinity and is never clipped.
 
-The ordinary path performs no `Decimal.ln()` or `Decimal.exp()`, constructs no
-`Fraction` per scalar iteration, and does not convert every algebraic
-contribution to high-precision signed logarithms. Exact dyadic `Fraction` work
-is permitted at one-time compilation for breakpoints and neighboring floats.
+The ordinary path performs no `Decimal.ln()` or `Decimal.exp()` and does
+not construct `Fraction` or high-precision signed-log representations for every
+term in every scalar iteration. Exact dyadic `Fraction` work is permitted at
+one-time compilation for breakpoints and neighboring floats and in rare exact
+branch-sign fallbacks when a binary64 predicate is cancellation-sensitive.
 
 Fallback expressions start from exact binary64 dyadics. Purely algebraic
 derivative and terminal-difference decisions use their exact `Fraction` sign.
