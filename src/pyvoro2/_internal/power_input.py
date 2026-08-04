@@ -7,7 +7,7 @@ from typing import Literal, Sequence
 
 import numpy as np
 
-from .inputs import coerce_nonnegative_vector
+from .inputs import coerce_finite_vector, coerce_nonnegative_vector
 from .weight_transforms import weights_to_radii
 
 
@@ -59,11 +59,7 @@ def resolve_power_input(
         )
 
     if weights is not None:
-        input_weights = np.asarray(weights, dtype=np.float64)
-        if input_weights.shape != (n,):
-            raise ValueError('weights must have shape (n,)')
-        if not np.all(np.isfinite(input_weights)):
-            raise ValueError('weights must contain only finite values')
+        input_weights = coerce_finite_vector(weights, name='weights', n=n)
         backend_radii, representation_shift = weights_to_radii(input_weights)
         return ResolvedPowerInput(
             input_weights,

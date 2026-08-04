@@ -12,14 +12,22 @@ from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.spatial.domain_utils import domain_length_scale
 from ._internal.inputs import (
     coerce_id_array,
+    coerce_native_block_parameters,
     coerce_nonnegative_scalar_or_vector,
     coerce_nonnegative_vector,
     coerce_point_array,
+    require_internal_id_range,
+    require_query_index_range,
+    validate_forward_mode,
     validate_duplicate_check_mode,
 )
-from ._internal.spatial.domain_geometry import geometry3d
+from ._internal.spatial.domain_geometry import (
+    _NativePeriodicSnapshot,
+    geometry3d,
+)
 from ._internal.spatial.face_shifts import _add_periodic_face_shifts_inplace
 from ._internal.power_input import ResolvedPowerInput, resolve_power_input
+from ._internal.validation import CPP_INT_MAX, require_positive_index
 from .duplicates import duplicate_check as _duplicate_check
 from .diagnostics import (
     TessellationDiagnostics,
@@ -54,9 +62,7 @@ def _require_core():
     return _core
 
 
-def _warn_if_scale_suspicious(
-    *, pts: np.ndarray, domain: Box | OrthorhombicCell | PeriodicCell
-) -> None:
+def _warn_if_scale_suspicious(*, pts: np.ndarray, length_scale: float) -> None:
     """Warn if the coordinate scale is likely to be numerically problematic.
 
     Voro++ uses a few fixed absolute tolerances internally (notably a hard
@@ -73,7 +79,7 @@ def _warn_if_scale_suspicious(
     """
 
     try:
-        L = float(domain_length_scale(domain))
+        L = float(length_scale)
     except Exception:
         return
     if not np.isfinite(L) or L <= 0:
@@ -100,6 +106,39 @@ def _warn_if_scale_suspicious(
             RuntimeWarning,
             stacklevel=3,
         )
+
+
+def _run_native_duplicate_check(
+    *,
+    pts: np.ndarray,
+    domain: Box | OrthorhombicCell | PeriodicCell,
+    periodic_snapshot: _NativePeriodicSnapshot | None,
+    threshold: float,
+    wrap: bool,
+    mode: Literal['warn', 'raise'],
+    max_pairs: int,
+) -> None:
+    """Run duplicate detection using prepared periodic geometry when needed."""
+
+    points_for_check = pts
+    domain_for_check: Box | OrthorhombicCell | PeriodicCell | None = domain
+    wrap_for_check = wrap
+    if periodic_snapshot is not None:
+        domain_for_check = None
+        wrap_for_check = False
+        if wrap:
+            points_for_check = np.asarray(
+                periodic_snapshot.remap_cart(pts),
+                dtype=np.float64,
+            )
+    _duplicate_check(
+        points_for_check,
+        threshold=threshold,
+        domain=domain_for_check,
+        wrap=wrap_for_check,
+        mode=mode,
+        max_pairs=max_pairs,
+    )
 
 
 def _remap_ids_inplace(cells: list[dict[str, Any]], ids_user: np.ndarray) -> None:
@@ -356,9 +395,20 @@ def compute(
         ValueError: If inputs are inconsistent or an unknown mode is provided.
     """
     resolved_output = _validate_output(output)
+    validate_forward_mode(mode)
+    init_mem_value = require_positive_index(
+        init_mem,
+        name='init_mem',
+        maximum=CPP_INT_MAX,
+    )
+    blocks_value, block_size_value = coerce_native_block_parameters(
+        blocks=blocks,
+        block_size=block_size,
+        dim=3,
+    )
     pts = coerce_point_array(points, name='points', dim=3)
-    _warn_if_scale_suspicious(pts=pts, domain=domain)
     n = int(pts.shape[0])
+    require_internal_id_range(n)
     power_input = resolve_power_input(
         mode=mode,
         weights=weights,
@@ -370,27 +420,42 @@ def compute(
     # Internal IDs are always 0..n-1. If `ids=...` is provided, we remap on return.
     ids_internal = np.arange(n, dtype=np.int32)
 
-    core = _require_core()
     ids_user = coerce_id_array(ids, n=n)
+
+    geom = geometry3d(domain)
+    if isinstance(domain, (Box, OrthorhombicCell)):
+        native_bounds = geom.native_bounds
+        native_cell = None
+        native_params = None
+    else:
+        native_bounds = None
+        native_cell = geom.native_periodic_snapshot()
+        native_params = native_cell.params
+    native_scale = (
+        native_cell.length_scale
+        if native_cell is not None
+        else domain_length_scale(domain)
+    )
+    _warn_if_scale_suspicious(pts=pts, length_scale=native_scale)
+    nx, ny, nz = geom.resolve_block_counts(
+        n_sites=n,
+        blocks=blocks_value,
+        block_size=block_size_value,
+        periodic_snapshot=native_cell,
+    )
 
     # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
     validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
-        _duplicate_check(
-            pts,
-            threshold=float(duplicate_threshold),
+        _run_native_duplicate_check(
+            pts=pts,
             domain=domain,
+            periodic_snapshot=native_cell,
+            threshold=float(duplicate_threshold),
             wrap=bool(duplicate_wrap),
             mode='warn' if duplicate_check == 'warn' else 'raise',
             max_pairs=int(duplicate_max_pairs),
         )
-
-    geom = geometry3d(domain)
-    nx, ny, nz = geom.resolve_block_counts(
-        n_sites=n,
-        blocks=blocks,
-        block_size=block_size,
-    )
 
     opts = (bool(return_vertices), bool(return_adjacency), bool(return_faces))
 
@@ -399,9 +464,12 @@ def compute(
             'tessellation_check must be one of: none, diagnose, warn, raise'
         )
 
+    core = _require_core()
+
     # --- Rectangular containers (Box / OrthorhombicCell) ---
     if isinstance(domain, (Box, OrthorhombicCell)):
-        bounds = geom.bounds
+        assert native_bounds is not None
+        bounds = native_bounds
         periodic_flags = geom.periodic_axes
         is_periodic = geom.has_any_periodic_axis
         if return_face_shifts:
@@ -423,7 +491,13 @@ def compute(
 
         if mode == 'standard':
             cells = core.compute_box_standard(
-                pts, ids_internal, bounds, (nx, ny, nz), periodic_flags, init_mem, opts
+                pts,
+                ids_internal,
+                bounds,
+                (nx, ny, nz),
+                periodic_flags,
+                init_mem_value,
+                opts,
             )
 
         elif mode == 'power':
@@ -435,7 +509,7 @@ def compute(
                 bounds,
                 (nx, ny, nz),
                 periodic_flags,
-                init_mem,
+                init_mem_value,
                 opts,
             )
 
@@ -527,9 +601,13 @@ def compute(
     # IMPORTANT: we do **not** pre-wrap points in Python for periodic domains.
     # Voro++ applies an authoritative remapping (including shear-coupled terms)
     # when inserting points into the periodic container.
-    cell = domain
-    bx, bxy, by, bxz, byz, bz = cell.to_internal_params()
-    pts_i = cell.cart_to_internal(pts)
+    cell = native_cell
+    assert cell is not None
+    assert native_params is not None
+    bx, bxy, by, bxz, byz, bz = native_params
+    with np.errstate(over='ignore', invalid='ignore'):
+        pts_i = cell.cart_to_internal(pts)
+    pts_i = coerce_point_array(pts_i, name='points', dim=3)
 
     if return_face_shifts:
         if not return_faces:
@@ -549,7 +627,7 @@ def compute(
             ids_internal,
             (bx, bxy, by, bxz, byz, bz),
             (nx, ny, nz),
-            init_mem,
+            init_mem_value,
             opts,
         )
 
@@ -561,7 +639,7 @@ def compute(
             rr,
             (bx, bxy, by, bxz, byz, bz),
             (nx, ny, nz),
-            init_mem,
+            init_mem_value,
             opts,
         )
 
@@ -718,60 +796,110 @@ def locate(
         image of the primary domain. This is useful when you need a consistent
         nearest-image geometry for a given query.
     """
+    validate_forward_mode(mode)
+    init_mem_value = require_positive_index(
+        init_mem,
+        name='init_mem',
+        maximum=CPP_INT_MAX,
+    )
+    blocks_value, block_size_value = coerce_native_block_parameters(
+        blocks=blocks,
+        block_size=block_size,
+        dim=3,
+    )
     pts = coerce_point_array(points, name='points', dim=3)
-    _warn_if_scale_suspicious(pts=pts, domain=domain)
     q = coerce_point_array(queries, name='queries', dim=3)
 
     n = int(pts.shape[0])
+    require_internal_id_range(n)
+    rr: np.ndarray | None = None
+    if mode == 'power':
+        if radii is None:
+            raise ValueError('radii is required for mode="power"')
+        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
     ids_internal = np.arange(n, dtype=np.int32)
 
-    core = _require_core()
     ids_user = coerce_id_array(ids, n=n)
+
+    geom = geometry3d(domain)
+    if isinstance(domain, (Box, OrthorhombicCell)):
+        native_bounds = geom.native_bounds
+        native_cell = None
+        native_params = None
+    else:
+        native_bounds = None
+        native_cell = geom.native_periodic_snapshot()
+        native_params = native_cell.params
+    native_scale = (
+        native_cell.length_scale
+        if native_cell is not None
+        else domain_length_scale(domain)
+    )
+    _warn_if_scale_suspicious(pts=pts, length_scale=native_scale)
+    nx, ny, nz = geom.resolve_block_counts(
+        n_sites=n,
+        blocks=blocks_value,
+        block_size=block_size_value,
+        periodic_snapshot=native_cell,
+    )
 
     # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
     validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
-        _duplicate_check(
-            pts,
-            threshold=float(duplicate_threshold),
+        _run_native_duplicate_check(
+            pts=pts,
             domain=domain,
+            periodic_snapshot=native_cell,
+            threshold=float(duplicate_threshold),
             wrap=bool(duplicate_wrap),
             mode='warn' if duplicate_check == 'warn' else 'raise',
             max_pairs=int(duplicate_max_pairs),
         )
 
-    geom = geometry3d(domain)
-    nx, ny, nz = geom.resolve_block_counts(
-        n_sites=n,
-        blocks=blocks,
-        block_size=block_size,
-    )
+    core = _require_core()
 
     # --- Rectangular containers (Box / OrthorhombicCell) ---
     if isinstance(domain, (Box, OrthorhombicCell)):
-        bounds = geom.bounds
+        assert native_bounds is not None
+        bounds = native_bounds
         periodic_flags = geom.periodic_axes
 
         if mode == 'standard':
             found, owner_id, owner_pos = core.locate_box_standard(
-                pts, ids_internal, bounds, (nx, ny, nz), periodic_flags, init_mem, q
+                pts,
+                ids_internal,
+                bounds,
+                (nx, ny, nz),
+                periodic_flags,
+                init_mem_value,
+                q,
             )
         elif mode == 'power':
-            if radii is None:
-                raise ValueError('radii is required for mode="power"')
-            rr = coerce_nonnegative_vector(radii, name='radii', n=n)
+            assert rr is not None
             found, owner_id, owner_pos = core.locate_box_power(
-                pts, ids_internal, rr, bounds, (nx, ny, nz), periodic_flags, init_mem, q
+                pts,
+                ids_internal,
+                rr,
+                bounds,
+                (nx, ny, nz),
+                periodic_flags,
+                init_mem_value,
+                q,
             )
         else:
             raise ValueError(f'unknown mode: {mode}')
 
     # --- PeriodicCell (triclinic) ---
     else:
-        cell = domain
-        bx, bxy, by, bxz, byz, bz = geom.internal_params
-        pts_i = cell.cart_to_internal(pts)
-        q_i = cell.cart_to_internal(q)
+        cell = native_cell
+        assert cell is not None
+        assert native_params is not None
+        bx, bxy, by, bxz, byz, bz = native_params
+        with np.errstate(over='ignore', invalid='ignore'):
+            pts_i = cell.cart_to_internal(pts)
+            q_i = cell.cart_to_internal(q)
+        pts_i = coerce_point_array(pts_i, name='points', dim=3)
+        q_i = coerce_point_array(q_i, name='queries', dim=3)
 
         if mode == 'standard':
             found, owner_id, owner_pos = core.locate_periodic_standard(
@@ -779,20 +907,18 @@ def locate(
                 ids_internal,
                 (bx, bxy, by, bxz, byz, bz),
                 (nx, ny, nz),
-                init_mem,
+                init_mem_value,
                 q_i,
             )
         elif mode == 'power':
-            if radii is None:
-                raise ValueError('radii is required for mode="power"')
-            rr = coerce_nonnegative_vector(radii, name='radii', n=n)
+            assert rr is not None
             found, owner_id, owner_pos = core.locate_periodic_power(
                 pts_i,
                 ids_internal,
                 rr,
                 (bx, bxy, by, bxz, byz, bz),
                 (nx, ny, nz),
-                init_mem,
+                init_mem_value,
                 q_i,
             )
         else:
@@ -904,42 +1030,86 @@ def ghost_cells(
     Raises:
         ValueError: if inputs are inconsistent.
     """
+    validate_forward_mode(mode)
+    init_mem_value = require_positive_index(
+        init_mem,
+        name='init_mem',
+        maximum=CPP_INT_MAX,
+    )
+    blocks_value, block_size_value = coerce_native_block_parameters(
+        blocks=blocks,
+        block_size=block_size,
+        dim=3,
+    )
     pts = coerce_point_array(points, name='points', dim=3)
-    _warn_if_scale_suspicious(pts=pts, domain=domain)
     q = coerce_point_array(queries, name='queries', dim=3)
 
     n = int(pts.shape[0])
     m = int(q.shape[0])
+    require_internal_id_range(n)
+    require_query_index_range(m)
+
+    rr: np.ndarray | None = None
+    gr: np.ndarray | None = None
+    if mode == 'power':
+        if radii is None:
+            raise ValueError('radii is required for mode="power"')
+        if ghost_radius is None:
+            raise ValueError('ghost_radius is required for mode="power"')
+        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
+        gr = coerce_nonnegative_scalar_or_vector(
+            ghost_radius,
+            name='ghost_radius',
+            n=m,
+            length_name='m',
+        )
 
     ids_internal = np.arange(n, dtype=np.int32)
 
-    core = _require_core()
     ids_user = coerce_id_array(ids, n=n)
+
+    geom = geometry3d(domain)
+    if isinstance(domain, (Box, OrthorhombicCell)):
+        native_bounds = geom.native_bounds
+        native_cell = None
+        native_params = None
+    else:
+        native_bounds = None
+        native_cell = geom.native_periodic_snapshot()
+        native_params = native_cell.params
+    native_scale = (
+        native_cell.length_scale
+        if native_cell is not None
+        else domain_length_scale(domain)
+    )
+    _warn_if_scale_suspicious(pts=pts, length_scale=native_scale)
+    nx, ny, nz = geom.resolve_block_counts(
+        n_sites=n,
+        blocks=blocks_value,
+        block_size=block_size_value,
+        periodic_snapshot=native_cell,
+    )
 
     # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
     validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
-        _duplicate_check(
-            pts,
-            threshold=float(duplicate_threshold),
+        _run_native_duplicate_check(
+            pts=pts,
             domain=domain,
+            periodic_snapshot=native_cell,
+            threshold=float(duplicate_threshold),
             wrap=bool(duplicate_wrap),
             mode='warn' if duplicate_check == 'warn' else 'raise',
             max_pairs=int(duplicate_max_pairs),
         )
 
-    geom = geometry3d(domain)
-    nx, ny, nz = geom.resolve_block_counts(
-        n_sites=n,
-        blocks=blocks,
-        block_size=block_size,
-    )
-
     opts = (bool(return_vertices), bool(return_adjacency), bool(return_faces))
+    core = _require_core()
 
     # --- Rectangular containers (Box / OrthorhombicCell) ---
     if isinstance(domain, (Box, OrthorhombicCell)):
-        bounds = geom.bounds
+        assert native_bounds is not None
+        bounds = native_bounds
         periodic_flags = geom.periodic_axes
 
         # Pre-wrap query points for periodic axes so the returned vertices are
@@ -947,6 +1117,7 @@ def ghost_cells(
         q_call = q
         if isinstance(domain, OrthorhombicCell) and any(periodic_flags):
             q_call = domain.remap_cart(q, return_shifts=False)
+            q_call = coerce_point_array(q_call, name='queries', dim=3)
 
         if mode == 'standard':
             cells = core.ghost_box_standard(
@@ -955,24 +1126,14 @@ def ghost_cells(
                 bounds,
                 (nx, ny, nz),
                 periodic_flags,
-                init_mem,
+                init_mem_value,
                 opts,
                 q_call,
             )
 
         elif mode == 'power':
-            if radii is None:
-                raise ValueError('radii is required for mode="power"')
-            rr = coerce_nonnegative_vector(radii, name='radii', n=n)
-
-            if ghost_radius is None:
-                raise ValueError('ghost_radius is required for mode="power"')
-            gr = coerce_nonnegative_scalar_or_vector(
-                ghost_radius,
-                name='ghost_radius',
-                n=m,
-                length_name='m',
-            )
+            assert rr is not None
+            assert gr is not None
 
             cells = core.ghost_box_power(
                 pts,
@@ -981,7 +1142,7 @@ def ghost_cells(
                 bounds,
                 (nx, ny, nz),
                 periodic_flags,
-                init_mem,
+                init_mem_value,
                 opts,
                 q_call,
                 gr,
@@ -992,15 +1153,21 @@ def ghost_cells(
 
     # --- PeriodicCell (triclinic) ---
     else:
-        cell = domain
-        bx, bxy, by, bxz, byz, bz = geom.internal_params
+        cell = native_cell
+        assert cell is not None
+        assert native_params is not None
+        bx, bxy, by, bxz, byz, bz = native_params
 
-        pts_i = cell.cart_to_internal(pts)
-        q_i = cell.cart_to_internal(q)
+        with np.errstate(over='ignore', invalid='ignore'):
+            pts_i = cell.cart_to_internal(pts)
+            q_i = cell.cart_to_internal(q)
+        pts_i = coerce_point_array(pts_i, name='points', dim=3)
+        q_i = coerce_point_array(q_i, name='queries', dim=3)
 
         # As with OrthorhombicCell, we pre-wrap queries so vertices are anchored
         # at the exact site coordinate used by Voro++.
         q_i = cell.remap_internal(q_i, return_shifts=False)
+        q_i = coerce_point_array(q_i, name='queries', dim=3)
 
         if mode == 'standard':
             cells = core.ghost_periodic_standard(
@@ -1008,24 +1175,14 @@ def ghost_cells(
                 ids_internal,
                 (bx, bxy, by, bxz, byz, bz),
                 (nx, ny, nz),
-                init_mem,
+                init_mem_value,
                 opts,
                 q_i,
             )
 
         elif mode == 'power':
-            if radii is None:
-                raise ValueError('radii is required for mode="power"')
-            rr = coerce_nonnegative_vector(radii, name='radii', n=n)
-
-            if ghost_radius is None:
-                raise ValueError('ghost_radius is required for mode="power"')
-            gr = coerce_nonnegative_scalar_or_vector(
-                ghost_radius,
-                name='ghost_radius',
-                n=m,
-                length_name='m',
-            )
+            assert rr is not None
+            assert gr is not None
 
             cells = core.ghost_periodic_power(
                 pts_i,
@@ -1033,7 +1190,7 @@ def ghost_cells(
                 rr,
                 (bx, bxy, by, bxz, byz, bz),
                 (nx, ny, nz),
-                init_mem,
+                init_mem_value,
                 opts,
                 q_i,
                 gr,

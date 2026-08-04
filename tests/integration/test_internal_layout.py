@@ -23,6 +23,7 @@ INTERNAL_MODULES = (
     'pyvoro2._internal.cell_output',
     'pyvoro2._internal.inputs',
     'pyvoro2._internal.power_input',
+    'pyvoro2._internal.validation',
     'pyvoro2._internal.weight_transforms',
     'pyvoro2._internal.spatial.domain_geometry',
     'pyvoro2._internal.spatial.domain_utils',

@@ -11,12 +11,18 @@ import numpy as np
 from .._internal.cell_output import add_empty_cells_inplace, remap_ids_inplace
 from .._internal.inputs import (
     coerce_id_array,
+    coerce_native_block_parameters,
     coerce_nonnegative_scalar_or_vector,
     coerce_nonnegative_vector,
     coerce_point_array,
+    require_internal_id_range,
+    require_planar_ghost_site_id_range,
+    require_query_index_range,
+    validate_forward_mode,
     validate_duplicate_check_mode,
 )
 from .._internal.power_input import ResolvedPowerInput, resolve_power_input
+from .._internal.validation import CPP_INT_MAX, require_positive_index
 from ..result import TessellationResult, _build_tessellation_result
 from .._internal.planar.domain_geometry import geometry2d
 from .._internal.planar.edge_shifts import _add_periodic_edge_shifts_inplace
@@ -283,9 +289,20 @@ def compute(
         output=output,
         normalize=normalize,
     )
+    validate_forward_mode(mode)
+    init_mem_value = require_positive_index(
+        init_mem,
+        name='init_mem',
+        maximum=CPP_INT_MAX,
+    )
+    blocks_value, block_size_value = coerce_native_block_parameters(
+        blocks=blocks,
+        block_size=block_size,
+        dim=2,
+    )
     pts = coerce_point_array(points, name='points', dim=2)
-    _warn_if_scale_suspicious(pts=pts, domain=domain)
     n = int(pts.shape[0])
+    require_internal_id_range(n)
     power_input = resolve_power_input(
         mode=mode,
         weights=weights,
@@ -293,6 +310,15 @@ def compute(
         n=n,
     )
     rr = power_input.backend_radii
+
+    geom = geometry2d(domain)
+    bounds = geom.native_bounds
+    _warn_if_scale_suspicious(pts=pts, domain=domain)
+    nx, ny = geom.resolve_block_counts(
+        n_sites=n,
+        blocks=blocks_value,
+        block_size=block_size_value,
+    )
 
     if int(edge_shift_search) < 0:
         raise ValueError('edge_shift_search must be >= 0')
@@ -305,7 +331,6 @@ def compute(
     user_return_edges = bool(return_edges)
     user_return_edge_shifts = bool(return_edge_shifts)
 
-    geom = geometry2d(domain)
     periodic = bool(geom.has_any_periodic_axis)
     need_diag = bool(return_diagnostics) or tessellation_check != 'none'
     need_norm_vertices = normalize in ('vertices', 'topology')
@@ -349,7 +374,6 @@ def compute(
 
     ids_internal = np.arange(n, dtype=np.int32)
     ids_user = coerce_id_array(ids, n=n)
-    core = _require_core2d()
 
     validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
@@ -362,18 +386,13 @@ def compute(
             max_pairs=int(duplicate_max_pairs),
         )
 
-    nx, ny = geom.resolve_block_counts(
-        n_sites=n,
-        blocks=blocks,
-        block_size=block_size,
-    )
-    bounds = geom.bounds
     periodic_flags = geom.periodic_axes
     opts = (
         internal_return_vertices,
         internal_return_adjacency,
         internal_return_edges,
     )
+    core = _require_core2d()
 
     if mode == 'standard':
         cells = core.compute_box_standard(
@@ -382,7 +401,7 @@ def compute(
             bounds,
             (nx, ny),
             periodic_flags,
-            int(init_mem),
+            init_mem_value,
             opts,
         )
     elif mode == 'power':
@@ -394,7 +413,7 @@ def compute(
             bounds,
             (nx, ny),
             periodic_flags,
-            int(init_mem),
+            init_mem_value,
             opts,
         )
         if include_empty:
@@ -527,14 +546,38 @@ def locate(
 ) -> dict[str, np.ndarray]:
     """Locate the owning generator for each planar query point."""
 
+    validate_forward_mode(mode)
+    init_mem_value = require_positive_index(
+        init_mem,
+        name='init_mem',
+        maximum=CPP_INT_MAX,
+    )
+    blocks_value, block_size_value = coerce_native_block_parameters(
+        blocks=blocks,
+        block_size=block_size,
+        dim=2,
+    )
     pts = coerce_point_array(points, name='points', dim=2)
-    _warn_if_scale_suspicious(pts=pts, domain=domain)
     q = coerce_point_array(queries, name='queries', dim=2)
 
     n = int(pts.shape[0])
+    require_internal_id_range(n)
+    rr: np.ndarray | None = None
+    if mode == 'power':
+        if radii is None:
+            raise ValueError('radii is required for mode="power"')
+        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
     ids_internal = np.arange(n, dtype=np.int32)
     ids_user = coerce_id_array(ids, n=n)
-    core = _require_core2d()
+
+    geom = geometry2d(domain)
+    bounds = geom.native_bounds
+    _warn_if_scale_suspicious(pts=pts, domain=domain)
+    nx, ny = geom.resolve_block_counts(
+        n_sites=n,
+        blocks=blocks_value,
+        block_size=block_size_value,
+    )
 
     validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
@@ -547,14 +590,8 @@ def locate(
             max_pairs=int(duplicate_max_pairs),
         )
 
-    geom = geometry2d(domain)
-    nx, ny = geom.resolve_block_counts(
-        n_sites=n,
-        blocks=blocks,
-        block_size=block_size,
-    )
-    bounds = geom.bounds
     periodic_flags = geom.periodic_axes
+    core = _require_core2d()
 
     if mode == 'standard':
         found, owner_id, owner_pos = core.locate_box_standard(
@@ -563,13 +600,11 @@ def locate(
             bounds,
             (nx, ny),
             periodic_flags,
-            int(init_mem),
+            init_mem_value,
             q,
         )
     elif mode == 'power':
-        if radii is None:
-            raise ValueError('radii is required for mode="power"')
-        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
+        assert rr is not None
         found, owner_id, owner_pos = core.locate_box_power(
             pts,
             ids_internal,
@@ -577,7 +612,7 @@ def locate(
             bounds,
             (nx, ny),
             periodic_flags,
-            int(init_mem),
+            init_mem_value,
             q,
         )
     else:
@@ -629,14 +664,53 @@ def ghost_cells(
 ) -> list[dict[str, Any]]:
     """Compute ghost Voronoi/Laguerre cells at planar query points."""
 
+    validate_forward_mode(mode)
+    init_mem_value = require_positive_index(
+        init_mem,
+        name='init_mem',
+        maximum=CPP_INT_MAX,
+    )
+    blocks_value, block_size_value = coerce_native_block_parameters(
+        blocks=blocks,
+        block_size=block_size,
+        dim=2,
+    )
     pts = coerce_point_array(points, name='points', dim=2)
-    _warn_if_scale_suspicious(pts=pts, domain=domain)
     q = coerce_point_array(queries, name='queries', dim=2)
+
+    n = int(pts.shape[0])
+    m = int(q.shape[0])
+    require_planar_ghost_site_id_range(n)
+    require_query_index_range(m)
+
+    rr: np.ndarray | None = None
+    gr: np.ndarray | None = None
+    if mode == 'power':
+        if radii is None:
+            raise ValueError('radii is required for mode="power"')
+        if ghost_radius is None:
+            raise ValueError('ghost_radius is required for mode="power"')
+        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
+        gr = coerce_nonnegative_scalar_or_vector(
+            ghost_radius,
+            name='ghost_radius',
+            n=m,
+            length_name='m',
+        )
+    ids_internal = np.arange(n, dtype=np.int32)
+    ids_user = coerce_id_array(ids, n=n)
+
+    geom = geometry2d(domain)
+    bounds = geom.native_bounds
+    _warn_if_scale_suspicious(pts=pts, domain=domain)
+    nx, ny = geom.resolve_block_counts(
+        n_sites=n,
+        blocks=blocks_value,
+        block_size=block_size_value,
+    )
 
     if int(edge_shift_search) < 0:
         raise ValueError('edge_shift_search must be >= 0')
-
-    geom = geometry2d(domain)
     if return_edge_shifts:
         if not geom.has_any_periodic_axis:
             raise ValueError(
@@ -647,12 +721,6 @@ def ghost_cells(
             raise ValueError('return_edge_shifts requires return_edges=True')
         if not return_vertices:
             raise ValueError('return_edge_shifts requires return_vertices=True')
-
-    n = int(pts.shape[0])
-    m = int(q.shape[0])
-    ids_internal = np.arange(n, dtype=np.int32)
-    ids_user = coerce_id_array(ids, n=n)
-    core = _require_core2d()
 
     validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
@@ -665,16 +733,10 @@ def ghost_cells(
             max_pairs=int(duplicate_max_pairs),
         )
 
-    nx, ny = geom.resolve_block_counts(
-        n_sites=n,
-        blocks=blocks,
-        block_size=block_size,
-    )
-    bounds = geom.bounds
     periodic_flags = geom.periodic_axes
     opts = (bool(return_vertices), bool(return_adjacency), bool(return_edges))
 
-    rr: np.ndarray | None = None
+    core = _require_core2d()
     if mode == 'standard':
         cells = core.ghost_box_standard(
             pts,
@@ -682,22 +744,13 @@ def ghost_cells(
             bounds,
             (nx, ny),
             periodic_flags,
-            int(init_mem),
+            init_mem_value,
             opts,
             q,
         )
     elif mode == 'power':
-        if radii is None:
-            raise ValueError('radii is required for mode="power"')
-        if ghost_radius is None:
-            raise ValueError('ghost_radius is required for mode="power"')
-        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
-        gr = coerce_nonnegative_scalar_or_vector(
-            ghost_radius,
-            name='ghost_radius',
-            n=m,
-            length_name='m',
-        )
+        assert rr is not None
+        assert gr is not None
         cells = core.ghost_box_power(
             pts,
             ids_internal,
@@ -705,7 +758,7 @@ def ghost_cells(
             bounds,
             (nx, ny),
             periodic_flags,
-            int(init_mem),
+            init_mem_value,
             opts,
             q,
             gr,

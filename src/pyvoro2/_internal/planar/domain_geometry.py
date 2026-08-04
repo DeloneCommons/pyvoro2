@@ -8,6 +8,8 @@ from typing import Sequence
 import numpy as np
 
 from ...planar.domains import Box, RectangularCell
+from ..inputs import coerce_native_block_parameters
+from ..validation import CPP_INT_MAX, require_ordered_bounds
 
 Domain2D = Box | RectangularCell
 
@@ -45,6 +47,17 @@ class DomainGeometry2D:
         if self.domain is None:
             raise ValueError('a domain is required to determine planar bounds')
         return self.domain.bounds
+
+    @property
+    def native_bounds(self) -> tuple[tuple[float, float], tuple[float, float]]:
+        """Return a validated snapshot of rectangular native bounds."""
+
+        validated = require_ordered_bounds(
+            self.bounds,
+            name='domain bounds',
+            dim=2,
+        )
+        return validated  # type: ignore[return-value]
 
     @property
     def lattice_vectors_cart(self) -> tuple[np.ndarray, np.ndarray]:
@@ -123,29 +136,39 @@ class DomainGeometry2D:
         blocks: tuple[int, int] | None,
         block_size: float | None,
     ) -> tuple[int, int]:
-        if blocks is not None:
-            if len(blocks) != 2:
-                raise ValueError('blocks must have length 2')
-            nx, ny = (int(v) for v in blocks)
-            if nx <= 0 or ny <= 0:
-                raise ValueError('blocks must contain positive integers')
+        validated_blocks, validated_block_size = coerce_native_block_parameters(
+            blocks=blocks,
+            block_size=block_size,
+            dim=2,
+        )
+        if validated_blocks is not None:
+            nx, ny = validated_blocks
             return nx, ny
 
         lengths, area = self._lengths_and_area()
-        if block_size is None:
+        if validated_block_size is None:
             spacing = (area / max(int(n_sites), 1)) ** 0.5
             block_size_eff = max(1e-6, 2.5 * spacing)
         else:
-            block_size_eff = float(block_size)
-            if not np.isfinite(block_size_eff) or block_size_eff <= 0.0:
-                raise ValueError('block_size must be a positive finite scalar')
+            block_size_eff = validated_block_size
 
-        return tuple(max(1, int(length / block_size_eff)) for length in lengths)
+        return tuple(
+            self._block_count(length, block_size_eff) for length in lengths
+        )
+
+    @staticmethod
+    def _block_count(length: float, block_size: float) -> int:
+        ratio = length / block_size
+        if not np.isfinite(ratio) or ratio > CPP_INT_MAX:
+            raise ValueError(
+                'derived blocks must fit the C++ int destination range'
+            )
+        return max(1, int(ratio))
 
     def _lengths_and_area(self) -> tuple[tuple[float, float], float]:
         if self.domain is None:
             raise ValueError('a domain is required to derive block counts')
-        (xmin, xmax), (ymin, ymax) = self.domain.bounds
+        (xmin, xmax), (ymin, ymax) = self.native_bounds
         lx = float(xmax - xmin)
         ly = float(ymax - ymin)
         return (lx, ly), float(lx * ly)
