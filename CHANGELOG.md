@@ -43,6 +43,14 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Hardened all 12 spatial and 6 planar native container-construction routes.
+  Native grid controls now use strict positive exact-integer semantics,
+  point/query/radius and domain values are rejected when malformed or
+  non-finite, derived C++ integer and floating-point constructor arithmetic is
+  checked, and a source-derived aggregate 1-GiB cap guards known eager native
+  allocations before construction. Direct internal native calls receive the
+  same converted-value defense; valid in-cap tessellation behavior and public
+  signatures/defaults are unchanged.
 - Normalized vectorized `numpy.ldexp` exponents to NumPy's platform C-`int`
   dtype at the ufunc boundary, preserving wide internal exponent accumulation
   and restoring separator inverse workflows on Windows with Python 3.10 and

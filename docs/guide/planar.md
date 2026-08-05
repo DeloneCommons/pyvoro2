@@ -21,6 +21,13 @@ vendored legacy backend supports well:
 There is **no** planar `PeriodicCell` yet. Rectangular periodic domains can be
 periodic in either or both planar axes.
 
+Planar `compute`, `locate`, and `ghost_cells` use the same strict
+[native-construction contract](operations.md#native-construction-controls-and-rejection)
+as their spatial counterparts. Planar points and queries use two columns, and
+explicit `blocks` has length 2. `init_mem` and block counts are positive exact
+integers, `block_size` is a positive finite real scalar, and the same exact
+1-GiB known-eager-allocation cap applies before native construction.
+
 ## Basic compute
 
 ```python

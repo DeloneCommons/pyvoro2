@@ -331,9 +331,13 @@ def compute(
         duplicate_wrap: If True, points are remapped into the primary domain
             for periodic domains before checking (matching Voro++ behavior).
         duplicate_max_pairs: Maximum number of near-duplicate pairs reported.
-        block_size: Approximate grid block size. If provided, `blocks` is derived.
-        blocks: Explicit (nx, ny, nz) grid blocks. Overrides `block_size`.
-        init_mem: Initial per-block particle memory in Voro++.
+        block_size: Positive finite approximate grid block size. If provided,
+            block counts are derived unless explicit ``blocks`` are supplied.
+        blocks: Explicit positive exact-integer ``(nx, ny, nz)`` grid counts.
+            These select the counts instead of ``block_size`` derivation.
+        init_mem: Positive exact-integer initial per-block particle capacity in
+            Voro++. Known eager native construction allocations are subject to
+            an aggregate cap of exactly 1 GiB.
         mode: 'standard' or 'power'.
         weights: Per-point mathematical power weights for ``mode='power'``,
             with shape ``(n,)`` and squared-length units. Positive, zero, and
@@ -777,9 +781,13 @@ def locate(
         duplicate_wrap: If True, points are remapped into the primary domain
             for periodic domains before checking.
         duplicate_max_pairs: Maximum number of near-duplicate pairs reported.
-        block_size: Approximate grid block size. If provided, `blocks` is derived.
-        blocks: Explicit (nx, ny, nz) grid blocks. Overrides `block_size`.
-        init_mem: Initial per-block particle memory in Voro++.
+        block_size: Positive finite approximate grid block size. If provided,
+            block counts are derived unless explicit ``blocks`` are supplied.
+        blocks: Explicit positive exact-integer ``(nx, ny, nz)`` grid counts.
+            These select the counts instead of ``block_size`` derivation.
+        init_mem: Positive exact-integer initial per-block particle capacity in
+            Voro++. Known eager native construction allocations are subject to
+            an aggregate cap of exactly 1 GiB.
         mode: 'standard' or 'power'.
         radii: Per-point radii for `mode='power'`.
         return_owner_position: If True, also return the (possibly periodic-image)
@@ -999,9 +1007,13 @@ def ghost_cells(
         duplicate_wrap: If True, points are remapped into the primary domain
             for periodic domains before checking.
         duplicate_max_pairs: Maximum number of near-duplicate pairs reported.
-        block_size: Approximate grid block size. If provided, `blocks` is derived.
-        blocks: Explicit (nx, ny, nz) grid blocks. Overrides `block_size`.
-        init_mem: Initial per-block particle memory in Voro++.
+        block_size: Positive finite approximate grid block size. If provided,
+            block counts are derived unless explicit ``blocks`` are supplied.
+        blocks: Explicit positive exact-integer ``(nx, ny, nz)`` grid counts.
+            These select the counts instead of ``block_size`` derivation.
+        init_mem: Positive exact-integer initial per-block particle capacity in
+            Voro++. Known eager native construction allocations are subject to
+            an aggregate cap of exactly 1 GiB.
         mode: 'standard' or 'power'.
         radii: Per-point radii for `mode='power'`.
         ghost_radius: Radius (or array of radii) for each ghost query point in

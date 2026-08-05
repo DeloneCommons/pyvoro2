@@ -818,3 +818,249 @@ def test_floating_constructor_overflow_raises_in_subprocess(script: str) -> None
     )
     assert completed.returncode == 0, completed.stderr
     assert completed.stdout.startswith('ValueError')
+
+
+@pytest.mark.parametrize(
+    ('label', 'script'),
+    [
+        (
+            'invalid-block-controls',
+            '''
+            import numpy as np
+            from pyvoro2 import _core, _core2d
+
+            cases = (
+                lambda: _core.compute_box_standard(
+                    np.empty((0, 3)), np.empty(0, dtype=np.int32),
+                    ((0.0, 1.0),) * 3, (0, 1, 1),
+                    (False, False, False), 1, (False, False, False),
+                ),
+                lambda: _core2d.compute_box_standard(
+                    np.empty((0, 2)), np.empty(0, dtype=np.int32),
+                    ((0.0, 1.0),) * 2, (-1, 1),
+                    (False, False), 1, (False, False, False),
+                ),
+            )
+            for case in cases:
+                try:
+                    case()
+                except ValueError:
+                    pass
+                else:
+                    raise SystemExit('missing Python exception')
+            print('OK invalid-block-controls')
+            ''',
+        ),
+        (
+            'resource-cap-rejections',
+            '''
+            import numpy as np
+            from pyvoro2 import _core, _core2d
+
+            cases = (
+                lambda: _core.compute_box_standard(
+                    np.empty((0, 3)), np.empty(0, dtype=np.int32),
+                    ((0.0, 1.0),) * 3, (300, 300, 300),
+                    (False, False, False), 1, (False, False, False),
+                ),
+                lambda: _core2d.compute_box_standard(
+                    np.empty((0, 2)), np.empty(0, dtype=np.int32),
+                    ((0.0, 1.0),) * 2, (5000, 5000),
+                    (False, False), 1, (False, False, False),
+                ),
+                lambda: _core.compute_periodic_standard(
+                    np.empty((0, 3)), np.empty(0, dtype=np.int32),
+                    (1.0, 10000.0, 1.0, 0.0, 0.0, 1.0),
+                    (1, 1, 1), 1, (False, False, False),
+                ),
+            )
+            for case in cases:
+                try:
+                    case()
+                except ValueError as exc:
+                    if '1073741824-byte safety limit' not in str(exc):
+                        raise
+                else:
+                    raise SystemExit('missing Python exception')
+            print('OK resource-cap-rejections')
+            ''',
+        ),
+        (
+            'malformed-spatial-native-inputs',
+            '''
+            import numpy as np
+            from pyvoro2 import _core
+
+            points = np.array([[0.25, 0.25, 0.25], [0.75, 0.75, 0.75]])
+            ids = np.array([0, 1], dtype=np.int32)
+            radii = np.array([0.0, 0.1])
+            bounds = ((0.0, 1.0),) * 3
+            params = (1.0, 0.0, 1.0, 0.0, 0.0, 1.0)
+            blocks = (1, 1, 1)
+            periodic = (False, False, False)
+            opts = (False, False, False)
+            queries = np.array([[0.5, 0.5, 0.5]])
+            cases = (
+                lambda: _core.compute_box_standard(
+                    np.array([[0.0, np.nan, 0.0]]),
+                    np.array([0], dtype=np.int32), bounds, blocks,
+                    periodic, 1, opts,
+                ),
+                lambda: _core.locate_periodic_standard(
+                    points, ids, params, blocks, 1,
+                    np.array([[0.0, 0.0, np.inf]]),
+                ),
+                lambda: _core.compute_box_power(
+                    points, ids, np.array([0.0, -0.1]), bounds,
+                    blocks, periodic, 1, opts,
+                ),
+                lambda: _core.compute_periodic_standard(
+                    points, ids, (np.nan, *params[1:]), blocks, 1, opts,
+                ),
+            )
+            for case in cases:
+                try:
+                    case()
+                except ValueError:
+                    pass
+                else:
+                    raise SystemExit('missing Python exception')
+            print('OK malformed-spatial-native-inputs')
+            ''',
+        ),
+        (
+            'malformed-planar-native-inputs',
+            '''
+            import numpy as np
+            from pyvoro2 import _core2d
+
+            points = np.array([[0.25, 0.25], [0.75, 0.75]])
+            ids = np.array([0, 1], dtype=np.int32)
+            bounds = ((0.0, 1.0),) * 2
+            blocks = (1, 1)
+            periodic = (False, False)
+            opts = (False, False, False)
+            cases = (
+                lambda: _core2d.compute_box_standard(
+                    np.array([[0.0, -np.inf]]),
+                    np.array([0], dtype=np.int32), bounds, blocks,
+                    periodic, 1, opts,
+                ),
+                lambda: _core2d.locate_box_standard(
+                    points, ids, bounds, blocks, periodic, 1,
+                    np.array([[0.0, np.nan]]),
+                ),
+                lambda: _core2d.ghost_box_power(
+                    points, ids, np.array([0.0, 0.1]), bounds,
+                    blocks, periodic, 1, opts, np.array([[0.5, 0.5]]),
+                    np.array([-0.1]),
+                ),
+            )
+            for case in cases:
+                try:
+                    case()
+                except ValueError:
+                    pass
+                else:
+                    raise SystemExit('missing Python exception')
+            print('OK malformed-planar-native-inputs')
+            ''',
+        ),
+        (
+            'valid-spatial-families',
+            '''
+            import numpy as np
+            from pyvoro2 import _core
+
+            points = np.array([[0.25, 0.25, 0.25], [0.75, 0.75, 0.75]])
+            ids = np.array([0, 1], dtype=np.int32)
+            radii = np.array([0.0, 0.1])
+            bounds = ((0.0, 1.0),) * 3
+            params = (1.0, 0.0, 1.0, 0.0, 0.0, 1.0)
+            blocks = (1, 1, 1)
+            periodic = (False, False, False)
+            opts = (False, False, False)
+            queries = np.array([[0.5, 0.5, 0.5]])
+            ghost_radii = np.array([0.05])
+            _core.compute_box_standard(
+                points, ids, bounds, blocks, periodic, 1, opts,
+            )
+            _core.compute_periodic_power(
+                points, ids, radii, params, blocks, 1, opts,
+            )
+            _core.locate_periodic_standard(
+                points, ids, params, blocks, 1, queries,
+            )
+            _core.locate_box_power(
+                points, ids, radii, bounds, blocks, periodic, 1, queries,
+            )
+            _core.ghost_box_standard(
+                points, ids, bounds, blocks, periodic, 1, opts, queries,
+            )
+            _core.ghost_periodic_power(
+                points, ids, radii, params, blocks, 1, opts,
+                queries, ghost_radii,
+            )
+            print('OK valid-spatial-families')
+            ''',
+        ),
+        (
+            'valid-planar-families',
+            '''
+            import numpy as np
+            from pyvoro2 import _core2d
+
+            points = np.array([[0.25, 0.25], [0.75, 0.75]])
+            ids = np.array([0, 1], dtype=np.int32)
+            radii = np.array([0.0, 0.1])
+            bounds = ((0.0, 1.0),) * 2
+            blocks = (1, 1)
+            periodic = (False, False)
+            opts = (False, False, False)
+            queries = np.array([[0.5, 0.5]])
+            ghost_radii = np.array([0.05])
+            _core2d.compute_box_standard(
+                points, ids, bounds, blocks, periodic, 1, opts,
+            )
+            _core2d.compute_box_power(
+                points, ids, radii, bounds, blocks, periodic, 1, opts,
+            )
+            _core2d.locate_box_standard(
+                points, ids, bounds, blocks, periodic, 1, queries,
+            )
+            _core2d.locate_box_power(
+                points, ids, radii, bounds, blocks, periodic, 1, queries,
+            )
+            _core2d.ghost_box_standard(
+                points, ids, bounds, blocks, periodic, 1, opts, queries,
+            )
+            _core2d.ghost_box_power(
+                points, ids, radii, bounds, blocks, periodic, 1, opts,
+                queries, ghost_radii,
+            )
+            print('OK valid-planar-families')
+            ''',
+        ),
+    ],
+    ids=[
+        'invalid-block-controls',
+        'resource-cap-rejections',
+        'malformed-spatial-native-inputs',
+        'malformed-planar-native-inputs',
+        'valid-spatial-families',
+        'valid-planar-families',
+    ],
+)
+def test_fixed_issue_matrix_returns_normally_in_subprocess(
+    label: str,
+    script: str,
+) -> None:
+    completed = subprocess.run(
+        [sys.executable, '-c', textwrap.dedent(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == f'OK {label}'

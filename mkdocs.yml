@@ -97,6 +97,7 @@ nav:
           - Separator inverse objective contract: development/decisions/0007-separator-objective-contract.md
           - Separator solver and linear-backend selection: development/decisions/0008-separator-solver-and-linear-backend.md
           - Certified scalar proximal solver: development/decisions/0009-certified-scalar-proximal-solver.md
+          - Strict native construction preconditions: development/decisions/0010-native-construction-preconditions.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

@@ -887,6 +887,25 @@ unchanged. Finite representability does not promise geometric resolution when
 squared backend radii or genuine weight ranges overwhelm squared geometry
 scales.
 
+The current native-construction controls have one shared contract in both
+dimensions. `init_mem` and each explicit `blocks` entry must be a positive
+exact non-Boolean index-protocol scalar within the C++ `int` range; `blocks`
+has length 3 spatially and length 2 planarly. `block_size`, when supplied, must
+be a positive finite real numeric scalar. Points and queries must have the
+dimension-appropriate matrix shape and contain only finite values; radii must
+have the required vector shape and be finite and non-negative. Bounds and
+periodic constructor parameters must be finite, ordered where applicable, and
+safe for the arithmetic evaluated by Voro++. Violations raise `ValueError`
+before native construction.
+
+All 18 internal native construction routes repeat converted-value checks and
+checked constructor arithmetic before allocation. An aggregate source-derived
+estimate of known eager native construction allocations may be at most exactly
+`1 << 30` bytes; estimates greater than 1 GiB raise `ValueError`, with no
+unsafe override. This is a defensive change to invalid-input rejection, not a
+new public name, signature, default, result schema, or valid numerical
+behavior. The exact layering and estimate policy are fixed by ADR 0010.
+
 ### Exact current inverse signatures and defaults
 
 The stable high-level calls are:
@@ -1541,6 +1560,7 @@ Issue #30 moved all private pure-Python implementation helpers into
 pyvoro2._internal.cell_output
 pyvoro2._internal.inputs
 pyvoro2._internal.power_input
+pyvoro2._internal.validation
 pyvoro2._internal.weight_transforms
 pyvoro2._internal.spatial.domain_geometry
 pyvoro2._internal.spatial.domain_utils

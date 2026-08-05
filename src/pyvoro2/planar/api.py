@@ -283,6 +283,12 @@ def compute(
     the diagram. Radii have length units and are a non-unique backend
     representation, not necessarily physical radii. Standard mode rejects both
     ``weights`` and ``radii`` because neither representation has meaning there.
+
+    ``init_mem`` and explicit length-2 ``blocks`` must contain positive exact
+    non-Boolean integers in the C++ ``int`` range. ``block_size``, when
+    supplied, must be positive and finite. Points and radii are validated for
+    shape and finiteness before construction, and the aggregate estimate of
+    known eager native construction allocations may be at most exactly 1 GiB.
     """
 
     resolved_output = _resolve_compute_output(
@@ -544,7 +550,13 @@ def locate(
     radii: Sequence[float] | np.ndarray | None = None,
     return_owner_position: bool = False,
 ) -> dict[str, np.ndarray]:
-    """Locate the owning generator for each planar query point."""
+    """Locate the owning generator for each planar query point.
+
+    ``init_mem`` and explicit length-2 ``blocks`` use positive exact-integer
+    semantics; ``block_size`` is positive and finite. Malformed or non-finite
+    points, queries, radii, domains, and over-cap known eager native allocation
+    estimates raise ``ValueError`` before construction.
+    """
 
     validate_forward_mode(mode)
     init_mem_value = require_positive_index(
@@ -662,7 +674,13 @@ def ghost_cells(
     repair_edge_shifts: bool = False,
     edge_shift_tol: float | None = None,
 ) -> list[dict[str, Any]]:
-    """Compute ghost Voronoi/Laguerre cells at planar query points."""
+    """Compute ghost Voronoi/Laguerre cells at planar query points.
+
+    ``init_mem`` and explicit length-2 ``blocks`` use positive exact-integer
+    semantics; ``block_size`` is positive and finite. Malformed or non-finite
+    points, queries, radii, domains, and over-cap known eager native allocation
+    estimates raise ``ValueError`` before construction.
+    """
 
     validate_forward_mode(mode)
     init_mem_value = require_positive_index(

@@ -189,7 +189,7 @@ ownership is:
 
 | Ownership | Modules | Reason |
 |---|---|---|
-| Dimension-neutral | `_internal.cell_output`, `_internal.inputs`, `_internal.power_input`, `_internal.weight_transforms` | Raw-record post-processing is parameterized by measure and boundary keys; input coercion is parameterized by dimension; power-input resolution and weight/radius conversion have no dimension-specific geometry. |
+| Dimension-neutral | `_internal.cell_output`, `_internal.inputs`, `_internal.power_input`, `_internal.validation`, `_internal.weight_transforms` | Raw-record post-processing is parameterized by measure and boundary keys; strict scalar/array validation and input coercion are parameterized by dimension; power-input resolution and weight/radius conversion have no dimension-specific geometry. |
 | Spatial/3D | `_internal.spatial.domain_geometry`, `_internal.spatial.domain_utils`, `_internal.spatial.face_shifts` | These helpers use the 3D domain classes, three-component lattice operations, or realized face geometry. |
 | Planar/2D | `_internal.planar.domain_geometry`, `_internal.planar.edge_shifts` | These helpers use the planar domain classes, two-component lattice operations, or realized edge geometry. |
 
@@ -220,6 +220,25 @@ package without a compiled extension; a forward geometry operation raises an
 informative `ImportError` when its required native module is unavailable. Lazy
 loading does not change ownership: `_core` and `_core2d` remain root-owned
 internal native extensions, while `_internal` owns only pure-Python helpers.
+
+### Native construction safety boundary
+
+The public spatial and planar wrappers apply strict source-type, shape,
+finiteness, and range validation before native dispatch. Exact integer policy
+lives in `_internal.validation`, shared forward coercion lives in
+`_internal.inputs`, and dimension-specific geometry adapters provide validated
+native bounds or an owned periodic snapshot.
+
+Every function in the 12-route spatial and 6-route planar native construction
+matrix then calls the common C++ preflight before constructing Voro++. The
+preflight validates converted arrays and controls, checks every derived C++
+`int` and byte-count operation, proves the finite constructor arithmetic used
+by the current vendored sources, and enforces the aggregate 1-GiB cap on known
+eager construction allocations. The direct `_core` and `_core2d` routes are
+therefore defensive even when the public wrapper is bypassed. Exact original
+Python type semantics remain the wrapper's responsibility because pybind11
+conversion may already have erased that information. ADR 0010 fixes the
+ordering, resource policy, source-trace requirement, and R3-A scope.
 
 ### Neutral weight/radius transforms
 

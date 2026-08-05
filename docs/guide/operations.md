@@ -50,6 +50,42 @@ Using `duplicate_check='raise'` prevents Voro++ from terminating the process.
 Note: `duplicate_check='warn'` only reports the issue and still enters the C++ layer.
 If your points truly violate Voro++'s hard threshold, the process may still terminate.
 
+## Native construction controls and rejection
+
+Every `compute`, `locate`, and `ghost_cells` call validates its inputs before
+constructing the stateless native container. Site coordinates must have shape
+`(n, 3)`, query coordinates must have shape `(m, 3)`, and all coordinates must
+be finite. Power radii must have shape `(n,)`, while ghost radii are scalar or
+query-aligned as documented; every radius must be finite and non-negative.
+Box bounds must be finite and strictly ordered, and periodic parameters must
+produce finite, safe native constructor arithmetic. Invalid values raise
+`ValueError` before native construction.
+
+The three native grid controls have strict meanings:
+
+- `init_mem` is the positive initial per-block particle capacity. It must be
+  a positive exact non-Boolean index-protocol scalar within the C++ `int`
+  range. Python integers and in-range NumPy signed or unsigned integer scalars
+  are common examples; other genuine index-protocol scalars are accepted too.
+  Python/NumPy Booleans, floats, strings, complex values, and scalar arrays are
+  rejected.
+- `blocks` is an explicit length-3 sequence of positive exact non-Boolean
+  index-protocol scalars, one per axis, with the same examples, rejections, and
+  C++ `int` range. When supplied, these are the selected counts instead of
+  counts derived from `block_size`.
+- `block_size` is an optional positive finite real scalar used to derive block
+  counts. A supplied value is validated even when explicit `blocks` select the
+  counts.
+
+Before allocation, pyvoro2 also checks native integer products and a
+source-derived estimate of allocations known to occur eagerly during container
+construction. The aggregate estimate may be at most exactly 1 GiB
+(1,073,741,824 bytes); a larger estimate raises `ValueError`. This is a safety
+limit, not a promise about total peak memory, and there is no unsafe override.
+Use fewer blocks, a larger derived `block_size`, or a smaller `init_mem` when a
+valid configuration exceeds it. These guards change rejection behavior only;
+valid in-cap tessellations follow the existing numerical path.
+
 ## 1) `compute(...)`: tessellate all sites
 
 `compute` computes the Voronoi (standard) or power/Laguerre (weighted) cell for
