@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 import subprocess
 import sys
 import textwrap
@@ -14,6 +15,69 @@ from pyvoro2 import _core, _core2d
 
 
 CPP_INT_MAX = int(np.iinfo(np.intc).max)
+EAGER_ALLOCATION_LIMIT_BYTES = 1 << 30
+
+
+def _periodic_known_eager_oracle(
+    ey: int,
+    ez: int,
+    *,
+    blocks: tuple[int, int, int],
+    init_mem: int,
+    particle_stride: int,
+) -> tuple[dict[str, int], int]:
+    """Reproduce the vendored eager allocations without production helpers."""
+    pointer_bytes = 8
+    int_bytes = 4
+    double_bytes = 8
+    unsigned_int_bytes = 4
+    char_bytes = 1
+    assert np.dtype(np.uintp).itemsize == pointer_bytes
+    assert np.dtype(np.intc).itemsize == int_bytes
+    assert np.dtype(np.uintc).itemsize == unsigned_int_bytes
+    assert np.dtype(np.float64).itemsize == double_bytes
+
+    nx, ny, nz = blocks
+    primary_blocks = nx * ny * nz
+    oy = ny + 2 * ey
+    oz = nz + 2 * ez
+    extended_blocks = nx * oy * oz
+    hx = 2 * nx + 1
+    hy = 2 * ey + 1
+    hz = 2 * ez + 1
+    hxy = hx * hy
+    mask_size = hxy * hz
+    queue_size = 3 * (3 + hxy + hz * (hx + hy))
+
+    unit_cell_bytes = (
+        256 * pointer_bytes
+        + 256 * int_bytes
+        + 256 * unsigned_int_bytes
+        + 4 * 256 * double_bytes
+        + 2 * 64 * int_bytes
+        + 64 * pointer_bytes
+        + (2 * 256 + 32) * int_bytes
+    )
+    for order in range(64):
+        count = 256 * 7 if order == 3 else 8 * (2 * order + 1)
+        unit_cell_bytes += count * int_bytes
+
+    breakdown = {
+        'extended_id_pointers': extended_blocks * pointer_bytes,
+        'extended_particle_pointers': extended_blocks * pointer_bytes,
+        'extended_counters': 2 * extended_blocks * int_bytes,
+        'image_flags': extended_blocks * char_bytes,
+        'primary_particle_storage': (
+            primary_blocks
+            * init_mem
+            * (int_bytes + particle_stride * double_bytes)
+        ),
+        'compute_mask': mask_size * unsigned_int_bytes,
+        'compute_queue': queue_size * int_bytes,
+        'worklist': 64 * 64 * double_bytes,
+        'unit_cell': unit_cell_bytes,
+    }
+    return breakdown, sum(breakdown.values())
 
 
 @dataclass(frozen=True)
@@ -626,7 +690,7 @@ def test_direct_cores_reject_negative_init_mem(path: NativePath) -> None:
 
 
 def test_checked_count_add_multiply_and_byte_boundaries() -> None:
-    cap = 1 << 30
+    cap = EAGER_ALLOCATION_LIMIT_BYTES
     assert _core._test_checked_count(CPP_INT_MAX) == CPP_INT_MAX
     assert _core._test_checked_int_add(CPP_INT_MAX, 0) == CPP_INT_MAX
     assert _core._test_checked_int_multiply(CPP_INT_MAX, 1) == CPP_INT_MAX
@@ -641,6 +705,225 @@ def test_checked_count_add_multiply_and_byte_boundaries() -> None:
         _core._test_checked_int_multiply(CPP_INT_MAX, 2)
     with pytest.raises(ValueError, match='1073741824-byte safety limit'):
         _core._test_allocation_estimate(cap + 1)
+
+
+def test_periodic_extent_bound_covers_orthogonal_unitcell_source_extent() -> None:
+    a, b, c = 1.0, 10.0, 1.0
+    radius = 0.5 * math.sqrt(a * a + b * b + c * c)
+    max_uv_y = b / 2.0 + radius
+    max_uv_z = c / 2.0 + radius
+    source_ey = math.floor(max_uv_y / b * 100) + 1
+    source_ez = math.floor(max_uv_z / c) + 1
+
+    old_radius_bound = 0.5 * (a + b + c)
+    old_ey = math.floor(old_radius_bound / b * 100) + 1
+
+    assert max_uv_y == 10.049752469181039
+    assert old_ey == 61
+    assert source_ey == 101
+
+    estimate = _core._test_periodic_resource_estimate(
+        (a, 0.0, b, 0.0, 0.0, c),
+        (1, 100, 1),
+        1,
+        3,
+    )
+    assert estimate['ey_bound'] >= source_ey
+    assert estimate['ez_bound'] >= source_ez
+
+
+def test_fixed_periodic_cap_false_negative_oracles_and_estimator() -> None:
+    a, b, c = 0.01, 10.0, 10.0
+    blocks = (1, 1529, 1529)
+    radius = 0.5 * math.sqrt(a * a + b * b + c * c)
+    source_ey = math.floor((b / 2.0 + radius) / b * blocks[1]) + 1
+    source_ez = math.floor((c / 2.0 + radius) / c * blocks[2]) + 1
+    assert source_ey == source_ez == 1846
+
+    old_radius_bound = 0.5 * (a + b + c)
+    old_ey = math.floor(old_radius_bound / b * blocks[1]) + 1
+    old_ez = math.floor(old_radius_bound / c * blocks[2]) + 1
+    assert old_ey == old_ez == 1530
+
+    old_breakdown, old_total = _periodic_known_eager_oracle(
+        old_ey,
+        old_ez,
+        blocks=blocks,
+        init_mem=1,
+        particle_stride=3,
+    )
+    source_breakdown, source_total = _periodic_known_eager_oracle(
+        source_ey,
+        source_ez,
+        blocks=blocks,
+        init_mem=1,
+        particle_stride=3,
+    )
+    assert sum(old_breakdown.values()) == old_total == 817_212_577
+    assert (
+        sum(source_breakdown.values())
+        == source_total
+        == 1_074_700_753
+    )
+    assert old_total < EAGER_ALLOCATION_LIMIT_BYTES
+    assert source_total > EAGER_ALLOCATION_LIMIT_BYTES
+
+    estimate = _core._test_periodic_resource_estimate(
+        (a, 0.0, b, 0.0, 0.0, c),
+        blocks,
+        1,
+        3,
+    )
+    conservative_extent = sum(abs(value) for value in (a, 0.0, b, 0.0, 0.0, c))
+    conservative_ey = math.floor(
+        conservative_extent / b * blocks[1]
+    ) + 1
+    conservative_ez = math.floor(
+        conservative_extent / c * blocks[2]
+    ) + 1
+    conservative_breakdown, conservative_total = _periodic_known_eager_oracle(
+        conservative_ey,
+        conservative_ez,
+        blocks=blocks,
+        init_mem=1,
+        particle_stride=3,
+    )
+    assert conservative_ey == conservative_ez == 3060
+    assert (
+        sum(conservative_breakdown.values())
+        == conservative_total
+        == 2_427_965_977
+    )
+    oy = blocks[1] + 2 * conservative_ey
+    oz = blocks[2] + 2 * conservative_ez
+    hx = 2 * blocks[0] + 1
+    hy = 2 * conservative_ey + 1
+    hz = 2 * conservative_ez + 1
+    assert estimate == {
+        'primary_blocks': math.prod(blocks),
+        'ey_bound': conservative_ey,
+        'ez_bound': conservative_ez,
+        'oy': oy,
+        'oz': oz,
+        'extended_blocks': blocks[0] * oy * oz,
+        'hx': hx,
+        'hy': hy,
+        'hz': hz,
+        'mask_size': hx * hy * hz,
+        'queue_size': 3 * (3 + hx * hy + hz * (hx + hy)),
+        'known_eager_bytes': conservative_total,
+    }
+    assert estimate['ey_bound'] >= source_ey
+    assert estimate['ez_bound'] >= source_ez
+    assert estimate['known_eager_bytes'] > EAGER_ALLOCATION_LIMIT_BYTES
+
+
+@pytest.mark.parametrize(
+    'path', PERIODIC_CONSTRUCTOR_PATHS, ids=lambda path: path.label
+)
+def test_all_six_periodic_paths_accept_sheared_in_cap_calls(
+    path: NativePath,
+) -> None:
+    result = getattr(path.module, path.name)(
+        *_native_args(
+            path,
+            cell_params=(2.0, 0.25, 2.0, 0.1, -0.2, 2.0),
+        )
+    )
+    if path.operation == 'locate':
+        assert len(result) == 3
+        assert result[0].shape == (1,)
+    else:
+        assert isinstance(result, list)
+        assert len(result) == (1 if path.operation == 'ghost' else 2)
+
+
+def test_representative_anisotropic_periodic_case_remains_in_cap() -> None:
+    params = (0.1, 0.0, 10.0, 0.0, 0.0, 10.0)
+    blocks = (1, 100, 100)
+    estimate = _core._test_periodic_resource_estimate(params, blocks, 1, 3)
+    assert estimate['known_eager_bytes'] < EAGER_ALLOCATION_LIMIT_BYTES
+
+    path = NATIVE_CONSTRUCTOR_PATHS[2]
+    result = getattr(path.module, path.name)(
+        *_empty_native_args(path, cell_params=params, blocks=blocks)
+    )
+    assert result == []
+
+
+@pytest.mark.skipif(
+    not sys.platform.startswith('linux'),
+    reason='the dangerous-constructor regression requires Linux RLIMIT_AS',
+)
+def test_all_six_periodic_paths_reject_corrected_cap_case_bounded() -> None:
+    script = '''
+    import os
+    import resource
+    import numpy as np
+    from pyvoro2 import _core
+
+    points = np.empty((0, 3))
+    ids = np.empty(0, dtype=np.int32)
+    radii = np.empty(0)
+    queries = np.empty((0, 3))
+    ghost_radii = np.empty(0)
+    params = (0.01, 0.0, 10.0, 0.0, 0.0, 10.0)
+    blocks = (1, 1529, 1529)
+    opts = (False, False, False)
+    cases = (
+        ('compute-standard', lambda: _core.compute_periodic_standard(
+            points, ids, params, blocks, 1, opts,
+        )),
+        ('compute-power', lambda: _core.compute_periodic_power(
+            points, ids, radii, params, blocks, 1, opts,
+        )),
+        ('locate-standard', lambda: _core.locate_periodic_standard(
+            points, ids, params, blocks, 1, queries,
+        )),
+        ('locate-power', lambda: _core.locate_periodic_power(
+            points, ids, radii, params, blocks, 1, queries,
+        )),
+        ('ghost-standard', lambda: _core.ghost_periodic_standard(
+            points, ids, params, blocks, 1, opts, queries,
+        )),
+        ('ghost-power', lambda: _core.ghost_periodic_power(
+            points, ids, radii, params, blocks, 1, opts, queries,
+            ghost_radii,
+        )),
+    )
+
+    page_size = os.sysconf('SC_PAGE_SIZE')
+    with open('/proc/self/statm', encoding='ascii') as statm:
+        current_address_space = int(statm.read().split()[0]) * page_size
+    limit = current_address_space + 256 * 1024 * 1024
+    resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+
+    for label, case in cases:
+        try:
+            case()
+        except ValueError as exc:
+            if '1073741824-byte safety limit' not in str(exc):
+                raise
+        else:
+            raise SystemExit(f'{label}: missing 1-GiB ValueError')
+        print(f'OK {label}')
+    '''
+    completed = subprocess.run(
+        [sys.executable, '-c', textwrap.dedent(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.splitlines() == [
+        'OK compute-standard',
+        'OK compute-power',
+        'OK locate-standard',
+        'OK locate-power',
+        'OK ghost-standard',
+        'OK ghost-power',
+    ]
 
 
 @pytest.mark.parametrize(

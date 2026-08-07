@@ -202,6 +202,50 @@ PYBIND11_MODULE(_core, m) {
     estimate.enforce_limit();
     return estimate.total();
   });
+  m.def(
+      "_test_periodic_resource_estimate",
+      [](std::array<double, 6> cell_params,
+         std::array<int, 3> blocks,
+         int init_mem,
+         int particle_stride) {
+        native::require_positive_controls(blocks.data(), blocks.size(),
+                                          init_mem);
+        for (std::size_t i = 0; i < cell_params.size(); ++i) {
+          if (!std::isfinite(cell_params[i])) {
+            native::fail("cell_params[" + std::to_string(i) + "]",
+                         "must be finite");
+          }
+        }
+        for (const std::size_t i : {std::size_t{0}, std::size_t{2},
+                                    std::size_t{5}}) {
+          if (!(cell_params[i] > 0.0)) {
+            native::fail("cell_params[" + std::to_string(i) + "]",
+                         "must be a positive finite periodic length");
+          }
+        }
+        const native::Periodic3DResourceEstimate estimate =
+            native::estimate_periodic_3d_resources(
+                cell_params, blocks, init_mem, particle_stride);
+        py::dict result;
+        result["primary_blocks"] = estimate.primary_blocks;
+        result["ey_bound"] = estimate.ey_bound;
+        result["ez_bound"] = estimate.ez_bound;
+        result["oy"] = estimate.oy;
+        result["oz"] = estimate.oz;
+        result["extended_blocks"] = estimate.extended_blocks;
+        result["hx"] = estimate.hx;
+        result["hy"] = estimate.hy;
+        result["hz"] = estimate.hz;
+        result["mask_size"] = estimate.mask_size;
+        result["queue_size"] = estimate.queue_size;
+        result["known_eager_bytes"] =
+            estimate.known_eager_allocation.total();
+        return result;
+      },
+      py::arg("cell_params"),
+      py::arg("blocks"),
+      py::arg("init_mem"),
+      py::arg("particle_stride"));
 
   m.def(
       "compute_box_standard",

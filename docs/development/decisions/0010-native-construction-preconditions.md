@@ -83,21 +83,46 @@ stride), compute masks and queues, the dimension-specific worklist, and wall
 pointer storage.
 
 For a 3D triclinic container, the primary block product is
-`nx * ny * nz`. A conservative unit-cell covering-radius bound is
+`nx * ny * nz`. The vendored `unitcell.cc` stores doubled vertex
+coordinates, forms `q = sqrt(x*x + y*y + z*z)`, and then halves the maxima of
+`y + q` and `z + q`. In physical coordinates the constructor extents are
+therefore
+
+\[
+\max_v(v_y + \lVert v\rVert)
+\quad\text{and}\quad
+\max_v(v_z + \lVert v\rVert).
+\]
+
+A conservative unit-cell covering-radius bound is
 
 \[
 R = \tfrac12\left(\lVert a\rVert+\lVert b\rVert+\lVert c\rVert\right).
 \]
 
-It gives
-`ey = floor(R / by * ny) + 1` and
-`ez = floor(R / bz * nz) + 1`, from which the preflight checks the extended
-product `nx * (ny + 2*ey) * (nz + 2*ez)`. The estimate covers the extended
-pointer, counter, and image-flag arrays; initial particle storage for primary
-blocks; the periodic compute mask and queue; the 3D worklist; and the initial
-unit-cell storage. This bound is deliberately conservative and traceable to
-the current `container_prd`, `unitcell`, `v_base`, `v_compute`, `cell`,
-worklist, and configuration sources.
+`R` bounds `||v||`, but it does not directly bound either source extent. Each
+source extent is at most `2R`. For Voro++'s lower-triangular basis, the checked
+componentwise L1 bound
+
+\[
+E = |b_x| + |b_{xy}| + b_y + |b_{xz}| + |b_{yz}| + b_z
+\]
+
+satisfies
+`||a|| + ||b|| + ||c|| <= E` and therefore bounds both source extents. It
+gives `ey = floor(E / by * ny) + 1` and
+`ez = floor(E / bz * nz) + 1`, from which the preflight checks the extended
+product `nx * (ny + 2*ey) * (nz + 2*ez)`. The non-negative L1 accumulation
+uses checked additions in a wide type. Each accumulated bound and the final
+bound/period/block scaling are rounded outward toward positive infinity before
+`floor` and checked C++ `int` conversion, so round-to-nearest arithmetic cannot
+make the intended upper bound smaller.
+
+The estimate covers the extended pointer, counter, and image-flag arrays;
+initial particle storage for primary blocks; the periodic compute mask and
+queue; the 3D worklist; and the initial unit-cell storage. This bound is
+deliberately conservative and traceable to the current `container_prd`,
+`unitcell`, `v_base`, `v_compute`, `cell`, worklist, and configuration sources.
 
 The exact cap is `1 << 30`, or 1,073,741,824 bytes, for the aggregate known
 eager native allocation estimate. An estimate equal to the cap is admitted;

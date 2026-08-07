@@ -48,9 +48,12 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   point/query/radius and domain values are rejected when malformed or
   non-finite, derived C++ integer and floating-point constructor arithmetic is
   checked, and a source-derived aggregate 1-GiB cap guards known eager native
-  allocations before construction. Direct internal native calls receive the
-  same converted-value defense; valid in-cap tessellation behavior and public
-  signatures/defaults are unchanged.
+  allocations before construction. The spatial periodic resource estimate now
+  bounds Voro++'s source extents `max(v_y + ||v||)` and
+  `max(v_z + ||v||)` with an outward-rounded checked componentwise L1 bound,
+  closing an under-estimate that could bypass the exact cap. Direct internal
+  native calls receive the same converted-value defense; valid in-cap
+  tessellation behavior and public signatures/defaults are unchanged.
 - Normalized vectorized `numpy.ldexp` exponents to NumPy's platform C-`int`
   dtype at the ufunc boundary, preserving wide internal exponent accumulation
   and restoring separator inverse workflows on Windows with Python 3.10 and

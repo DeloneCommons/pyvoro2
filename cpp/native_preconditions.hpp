@@ -481,18 +481,73 @@ inline void preflight_box(
   estimate.enforce_limit();
 }
 
-inline int periodic_extent_bound(long double radius_bound,
+inline int periodic_extent_bound(long double extent_bound,
                                  int blocks,
                                  double period,
                                  const std::string& name) {
-  const long double scaled =
-      (radius_bound / static_cast<long double>(period)) * blocks;
+  const long double infinity =
+      std::numeric_limits<long double>::infinity();
+  long double scaled = std::nextafter(
+      extent_bound / static_cast<long double>(period), infinity);
+  if (!std::isfinite(scaled) || scaled < 0.0L) {
+    fail(name, "must fit the C++ int destination range");
+  }
+  const long double block_count = static_cast<long double>(blocks);
+  if (block_count > 0.0L &&
+      scaled > std::numeric_limits<long double>::max() / block_count) {
+    fail(name, "must fit the C++ int destination range");
+  }
+  scaled = std::nextafter(scaled * block_count, infinity);
   if (!std::isfinite(scaled) || scaled < 0.0L ||
       scaled > static_cast<long double>(std::numeric_limits<int>::max() - 1)) {
     fail(name, "must fit the C++ int destination range");
   }
   const int floored = static_cast<int>(std::floor(scaled));
   return checked_int_add(floored, 1, name);
+}
+
+inline long double checked_wide_add_up(long double lhs,
+                                       long double rhs,
+                                       const std::string& name) {
+  const long double maximum = std::numeric_limits<long double>::max();
+  if (!std::isfinite(lhs) || !std::isfinite(rhs) || lhs < 0.0L ||
+      rhs < 0.0L || rhs > maximum - lhs) {
+    fail(name, "must be finite in the native wide type");
+  }
+  const long double upper = std::nextafter(
+      lhs + rhs, std::numeric_limits<long double>::infinity());
+  if (!std::isfinite(upper)) {
+    fail(name, "must be finite in the native wide type");
+  }
+  return upper;
+}
+
+inline long double periodic_source_extent_bound(
+    const std::array<double, 6>& params) {
+  // unitcell.cc stores doubled cell vertices and halves max(y+norm) and
+  // max(z+norm), so its physical source quantities are
+  // max_v(v_y+||v||) and max_v(v_z+||v||). For the lower-triangular basis,
+  //
+  //   ||a|| + ||b|| + ||c||
+  //     <= |bx| + |bxy| + by + |bxz| + |byz| + bz = E.
+  //
+  // The source quantities are at most twice the usual covering-radius bound,
+  // namely ||a||+||b||+||c||, so E bounds both required extents. Round every
+  // checked positive addition upward, then round the final bound upward once
+  // more, so accumulation cannot turn the mathematical upper bound downward.
+  long double bound = 0.0L;
+  for (const double component : params) {
+    bound = checked_wide_add_up(
+        bound, std::abs(static_cast<long double>(component)),
+        "periodic source-extent bound");
+  }
+  const long double upper = std::nextafter(
+      bound, std::numeric_limits<long double>::infinity());
+  if (!std::isfinite(upper)) {
+    fail("periodic source-extent bound",
+         "must be finite in the native wide type");
+  }
+  return upper;
 }
 
 inline long double periodic_shell_coordinate_bound(
@@ -587,81 +642,47 @@ inline void validate_periodic_unit_cell_tolerances(
       "unit-cell large tolerance");
 }
 
-inline void preflight_periodic_3d(
-    const py::array& points,
-    const py::array& ids,
-    const py::array* radii,
+struct Periodic3DResourceEstimate {
+  long double source_extent_bound;
+  int primary_blocks;
+  int ey_bound;
+  int ez_bound;
+  int oy;
+  int oz;
+  int extended_blocks;
+  int hx;
+  int hy;
+  int hz;
+  int mask_size;
+  int queue_size;
+  ByteEstimate known_eager_allocation;
+};
+
+inline Periodic3DResourceEstimate estimate_periodic_3d_resources(
     const std::array<double, 6>& params,
     const std::array<int, 3>& blocks,
     int init_mem,
-    int particle_stride,
-    const py::array* queries = nullptr,
-    const py::array* ghost_radii = nullptr) {
-  require_positive_controls(blocks.data(), blocks.size(), init_mem);
-  validate_arrays<3>(points, ids, radii, queries, ghost_radii, false);
-
-  for (std::size_t i = 0; i < params.size(); ++i) {
-    if (!std::isfinite(params[i])) {
-      fail("cell_params[" + std::to_string(i) + "]", "must be finite");
-    }
-  }
-  for (const std::size_t i : {std::size_t{0}, std::size_t{2}, std::size_t{5}}) {
-    if (!(params[i] > 0.0)) {
-      fail("cell_params[" + std::to_string(i) + "]",
-           "must be a positive finite periodic length");
-    }
-  }
-
-  validate_periodic_shell_arithmetic(params);
-  validate_periodic_unit_cell_tolerances(params);
-
-  const long double bx = params[0];
-  const long double by = params[2];
-  const long double bz = params[5];
-  const long double a_norm = std::abs(bx);
-  const long double b_norm = std::hypot(static_cast<long double>(params[1]), by);
-  const long double c_norm = std::hypot(
-      static_cast<long double>(params[3]),
-      static_cast<long double>(params[4]), bz);
-  const long double radius_bound =
-      0.5L * a_norm + 0.5L * b_norm + 0.5L * c_norm;
-  if (!std::isfinite(radius_bound)) {
-    fail("periodic covering-radius bound", "must be finite");
-  }
-
-  std::array<double, 3> block_widths{};
-  for (std::size_t axis = 0; axis < blocks.size(); ++axis) {
-    const double period = params[axis == 0 ? 0 : axis == 1 ? 2 : 5];
-    const double block_width = period / blocks[axis];
-    if (!(block_width > 0.0) || !std::isfinite(block_width) ||
-        !std::isfinite(1.0 / block_width)) {
-      fail("cell_params and blocks",
-           "produce an unsafe Voro++ block width or reciprocal");
-    }
-    block_widths[axis] = block_width;
-  }
-  validate_voro_base_arithmetic(block_widths, "cell_params and blocks");
-
+    int particle_stride) {
   checked_int_multiply(particle_stride, init_mem, "ps * init_mem");
   const int primary_xy = checked_int_multiply(blocks[0], blocks[1],
                                                "periodic primary block plane");
   const int primary_blocks = checked_int_multiply(
       primary_xy, blocks[2], "periodic primary block product");
 
-  // Approved conservative bounds for container_prd.cc:33-35. The unit-cell
-  // Voronoi covering radius is no larger than half the sum of basis lengths.
-  const int ey_bound = periodic_extent_bound(radius_bound, blocks[1], params[2],
-                                              "periodic ey bound");
-  const int ez_bound = periodic_extent_bound(radius_bound, blocks[2], params[5],
-                                              "periodic ez bound");
+  const long double source_extent_bound =
+      periodic_source_extent_bound(params);
+  const int ey_bound = periodic_extent_bound(
+      source_extent_bound, blocks[1], params[2], "periodic ey bound");
+  const int ez_bound = periodic_extent_bound(
+      source_extent_bound, blocks[2], params[5], "periodic ez bound");
   const int oy = checked_int_add(
       blocks[1], checked_int_multiply(2, ey_bound, "periodic oy"),
       "periodic oy");
   const int oz = checked_int_add(
       blocks[2], checked_int_multiply(2, ez_bound, "periodic oz"),
       "periodic oz");
-  const int extended_xy = checked_int_multiply(blocks[0], oy,
-                                                "periodic extended block plane");
+  const int extended_xy = checked_int_multiply(
+      blocks[0], oy, "periodic extended block plane");
   const int extended_blocks = checked_int_multiply(
       extended_xy, oz, "periodic extended block product");
 
@@ -674,8 +695,10 @@ inline void preflight_periodic_3d(
   const int hz = checked_int_add(
       checked_int_multiply(2, ez_bound, "periodic compute hz"), 1,
       "periodic compute hz");
-  const int hxy = checked_int_multiply(hx, hy, "periodic compute mask plane");
-  const int hxyz = checked_int_multiply(hxy, hz, "periodic compute mask size");
+  const int hxy = checked_int_multiply(hx, hy,
+                                       "periodic compute mask plane");
+  const int mask_size = checked_int_multiply(
+      hxy, hz, "periodic compute mask size");
   const int hx_plus_hy = checked_int_add(hx, hy,
                                          "periodic queue dimension sum");
   const int hz_term = checked_int_multiply(hz, hx_plus_hy,
@@ -708,13 +731,75 @@ inline void preflight_periodic_3d(
       "periodic particle slot bytes");
   estimate.add_slots(primary_slots, per_particle,
                      "periodic primary particle storage");
-  estimate.add_slots(static_cast<std::size_t>(hxyz), sizeof(unsigned int),
+  estimate.add_slots(static_cast<std::size_t>(mask_size), sizeof(unsigned int),
                      "periodic compute mask");
   estimate.add_slots(static_cast<std::size_t>(queue_size), sizeof(int),
                      "periodic compute queue");
   add_3d_worklist_storage(estimate);
   add_3d_initial_unit_cell_storage(estimate);
-  estimate.enforce_limit();
+
+  return Periodic3DResourceEstimate{
+      source_extent_bound,
+      primary_blocks,
+      ey_bound,
+      ez_bound,
+      oy,
+      oz,
+      extended_blocks,
+      hx,
+      hy,
+      hz,
+      mask_size,
+      queue_size,
+      estimate,
+  };
+}
+
+inline void preflight_periodic_3d(
+    const py::array& points,
+    const py::array& ids,
+    const py::array* radii,
+    const std::array<double, 6>& params,
+    const std::array<int, 3>& blocks,
+    int init_mem,
+    int particle_stride,
+    const py::array* queries = nullptr,
+    const py::array* ghost_radii = nullptr) {
+  require_positive_controls(blocks.data(), blocks.size(), init_mem);
+  validate_arrays<3>(points, ids, radii, queries, ghost_radii, false);
+
+  for (std::size_t i = 0; i < params.size(); ++i) {
+    if (!std::isfinite(params[i])) {
+      fail("cell_params[" + std::to_string(i) + "]", "must be finite");
+    }
+  }
+  for (const std::size_t i : {std::size_t{0}, std::size_t{2}, std::size_t{5}}) {
+    if (!(params[i] > 0.0)) {
+      fail("cell_params[" + std::to_string(i) + "]",
+           "must be a positive finite periodic length");
+    }
+  }
+
+  validate_periodic_shell_arithmetic(params);
+  validate_periodic_unit_cell_tolerances(params);
+
+  std::array<double, 3> block_widths{};
+  for (std::size_t axis = 0; axis < blocks.size(); ++axis) {
+    const double period = params[axis == 0 ? 0 : axis == 1 ? 2 : 5];
+    const double block_width = period / blocks[axis];
+    if (!(block_width > 0.0) || !std::isfinite(block_width) ||
+        !std::isfinite(1.0 / block_width)) {
+      fail("cell_params and blocks",
+           "produce an unsafe Voro++ block width or reciprocal");
+    }
+    block_widths[axis] = block_width;
+  }
+  validate_voro_base_arithmetic(block_widths, "cell_params and blocks");
+
+  const Periodic3DResourceEstimate resources =
+      estimate_periodic_3d_resources(params, blocks, init_mem,
+                                     particle_stride);
+  resources.known_eager_allocation.enforce_limit();
 }
 
 }  // namespace pyvoro2::native_preconditions
