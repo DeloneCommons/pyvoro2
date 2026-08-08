@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from pyvoro2._internal.inputs import (
+    checked_int64_add,
     owned_readonly_array,
     require_internal_id_range,
     require_planar_ghost_site_id_range,
@@ -25,6 +26,10 @@ from pyvoro2._internal.validation import (
     require_positive_finite_real,
     require_positive_index,
     require_real_in_interval,
+    require_optional_string,
+    require_string,
+    require_string_choice,
+    require_string_tuple,
 )
 
 
@@ -34,6 +39,27 @@ class IndexValue:
 
     def __index__(self) -> int:
         return self.value
+
+
+class EqualAny:
+    def __init__(self) -> None:
+        self.comparisons = 0
+
+    def __eq__(self, other: object) -> bool:
+        self.comparisons += 1
+        return True
+
+    def __ne__(self, other: object) -> bool:
+        self.comparisons += 1
+        return False
+
+
+class StringSubclass(str):
+    pass
+
+
+class TupleSubclass(tuple):
+    pass
 
 
 @pytest.mark.parametrize(
@@ -114,6 +140,106 @@ def test_exact_boolean_helpers_accept_only_python_and_numpy_booleans() -> None:
         require_bool_tuple((True,), name='flags', length=2)
     with pytest.raises(ValueError, match=r'flags\[1\].*Boolean'):
         require_bool_tuple((True, 1), name='flags', length=2)
+
+
+def test_scalar_string_helpers_canonicalize_only_scalar_string_categories() -> None:
+    assert type(require_string('mode', name='value')) is str
+    assert type(require_string(np.str_('mode'), name='value')) is str
+    assert require_optional_string(None, name='detail') is None
+    assert type(require_optional_string(np.str_('detail'), name='detail')) is str
+    assert require_string_choice(
+        np.str_('warn'),
+        name='mode',
+        choices=('warn', 'raise'),
+    ) == 'warn'
+    assert require_string_tuple(
+        (np.str_('first'), 'second'),
+        name='messages',
+    ) == ('first', 'second')
+
+
+def test_require_string_tuple_preserves_exact_canonical_tuple_identity() -> None:
+    empty = ()
+    warnings = ('first', 'second')
+
+    assert require_string_tuple(empty, name='messages') is empty
+    assert require_string_tuple(warnings, name='messages') is warnings
+
+
+def test_require_string_tuple_canonicalizes_string_and_tuple_subclasses() -> None:
+    np_strings = (np.str_('first'), np.str_('second'))
+    result = require_string_tuple(np_strings, name='messages')
+
+    assert result == ('first', 'second')
+    assert type(result) is tuple
+    assert all(type(item) is str for item in result)
+
+    subclass_values = TupleSubclass(
+        (StringSubclass('first'), StringSubclass('second'))
+    )
+    result = require_string_tuple(subclass_values, name='messages')
+
+    assert result == ('first', 'second')
+    assert type(result) is tuple
+    assert all(type(item) is str for item in result)
+    assert result is not subclass_values
+
+
+def test_require_string_tuple_rejects_without_comparing_arbitrary_objects() -> None:
+    value = EqualAny()
+
+    with pytest.raises(ValueError, match=r'messages\[0\].*scalar string'):
+        require_string_tuple((value,), name='messages')
+
+    assert value.comparisons == 0
+
+
+@pytest.mark.parametrize(
+    'value',
+    [
+        np.array('warn'),
+        np.array(['warn']),
+        np.array(['warn', 'warn']),
+        np.array('warn', dtype=object),
+        b'warn',
+        bytearray(b'warn'),
+        1,
+        True,
+        None,
+    ],
+)
+def test_scalar_string_helpers_reject_non_string_categories(value: object) -> None:
+    with pytest.raises(
+        ValueError,
+        match="mode.*'warn'.*'raise'.*scalar string",
+    ):
+        require_string_choice(
+            value,
+            name='mode',
+            choices=('warn', 'raise'),
+        )
+
+
+def test_scalar_string_choice_rejects_without_comparing_arbitrary_objects() -> None:
+    value = EqualAny()
+
+    with pytest.raises(ValueError, match='mode.*scalar string'):
+        require_string_choice(
+            value,
+            name='mode',
+            choices=('warn', 'raise'),
+        )
+
+    assert value.comparisons == 0
+
+
+def test_scalar_string_choice_preserves_exact_case_sensitive_choices() -> None:
+    with pytest.raises(ValueError, match="mode.*'warn'.*'raise'"):
+        require_string_choice(
+            'WARN',
+            name='mode',
+            choices=('warn', 'raise'),
+        )
 
 
 def test_bool_mask_is_exact_owned_and_read_only() -> None:
@@ -216,3 +342,21 @@ def test_owned_readonly_array_detaches_from_caller_storage() -> None:
     assert owned.tolist() == [1.0, 2.0]
     assert owned.flags.owndata
     assert not owned.flags.writeable
+
+
+def test_checked_int64_add_rejects_overflow_before_arithmetic() -> None:
+    maximum = np.iinfo(np.int64).max
+    minimum = np.iinfo(np.int64).min
+
+    with pytest.raises(ValueError, match='sum.*signed int64'):
+        checked_int64_add(
+            np.array([maximum], dtype=np.int64),
+            np.array([1], dtype=np.int64),
+            name='sum',
+        )
+    with pytest.raises(ValueError, match='sum.*signed int64'):
+        checked_int64_add(
+            np.array([minimum], dtype=np.int64),
+            np.array([-1], dtype=np.int64),
+            name='sum',
+        )

@@ -2,7 +2,58 @@
 
 from __future__ import annotations
 
+from numbers import Real
+
 import numpy as np
+
+
+def _finite_1d_real_array(values: np.ndarray, *, name: str) -> np.ndarray:
+    """Validate without importing the surrounding package.
+
+    This module is intentionally executable in isolation; the local checks
+    mirror the shared public real-array contract while preserving that
+    architectural boundary.
+    """
+
+    try:
+        original = np.asarray(values, dtype=object)
+    except (TypeError, ValueError):
+        raise ValueError(f'{name} must be a 1D real numeric array') from None
+    if original.ndim != 1:
+        raise ValueError(f'{name} must be 1D')
+    if not all(
+        isinstance(value, (Real, np.integer, np.floating))
+        and not isinstance(value, (bool, np.bool_))
+        for value in original
+    ):
+        raise ValueError(
+            f'{name} must contain only real numeric values; Boolean, complex, '
+            'and string values are not accepted'
+        )
+    try:
+        result = np.asarray(original, dtype=np.float64)
+    except (OverflowError, TypeError, ValueError):
+        raise ValueError(
+            f'{name} must contain real numeric values representable as float64'
+        ) from None
+    if not np.all(np.isfinite(result)):
+        raise ValueError(f'{name} must contain only finite values')
+    return result
+
+
+def _finite_real_scalar(value: object, *, name: str) -> float:
+    if (
+        not isinstance(value, (Real, np.integer, np.floating))
+        or isinstance(value, (bool, np.bool_))
+    ):
+        raise ValueError(f'{name} must be finite and real numeric')
+    try:
+        result = float(value)
+    except (OverflowError, TypeError, ValueError):
+        raise ValueError(f'{name} must be finite and real numeric') from None
+    if not np.isfinite(result):
+        raise ValueError(f'{name} must be finite and real numeric')
+    return result
 
 
 def radii_to_weights(radii: np.ndarray) -> np.ndarray:
@@ -11,11 +62,7 @@ def radii_to_weights(radii: np.ndarray) -> np.ndarray:
     Raises ``ValueError`` when the input or its squared result is non-finite.
     """
 
-    r = np.asarray(radii, dtype=float)
-    if r.ndim != 1:
-        raise ValueError('radii must be 1D')
-    if not np.all(np.isfinite(r)):
-        raise ValueError('radii must contain only finite values')
+    r = _finite_1d_real_array(radii, name='radii')
     if np.any(r < 0):
         raise ValueError('radii must be non-negative')
     with np.errstate(over='ignore', invalid='ignore'):
@@ -23,6 +70,25 @@ def radii_to_weights(radii: np.ndarray) -> np.ndarray:
     if not np.all(np.isfinite(weights)):
         raise ValueError('radii produced non-finite weights')
     return weights
+
+
+def validate_weight_representation_options(
+    r_min: object,
+    weight_shift: object | None,
+) -> tuple[float, float | None]:
+    """Validate the shared backend-radius representation controls."""
+
+    r_min_value = _finite_real_scalar(r_min, name='r_min')
+    if r_min_value < 0.0:
+        raise ValueError('r_min must be >= 0')
+    weight_shift_value = (
+        None
+        if weight_shift is None
+        else _finite_real_scalar(weight_shift, name='weight_shift')
+    )
+    if weight_shift_value is not None and r_min_value != 0.0:
+        raise ValueError('specify at most one of r_min and weight_shift')
+    return r_min_value, weight_shift_value
 
 
 def weights_to_radii(
@@ -37,24 +103,15 @@ def weights_to_radii(
     non-finite.
     """
 
-    w = np.asarray(weights, dtype=float)
-    if w.ndim != 1:
-        raise ValueError('weights must be 1D')
-    if not np.all(np.isfinite(w)):
-        raise ValueError('weights must contain only finite values')
+    w = _finite_1d_real_array(weights, name='weights')
 
-    r_min = float(r_min)
-    if not np.isfinite(r_min):
-        raise ValueError('r_min must be finite')
-    if r_min < 0:
-        raise ValueError('r_min must be >= 0')
+    r_min, weight_shift = validate_weight_representation_options(
+        r_min,
+        weight_shift,
+    )
 
     if weight_shift is not None:
-        if r_min != 0.0:
-            raise ValueError('specify at most one of r_min and weight_shift')
-        C = float(weight_shift)
-        if not np.isfinite(C):
-            raise ValueError('weight_shift must be finite')
+        C = weight_shift
     else:
         with np.errstate(over='ignore', invalid='ignore'):
             r_min_squared = r_min * r_min

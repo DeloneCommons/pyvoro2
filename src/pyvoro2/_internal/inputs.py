@@ -6,16 +6,23 @@ refactored without changing its validation surface.
 
 from __future__ import annotations
 
+import sys
 from typing import Sequence
 
 import numpy as np
 
 from .validation import (
     CPP_INT_MAX,
+    INT64_MAX,
+    INT64_MIN,
     _as_original_array,
     _finite_float64_array,
+    _real_float64_array,
+    require_bool,
+    require_nonnegative_index,
     require_positive_finite_real,
     require_positive_index,
+    require_string_choice,
 )
 
 
@@ -47,6 +54,38 @@ def coerce_finite_vector(
     return _finite_float64_array(arr, name=name)
 
 
+def coerce_real_vector(
+    values: Sequence[float] | np.ndarray,
+    *,
+    name: str,
+    n: int,
+) -> np.ndarray:
+    """Return a real-numeric float64 vector, retaining derived infinities.
+
+    This narrower helper is for established derived numerical intermediates,
+    not public source data. Public source vectors use
+    :func:`coerce_finite_vector`.
+    """
+
+    arr = _as_original_array(values, name=name)
+    if arr.shape != (n,):
+        raise ValueError(f'{name} must have shape ({n},)')
+    return _real_float64_array(arr, name=name)
+
+
+def coerce_finite_1d_array(
+    values: Sequence[float] | np.ndarray,
+    *,
+    name: str,
+) -> np.ndarray:
+    """Return a finite real float64 array with shape ``(n,)``."""
+
+    arr = _as_original_array(values, name=name)
+    if arr.ndim != 1:
+        raise ValueError(f'{name} must be 1D')
+    return _finite_float64_array(arr, name=name)
+
+
 def coerce_finite_matrix(
     values: Sequence[Sequence[float]] | np.ndarray,
     *,
@@ -61,6 +100,36 @@ def coerce_finite_matrix(
     return _finite_float64_array(arr, name=name)
 
 
+def coerce_external_id_array(
+    ids: Sequence[int] | np.ndarray,
+    *,
+    name: str = 'ids',
+    n: int | None = None,
+) -> np.ndarray:
+    """Return exact, non-negative, unique signed-int64 external IDs."""
+
+    try:
+        ids_arr = np.asarray(ids, dtype=object)
+    except (TypeError, ValueError):
+        expected = 'a 1D sequence' if n is None else 'a 1D sequence of length n'
+        raise ValueError(f'{name} must be {expected}') from None
+    if ids_arr.ndim != 1 or (n is not None and ids_arr.shape != (n,)):
+        expected = 'a 1D sequence' if n is None else 'a 1D sequence of length n'
+        raise ValueError(f'{name} must be {expected}')
+    values = [
+        require_nonnegative_index(
+            item,
+            name=f'{name}[{position}]',
+            maximum=INT64_MAX,
+        )
+        for position, item in enumerate(ids_arr)
+    ]
+    result = np.array(values, dtype=np.int64, copy=True, order='C')
+    if np.unique(result).size != result.size:
+        raise ValueError(f'{name} must be unique')
+    return result
+
+
 def coerce_id_array(
     ids: Sequence[int] | np.ndarray | None,
     *,
@@ -70,16 +139,7 @@ def coerce_id_array(
 
     if ids is None:
         return None
-    if len(ids) != n:
-        raise ValueError('ids must have length n')
-    ids_arr = np.asarray(ids, dtype=np.int64)
-    if ids_arr.shape != (n,):
-        raise ValueError('ids must be a 1D sequence of length n')
-    if np.any(ids_arr < 0):
-        raise ValueError('ids must be non-negative')
-    if np.unique(ids_arr).size != n:
-        raise ValueError('ids must be unique')
-    return ids_arr
+    return coerce_external_id_array(ids, name='ids', n=n)
 
 
 def coerce_nonnegative_vector(
@@ -205,15 +265,108 @@ def owned_readonly_array(
     return result
 
 
-def validate_forward_mode(mode: object) -> None:
-    """Validate the two native forward construction modes."""
+def floor_to_int64(values: np.ndarray, *, name: str) -> np.ndarray:
+    """Floor finite float64 values after proving signed-int64 representability."""
 
-    if not isinstance(mode, str) or mode not in ('standard', 'power'):
-        raise ValueError(f'unknown mode: {mode}')
+    arr = np.asarray(values, dtype=np.float64)
+    if not np.all(np.isfinite(arr)):
+        raise ValueError(f'{name} must contain only finite values before flooring')
+    with np.errstate(over='ignore', invalid='ignore'):
+        floored = np.floor(arr)
+    upper_exclusive = float(2**63)
+    if (
+        not np.all(np.isfinite(floored))
+        or np.any(floored < float(INT64_MIN))
+        or np.any(floored >= upper_exclusive)
+    ):
+        raise ValueError(
+            f'{name} floor result must be representable as signed int64'
+        )
+    return floored.astype(np.int64)
 
 
-def validate_duplicate_check_mode(mode: str) -> None:
-    """Validate the public duplicate-check mode string."""
+def round_to_int64(values: np.ndarray, *, name: str) -> np.ndarray:
+    """Round finite float64 values after proving signed-int64 representability."""
 
-    if mode not in ('off', 'warn', 'raise'):
-        raise ValueError("duplicate_check must be one of: 'off', 'warn', 'raise'")
+    arr = np.asarray(values, dtype=np.float64)
+    if not np.all(np.isfinite(arr)):
+        raise ValueError(f'{name} must contain only finite values before rounding')
+    with np.errstate(over='ignore', invalid='ignore'):
+        rounded = np.round(arr)
+    upper_exclusive = float(2**63)
+    if (
+        not np.all(np.isfinite(rounded))
+        or np.any(rounded < float(INT64_MIN))
+        or np.any(rounded >= upper_exclusive)
+    ):
+        raise ValueError(
+            f'{name} rounded result must be representable as signed int64'
+        )
+    return rounded.astype(np.int64)
+
+
+def checked_int64_add(
+    left: np.ndarray,
+    right: np.ndarray,
+    *,
+    name: str,
+) -> np.ndarray:
+    """Add aligned int64 arrays after checking for destination overflow."""
+
+    lhs = np.asarray(left, dtype=np.int64)
+    rhs = np.asarray(right, dtype=np.int64)
+    if lhs.shape != rhs.shape:
+        raise ValueError(f'{name} operands must have the same shape')
+    positive = rhs > 0
+    negative = rhs < 0
+    if np.any(positive):
+        limit = INT64_MAX - rhs[positive]
+        if np.any(lhs[positive] > limit):
+            raise ValueError(f'{name} must be representable as signed int64')
+    if np.any(negative):
+        limit = INT64_MIN - rhs[negative]
+        if np.any(lhs[negative] < limit):
+            raise ValueError(f'{name} must be representable as signed int64')
+    return lhs + rhs
+
+
+def validate_forward_mode(mode: object) -> str:
+    """Return a canonical native forward construction mode."""
+
+    return require_string_choice(
+        mode,
+        name='mode',
+        choices=('standard', 'power'),
+    )
+
+
+def validate_duplicate_check_mode(mode: object) -> str:
+    """Return a canonical public duplicate-check mode string."""
+
+    return require_string_choice(
+        mode,
+        name='duplicate_check',
+        choices=('off', 'warn', 'raise'),
+    )
+
+
+def validate_duplicate_options(
+    *,
+    threshold: object,
+    wrap: object,
+    max_pairs: object,
+    threshold_name: str = 'duplicate_threshold',
+    wrap_name: str = 'duplicate_wrap',
+    max_pairs_name: str = 'duplicate_max_pairs',
+) -> tuple[float, bool, int]:
+    """Validate the common duplicate threshold, wrap flag, and pair limit."""
+
+    return (
+        require_positive_finite_real(threshold, name=threshold_name),
+        require_bool(wrap, name=wrap_name),
+        require_positive_index(
+            max_pairs,
+            name=max_pairs_name,
+            maximum=sys.maxsize,
+        ),
+    )

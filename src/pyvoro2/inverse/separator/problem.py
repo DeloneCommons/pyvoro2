@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Literal
+import sys
 
 import numpy as np
 
-from ..._internal.weight_transforms import weights_to_radii
+from ..._internal.inputs import coerce_finite_vector, coerce_real_vector
+from ..._internal.validation import (
+    require_bool,
+    require_bool_mask,
+    require_nonnegative_finite_real,
+    require_nonnegative_index,
+    require_optional_string,
+    require_string,
+    require_string_tuple,
+)
+from ..._internal.weight_transforms import (
+    validate_weight_representation_options,
+    weights_to_radii,
+)
 from ._objective import (
     _active_scalar_penalties,
     _hard_accepted_measurement_bounds,
@@ -70,6 +85,12 @@ class _NonFiniteOptimalObjectiveError(ValueError):
     """Raised when result packaging would claim success for a non-finite objective."""
 
 
+_ALLOW_DERIVED_NONFINITE_PROBLEM_VALUES: ContextVar[bool] = ContextVar(
+    '_ALLOW_DERIVED_NONFINITE_PROBLEM_VALUES',
+    default=False,
+)
+
+
 @dataclass(frozen=True, slots=True)
 class _MeasurementGeometry:
     alpha: np.ndarray
@@ -120,38 +141,76 @@ class SeparatorFitProblem:
     def __post_init__(self) -> None:
         m = int(self.constraints.n_constraints)
         n = int(self.constraints.n_points)
-        object.__setattr__(self, 'alpha', _readonly_array(self.alpha, dtype=np.float64))
-        object.__setattr__(self, 'beta', _readonly_array(self.beta, dtype=np.float64))
-        object.__setattr__(self, 'z_obs', _readonly_array(self.z_obs, dtype=np.float64))
+        # R1/R2 deliberately support finite source data whose scaled derived
+        # row representation overflows. Only the builder may retain those
+        # derived infinities; direct construction remains finite-strict.
+        derived_vector = (
+            coerce_real_vector
+            if _ALLOW_DERIVED_NONFINITE_PROBLEM_VALUES.get()
+            else coerce_finite_vector
+        )
+        alpha = _readonly_array(
+            derived_vector(self.alpha, name='alpha', n=m),
+            dtype=np.float64,
+        )
+        beta = _readonly_array(
+            derived_vector(self.beta, name='beta', n=m),
+            dtype=np.float64,
+        )
+        z_obs = _readonly_array(
+            derived_vector(self.z_obs, name='z_obs', n=m),
+            dtype=np.float64,
+        )
+        edge_weight = _readonly_array(
+            derived_vector(self.edge_weight, name='edge_weight', n=m),
+            dtype=np.float64,
+        )
+        regularization_reference = _readonly_array(
+            coerce_finite_vector(
+                self.regularization_reference,
+                name='regularization_reference',
+                n=n,
+            ),
+            dtype=np.float64,
+        )
+        offset_mask = require_bool_mask(
+            self.offset_identifying_constraint_mask,
+            name='offset_identifying_constraint_mask',
+            length=m,
+        )
+        regularization_strength = require_nonnegative_finite_real(
+            self.regularization_strength,
+            name='regularization_strength',
+        )
+        hard_feasible = require_bool(
+            self.hard_feasible,
+            name='hard_feasible',
+        )
+
+        object.__setattr__(self, 'alpha', alpha)
+        object.__setattr__(self, 'beta', beta)
+        object.__setattr__(self, 'z_obs', z_obs)
         object.__setattr__(
             self,
             'edge_weight',
-            _readonly_array(self.edge_weight, dtype=np.float64),
+            edge_weight,
         )
         object.__setattr__(
             self,
             'regularization_reference',
-            _readonly_array(self.regularization_reference, dtype=np.float64),
+            regularization_reference,
         )
         object.__setattr__(
             self,
             'offset_identifying_constraint_mask',
-            _readonly_array(self.offset_identifying_constraint_mask, dtype=bool),
+            offset_mask,
         )
-        if self.alpha.shape != (m,):
-            raise ValueError('alpha must have shape (m,)')
-        if self.beta.shape != (m,):
-            raise ValueError('beta must have shape (m,)')
-        if self.z_obs.shape != (m,):
-            raise ValueError('z_obs must have shape (m,)')
-        if self.edge_weight.shape != (m,):
-            raise ValueError('edge_weight must have shape (m,)')
-        if self.regularization_reference.shape != (n,):
-            raise ValueError('regularization_reference must have shape (n_points,)')
-        if self.offset_identifying_constraint_mask.shape != (m,):
-            raise ValueError(
-                'offset_identifying_constraint_mask must have shape (m,)'
-            )
+        object.__setattr__(
+            self,
+            'regularization_strength',
+            regularization_strength,
+        )
+        object.__setattr__(self, 'hard_feasible', hard_feasible)
 
     @property
     def measurement(self) -> str:
@@ -396,24 +455,28 @@ def build_power_fit_problem(
         target,
         constraints.confidence,
     )
-    return SeparatorFitProblem(
-        constraints=constraints,
-        model=model,
-        alpha=alpha,
-        beta=beta,
-        z_obs=quadratic_rows.z_obs,
-        edge_weight=quadratic_rows.rho,
-        regularization_strength=float(model.regularization.strength),
-        regularization_reference=reg_ref,
-        offset_identifying_constraint_mask=_model_coupling_constraint_mask(
-            constraints,
-            model,
-        ),
-        bounds=bounds,
-        connectivity=connectivity,
-        hard_feasible=bool(hard_feasible),
-        hard_conflict=conflict,
-    )
+    token = _ALLOW_DERIVED_NONFINITE_PROBLEM_VALUES.set(True)
+    try:
+        return SeparatorFitProblem(
+            constraints=constraints,
+            model=model,
+            alpha=alpha,
+            beta=beta,
+            z_obs=quadratic_rows.z_obs,
+            edge_weight=quadratic_rows.rho,
+            regularization_strength=float(model.regularization.strength),
+            regularization_reference=reg_ref,
+            offset_identifying_constraint_mask=_model_coupling_constraint_mask(
+                constraints,
+                model,
+            ),
+            bounds=bounds,
+            connectivity=connectivity,
+            hard_feasible=bool(hard_feasible),
+            hard_conflict=conflict,
+        )
+    finally:
+        _ALLOW_DERIVED_NONFINITE_PROBLEM_VALUES.reset(token)
 
 
 def build_power_fit_result(
@@ -437,8 +500,33 @@ def build_power_fit_result(
     soft-objective component or total is non-finite.
     """
 
+    solver = require_string(solver, name='solver')
+    linear_backend = require_optional_string(
+        linear_backend,
+        name='linear_backend',
+    )
+    status = require_string(status, name='status')
+    status_detail = require_optional_string(
+        status_detail,
+        name='status_detail',
+    )
+    warnings = require_string_tuple(warnings, name='warnings')
+    converged_value = require_bool(converged, name='converged')
+    canonicalize_gauge_value = require_bool(
+        canonicalize_gauge,
+        name='canonicalize_gauge',
+    )
+    n_iter_value = require_nonnegative_index(
+        n_iter,
+        name='n_iter',
+        maximum=sys.maxsize,
+    )
+    r_min_value, weight_shift_value = validate_weight_representation_options(
+        r_min,
+        weight_shift,
+    )
     w = _validated_weight_vector(problem, weights)
-    if canonicalize_gauge:
+    if canonicalize_gauge_value:
         w = problem.canonicalize_gauge(w)
     predictions = _predict_all(problem, w)
     residuals = _measurement_residuals(problem, w)
@@ -449,7 +537,7 @@ def build_power_fit_result(
     )
     objective_breakdown = _objective_breakdown(problem, predictions, w)
     if (
-        (status == 'optimal' or bool(converged))
+        (status == 'optimal' or converged_value)
         and not _soft_objective_is_finite(objective_breakdown)
     ):
         raise _NonFiniteOptimalObjectiveError(
@@ -463,8 +551,8 @@ def build_power_fit_result(
         )
     radii, shift = weights_to_radii(
         w,
-        r_min=r_min,
-        weight_shift=weight_shift,
+        r_min=r_min_value,
+        weight_shift=weight_shift_value,
     )
     rms = _stable_rms(residuals)
     mx = float(np.max(np.abs(residuals))) if residuals.size else 0.0
@@ -486,8 +574,8 @@ def build_power_fit_result(
         used_shifts=np.asarray(problem.constraints.shifts),
         solver=solver,
         linear_backend=linear_backend,
-        n_iter=int(n_iter),
-        converged=bool(converged),
+        n_iter=n_iter_value,
+        converged=converged_value,
         conflict=problem.hard_conflict,
         warnings=tuple(warnings_list),
         connectivity=problem.connectivity,
@@ -501,12 +589,11 @@ def _validated_weight_vector(
     problem: SeparatorFitProblem,
     weights: np.ndarray,
 ) -> np.ndarray:
-    w = np.asarray(weights, dtype=float)
-    if w.ndim != 1 or w.shape != (int(problem.constraints.n_points),):
-        raise ValueError('weights must have shape (n_points,)')
-    if not np.all(np.isfinite(w)):
-        raise ValueError('weights must contain only finite values')
-    return np.asarray(w, dtype=np.float64)
+    return coerce_finite_vector(
+        weights,
+        name='weights',
+        n=int(problem.constraints.n_points),
+    )
 
 
 def _measurement_geometry(constraints: SeparatorObservations) -> _MeasurementGeometry:

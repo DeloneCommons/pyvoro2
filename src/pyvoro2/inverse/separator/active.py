@@ -3,11 +3,27 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import sys
 from typing import Literal, Sequence
 
 import numpy as np
 
-from ..._internal.weight_transforms import weights_to_radii
+from ..._internal.inputs import coerce_point_array
+from ..._internal.validation import (
+    require_bool,
+    require_bool_mask,
+    require_nonnegative_finite_real,
+    require_nonnegative_index,
+    require_positive_finite_real,
+    require_positive_index,
+    require_real_in_interval,
+    require_string_choice,
+    require_string_tuple,
+)
+from ..._internal.weight_transforms import (
+    validate_weight_representation_options,
+    weights_to_radii,
+)
 from ._numerics import (
     _stable_sum,
     _stable_sum_products_sign,
@@ -77,18 +93,44 @@ class ActiveSetOptions:
     weight_step_tol: float = 1e-8
 
     def __post_init__(self) -> None:
-        if int(self.add_after) <= 0:
-            raise ValueError('ActiveSetOptions.add_after must be > 0')
-        if int(self.drop_after) <= 0:
-            raise ValueError('ActiveSetOptions.drop_after must be > 0')
-        if not (0.0 < float(self.relax) <= 1.0):
+        add_after = require_positive_index(
+            self.add_after,
+            name='ActiveSetOptions.add_after',
+            maximum=sys.maxsize,
+        )
+        drop_after = require_positive_index(
+            self.drop_after,
+            name='ActiveSetOptions.drop_after',
+            maximum=sys.maxsize,
+        )
+        relax = require_real_in_interval(
+            self.relax,
+            name='ActiveSetOptions.relax',
+            lower=0.0,
+            upper=1.0,
+        )
+        if relax <= 0.0:
             raise ValueError('ActiveSetOptions.relax must lie in (0, 1]')
-        if int(self.max_iter) <= 0:
-            raise ValueError('ActiveSetOptions.max_iter must be > 0')
-        if int(self.cycle_window) <= 0:
-            raise ValueError('ActiveSetOptions.cycle_window must be > 0')
-        if float(self.weight_step_tol) < 0.0:
-            raise ValueError('ActiveSetOptions.weight_step_tol must be >= 0')
+        max_iter = require_positive_index(
+            self.max_iter,
+            name='ActiveSetOptions.max_iter',
+            maximum=sys.maxsize,
+        )
+        cycle_window = require_positive_index(
+            self.cycle_window,
+            name='ActiveSetOptions.cycle_window',
+            maximum=sys.maxsize,
+        )
+        weight_step_tol = require_nonnegative_finite_real(
+            self.weight_step_tol,
+            name='ActiveSetOptions.weight_step_tol',
+        )
+        object.__setattr__(self, 'add_after', add_after)
+        object.__setattr__(self, 'drop_after', drop_after)
+        object.__setattr__(self, 'relax', relax)
+        object.__setattr__(self, 'max_iter', max_iter)
+        object.__setattr__(self, 'cycle_window', cycle_window)
+        object.__setattr__(self, 'weight_step_tol', weight_step_tol)
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +208,13 @@ class PairConstraintDiagnostics:
     marginal: np.ndarray
     status: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'status',
+            require_string_tuple(self.status, name='status'),
+        )
+
     def to_records(
         self,
         *,
@@ -221,6 +270,28 @@ class ActiveSetTerminationView:
     cycle_length: int | None
     warnings: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'status',
+            require_string_choice(
+                self.status,
+                name='status',
+                choices=(
+                    'self_consistent',
+                    'cycle_detected',
+                    'max_outer_iter',
+                    'infeasible_active_set',
+                    'numerical_failure',
+                ),
+            ),
+        )
+        object.__setattr__(
+            self,
+            'warnings',
+            require_string_tuple(self.warnings, name='warnings'),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class ActiveSetPathView:
@@ -259,6 +330,28 @@ class SelfConsistentPowerFitResult:
     path_summary: ActiveSetPathSummary | None = None
     warnings: tuple[str, ...] = ()
     connectivity: ConnectivityDiagnostics | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'termination',
+            require_string_choice(
+                self.termination,
+                name='termination',
+                choices=(
+                    'self_consistent',
+                    'cycle_detected',
+                    'max_outer_iter',
+                    'infeasible_active_set',
+                    'numerical_failure',
+                ),
+            ),
+        )
+        object.__setattr__(
+            self,
+            'warnings',
+            require_string_tuple(self.warnings, name='warnings'),
+        )
 
     @property
     def inner_fit(self) -> SeparatorFitResult:
@@ -304,7 +397,8 @@ class SelfConsistentPowerFitResult:
     def to_records(self, *, use_ids: bool = False) -> tuple[dict[str, object], ...]:
         """Return one plain-Python record per candidate pair."""
 
-        ids = self.constraints.ids if use_ids else None
+        use_ids_value = require_bool(use_ids, name='use_ids')
+        ids = self.constraints.ids if use_ids_value else None
         return self.diagnostics.to_records(ids=ids)
 
     def to_report(self, *, use_ids: bool = False) -> dict[str, object]:
@@ -312,7 +406,8 @@ class SelfConsistentPowerFitResult:
 
         from .report import build_active_set_report
 
-        return build_active_set_report(self, use_ids=use_ids)
+        use_ids_value = require_bool(use_ids, name='use_ids')
+        return build_active_set_report(self, use_ids=use_ids_value)
 
 
 def solve_self_consistent_power_weights(
@@ -347,24 +442,92 @@ def solve_self_consistent_power_weights(
 ) -> SelfConsistentPowerFitResult:
     """Iteratively refine an active pair set against realized power-diagram
     boundaries."""
+    measurement = require_string_choice(
+        measurement,
+        name='measurement',
+        choices=('fraction', 'position'),
+    )
+    index_mode = require_string_choice(
+        index_mode,
+        name='index_mode',
+        choices=('index', 'id'),
+    )
+    image = require_string_choice(
+        image,
+        name='image',
+        choices=('nearest', 'given_only'),
+    )
+    fit_solver = require_string_choice(
+        fit_solver,
+        name='fit_solver',
+        choices=('direct', 'admm'),
+    )
+    fit_linear_backend = require_string_choice(
+        fit_linear_backend,
+        name='fit_linear_backend',
+        choices=('dense', 'sparse'),
+    )
+    connectivity_check = require_string_choice(
+        connectivity_check,
+        name='connectivity_check',
+        choices=('none', 'diagnose', 'warn', 'raise'),
+    )
+    unaccounted_pair_check = require_string_choice(
+        unaccounted_pair_check,
+        name='unaccounted_pair_check',
+        choices=('none', 'diagnose', 'warn', 'raise'),
+    )
+    tessellation_check = require_string_choice(
+        tessellation_check,
+        name='tessellation_check',
+        choices=('none', 'diagnose', 'warn', 'raise'),
+    )
 
-    pts = np.asarray(points, dtype=float)
-    if pts.ndim != 2 or pts.shape[1] <= 0:
+    image_search_value = require_nonnegative_index(
+        image_search,
+        name='image_search',
+        maximum=sys.maxsize,
+    )
+    fit_admm_max_iter_value = require_positive_index(
+        fit_admm_max_iter,
+        name='fit_admm_max_iter',
+        maximum=sys.maxsize,
+    )
+    fit_admm_rho_value = require_positive_finite_real(
+        fit_admm_rho,
+        name='fit_admm_rho',
+    )
+    fit_admm_abs_tol_value = require_positive_finite_real(
+        fit_admm_abs_tol,
+        name='fit_admm_abs_tol',
+    )
+    fit_admm_rel_tol_value = require_positive_finite_real(
+        fit_admm_rel_tol,
+        name='fit_admm_rel_tol',
+    )
+    r_min_value, weight_shift_value = validate_weight_representation_options(
+        r_min,
+        weight_shift,
+    )
+    return_history_value = require_bool(return_history, name='return_history')
+    return_cells_value = require_bool(return_cells, name='return_cells')
+    return_boundary_measure_value = require_bool(
+        return_boundary_measure,
+        name='return_boundary_measure',
+    )
+    return_tessellation_diagnostics_value = require_bool(
+        return_tessellation_diagnostics,
+        name='return_tessellation_diagnostics',
+    )
+
+    raw_points = np.asarray(points, dtype=object)
+    if raw_points.ndim != 2 or raw_points.shape[1] <= 0:
         raise ValueError('points must have shape (n, d) with d >= 1')
-    if fit_solver not in ('direct', 'admm'):
-        raise ValueError("fit_solver must be 'direct' or 'admm'")
-    if fit_linear_backend not in ('dense', 'sparse'):
-        raise ValueError(
-            "fit_linear_backend must be 'dense' or 'sparse'"
-        )
-    if connectivity_check not in ('none', 'diagnose', 'warn', 'raise'):
-        raise ValueError(
-            'connectivity_check must be none, diagnose, warn, or raise'
-        )
-    if unaccounted_pair_check not in ('none', 'diagnose', 'warn', 'raise'):
-        raise ValueError(
-            'unaccounted_pair_check must be none, diagnose, warn, or raise'
-        )
+    pts = coerce_point_array(
+        raw_points,
+        name='points',
+        dim=int(raw_points.shape[1]),
+    )
 
     if model is None:
         model = FitModel()
@@ -392,7 +555,7 @@ def solve_self_consistent_power_weights(
             ids=ids,
             index_mode=index_mode,
             image=image,
-            image_search=image_search,
+            image_search=image_search_value,
             confidence=confidence,
             allow_empty=True,
         )
@@ -401,9 +564,11 @@ def solve_self_consistent_power_weights(
     if active0 is None:
         active = np.ones(m, dtype=bool)
     else:
-        active = np.asarray(active0, dtype=bool).copy()
-        if active.shape != (m,):
-            raise ValueError('active0 must have shape (m,)')
+        active = require_bool_mask(
+            active0,
+            name='active0',
+            length=m,
+        ).copy()
 
     warnings_list = list(resolved.warnings)
     full_problem = build_power_fit_problem(resolved, model=model)
@@ -437,14 +602,14 @@ def solve_self_consistent_power_weights(
             pts,
             active_constraints,
             model=model,
-            r_min=r_min,
-            weight_shift=weight_shift,
+            r_min=r_min_value,
+            weight_shift=weight_shift_value,
             solver=fit_solver,
             linear_backend=fit_linear_backend,
-            admm_max_iter=fit_admm_max_iter,
-            admm_rho=fit_admm_rho,
-            admm_abs_tol=fit_admm_abs_tol,
-            admm_rel_tol=fit_admm_rel_tol,
+            admm_max_iter=fit_admm_max_iter_value,
+            admm_rho=fit_admm_rho_value,
+            admm_abs_tol=fit_admm_abs_tol_value,
+            admm_rel_tol=fit_admm_rel_tol_value,
             connectivity_check='diagnose',
         )
         if fit.weights is None:
@@ -456,7 +621,7 @@ def solve_self_consistent_power_weights(
             )
             final_realized = _empty_realized_pair_diagnostics(
                 m,
-                return_boundary_measure=return_boundary_measure,
+                return_boundary_measure=return_boundary_measure_value,
             )
             diag_all = PairConstraintDiagnostics(
                 site_i=resolved.i.copy(),
@@ -514,7 +679,7 @@ def solve_self_consistent_power_weights(
                 rms_residual_all=float('nan'),
                 max_residual_all=float('nan'),
                 tessellation_diagnostics=None,
-                history=tuple(history_rows) if return_history else None,
+                history=tuple(history_rows) if return_history_value else None,
                 path_summary=_finalize_path_summary(path_acc),
                 warnings=tuple(warnings_list),
                 connectivity=connectivity,
@@ -544,8 +709,8 @@ def solve_self_consistent_power_weights(
         )
         radii_eval, _ = weights_to_radii(
             weights_eval,
-            r_min=r_min,
-            weight_shift=weight_shift,
+            r_min=r_min_value,
+            weight_shift=weight_shift_value,
         )
         diag = match_realized_pairs(
             pts,
@@ -674,14 +839,14 @@ def solve_self_consistent_power_weights(
         pts,
         active_constraints,
         model=model,
-        r_min=r_min,
-        weight_shift=weight_shift,
+        r_min=r_min_value,
+        weight_shift=weight_shift_value,
         solver=fit_solver,
         linear_backend=fit_linear_backend,
-        admm_max_iter=fit_admm_max_iter,
-        admm_rho=fit_admm_rho,
-        admm_abs_tol=fit_admm_abs_tol,
-        admm_rel_tol=fit_admm_rel_tol,
+        admm_max_iter=fit_admm_max_iter_value,
+        admm_rho=fit_admm_rho_value,
+        admm_abs_tol=fit_admm_abs_tol_value,
+        admm_rel_tol=fit_admm_rel_tol_value,
         connectivity_check='diagnose',
     )
     warnings_list.extend(final_fit.warnings)
@@ -703,17 +868,19 @@ def solve_self_consistent_power_weights(
             active_constraints,
             final_weights,
             model=model,
-            r_min=r_min,
-            weight_shift=weight_shift,
+            r_min=r_min_value,
+            weight_shift=weight_shift_value,
         )
         final_realized = match_realized_pairs(
             pts,
             domain=domain,
             radii=final_fit.radii,
             constraints=resolved,
-            return_boundary_measure=return_boundary_measure,
-            return_cells=return_cells,
-            return_tessellation_diagnostics=return_tessellation_diagnostics,
+            return_boundary_measure=return_boundary_measure_value,
+            return_cells=return_cells_value,
+            return_tessellation_diagnostics=(
+                return_tessellation_diagnostics_value
+            ),
             tessellation_check=tessellation_check,
             unaccounted_pair_check=unaccounted_pair_check,
         )
@@ -730,7 +897,7 @@ def solve_self_consistent_power_weights(
         if final_realized is None:
             final_realized = _empty_realized_pair_diagnostics(
                 m,
-                return_boundary_measure=return_boundary_measure,
+                return_boundary_measure=return_boundary_measure_value,
             )
 
     target = (
@@ -814,7 +981,7 @@ def solve_self_consistent_power_weights(
         rms_residual_all=rms_residual_all,
         max_residual_all=max_residual_all,
         tessellation_diagnostics=final_realized.tessellation_diagnostics,
-        history=tuple(history_rows) if return_history else None,
+        history=tuple(history_rows) if return_history_value else None,
         path_summary=_finalize_path_summary(path_acc),
         warnings=tuple(warnings_list),
         connectivity=connectivity,

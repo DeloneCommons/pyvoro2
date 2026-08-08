@@ -24,6 +24,7 @@ Each record has a status:
 8. [Separator solver and linear-backend selection](0008-separator-solver-and-linear-backend.md)
 9. [Certified scalar proximal solver](0009-certified-scalar-proximal-solver.md)
 10. [Strict native construction preconditions](0010-native-construction-preconditions.md)
+11. [Strict public input and ownership contract](0011-strict-input-and-ownership-contract.md)
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the

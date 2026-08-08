@@ -29,6 +29,21 @@ from ._internal.spatial.domain_utils import (
     domain_length_scale,
     is_periodic_domain,
 )
+from ._internal.normalization import (
+    checked_add_shift_arrays,
+    checked_shift_difference,
+    coerce_normalization_vertices,
+    quantize_coordinates,
+    quantized_key_matches,
+    require_adjacent_cell_id,
+    require_cell_id,
+    require_global_vertex_ids,
+    require_local_vertex_indices,
+    require_shift,
+    require_shift_rows,
+    validate_pairwise_shift_differences,
+)
+from ._internal.validation import require_bool, require_positive_finite_real
 
 
 @dataclass(frozen=True)
@@ -84,9 +99,144 @@ class NormalizedTopology:
     cells: List[Dict[str, Any]]
 
 
-def _quant_key(coord: np.ndarray, tol: float) -> Tuple[int, int, int]:
-    q = np.rint(coord / tol).astype(np.int64)
-    return int(q[0]), int(q[1]), int(q[2])
+def _prepare_vertex_cells(
+    cells: List[Dict[str, Any]],
+    *,
+    domain: Box | OrthorhombicCell | PeriodicCell,
+    tol: float,
+    periodic: bool,
+    require_face_shifts: bool,
+) -> List[Dict[str, Any]]:
+    """Validate all consumed raw records before constructing or mutating output."""
+
+    if not isinstance(cells, list):
+        raise ValueError('cells must be a list of dicts')
+
+    prepared: List[Dict[str, Any]] = []
+    seen_ids: set[int] = set()
+    for cell_index, cell in enumerate(cells):
+        if not isinstance(cell, dict):
+            raise ValueError(f'cells[{cell_index}] must be a dict')
+        if 'id' not in cell:
+            raise ValueError(f'cells[{cell_index}].id is required')
+        cid = require_cell_id(cell['id'], name=f'cells[{cell_index}].id')
+        if cid in seen_ids:
+            raise ValueError('cell IDs must be unique')
+        seen_ids.add(cid)
+
+        vertices = coerce_normalization_vertices(
+            cell.get('vertices', []),
+            name=f'cells[{cell_index}].vertices',
+            dim=3,
+        )
+        face_data: List[Dict[str, Any]] = []
+        remapped = vertices
+        remap_shifts = np.zeros(vertices.shape, dtype=np.int64)
+
+        if periodic:
+            faces = cell.get('faces')
+            if faces is None:
+                raise ValueError(
+                    'cells must include faces for periodic normalization'
+                )
+            try:
+                face_records = tuple(faces)
+            except TypeError:
+                raise ValueError(
+                    f'cells[{cell_index}].faces must be a sequence of dicts'
+                ) from None
+            for face_index, face in enumerate(face_records):
+                prefix = f'cells[{cell_index}].faces[{face_index}]'
+                if not isinstance(face, dict):
+                    raise ValueError(f'{prefix} must be a dict')
+                vertices_local = (
+                    tuple()
+                    if face.get('vertices') is None
+                    else require_local_vertex_indices(
+                        face['vertices'],
+                        name=f'{prefix}.vertices',
+                        n_vertices=int(vertices.shape[0]),
+                    )
+                )
+                if 'adjacent_cell' not in face:
+                    raise ValueError(f'{prefix}.adjacent_cell is required')
+                adjacent = require_adjacent_cell_id(
+                    face['adjacent_cell'],
+                    name=f'{prefix}.adjacent_cell',
+                )
+                if 'adjacent_shift' in face:
+                    adjacent_shift = require_shift(
+                        face['adjacent_shift'],
+                        name=f'{prefix}.adjacent_shift',
+                        dim=3,
+                    )
+                elif require_face_shifts:
+                    raise ValueError(
+                        'cells must include face adjacent_shift '
+                        '(compute with return_face_shifts=True)'
+                    )
+                else:
+                    adjacent_shift = (0, 0, 0)
+                face_data.append(
+                    {
+                        'record': face,
+                        'vertices': vertices_local,
+                        'adjacent': adjacent,
+                        'shift': adjacent_shift,
+                    }
+                )
+
+            for vertex_index in range(int(vertices.shape[0])):
+                incident_shifts = [(0, 0, 0)] + [
+                    face['shift']
+                    for face in face_data
+                    if vertex_index in face['vertices']
+                ]
+                validate_pairwise_shift_differences(
+                    incident_shifts,
+                    name=(
+                        f'cells[{cell_index}].vertex[{vertex_index}] '
+                        'incident shift'
+                    ),
+                )
+
+            # type: ignore[arg-type]
+            remapped, remap_shifts = domain.remap_cart(
+                vertices,
+                return_shifts=True,
+            )
+            for _ in range(2):
+                # type: ignore[arg-type]
+                remapped2, extra = domain.remap_cart(
+                    remapped,
+                    return_shifts=True,
+                )
+                remapped = remapped2
+                remap_shifts = checked_add_shift_arrays(
+                    remap_shifts,
+                    extra,
+                    name=f'cells[{cell_index}].vertex_shift',
+                )
+                if not np.any(extra):
+                    break
+
+        quantized = quantize_coordinates(
+            remapped,
+            tol=tol,
+            name=f'cells[{cell_index}].vertices',
+        )
+        prepared.append(
+            {
+                'position': cell_index,
+                'id': cid,
+                'vertices': vertices,
+                'faces': tuple(face_data),
+                'remapped': remapped,
+                'remap_shifts': remap_shifts,
+                'quantized': quantized,
+            }
+        )
+    return prepared
 
 
 def _canonical_incident_key(
@@ -105,19 +255,20 @@ def _canonical_incident_key(
     This makes the key invariant to adding a constant shift to all elements.
     """
     # Deduplicate exactly identical tuples first
-    uniq = sorted(
-        set((int(cid), (int(s[0]), int(s[1]), int(s[2]))) for cid, s in incident)
-    )
+    uniq = sorted(set((cid, tuple(s)) for cid, s in incident))
     if not uniq:
         return tuple()
 
     best: Tuple[Any, ...] | None = None
     for _cid_a, s_a in uniq:
-        sa = np.array(s_a, dtype=np.int64)
         rep = []
         for cid, s in uniq:
-            ss = np.array(s, dtype=np.int64) - sa
-            rep.append((cid, int(ss[0]), int(ss[1]), int(ss[2])))
+            ss = checked_shift_difference(
+                s,
+                s_a,
+                name='incident lattice shift',
+            )
+            rep.append((cid, ss[0], ss[1], ss[2]))
         rep_sorted = tuple(sorted(rep))
         if best is None or rep_sorted < best:
             best = rep_sorted
@@ -154,6 +305,14 @@ def normalize_vertices(
     Raises:
         ValueError: if required fields are missing.
     """
+    require_face_shifts = require_bool(
+        require_face_shifts,
+        name='require_face_shifts',
+    )
+    copy_cells = require_bool(copy_cells, name='copy_cells')
+    if tol is not None:
+        tol = require_positive_finite_real(tol, name='tol')
+
     L = domain_length_scale(domain)
     is_periodic = is_periodic_domain(domain)
     if tol is None:
@@ -171,46 +330,51 @@ def normalize_vertices(
                 RuntimeWarning,
                 stacklevel=2,
             )
-    if tol <= 0:
-        raise ValueError('tol must be positive')
+    tol = require_positive_finite_real(tol, name='tol')
 
-    if not isinstance(cells, list):
-        raise ValueError('cells must be a list of dicts')
-
-    # Prepare output cell containers
-    out_cells: List[Dict[str, Any]]
-    if copy_cells:
-        out_cells = [dict(c) for c in cells]
-    else:
-        out_cells = cells
+    prepared = _prepare_vertex_cells(
+        cells,
+        domain=domain,
+        tol=tol,
+        periodic=is_periodic,
+        require_face_shifts=require_face_shifts,
+    )
 
     # Global storage
     global_vertices: List[np.ndarray] = []
     key_to_gid: Dict[Tuple[Any, ...], int] = {}
+    mappings: Dict[int, Tuple[List[int], List[Tuple[int, int, int]]]] = {}
 
     if not is_periodic:
         # For non-periodic boxes, coordinate-based deduplication is sufficient.
-        for c in out_cells:
-            verts = np.asarray(c.get('vertices', []), dtype=float)
-            if verts.size == 0:
-                verts = verts.reshape((0, 3))
-            if verts.ndim != 2 or verts.shape[1] != 3:
-                raise ValueError('cells must include vertices with shape (m,3)')
-
+        for item in prepared:
+            verts = item['vertices']
             gids: List[int] = []
             shifts: List[Tuple[int, int, int]] = []
-            for v in verts:
-                key = ('box',) + _quant_key(v, tol)
+            for v, coord_key in zip(verts, item['quantized']):
+                key = ('box',) + coord_key
                 gid = key_to_gid.get(key)
                 if gid is None:
                     gid = len(global_vertices)
                     key_to_gid[key] = gid
                     global_vertices.append(v.astype(np.float64))
+                elif not quantized_key_matches(
+                    global_vertices[gid],
+                    v,
+                    tol=tol,
+                ):
+                    raise ValueError(
+                        'vertex quantization key collision for coordinates '
+                        'farther apart than tol'
+                    )
                 gids.append(gid)
                 shifts.append((0, 0, 0))
+            mappings[item['position']] = (gids, shifts)
 
-            c['vertex_global_id'] = gids
-            c['vertex_shift'] = shifts
+        out_cells = [dict(cell) for cell in cells] if copy_cells else cells
+        for position, (gids, shifts) in mappings.items():
+            out_cells[position]['vertex_global_id'] = gids
+            out_cells[position]['vertex_shift'] = shifts
 
         return NormalizedVertices(
             global_vertices=(
@@ -221,68 +385,24 @@ def normalize_vertices(
             cells=out_cells,
         )
 
-    # Periodic domain (PeriodicCell or partially periodic OrthorhombicCell)
-    if is_periodic and require_face_shifts:
-        # Validate presence of shifts
-        for c in out_cells:
-            faces = c.get('faces')
-            if faces is None:
-                raise ValueError('cells must include faces for periodic normalization')
-            for f in faces:
-                if 'adjacent_shift' not in f:
-                    raise ValueError(
-                        'cells must include face adjacent_shift '
-                        '(compute with return_face_shifts=True)'
-                    )
-
     # Build per-cell local->global mapping
     # Process deterministically by sorted cell id then vertex index.
-    out_cells_sorted = sorted(out_cells, key=lambda cc: int(cc.get('id', 0)))
-
-    for c in out_cells_sorted:
-        verts = np.asarray(c.get('vertices', []), dtype=float)
-        if verts.size == 0:
-            verts = verts.reshape((0, 3))
-        if verts.ndim != 2 or verts.shape[1] != 3:
-            raise ValueError('cells must include vertices with shape (m,3)')
-        faces = c.get('faces')
-        if faces is None:
-            raise ValueError('cells must include faces for periodic normalization')
+    for item in sorted(prepared, key=lambda record: record['id']):
+        verts = item['vertices']
+        faces = item['faces']
 
         # Build vertex -> incident faces list
-        v_faces: List[List[Dict[str, Any]]] = [[] for _ in range(int(verts.shape[0]))]
-        for f in faces:
-            vids = f.get('vertices')
-            if vids is None:
-                continue
-            for vid in vids:
-                iv = int(vid)
-                if 0 <= iv < len(v_faces):
-                    v_faces[iv].append(f)
+        v_faces: List[List[Dict[str, Any]]] = [
+            [] for _ in range(int(verts.shape[0]))
+        ]
+        for face in faces:
+            for vertex_index in face['vertices']:
+                v_faces[vertex_index].append(face)
 
         gids: List[int] = []
         shifts: List[Tuple[int, int, int]] = []
-
-        # Precompute remapped vertices and remap shifts
-        # type: ignore[arg-type]
-        remapped, rem_shifts = domain.remap_cart(verts, return_shifts=True)
-        # NOTE: Due to floating-point round-off in the internal<->Cartesian
-        # rotations, a point that was remapped into the primary cell can land
-        # extremely close to a boundary. A subsequent remap may then report a
-        # nonzero lattice shift (e.g. [-1, 1, 0]) even though the point is
-        # already geometrically in the primary parallelepiped.
-        #
-        # To make global vertices strictly '000-normalized' under our own
-        # remap_cart() definition (and keep tests stable), we apply remapping
-        # once more and accumulate the extra shift into the local->global
-        # shift mapping.
-        for _ in range(2):
-            # type: ignore[arg-type]
-            remapped2, extra = domain.remap_cart(remapped, return_shifts=True)
-            remapped = remapped2
-            rem_shifts = rem_shifts + extra
-            if not np.any(extra):
-                break
+        remapped = item['remapped']
+        rem_shifts = item['remap_shifts']
 
         for k in range(int(verts.shape[0])):
             v0 = remapped[k]
@@ -291,16 +411,13 @@ def normalize_vertices(
             # Build incident set: include this cell (id, shift=(0,0,0)) plus
             # each adjacent cell image meeting at this vertex.
             incident: List[Tuple[int, Tuple[int, int, int]]] = []
-            cid_here = int(c.get('id', 0))
+            cid_here = item['id']
             incident.append((cid_here, (0, 0, 0)))
-            for f in v_faces[k]:
-                adj = int(f.get('adjacent_cell', -999999))
-                sh = f.get('adjacent_shift', (0, 0, 0))
-                sh_t = (int(sh[0]), int(sh[1]), int(sh[2]))
-                incident.append((adj, sh_t))
+            for face in v_faces[k]:
+                incident.append((face['adjacent'], face['shift']))
 
             topo_key = _canonical_incident_key(incident)
-            coord_key = _quant_key(v0, tol)
+            coord_key = item['quantized'][k]
             key: Tuple[Any, ...] = ('pbc',) + topo_key + ('@',) + coord_key
 
             gid = key_to_gid.get(key)
@@ -308,28 +425,27 @@ def normalize_vertices(
                 gid = len(global_vertices)
                 key_to_gid[key] = gid
                 global_vertices.append(v0.astype(np.float64))
-            else:
-                # Sanity: ensure coordinate consistency (after remap) within tolerance.
-                dv = np.linalg.norm(global_vertices[gid] - v0)
-                if dv > 10 * tol:
-                    raise ValueError(
-                        'vertex key collision: same topology key '
-                        'but significantly different coordinates; '
-                        f'gid={gid}, dv={dv}'
-                    )
+            elif not quantized_key_matches(
+                global_vertices[gid],
+                v0,
+                tol=tol,
+            ):
+                raise ValueError(
+                    'vertex quantization key collision for coordinates '
+                    'farther apart than tol'
+                )
 
             gids.append(gid)
             shifts.append(s0)
+        mappings[item['position']] = (gids, shifts)
 
-        c['vertex_global_id'] = gids
-        c['vertex_shift'] = shifts
+    out_cells = [dict(cell) for cell in cells] if copy_cells else cells
+    for position, (gids, shifts) in mappings.items():
+        out_cells[position]['vertex_global_id'] = gids
+        out_cells[position]['vertex_shift'] = shifts
 
     gv = np.stack(global_vertices, axis=0) if global_vertices else np.zeros((0, 3))
     return NormalizedVertices(global_vertices=gv, cells=out_cells)
-
-
-def _as_shift(s: Any) -> Tuple[int, int, int]:
-    return int(s[0]), int(s[1]), int(s[2])
 
 
 def _canon_edge(
@@ -347,16 +463,13 @@ def _canon_edge(
     """
     gid0, s0 = a
     gid1, s1 = b
-    s0a = np.array(s0, dtype=np.int64)
-    s1a = np.array(s1, dtype=np.int64)
-
     # Two translation anchors: subtract s0 or subtract s1.
     candidates = []
-    for ga, sa, gb, sb in ((gid0, s0a, gid1, s1a), (gid1, s1a, gid0, s0a)):
-        d = sb - sa
+    for ga, sa, gb, sb in ((gid0, s0, gid1, s1), (gid1, s1, gid0, s0)):
+        d = checked_shift_difference(sb, sa, name='edge vertex shift')
         recs = (
             (int(ga), 0, 0, 0),
-            (int(gb), int(d[0]), int(d[1]), int(d[2])),
+            (int(gb), d[0], d[1], d[2]),
         )
         candidates.append(tuple(sorted(recs)))
     best = min(candidates)
@@ -364,10 +477,12 @@ def _canon_edge(
     # Normalize so the first record has zero shift.
     g0, x0, y0, z0 = best[0]
     g1, x1, y1, z1 = best[1]
-    rep = (
-        (int(g0), 0, 0, 0),
-        (int(g1), int(x1 - x0), int(y1 - y0), int(z1 - z0)),
+    relative = checked_shift_difference(
+        (x1, y1, z1),
+        (x0, y0, z0),
+        name='canonical edge vertex shift',
     )
+    rep = ((int(g0), 0, 0, 0), (int(g1), *relative))
     key = (
         'e',
         int(rep[0][0]),
@@ -402,11 +517,14 @@ def _canon_polygon(
     for base in (vv, list(reversed(vv))):
         for r in range(n):
             seq = _rotate(base, r)
-            sa = np.array(seq[0][1], dtype=np.int64)
             rep = []
             for g, s in seq:
-                ss = np.array(s, dtype=np.int64) - sa
-                rep.append((int(g), int(ss[0]), int(ss[1]), int(ss[2])))
+                ss = checked_shift_difference(
+                    s,
+                    seq[0][1],
+                    name='face vertex shift',
+                )
+                rep.append((int(g), ss[0], ss[1], ss[2]))
             candidates.append(tuple(rep))
     return min(candidates)
 
@@ -418,8 +536,141 @@ def _canon_face_pair(
 ) -> Tuple[int, int, int, int, int, int, int, int]:
     sx, sy, sz = int(adj_shift[0]), int(adj_shift[1]), int(adj_shift[2])
     rep1 = (int(cid_here), 0, 0, 0, int(adj), sx, sy, sz)
-    rep2 = (int(adj), 0, 0, 0, int(cid_here), -sx, -sy, -sz)
+    reverse = checked_shift_difference(
+        (0, 0, 0),
+        (sx, sy, sz),
+        name='adjacent face shift',
+    )
+    rep2 = (int(adj), 0, 0, 0, int(cid_here), *reverse)
     return rep2 if rep2 < rep1 else rep1
+
+
+def _prepare_topology_cells(
+    nv: NormalizedVertices,
+    *,
+    periodic: bool,
+) -> Tuple[np.ndarray, List[Dict[str, Any]]]:
+    """Validate every record consumed by edge/face topology construction."""
+
+    global_vertices = coerce_normalization_vertices(
+        nv.global_vertices,
+        name='normalized.global_vertices',
+        dim=3,
+    )
+    if not isinstance(nv.cells, list):
+        raise ValueError('normalized.cells must be a list of dicts')
+
+    prepared: List[Dict[str, Any]] = []
+    seen_ids: set[int] = set()
+    for cell_index, cell in enumerate(nv.cells):
+        if not isinstance(cell, dict):
+            raise ValueError(f'normalized.cells[{cell_index}] must be a dict')
+        prefix = f'normalized.cells[{cell_index}]'
+        if 'id' not in cell:
+            raise ValueError(f'{prefix}.id is required')
+        cid = require_cell_id(cell['id'], name=f'{prefix}.id')
+        if cid in seen_ids:
+            raise ValueError('cell IDs must be unique')
+        seen_ids.add(cid)
+
+        vertices = coerce_normalization_vertices(
+            cell.get('vertices', []),
+            name=f'{prefix}.vertices',
+            dim=3,
+        )
+        faces = cell.get('faces')
+        if faces is None:
+            raise ValueError('cells must include faces')
+        try:
+            face_records = tuple(faces)
+        except TypeError:
+            raise ValueError(f'{prefix}.faces must be a sequence of dicts') from None
+
+        gids_raw = cell.get('vertex_global_id')
+        shifts_raw = cell.get('vertex_shift')
+        if gids_raw is None or shifts_raw is None:
+            raise ValueError(
+                'cells must include vertex_global_id and vertex_shift '
+                '(call normalize_vertices first)'
+            )
+        gids = require_global_vertex_ids(
+            gids_raw,
+            name=f'{prefix}.vertex_global_id',
+            n_vertices=int(vertices.shape[0]),
+            n_global_vertices=int(global_vertices.shape[0]),
+        )
+        vertex_shifts = require_shift_rows(
+            shifts_raw,
+            name=f'{prefix}.vertex_shift',
+            rows=int(vertices.shape[0]),
+            dim=3,
+        )
+
+        face_data: List[Dict[str, Any]] = []
+        for face_index, face in enumerate(face_records):
+            face_prefix = f'{prefix}.faces[{face_index}]'
+            if not isinstance(face, dict):
+                raise ValueError(f'{face_prefix} must be a dict')
+            vertices_local = (
+                tuple()
+                if face.get('vertices') is None
+                else require_local_vertex_indices(
+                    face['vertices'],
+                    name=f'{face_prefix}.vertices',
+                    n_vertices=int(vertices.shape[0]),
+                )
+            )
+            if 'adjacent_cell' not in face:
+                raise ValueError(f'{face_prefix}.adjacent_cell is required')
+            adjacent = require_adjacent_cell_id(
+                face['adjacent_cell'],
+                name=f'{face_prefix}.adjacent_cell',
+            )
+            if 'adjacent_shift' in face:
+                adjacent_shift = require_shift(
+                    face['adjacent_shift'],
+                    name=f'{face_prefix}.adjacent_shift',
+                    dim=3,
+                )
+            elif periodic and adjacent >= 0:
+                raise ValueError(
+                    'Periodic domain face missing adjacent_shift; '
+                    'compute with return_face_shifts=True'
+                )
+            else:
+                adjacent_shift = (0, 0, 0)
+            effective_shift = (
+                adjacent_shift
+                if periodic and adjacent >= 0
+                else (0, 0, 0)
+            )
+            checked_shift_difference(
+                (0, 0, 0),
+                effective_shift,
+                name=f'{face_prefix}.adjacent_shift',
+            )
+            validate_pairwise_shift_differences(
+                [vertex_shifts[value] for value in vertices_local],
+                name=f'{face_prefix}.vertex_shift',
+            )
+            face_data.append(
+                {
+                    'vertices': vertices_local,
+                    'adjacent': adjacent,
+                    'shift': adjacent_shift,
+                }
+            )
+
+        prepared.append(
+            {
+                'position': cell_index,
+                'id': cid,
+                'gids': gids,
+                'vertex_shifts': vertex_shifts,
+                'faces': tuple(face_data),
+            }
+        )
+    return global_vertices, prepared
 
 
 def normalize_edges_faces(
@@ -430,6 +681,10 @@ def normalize_edges_faces(
     copy_cells: bool = True,
 ) -> NormalizedTopology:
     """Build global edge and face pools based on an existing vertex normalization."""
+    copy_cells = require_bool(copy_cells, name='copy_cells')
+    if tol is not None:
+        tol = require_positive_finite_real(tol, name='tol')
+
     L = domain_length_scale(domain)
     if tol is None:
         if not np.isfinite(L) or float(L) <= 0.0:
@@ -445,14 +700,7 @@ def normalize_edges_faces(
                 'Consider rescaling your coordinates or passing an explicit tol=... .'
             )
             warnings.warn(msg, RuntimeWarning, stacklevel=2)
-    if tol <= 0:
-        raise ValueError('tol must be positive')
-
-    # Copy or reuse cells
-    if copy_cells:
-        cells = [dict(c) for c in nv.cells]
-    else:
-        cells = nv.cells
+    tol = require_positive_finite_real(tol, name='tol')
 
     global_edges: List[Dict[str, Any]] = []
     edge_key_to_id: Dict[Tuple[Any, ...], int] = {}
@@ -461,34 +709,25 @@ def normalize_edges_faces(
     face_key_to_id: Dict[Tuple[Any, ...], int] = {}
 
     domain_periodic = is_periodic_domain(domain)
+    _global_vertices, prepared = _prepare_topology_cells(
+        nv,
+        periodic=domain_periodic,
+    )
+    annotations: Dict[int, Dict[str, Any]] = {}
 
     # Deterministic processing order
-    cells_sorted = sorted(cells, key=lambda cc: int(cc.get('id', 0)))
+    cells_sorted = sorted(prepared, key=lambda item: item['id'])
 
     # Build edges and faces
-    for c in cells_sorted:
-        # Validate required fields
-        verts = c.get('vertices')
-        if verts is None:
-            raise ValueError('cells must include vertices')
-        faces = c.get('faces')
-        if faces is None:
-            raise ValueError('cells must include faces')
-        gids = c.get('vertex_global_id')
-        vsh = c.get('vertex_shift')
-        if gids is None or vsh is None:
-            raise ValueError(
-                'cells must include vertex_global_id and vertex_shift '
-                '(call normalize_vertices first)'
-            )
+    for item in cells_sorted:
+        faces = item['faces']
+        gids = item['gids']
+        vsh = item['vertex_shifts']
 
         # Extract local edges from face vertex cycles.
         edge_set: set[Tuple[int, int]] = set()
-        for f in faces:
-            vids = f.get('vertices')
-            if vids is None:
-                continue
-            vv = [int(x) for x in vids]
+        for face in faces:
+            vv = list(face['vertices'])
             if len(vv) < 2:
                 continue
             for u, v in zip(vv, vv[1:] + vv[:1]):
@@ -498,13 +737,12 @@ def normalize_edges_faces(
                 edge_set.add((a, b))
 
         edges_local = sorted(edge_set)
-        c['edges'] = [(int(u), int(v)) for u, v in edges_local]
 
         # Map edges to global ids
         edge_ids: List[int] = []
         for u, v in edges_local:
-            ea = (int(gids[u]), _as_shift(vsh[u]))
-            eb = (int(gids[v]), _as_shift(vsh[v]))
+            ea = (gids[u], vsh[u])
+            eb = (gids[v], vsh[v])
             ekey, erep = _canon_edge(ea, eb)
             eid = edge_key_to_id.get(ekey)
             if eid is None:
@@ -520,29 +758,23 @@ def normalize_edges_faces(
                     }
                 )
             edge_ids.append(eid)
-        c['edge_global_id'] = edge_ids
-
         # Faces -> global ids
         face_ids: List[int] = []
-        cid_here = int(c.get('id', 0))
-        for f in faces:
-            adj = int(f.get('adjacent_cell', -999999))
-            if domain_periodic and adj >= 0:
-                if 'adjacent_shift' not in f:
-                    raise ValueError(
-                        'Periodic domain face missing adjacent_shift; '
-                        'compute with return_face_shifts=True'
-                    )
-                adj_shift = _as_shift(f.get('adjacent_shift'))
-            else:
-                adj_shift = (0, 0, 0)
+        cid_here = item['id']
+        for face in faces:
+            adj = face['adjacent']
+            adj_shift = (
+                face['shift']
+                if domain_periodic and adj >= 0
+                else (0, 0, 0)
+            )
 
             pair = _canon_face_pair(cid_here, adj, adj_shift)
-            vids = f.get('vertices')
-            if vids is None:
+            vids = face['vertices']
+            if not vids:
                 poly = tuple()
             else:
-                desc = [(int(gids[int(v)]), _as_shift(vsh[int(v)])) for v in vids]
+                desc = [(gids[v], vsh[v]) for v in vids]
                 poly = _canon_polygon(desc)
 
             if domain_periodic and adj >= 0:
@@ -593,7 +825,15 @@ def normalize_edges_faces(
                             (int(t[1]), int(t[2]), int(t[3])) for t in poly
                         ]
             face_ids.append(fid)
-        c['face_global_id'] = face_ids
+        annotations[item['position']] = {
+            'edges': [(int(u), int(v)) for u, v in edges_local],
+            'edge_global_id': edge_ids,
+            'face_global_id': face_ids,
+        }
+
+    cells = [dict(cell) for cell in nv.cells] if copy_cells else nv.cells
+    for position, values in annotations.items():
+        cells[position].update(values)
 
     return NormalizedTopology(
         global_vertices=nv.global_vertices,
@@ -612,11 +852,36 @@ def normalize_topology(
     copy_cells: bool = True,
 ) -> NormalizedTopology:
     """Convenience wrapper: normalize vertices, then edges/faces."""
+    copy_cells = require_bool(copy_cells, name='copy_cells')
     nv = normalize_vertices(
         cells,
         domain=domain,
         tol=tol,
         require_face_shifts=require_face_shifts,
-        copy_cells=copy_cells,
+        copy_cells=True,
     )
-    return normalize_edges_faces(nv, domain=domain, tol=tol, copy_cells=False)
+    normalized = normalize_edges_faces(
+        nv,
+        domain=domain,
+        tol=tol,
+        copy_cells=False,
+    )
+    if copy_cells:
+        return normalized
+
+    annotation_fields = (
+        'vertex_global_id',
+        'vertex_shift',
+        'edges',
+        'edge_global_id',
+        'face_global_id',
+    )
+    for source, result in zip(cells, normalized.cells):
+        for field in annotation_fields:
+            source[field] = result[field]
+    return NormalizedTopology(
+        global_vertices=normalized.global_vertices,
+        global_edges=normalized.global_edges,
+        global_faces=normalized.global_faces,
+        cells=cells,
+    )

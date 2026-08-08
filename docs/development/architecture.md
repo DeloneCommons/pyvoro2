@@ -240,6 +240,33 @@ Python type semantics remain the wrapper's responsibility because pybind11
 conversion may already have erased that information. ADR 0010 fixes the
 ordering, resource policy, source-trace requirement, and R3-A scope.
 
+### Strict public values and pragmatic ownership
+
+Public exact integers use non-Boolean index-protocol semantics, and public
+Boolean flags accept only Python or NumPy Boolean scalars. Arrays are checked
+for their original numerical category, shape, and finiteness before dtype
+conversion. Boolean masks are likewise checked before conversion. The shared
+rules live in `_internal.validation` and `_internal.inputs`; public forward,
+domain, duplicate, normalization, diagnostic, and separator entry points apply
+them before reductions, integer casts, linear algebra, solver loops, or native
+dispatch.
+
+Domain structure is canonical Python data: bounds, triclinic vectors, and
+origins are owned nested tuples of built-in floats, while periodic flags are
+owned tuples of built-in Booleans. Retained numerical inputs are owned
+C-contiguous read-only arrays. This protects a frozen/value object from caller
+mutation without deep-freezing raw nested tessellation records or
+solver-created result graphs. `PeriodicCell` additionally requires a
+right-handed basis at construction. Remapping proves every returned lattice
+shift representable as signed int64 before conversion. Normalization treats
+mutable raw cell records as a fresh public boundary, validates all consumed
+integer metadata before topology-key construction, and rejects an
+unrepresentable coordinate/tolerance quantization relationship before
+constructing topology or applying annotations. This keeps normalization
+independent of NumPy warning and floating-point error settings while leaving
+the raw records themselves mutable. ADR 0011 fixes this R3-B contract and its
+boundary from R4–R9.
+
 ### Neutral weight/radius transforms
 
 The sole implementations of `weights_to_radii` and `radii_to_weights` now live

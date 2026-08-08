@@ -8,8 +8,18 @@ from typing import Sequence
 import numpy as np
 
 from ...planar.domains import Box, RectangularCell
-from ..inputs import coerce_native_block_parameters
-from ..validation import CPP_INT_MAX, require_ordered_bounds
+from ..inputs import (
+    coerce_native_block_parameters,
+    coerce_point_array,
+    round_to_int64,
+)
+from ..validation import (
+    CPP_INT_MAX,
+    INT64_MAX,
+    INT64_MIN,
+    require_index_array,
+    require_ordered_bounds,
+)
 
 Domain2D = Box | RectangularCell
 
@@ -74,30 +84,55 @@ class DomainGeometry2D:
         return a, b
 
     def remap_cart(self, points: np.ndarray) -> np.ndarray:
-        pts = np.asarray(points, dtype=float)
+        pts = coerce_point_array(points, name='points', dim=2)
         if self.domain is None or isinstance(self.domain, Box):
             return pts
         return self.domain.remap_cart(pts, return_shifts=False)
 
     def shift_to_cart(self, shifts: np.ndarray) -> np.ndarray:
-        sh = np.asarray(shifts, dtype=np.int64)
-        if sh.ndim != 2 or sh.shape[1] != 2:
+        raw = np.asarray(shifts, dtype=object)
+        if raw.ndim != 2 or raw.shape[1] != 2:
             raise ValueError('shifts must have shape (m, 2)')
+        sh = require_index_array(
+            raw,
+            name='shifts',
+            shape=raw.shape,
+            minimum=INT64_MIN,
+            maximum=INT64_MAX,
+        )
         if self.domain is None or isinstance(self.domain, Box):
             return np.zeros((sh.shape[0], 2), dtype=np.float64)
         a, b = self.lattice_vectors_cart
-        return sh[:, 0:1] * a[None, :] + sh[:, 1:2] * b[None, :]
+        with np.errstate(over='ignore', invalid='ignore'):
+            translated = sh[:, 0:1] * a[None, :] + sh[:, 1:2] * b[None, :]
+        if not np.all(np.isfinite(translated)):
+            raise ValueError('shifts produce non-finite Cartesian translations')
+        return translated
 
     def shift_vector(self, shift: Sequence[int] | np.ndarray) -> np.ndarray:
-        sh = np.asarray(shift, dtype=np.int64)
-        if sh.shape != (2,):
+        raw = np.asarray(shift, dtype=object)
+        if raw.shape != (2,):
             raise ValueError('shift must have shape (2,)')
+        sh = require_index_array(
+            raw,
+            name='shift',
+            shape=(2,),
+            minimum=INT64_MIN,
+            maximum=INT64_MAX,
+        )
         return self.shift_to_cart(sh.reshape(1, 2)).reshape(2)
 
     def validate_shifts(self, shifts: np.ndarray) -> None:
-        sh = np.asarray(shifts, dtype=np.int64)
-        if sh.ndim != 2 or sh.shape[1] != 2:
+        raw = np.asarray(shifts, dtype=object)
+        if raw.ndim != 2 or raw.shape[1] != 2:
             raise ValueError('shifts must have shape (m, 2)')
+        sh = require_index_array(
+            raw,
+            name='shifts',
+            shape=raw.shape,
+            minimum=INT64_MIN,
+            maximum=INT64_MAX,
+        )
 
         if self.domain is None or isinstance(self.domain, Box):
             if np.any(sh != 0):
@@ -121,12 +156,21 @@ class DomainGeometry2D:
         (xmin, xmax), (ymin, ymax) = self.domain.bounds
         lengths = np.array([xmax - xmin, ymax - ymin], dtype=float)
         periodic = np.array(self.domain.periodic, dtype=bool)
-        delta = np.asarray(pj, dtype=float) - np.asarray(pi, dtype=float)
+        pi_array = coerce_point_array(pi, name='pi', dim=2)
+        pj_array = coerce_point_array(pj, name='pj', dim=2)
+        if pi_array.shape != pj_array.shape:
+            raise ValueError('pi and pj must have the same shape')
+        delta = pj_array - pi_array
         shifts = np.zeros_like(delta, dtype=np.int64)
         for ax in range(2):
             if not periodic[ax]:
                 continue
-            shifts[:, ax] = (-np.round(delta[:, ax] / lengths[ax])).astype(np.int64)
+            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+                quotient = -delta[:, ax] / lengths[ax]
+            shifts[:, ax] = round_to_int64(
+                quotient,
+                name=f'nearest-image axis {ax} shift',
+            )
         return shifts
 
     def resolve_block_counts(

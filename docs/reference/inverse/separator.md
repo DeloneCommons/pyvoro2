@@ -21,6 +21,15 @@ integers in both index and ID modes; lossy float conversion, numeric-string
 parsing, and booleans are not accepted. Record and report conversion preserves
 the integer IDs.
 
+Direct observation indices, periodic shifts, provenance indices, search and
+iteration counts, flags, and masks use the package-wide exact integer/Boolean
+contract. Numerical model, confidence, and solver inputs must be finite and
+respect their documented positive or non-negative ranges. Resolved
+observations and regularization references own C-contiguous read-only arrays;
+caller mutation after construction cannot change them. These validation and
+ownership rules do not change the documented objective or active-set
+mathematics.
+
 ## Layered result access
 
 The provisional view types below organize existing result data without adding

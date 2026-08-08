@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from fractions import Fraction
 import json
 import subprocess
 import sys
@@ -106,7 +107,7 @@ def test_neutral_module_has_no_separator_or_native_dependencies() -> None:
         PACKAGE_ROOT / '_internal' / 'weight_transforms.py'
     )
 
-    assert imports == {'__future__', 'numpy'}
+    assert imports == {'__future__', 'numbers', 'numpy'}
     assert not any('powerfit' in module for module in imports)
     assert not any('separator' in module for module in imports)
     assert '_core' not in imports
@@ -157,6 +158,22 @@ def test_automatic_and_explicit_shift_behavior() -> None:
     )
     np.testing.assert_array_equal(explicit_radii, np.array([0.0, 1.0]))
     assert explicit_shift == -2.0
+
+
+def test_transforms_accept_general_real_scalars_but_reject_lossy_categories() -> None:
+    radii, shift = neutral_transforms.weights_to_radii(
+        np.array([0.0, 1.0]),
+        r_min=Fraction(1, 2),
+    )
+
+    np.testing.assert_allclose(radii, np.array([0.5, np.sqrt(1.25)]))
+    assert shift == 0.25
+    for invalid in (True, '0.5', 0.5 + 0j, np.array(0.5)):
+        with pytest.raises(ValueError, match='r_min.*real numeric'):
+            neutral_transforms.weights_to_radii(
+                np.array([0.0, 1.0]),
+                r_min=invalid,
+            )
 
 
 def test_empty_array_behavior() -> None:

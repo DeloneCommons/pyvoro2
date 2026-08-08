@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
 import numpy as np
 
+from ..._internal.validation import require_bool, require_index
 from .constraints import SeparatorObservations
 from .realize import RealizedPairDiagnostics
 from .types import (
@@ -293,7 +295,8 @@ def build_fit_report(
 ) -> dict[str, object]:
     """Return a JSON-friendly report for a low-level fit result."""
 
-    ids = constraints.ids if use_ids else None
+    use_ids_value = require_bool(use_ids, name='use_ids')
+    ids = constraints.ids if use_ids_value else None
     state = result.state
     identification = result.identification
     termination = result.solver_termination
@@ -322,8 +325,10 @@ def build_fit_report(
                 result.conflicting_constraint_indices
             ),
         },
-        'constraints': list(constraints.to_records(use_ids=use_ids)),
-        'fit_records': list(result.to_records(constraints, use_ids=use_ids)),
+        'constraints': list(constraints.to_records(use_ids=use_ids_value)),
+        'fit_records': list(
+            result.to_records(constraints, use_ids=use_ids_value)
+        ),
         'edge_diagnostics': _edge_diagnostics_record(result, constraints),
         'objective_breakdown': _objective_breakdown_record(
             result.objective
@@ -361,7 +366,8 @@ def build_realized_report(
 ) -> dict[str, object]:
     """Return a JSON-friendly report for realized-face matching."""
 
-    ids = constraints.ids if use_ids else None
+    use_ids_value = require_bool(use_ids, name='use_ids')
+    ids = constraints.ids if use_ids_value else None
     matching = diagnostics.requested_image_matching
     geometry = diagnostics.geometry
     return {
@@ -378,7 +384,9 @@ def build_realized_report(
                 len(geometry.realized_but_unaccounted_pairs)
             ),
         },
-        'records': list(diagnostics.to_records(constraints, use_ids=use_ids)),
+        'records': list(
+            diagnostics.to_records(constraints, use_ids=use_ids_value)
+        ),
         'unrealized': [
             int(idx) for idx in matching.unrealized_observation_indices
         ],
@@ -396,6 +404,8 @@ def build_active_set_report(
     use_ids: bool = False,
 ) -> dict[str, object]:
     """Return a JSON-friendly report for a self-consistent active-set result."""
+
+    use_ids_value = require_bool(use_ids, name='use_ids')
 
     # Import lazily to avoid a module cycle during package initialization.
     from .active import SelfConsistentPowerFitResult
@@ -452,7 +462,7 @@ def build_active_set_report(
                 }
             )
 
-    diagnostic_rows = list(result.to_records(use_ids=use_ids))
+    diagnostic_rows = list(result.to_records(use_ids=use_ids_value))
     marginal_rows = [
         diagnostic_rows[int(idx)] for idx in path.marginal_constraint_indices
     ]
@@ -481,16 +491,18 @@ def build_active_set_report(
                 int(idx) for idx in path.marginal_constraint_indices
             ],
         },
-        'constraints': list(result.constraints.to_records(use_ids=use_ids)),
+        'constraints': list(
+            result.constraints.to_records(use_ids=use_ids_value)
+        ),
         'fit': build_fit_report(
             inner_fit,
             result.constraints.subset(path.active_mask),
-            use_ids=use_ids,
+            use_ids=use_ids_value,
         ),
         'realized': build_realized_report(
             final_realization,
             result.constraints,
-            use_ids=use_ids,
+            use_ids=use_ids_value,
         ),
         'diagnostics': diagnostic_rows,
         'marginal_records': marginal_rows,
@@ -502,7 +514,7 @@ def build_active_set_report(
         'warnings': list(outer_termination.warnings),
         'connectivity': _connectivity_record(
             result.connectivity,
-            ids=(result.constraints.ids if use_ids else None),
+            ids=(result.constraints.ids if use_ids_value else None),
         ),
     }
 
@@ -532,10 +544,16 @@ def dumps_report_json(
 ) -> str:
     """Serialize a separator-fit report into a JSON string."""
 
+    indent_value = require_index(
+        indent,
+        name='indent',
+        maximum=sys.maxsize,
+    )
+    sort_keys_value = require_bool(sort_keys, name='sort_keys')
     return json.dumps(
         _jsonable_report_value(report),
-        indent=indent,
-        sort_keys=sort_keys,
+        indent=indent_value,
+        sort_keys=sort_keys_value,
     )
 
 
@@ -548,9 +566,19 @@ def write_report_json(
 ) -> None:
     """Write a separator-fit report to a JSON file."""
 
+    indent_value = require_index(
+        indent,
+        name='indent',
+        maximum=sys.maxsize,
+    )
+    sort_keys_value = require_bool(sort_keys, name='sort_keys')
     output_path = Path(path)
-    text = dumps_report_json(report, indent=indent, sort_keys=sort_keys)
-    if indent > 0 and not text.endswith('\n'):
+    text = dumps_report_json(
+        report,
+        indent=indent_value,
+        sort_keys=sort_keys_value,
+    )
+    if indent_value > 0 and not text.endswith('\n'):
         text += '\n'
     output_path.write_text(text, encoding='utf-8')
 

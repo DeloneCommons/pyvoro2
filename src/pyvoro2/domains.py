@@ -16,6 +16,23 @@ import warnings
 
 import numpy as np
 
+from ._internal.inputs import (
+    checked_int64_add,
+    coerce_finite_matrix,
+    coerce_finite_vector,
+    coerce_point_array,
+    floor_to_int64,
+)
+from ._internal.validation import (
+    INT64_MAX,
+    require_bool,
+    require_bool_tuple,
+    require_finite_real,
+    require_nonnegative_finite_real,
+    require_ordered_bounds,
+    require_positive_finite_real,
+)
+
 
 def _default_snap_eps(L: float, *, rel: float = 1e-12) -> float:
     """Return a scale-relative snapping epsilon for remapping.
@@ -47,13 +64,8 @@ class Box:
     bounds: tuple[tuple[float, float], tuple[float, float], tuple[float, float]]
 
     def __post_init__(self) -> None:
-        if len(self.bounds) != 3:
-            raise ValueError('bounds must have length 3')
-        for lo, hi in self.bounds:
-            if not np.isfinite(lo) or not np.isfinite(hi):
-                raise ValueError('bounds must be finite')
-            if not hi > lo:
-                raise ValueError('each bound must satisfy hi > lo')
+        bounds = require_ordered_bounds(self.bounds, name='bounds', dim=3)
+        object.__setattr__(self, 'bounds', bounds)
 
     @classmethod
     def from_points(cls, points: np.ndarray, padding: float = 2.0) -> 'Box':
@@ -69,11 +81,18 @@ class Box:
         Raises:
             ValueError: If points shape is invalid.
         """
-        pts = np.asarray(points, dtype=float)
-        if pts.ndim != 2 or pts.shape[1] != 3:
-            raise ValueError('points must have shape (n, 3)')
-        mins = pts.min(axis=0) - padding
-        maxs = pts.max(axis=0) + padding
+        pts = coerce_point_array(points, name='points', dim=3)
+        if pts.shape[0] == 0:
+            raise ValueError('points must contain at least one point')
+        padding_value = require_nonnegative_finite_real(
+            padding,
+            name='padding',
+        )
+        with np.errstate(over='ignore', invalid='ignore'):
+            mins = pts.min(axis=0) - padding_value
+            maxs = pts.max(axis=0) + padding_value
+        if not np.all(np.isfinite(mins)) or not np.all(np.isfinite(maxs)):
+            raise ValueError('points and padding must produce finite bounds')
         return cls(
             bounds=(
                 (float(mins[0]), float(maxs[0])),
@@ -106,21 +125,10 @@ class OrthorhombicCell:
     periodic: tuple[bool, bool, bool] = (True, True, True)
 
     def __post_init__(self) -> None:
-        if len(self.bounds) != 3:
-            raise ValueError('bounds must have length 3')
-        for lo, hi in self.bounds:
-            if not np.isfinite(lo) or not np.isfinite(hi):
-                raise ValueError('bounds must be finite')
-            if not hi > lo:
-                raise ValueError('each bound must satisfy hi > lo')
-        if len(self.periodic) != 3:
-            raise ValueError('periodic must have length 3')
-        # Normalize to a plain tuple[bool,bool,bool]
-        object.__setattr__(
-            self,
-            'periodic',
-            (bool(self.periodic[0]), bool(self.periodic[1]), bool(self.periodic[2])),
-        )
+        bounds = require_ordered_bounds(self.bounds, name='bounds', dim=3)
+        periodic = require_bool_tuple(self.periodic, name='periodic', length=3)
+        object.__setattr__(self, 'bounds', bounds)
+        object.__setattr__(self, 'periodic', periodic)
 
     @property
     def lattice_vectors(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -165,9 +173,11 @@ class OrthorhombicCell:
                 (remapped_points, shifts) where shifts has shape (n, 3)
                 and contains integer (nx, ny, nz).
         """
-        pts = np.asarray(points, dtype=float)
-        if pts.ndim != 2 or pts.shape[1] != 3:
-            raise ValueError('points must have shape (n, 3)')
+        return_shifts_value = require_bool(
+            return_shifts,
+            name='return_shifts',
+        )
+        pts = coerce_point_array(points, name='points', dim=3)
 
         (xmin, xmax), (ymin, ymax), (zmin, zmax) = self.bounds
         Lx = float(xmax - xmin)
@@ -185,9 +195,7 @@ class OrthorhombicCell:
                 Lp = max(Lp, Lz)
             eps_val = _default_snap_eps(Lp)
         else:
-            eps_val = float(eps)
-            if eps_val < 0:
-                raise ValueError('eps must be >= 0')
+            eps_val = require_nonnegative_finite_real(eps, name='eps')
 
         x = pts[:, 0].astype(float, copy=True)
         y = pts[:, 1].astype(float, copy=True)
@@ -206,8 +214,13 @@ class OrthorhombicCell:
                 continue
             coord = x if axis == 0 else y if axis == 1 else z
             # Wrap into [lo, hi) using floor.
-            s = np.floor((coord - lo) / L).astype(np.int64)
-            coord -= s * L
+            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+                quotient = (coord - lo) / L
+            s = floor_to_int64(quotient, name=f'points axis {axis} shift')
+            with np.errstate(over='ignore', invalid='ignore'):
+                coord -= s * L
+            if not np.all(np.isfinite(coord)):
+                raise ValueError('remapped points must contain only finite values')
             shifts[:, axis] = s
 
             if eps_val > 0.0:
@@ -218,6 +231,10 @@ class OrthorhombicCell:
                 # Snap near the upper boundary to lo with shift increment.
                 m1 = coord >= (hi - eps_val)
                 if np.any(m1):
+                    if np.any(shifts[m1, axis] == INT64_MAX):
+                        raise ValueError(
+                            'remap shifts must be representable as signed int64'
+                        )
                     coord[m1] = lo
                     shifts[m1, axis] += 1
 
@@ -229,7 +246,7 @@ class OrthorhombicCell:
                 z = coord
 
         out = np.stack([x, y, z], axis=1).astype(np.float64)
-        if return_shifts:
+        if return_shifts_value:
             return out, shifts
         return out
 
@@ -262,28 +279,26 @@ class PeriodicCell:
     origin: tuple[float, float, float] = (0.0, 0.0, 0.0)
 
     def __post_init__(self) -> None:
-        vec = np.asarray(self.vectors, dtype=float)
-        if vec.shape != (3, 3):
-            raise ValueError('vectors must have shape (3, 3)')
-        if not np.all(np.isfinite(vec)):
-            raise ValueError('vectors must contain only finite values')
-
-        org = np.asarray(self.origin, dtype=float)
-        if org.shape != (3,):
-            raise ValueError('origin must be a length-3 vector')
-        if not np.all(np.isfinite(org)):
-            raise ValueError('origin must contain only finite values')
+        vec = coerce_finite_matrix(
+            self.vectors,
+            name='vectors',
+            shape=(3, 3),
+        )
+        org = coerce_finite_vector(self.origin, name='origin', n=3)
 
         # Basic non-degeneracy checks.
-        norms = np.linalg.norm(vec, axis=1)
+        with np.errstate(over='ignore', invalid='ignore'):
+            norms = np.linalg.norm(vec, axis=1)
         if not np.all(np.isfinite(norms)) or np.any(norms <= 0.0):
             raise ValueError('cell vectors must have positive finite lengths')
 
         det = float(np.linalg.det(vec))
         if not np.isfinite(det):
             raise ValueError('cell vectors produce a non-finite determinant')
-        if det == 0.0:
-            raise ValueError('cell vectors are degenerate (det == 0)')
+        if det <= 0.0:
+            raise ValueError(
+                'cell vectors must be right-handed with determinant > 0'
+            )
 
         # Near-degeneracy detection:
         #   - relvol ~ 0 indicates near-coplanar / almost-degenerate cells.
@@ -318,6 +333,11 @@ class PeriodicCell:
                 RuntimeWarning,
                 stacklevel=2,
             )
+
+        vectors = tuple(tuple(float(value) for value in row) for row in vec)
+        origin = tuple(float(value) for value in org)
+        object.__setattr__(self, 'vectors', vectors)
+        object.__setattr__(self, 'origin', origin)
 
     @classmethod
     def from_params(
@@ -356,14 +376,18 @@ class PeriodicCell:
             PeriodicCell: A fully periodic triclinic cell.
 
         Notes:
-            This constructor does not impose additional validation beyond what
-            is performed by :meth:`to_internal_params`. In particular,
-            :meth:`to_internal_params` will raise a ValueError if bx, by, or bz
-            are non-positive (which would indicate an invalid handedness).
+            All parameters are validated before vector construction. The three
+            diagonal lengths ``bx``, ``by``, and ``bz`` must be positive.
         """
-        a = (float(bx), 0.0, 0.0)
-        b = (float(bxy), float(by), 0.0)
-        c = (float(bxz), float(byz), float(bz))
+        bx_value = require_positive_finite_real(bx, name='bx')
+        bxy_value = require_finite_real(bxy, name='bxy')
+        by_value = require_positive_finite_real(by, name='by')
+        bxz_value = require_finite_real(bxz, name='bxz')
+        byz_value = require_finite_real(byz, name='byz')
+        bz_value = require_positive_finite_real(bz, name='bz')
+        a = (bx_value, 0.0, 0.0)
+        b = (bxy_value, by_value, 0.0)
+        c = (bxz_value, byz_value, bz_value)
         return cls(vectors=(a, b, c), origin=origin)
 
     def _rotation_to_internal(self) -> np.ndarray:
@@ -403,15 +427,27 @@ class PeriodicCell:
         """Transform Cartesian points into the internal coordinate system."""
         r = self._rotation_to_internal()
         origin = np.asarray(self.origin, dtype=float)
-        pts = np.asarray(points, dtype=float) - origin[None, :]
-        return (r @ pts.T).T
+        pts = coerce_point_array(points, name='points', dim=3) - origin[None, :]
+        with np.errstate(over='ignore', invalid='ignore'):
+            result = (r @ pts.T).T
+        if not np.all(np.isfinite(result)):
+            raise ValueError('points produce non-finite internal coordinates')
+        return result
 
     def internal_to_cart(self, points_internal: np.ndarray) -> np.ndarray:
         """Transform internal points back into Cartesian coordinates."""
         r = self._rotation_to_internal()
         origin = np.asarray(self.origin, dtype=float)
-        pts = (r.T @ np.asarray(points_internal, dtype=float).T).T + origin[None, :]
-        return pts
+        pts = coerce_point_array(
+            points_internal,
+            name='points_internal',
+            dim=3,
+        )
+        with np.errstate(over='ignore', invalid='ignore'):
+            result = (r.T @ pts.T).T + origin[None, :]
+        if not np.all(np.isfinite(result)):
+            raise ValueError('points_internal produce non-finite coordinates')
+        return result
 
     def remap_internal(
         self,
@@ -466,21 +502,30 @@ class PeriodicCell:
                 (remapped_points, shifts) where shifts has shape (n, 3)
                 and contains integer (na, nb, nc).
         """
+        return_shifts_value = require_bool(
+            return_shifts,
+            name='return_shifts',
+        )
+        pts = coerce_point_array(
+            points_internal,
+            name='points_internal',
+            dim=3,
+        )
+        explicit_eps = (
+            None
+            if eps is None
+            else require_nonnegative_finite_real(eps, name='eps')
+        )
         bx, bxy, by, bxz, byz, bz = self.to_internal_params()
-        pts = np.asarray(points_internal, dtype=float)
-        if pts.ndim != 2 or pts.shape[1] != 3:
-            raise ValueError('points_internal must have shape (n, 3)')
 
         x = pts[:, 0].astype(float, copy=True)
         y = pts[:, 1].astype(float, copy=True)
         z = pts[:, 2].astype(float, copy=True)
 
-        if eps is None:
+        if explicit_eps is None:
             eps_val = _default_snap_eps(max(bx, by, bz))
         else:
-            eps_val = float(eps)
-            if eps_val < 0:
-                raise ValueError('eps must be >= 0')
+            eps_val = explicit_eps
 
         na = np.zeros_like(x, dtype=np.int64)
         nb = np.zeros_like(x, dtype=np.int64)
@@ -492,21 +537,33 @@ class PeriodicCell:
         # and would otherwise flip images due to floating-point round-off.
         for _ in range(3):
             # Remap into [0,b) using lower-triangular lattice steps.
-            dc = np.floor(z / bz).astype(np.int64)
-            z -= dc * bz
-            y -= dc * byz
-            x -= dc * bxz
+            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+                dc_quotient = z / bz
+            dc = floor_to_int64(dc_quotient, name='points_internal c shift')
+            with np.errstate(over='ignore', invalid='ignore'):
+                z -= dc * bz
+                y -= dc * byz
+                x -= dc * bxz
+            _require_finite_remap_coordinates(x, y, z)
 
-            db = np.floor(y / by).astype(np.int64)
-            y -= db * by
-            x -= db * bxy
+            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+                db_quotient = y / by
+            db = floor_to_int64(db_quotient, name='points_internal b shift')
+            with np.errstate(over='ignore', invalid='ignore'):
+                y -= db * by
+                x -= db * bxy
+            _require_finite_remap_coordinates(x, y, z)
 
-            da = np.floor(x / bx).astype(np.int64)
-            x -= da * bx
+            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+                da_quotient = x / bx
+            da = floor_to_int64(da_quotient, name='points_internal a shift')
+            with np.errstate(over='ignore', invalid='ignore'):
+                x -= da * bx
+            _require_finite_remap_coordinates(x, y, z)
 
-            na += da
-            nb += db
-            nc += dc
+            na = checked_int64_add(na, da, name='remap a shifts')
+            nb = checked_int64_add(nb, db, name='remap b shifts')
+            nc = checked_int64_add(nc, dc, name='remap c shifts')
 
             if eps_val == 0.0:
                 break
@@ -524,41 +581,61 @@ class PeriodicCell:
                 z[mz] = 0.0
                 y[mz] -= byz
                 x[mz] -= bxz
-                nc[mz] += 1
+                increment = np.zeros_like(nc)
+                increment[mz] = 1
+                nc = checked_int64_add(nc, increment, name='remap c shifts')
                 changed = True
 
             my = y >= (by - eps_val)
             if np.any(my):
                 y[my] = 0.0
                 x[my] -= bxy
-                nb[my] += 1
+                increment = np.zeros_like(nb)
+                increment[my] = 1
+                nb = checked_int64_add(nb, increment, name='remap b shifts')
                 changed = True
 
             mx = x >= (bx - eps_val)
             if np.any(mx):
                 x[mx] = 0.0
-                na[mx] += 1
+                increment = np.zeros_like(na)
+                increment[mx] = 1
+                na = checked_int64_add(na, increment, name='remap a shifts')
                 changed = True
+
+            _require_finite_remap_coordinates(x, y, z)
 
             if not changed:
                 break
 
         # Final remap to guarantee we are inside the primary cell after any snapping.
-        dc = np.floor(z / bz).astype(np.int64)
-        z -= dc * bz
-        y -= dc * byz
-        x -= dc * bxz
+        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+            dc_quotient = z / bz
+        dc = floor_to_int64(dc_quotient, name='points_internal c shift')
+        with np.errstate(over='ignore', invalid='ignore'):
+            z -= dc * bz
+            y -= dc * byz
+            x -= dc * bxz
+        _require_finite_remap_coordinates(x, y, z)
 
-        db = np.floor(y / by).astype(np.int64)
-        y -= db * by
-        x -= db * bxy
+        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+            db_quotient = y / by
+        db = floor_to_int64(db_quotient, name='points_internal b shift')
+        with np.errstate(over='ignore', invalid='ignore'):
+            y -= db * by
+            x -= db * bxy
+        _require_finite_remap_coordinates(x, y, z)
 
-        da = np.floor(x / bx).astype(np.int64)
-        x -= da * bx
+        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+            da_quotient = x / bx
+        da = floor_to_int64(da_quotient, name='points_internal a shift')
+        with np.errstate(over='ignore', invalid='ignore'):
+            x -= da * bx
+        _require_finite_remap_coordinates(x, y, z)
 
-        na += da
-        nb += db
-        nc += dc
+        na = checked_int64_add(na, da, name='remap a shifts')
+        nb = checked_int64_add(nb, db, name='remap b shifts')
+        nc = checked_int64_add(nc, dc, name='remap c shifts')
 
         # Snap tiny values to 0 again for cleanliness.
         if eps_val > 0.0:
@@ -568,7 +645,7 @@ class PeriodicCell:
 
         remapped = np.stack([x, y, z], axis=1)
 
-        if not return_shifts:
+        if not return_shifts_value:
             return remapped
         shifts = np.stack([na, nb, nc], axis=1).astype(np.int64)
         return remapped, shifts
@@ -599,9 +676,33 @@ class PeriodicCell:
                 (na, nb, nc) applied to each point.
             eps: Snapping tolerance passed through to :meth:`remap_internal`.
         """
+        return_shifts_value = require_bool(
+            return_shifts,
+            name='return_shifts',
+        )
+        eps_value = (
+            None
+            if eps is None
+            else require_nonnegative_finite_real(eps, name='eps')
+        )
         pts_i = self.cart_to_internal(points)
-        if return_shifts:
-            pts_i2, shifts = self.remap_internal(pts_i, return_shifts=True, eps=eps)
+        if return_shifts_value:
+            pts_i2, shifts = self.remap_internal(
+                pts_i,
+                return_shifts=True,
+                eps=eps_value,
+            )
             return self.internal_to_cart(pts_i2), shifts
-        pts_i2 = self.remap_internal(pts_i, return_shifts=False, eps=eps)
+        pts_i2 = self.remap_internal(
+            pts_i,
+            return_shifts=False,
+            eps=eps_value,
+        )
         return self.internal_to_cart(pts_i2)
+
+
+def _require_finite_remap_coordinates(*coordinates: np.ndarray) -> None:
+    """Reject non-finite shear arithmetic before another floor operation."""
+
+    if not all(np.all(np.isfinite(values)) for values in coordinates):
+        raise ValueError('remapped points must contain only finite values')

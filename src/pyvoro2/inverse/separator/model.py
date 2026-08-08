@@ -10,9 +10,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from fractions import Fraction
-from typing import Sequence
-
 import numpy as np
+
+from ..._internal.inputs import coerce_finite_1d_array, owned_readonly_array
+from ..._internal.validation import (
+    require_finite_real,
+    require_nonnegative_finite_real,
+    require_positive_finite_real,
+)
 
 
 class ScalarMismatch:
@@ -36,8 +41,11 @@ class HuberLoss(ScalarMismatch):
     delta: float = 1.0
 
     def __post_init__(self) -> None:
-        if float(self.delta) <= 0.0:
-            raise ValueError('HuberLoss.delta must be > 0')
+        delta = require_positive_finite_real(
+            self.delta,
+            name='HuberLoss.delta',
+        )
+        object.__setattr__(self, 'delta', delta)
 
 
 class HardConstraint:
@@ -52,8 +60,12 @@ class Interval(HardConstraint):
     upper: float
 
     def __post_init__(self) -> None:
-        if not float(self.upper) > float(self.lower):
+        lower = require_finite_real(self.lower, name='Interval.lower')
+        upper = require_finite_real(self.upper, name='Interval.upper')
+        if not upper > lower:
             raise ValueError('Interval requires upper > lower')
+        object.__setattr__(self, 'lower', lower)
+        object.__setattr__(self, 'upper', upper)
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +73,10 @@ class FixedValue(HardConstraint):
     """Hard equality restriction in the chosen measurement space."""
 
     value: float
+
+    def __post_init__(self) -> None:
+        value = require_finite_real(self.value, name='FixedValue.value')
+        object.__setattr__(self, 'value', value)
 
 
 class ScalarPenalty:
@@ -80,10 +96,23 @@ class SoftIntervalPenalty(ScalarPenalty):
     strength: float
 
     def __post_init__(self) -> None:
-        if not float(self.upper) > float(self.lower):
+        lower = require_finite_real(
+            self.lower,
+            name='SoftIntervalPenalty.lower',
+        )
+        upper = require_finite_real(
+            self.upper,
+            name='SoftIntervalPenalty.upper',
+        )
+        strength = require_nonnegative_finite_real(
+            self.strength,
+            name='SoftIntervalPenalty.strength',
+        )
+        if not upper > lower:
             raise ValueError('SoftIntervalPenalty requires upper > lower')
-        if float(self.strength) < 0.0:
-            raise ValueError('SoftIntervalPenalty.strength must be >= 0')
+        object.__setattr__(self, 'lower', lower)
+        object.__setattr__(self, 'upper', upper)
+        object.__setattr__(self, 'strength', strength)
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,19 +131,38 @@ class ExponentialBoundaryPenalty(ScalarPenalty):
     tau: float = 0.01
 
     def __post_init__(self) -> None:
-        if not float(self.upper) > float(self.lower):
+        lower_value = require_finite_real(
+            self.lower,
+            name='ExponentialBoundaryPenalty.lower',
+        )
+        upper_value = require_finite_real(
+            self.upper,
+            name='ExponentialBoundaryPenalty.upper',
+        )
+        margin_value = require_nonnegative_finite_real(
+            self.margin,
+            name='ExponentialBoundaryPenalty.margin',
+        )
+        strength_value = require_nonnegative_finite_real(
+            self.strength,
+            name='ExponentialBoundaryPenalty.strength',
+        )
+        tau_value = require_positive_finite_real(
+            self.tau,
+            name='ExponentialBoundaryPenalty.tau',
+        )
+        if not upper_value > lower_value:
             raise ValueError('ExponentialBoundaryPenalty requires upper > lower')
-        if float(self.margin) < 0.0:
-            raise ValueError('ExponentialBoundaryPenalty.margin must be >= 0')
-        if float(self.strength) < 0.0:
-            raise ValueError('ExponentialBoundaryPenalty.strength must be >= 0')
-        if float(self.tau) <= 0.0:
-            raise ValueError('ExponentialBoundaryPenalty.tau must be > 0')
-        lower = Fraction.from_float(float(self.lower))
-        upper = Fraction.from_float(float(self.upper))
-        margin = Fraction.from_float(float(self.margin))
+        lower = Fraction.from_float(lower_value)
+        upper = Fraction.from_float(upper_value)
+        margin = Fraction.from_float(margin_value)
         if lower + margin > upper - margin:
             raise ValueError('ExponentialBoundaryPenalty margin is too large')
+        object.__setattr__(self, 'lower', lower_value)
+        object.__setattr__(self, 'upper', upper_value)
+        object.__setattr__(self, 'margin', margin_value)
+        object.__setattr__(self, 'strength', strength_value)
+        object.__setattr__(self, 'tau', tau_value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,23 +184,41 @@ class ReciprocalBoundaryPenalty(ScalarPenalty):
     epsilon: float = 1e-6
 
     def __post_init__(self) -> None:
-        lower = float(self.lower)
-        upper = float(self.upper)
-        margin = float(self.margin)
-        strength = float(self.strength)
-        epsilon = float(self.epsilon)
+        lower = require_finite_real(
+            self.lower,
+            name='ReciprocalBoundaryPenalty.lower',
+        )
+        upper = require_finite_real(
+            self.upper,
+            name='ReciprocalBoundaryPenalty.upper',
+        )
+        margin = require_positive_finite_real(
+            self.margin,
+            name='ReciprocalBoundaryPenalty.margin',
+        )
+        strength = require_nonnegative_finite_real(
+            self.strength,
+            name='ReciprocalBoundaryPenalty.strength',
+        )
+        epsilon = require_positive_finite_real(
+            self.epsilon,
+            name='ReciprocalBoundaryPenalty.epsilon',
+        )
         if not upper > lower:
             raise ValueError('ReciprocalBoundaryPenalty requires upper > lower')
-        if not margin > 0.0:
-            raise ValueError('ReciprocalBoundaryPenalty.margin must be > 0')
-        if not strength >= 0.0:
-            raise ValueError('ReciprocalBoundaryPenalty.strength must be >= 0')
         if not 0.0 < epsilon < margin:
             raise ValueError(
                 'ReciprocalBoundaryPenalty requires 0 < epsilon < margin'
             )
-        if 2.0 * margin > upper - lower:
+        if 2 * Fraction.from_float(margin) > (
+            Fraction.from_float(upper) - Fraction.from_float(lower)
+        ):
             raise ValueError('ReciprocalBoundaryPenalty margin is too large')
+        object.__setattr__(self, 'lower', lower)
+        object.__setattr__(self, 'upper', upper)
+        object.__setattr__(self, 'margin', margin)
+        object.__setattr__(self, 'strength', strength)
+        object.__setattr__(self, 'epsilon', epsilon)
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,14 +234,22 @@ class L2Regularization:
     reference: np.ndarray | None = None
 
     def __post_init__(self) -> None:
-        if float(self.strength) < 0.0:
-            raise ValueError('L2Regularization.strength must be >= 0')
+        strength = require_nonnegative_finite_real(
+            self.strength,
+            name='L2Regularization.strength',
+        )
+        object.__setattr__(self, 'strength', strength)
         ref = self.reference
         if ref is not None:
-            arr = np.asarray(ref, dtype=float)
-            if arr.ndim != 1:
-                raise ValueError('L2Regularization.reference must be 1D')
-            object.__setattr__(self, 'reference', arr)
+            arr = coerce_finite_1d_array(
+                ref,
+                name='L2Regularization.reference',
+            )
+            object.__setattr__(
+                self,
+                'reference',
+                owned_readonly_array(arr, dtype=np.float64),
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,16 +272,19 @@ class FitModel:
 
     def __post_init__(self) -> None:
         if not isinstance(self.mismatch, ScalarMismatch):
-            raise TypeError('FitModel.mismatch must be a ScalarMismatch instance')
+            raise ValueError('FitModel.mismatch must be a ScalarMismatch instance')
         if self.feasible is not None and not isinstance(self.feasible, HardConstraint):
-            raise TypeError('FitModel.feasible must be a HardConstraint or None')
-        penalties = self.penalties
-        if isinstance(penalties, Sequence) and not isinstance(penalties, tuple):
-            penalties = tuple(penalties)
-            object.__setattr__(self, 'penalties', penalties)
+            raise ValueError('FitModel.feasible must be a HardConstraint or None')
+        try:
+            penalties = tuple(self.penalties)
+        except TypeError:
+            raise ValueError(
+                'FitModel.penalties must be an iterable of ScalarPenalty instances'
+            ) from None
+        object.__setattr__(self, 'penalties', penalties)
         if not all(isinstance(p, ScalarPenalty) for p in penalties):
-            raise TypeError('FitModel.penalties must contain ScalarPenalty instances')
+            raise ValueError('FitModel.penalties must contain ScalarPenalty instances')
         if not isinstance(self.regularization, L2Regularization):
-            raise TypeError(
+            raise ValueError(
                 'FitModel.regularization must be an L2Regularization instance'
             )

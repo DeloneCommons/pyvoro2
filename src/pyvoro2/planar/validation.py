@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import sys
 from typing import Any, Literal
 
 from .._internal.planar.domain_geometry import geometry2d
+from .._internal.validation import (
+    require_bool,
+    require_nonnegative_index,
+    require_string,
+    require_string_choice,
+)
 from .domains import Box, RectangularCell
 from .normalize import NormalizedTopology, NormalizedVertices
 
@@ -19,6 +26,23 @@ class NormalizationIssue:
     severity: Literal['info', 'warning', 'error']
     message: str
     examples: tuple[Any, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'code', require_string(self.code, name='code'))
+        object.__setattr__(
+            self,
+            'severity',
+            require_string_choice(
+                self.severity,
+                name='severity',
+                choices=('info', 'warning', 'error'),
+            ),
+        )
+        object.__setattr__(
+            self,
+            'message',
+            require_string(self.message, name='message'),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,8 +112,28 @@ def validate_normalized_topology(
 ) -> NormalizationDiagnostics:
     """Validate periodic shift and topology consistency after normalization."""
 
-    if level not in ('basic', 'strict'):
-        raise ValueError("level must be 'basic' or 'strict'")
+    level = require_string_choice(
+        level,
+        name='level',
+        choices=('basic', 'strict'),
+    )
+
+    check_vertex_edge_shift = require_bool(
+        check_vertex_edge_shift,
+        name='check_vertex_edge_shift',
+    )
+    check_edge_vertex_sets = require_bool(
+        check_edge_vertex_sets,
+        name='check_edge_vertex_sets',
+    )
+    check_incidence = require_bool(check_incidence, name='check_incidence')
+    check_polygon = require_bool(check_polygon, name='check_polygon')
+    max_examples = require_nonnegative_index(
+        max_examples,
+        name='max_examples',
+        maximum=sys.maxsize,
+    )
+    example_probe_limit = max(max_examples, 1)
 
     cells = list(normalized.cells)
     n_cells = len(cells)
@@ -173,7 +217,7 @@ def validate_normalized_topology(
                                 'A periodic neighbor edge is missing adjacent_shift. '
                                 'Ensure compute(..., return_edge_shifts=True) was used.'
                             ),
-                            examples=((cid, j),),
+                            examples=((cid, j),)[:max_examples],
                         )
                     )
                     continue
@@ -181,12 +225,12 @@ def validate_normalized_topology(
                 s = _as_shift(edge.get('adjacent_shift', (0, 0)))
                 cj = cell_by_id.get(j)
                 if cj is None:
-                    if len(missing_neighbor_cells) < max_examples:
+                    if len(missing_neighbor_cells) < example_probe_limit:
                         missing_neighbor_cells.append((cid, j, s))
                     continue
                 map_j = gid_shift_by_cell.get(j)
                 if map_j is None:
-                    if len(missing_neighbor_cells) < max_examples:
+                    if len(missing_neighbor_cells) < example_probe_limit:
                         missing_neighbor_cells.append((cid, j, s))
                     continue
 
@@ -198,13 +242,13 @@ def validate_normalized_topology(
                     sj_set = map_j.get(gid)
                     if not sj_set:
                         n_ves_mismatch += 1
-                        if len(missing_shared_vertex) < max_examples:
+                        if len(missing_shared_vertex) < example_probe_limit:
                             missing_shared_vertex.append((cid, j, s, gid))
                         continue
                     expected_set = {(sj[0] + s[0], sj[1] + s[1]) for sj in sj_set}
                     if si not in expected_set:
                         n_ves_mismatch += 1
-                        if len(examples) < max_examples:
+                        if len(examples) < example_probe_limit:
                             examples.append((cid, gid, si, j, tuple(sorted(sj_set)), s))
 
         if missing_neighbor_cells:
@@ -216,7 +260,7 @@ def validate_normalized_topology(
                         'Some reciprocal neighbor cells are missing from the '
                         'cell list.'
                     ),
-                    examples=tuple(missing_neighbor_cells),
+                    examples=tuple(missing_neighbor_cells[:max_examples]),
                 )
             )
         if missing_shared_vertex:
@@ -228,7 +272,7 @@ def validate_normalized_topology(
                         'A reciprocal neighboring cell does not contain a shared '
                         'global vertex referenced by a periodic edge.'
                     ),
-                    examples=tuple(missing_shared_vertex),
+                    examples=tuple(missing_shared_vertex[:max_examples]),
                 )
             )
         if examples:
@@ -240,7 +284,7 @@ def validate_normalized_topology(
                         'vertex_shift values disagree with edge adjacent_shift across '
                         'reciprocal neighboring cells.'
                     ),
-                    examples=tuple(examples),
+                    examples=tuple(examples[:max_examples]),
                 )
             )
 
@@ -289,7 +333,7 @@ def validate_normalized_topology(
                         break
                 if not found:
                     n_evt_mismatch += 1
-                    if len(examples) < max_examples:
+                    if len(examples) < example_probe_limit:
                         examples.append((cid, j, s))
         if examples:
             issues.append(
@@ -300,7 +344,7 @@ def validate_normalized_topology(
                         'Reciprocal periodic edges do not reference the same set '
                         'of global vertex ids.'
                     ),
-                    examples=tuple(examples),
+                    examples=tuple(examples[:max_examples]),
                 )
             )
 
@@ -319,7 +363,7 @@ def validate_normalized_topology(
         for gid, eids in inc.items():
             if len(eids) < 3:
                 n_vertices_low_incidence += 1
-                if len(examples) < max_examples:
+                if len(examples) < example_probe_limit:
                     examples.append((gid, len(eids)))
         if examples:
             issues.append(
@@ -330,7 +374,7 @@ def validate_normalized_topology(
                         'Some global vertices have low edge incidence in a fully '
                         'periodic planar tessellation.'
                     ),
-                    examples=tuple(examples),
+                    examples=tuple(examples[:max_examples]),
                 )
             )
 
@@ -347,7 +391,7 @@ def validate_normalized_topology(
             ne = len(edges)
             if nv != ne:
                 n_cells_bad_polygon += 1
-                if len(examples) < max_examples:
+                if len(examples) < example_probe_limit:
                     examples.append((cid, nv, ne))
         if examples:
             issues.append(
@@ -358,7 +402,7 @@ def validate_normalized_topology(
                         'Some cells do not satisfy the expected planar polygon '
                         'count V == E.'
                     ),
-                    examples=tuple(examples),
+                    examples=tuple(examples[:max_examples]),
                 )
             )
 

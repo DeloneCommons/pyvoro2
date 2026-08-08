@@ -12,9 +12,14 @@ from ..inputs import (
     coerce_finite_matrix,
     coerce_finite_vector,
     coerce_native_block_parameters,
+    coerce_point_array,
+    round_to_int64,
 )
 from ..validation import (
     CPP_INT_MAX,
+    INT64_MAX,
+    INT64_MIN,
+    require_index_array,
     require_ordered_bounds,
     require_positive_finite_real,
 )
@@ -39,7 +44,7 @@ class _NativePeriodicSnapshot:
         vectors: object,
         origin: object,
     ) -> '_NativePeriodicSnapshot':
-        """Validate retained raw values before preparing derived geometry."""
+        """Validate canonical values before preparing derived geometry."""
 
         vectors_array = coerce_finite_matrix(
             vectors,
@@ -53,7 +58,7 @@ class _NativePeriodicSnapshot:
         )
 
         # Match PeriodicCell's Cartesian-to-internal basis construction, but do
-        # it on the validated detached values without replaying constructor
+        # it on validated detached values without replaying constructor
         # conditioning policy or warnings.
         a, b, _c = vectors_array
         with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
@@ -266,10 +271,9 @@ class DomainGeometry3D:
     ) -> _NativePeriodicSnapshot:
         """Return detached validated geometry for one native operation.
 
-        ``PeriodicCell`` currently retains caller-owned nested inputs. Validate
-        those original element kinds before any float conversion or linear
-        algebra, then prepare one side-effect-free float64 snapshot for all
-        derived native geometry.
+        ``PeriodicCell`` retains canonical owned tuples. Revalidate those
+        values at the native boundary, then prepare one side-effect-free
+        float64 snapshot for all derived native geometry.
         """
 
         if not isinstance(self.domain, PeriodicCell):
@@ -307,36 +311,61 @@ class DomainGeometry3D:
         return a, b, c
 
     def remap_cart(self, points: np.ndarray) -> np.ndarray:
-        pts = np.asarray(points, dtype=float)
+        pts = coerce_point_array(points, name='points', dim=3)
         if self.domain is None or isinstance(self.domain, Box):
             return pts
         return self.domain.remap_cart(pts, return_shifts=False)
 
     def shift_to_cart(self, shifts: np.ndarray) -> np.ndarray:
-        sh = np.asarray(shifts, dtype=np.int64)
-        if sh.ndim != 2 or sh.shape[1] != 3:
+        raw = np.asarray(shifts, dtype=object)
+        if raw.ndim != 2 or raw.shape[1] != 3:
             raise ValueError('shifts must have shape (m,3)')
+        sh = require_index_array(
+            raw,
+            name='shifts',
+            shape=raw.shape,
+            minimum=INT64_MIN,
+            maximum=INT64_MAX,
+        )
         if self.domain is None or isinstance(self.domain, Box):
             return np.zeros((sh.shape[0], 3), dtype=np.float64)
         a, b, c = self.lattice_vectors_cart
-        return (
-            sh[:, 0:1] * a[None, :]
-            + sh[:, 1:2] * b[None, :]
-            + sh[:, 2:3] * c[None, :]
-        )
+        with np.errstate(over='ignore', invalid='ignore'):
+            translated = (
+                sh[:, 0:1] * a[None, :]
+                + sh[:, 1:2] * b[None, :]
+                + sh[:, 2:3] * c[None, :]
+            )
+        if not np.all(np.isfinite(translated)):
+            raise ValueError('shifts produce non-finite Cartesian translations')
+        return translated
 
     def shift_vector(self, shift: Sequence[int] | np.ndarray) -> np.ndarray:
         """Return the Cartesian translation vector for one integer lattice shift."""
 
-        sh = np.asarray(shift, dtype=np.int64)
-        if sh.shape != (3,):
+        raw = np.asarray(shift, dtype=object)
+        if raw.shape != (3,):
             raise ValueError('shift must have shape (3,)')
+        sh = require_index_array(
+            raw,
+            name='shift',
+            shape=(3,),
+            minimum=INT64_MIN,
+            maximum=INT64_MAX,
+        )
         return self.shift_to_cart(sh.reshape(1, 3)).reshape(3)
 
     def validate_shifts(self, shifts: np.ndarray) -> None:
-        sh = np.asarray(shifts, dtype=np.int64)
-        if sh.ndim != 2 or sh.shape[1] != 3:
+        raw = np.asarray(shifts, dtype=object)
+        if raw.ndim != 2 or raw.shape[1] != 3:
             raise ValueError('shifts must have shape (m,3)')
+        sh = require_index_array(
+            raw,
+            name='shifts',
+            shape=raw.shape,
+            minimum=INT64_MIN,
+            maximum=INT64_MAX,
+        )
 
         if self.domain is None:
             if np.any(sh != 0):
@@ -451,12 +480,21 @@ def _nearest_image_shifts_orthorhombic(
     (xmin, xmax), (ymin, ymax), (zmin, zmax) = cell.bounds
     lengths = np.array([xmax - xmin, ymax - ymin, zmax - zmin], dtype=float)
     periodic = np.array(cell.periodic, dtype=bool)
-    delta = np.asarray(pj, dtype=float) - np.asarray(pi, dtype=float)
+    pi_array = coerce_point_array(pi, name='pi', dim=3)
+    pj_array = coerce_point_array(pj, name='pj', dim=3)
+    if pi_array.shape != pj_array.shape:
+        raise ValueError('pi and pj must have the same shape')
+    delta = pj_array - pi_array
     shifts = np.zeros_like(delta, dtype=np.int64)
     for ax in range(3):
         if not periodic[ax]:
             continue
-        shifts[:, ax] = (-np.round(delta[:, ax] / lengths[ax])).astype(np.int64)
+        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+            quotient = -delta[:, ax] / lengths[ax]
+        shifts[:, ax] = round_to_int64(
+            quotient,
+            name=f'nearest-image axis {ax} shift',
+        )
     return shifts
 
 
@@ -470,7 +508,11 @@ def _nearest_image_shifts_triclinic(
     a, b, c = (np.asarray(v, dtype=float) for v in cell.vectors)
     rng = np.arange(-search, search + 1, dtype=np.int64)
     cand = np.array(np.meshgrid(rng, rng, rng, indexing='ij')).reshape(3, -1).T
-    base = np.asarray(pj, dtype=float) - np.asarray(pi, dtype=float)
+    pi_array = coerce_point_array(pi, name='pi', dim=3)
+    pj_array = coerce_point_array(pj, name='pj', dim=3)
+    if pi_array.shape != pj_array.shape:
+        raise ValueError('pi and pj must have the same shape')
+    base = pj_array - pi_array
     trans = (
         cand[:, 0:1] * a[None, :]
         + cand[:, 1:2] * b[None, :]

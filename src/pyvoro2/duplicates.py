@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Literal
+import sys
 
 import warnings
 
@@ -26,6 +27,13 @@ import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.spatial.domain_utils import is_periodic_domain
+from ._internal.inputs import coerce_point_array, floor_to_int64
+from ._internal.validation import (
+    require_bool,
+    require_positive_finite_real,
+    require_positive_index,
+    require_string_choice,
+)
 
 
 Domain = Box | OrthorhombicCell | PeriodicCell
@@ -82,26 +90,26 @@ def duplicate_check(
         Tuple of DuplicatePair records (possibly empty).
     """
 
-    if mode not in ('raise', 'warn', 'return'):
-        raise ValueError('mode must be one of: \'raise\', \'warn\', \'return\'')
+    mode = require_string_choice(
+        mode,
+        name='mode',
+        choices=('raise', 'warn', 'return'),
+    )
 
-    thr = float(threshold)
-    if not np.isfinite(thr) or thr <= 0:
-        raise ValueError('threshold must be a positive finite number')
-    max_pairs_i = int(max_pairs)
-    if max_pairs_i <= 0:
-        raise ValueError('max_pairs must be > 0')
+    thr = require_positive_finite_real(threshold, name='threshold')
+    wrap_value = require_bool(wrap, name='wrap')
+    max_pairs_i = require_positive_index(
+        max_pairs,
+        name='max_pairs',
+        maximum=sys.maxsize,
+    )
 
-    pts = np.asarray(points, dtype=np.float64)
-    if pts.ndim != 2 or pts.shape[1] != 3:
-        raise ValueError('points must have shape (n, 3)')
-    if not np.all(np.isfinite(pts)):
-        raise ValueError('points must contain only finite values')
+    pts = coerce_point_array(points, name='points', dim=3)
     n = int(pts.shape[0])
     if n <= 1:
         return tuple()
 
-    if domain is not None and wrap and is_periodic_domain(domain):
+    if domain is not None and wrap_value and is_periodic_domain(domain):
         # Domain remap is authoritative for how Voro++ will interpret periodic
         # coordinates. (For PeriodicCell, this matches the internal remap used
         # when inserting points.)
@@ -110,7 +118,9 @@ def duplicate_check(
     h = thr
     h2 = h * h
     # grid index for each point
-    g = np.floor(pts / h).astype(np.int64)
+    with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+        quotient = pts / h
+    g = floor_to_int64(quotient, name='duplicate grid coordinates')
 
     # Precompute neighbor offsets
     neigh = [

@@ -3,9 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import sys
 from typing import Literal, Sequence
 
 import numpy as np
+
+from ..._internal.inputs import coerce_point_array
+from ..._internal.validation import (
+    require_nonnegative_index,
+    require_positive_finite_real,
+    require_positive_index,
+    require_string_choice,
+)
+from ..._internal.weight_transforms import validate_weight_representation_options
 
 from ._objective import (
     _active_scalar_penalties,
@@ -291,12 +301,68 @@ def fit_weights_from_separators(
     Supported numerical failure of the optional direct ADMM warm start falls
     back to the reference or zero initialization.
     """
+    measurement = require_string_choice(
+        measurement,
+        name='measurement',
+        choices=('fraction', 'position'),
+    )
+    index_mode = require_string_choice(
+        index_mode,
+        name='index_mode',
+        choices=('index', 'id'),
+    )
+    image = require_string_choice(
+        image,
+        name='image',
+        choices=('nearest', 'given_only'),
+    )
+    solver = require_string_choice(
+        solver,
+        name='solver',
+        choices=('direct', 'admm'),
+    )
+    linear_backend = require_string_choice(
+        linear_backend,
+        name='linear_backend',
+        choices=('dense', 'sparse'),
+    )
+    connectivity_check = require_string_choice(
+        connectivity_check,
+        name='connectivity_check',
+        choices=('none', 'diagnose', 'warn', 'raise'),
+    )
+    image_search_value = require_nonnegative_index(
+        image_search,
+        name='image_search',
+        maximum=sys.maxsize,
+    )
+    admm_max_iter_value = require_positive_index(
+        admm_max_iter,
+        name='admm_max_iter',
+        maximum=sys.maxsize,
+    )
+    admm_rho_value = require_positive_finite_real(admm_rho, name='admm_rho')
+    admm_abs_tol_value = require_positive_finite_real(
+        admm_abs_tol,
+        name='admm_abs_tol',
+    )
+    admm_rel_tol_value = require_positive_finite_real(
+        admm_rel_tol,
+        name='admm_rel_tol',
+    )
+    r_min_value, weight_shift_value = validate_weight_representation_options(
+        r_min,
+        weight_shift,
+    )
 
-    pts = np.asarray(points, dtype=float)
-    if pts.ndim != 2 or pts.shape[1] <= 0:
+    raw_points = np.asarray(points, dtype=object)
+    if raw_points.ndim != 2 or raw_points.shape[1] <= 0:
         raise ValueError('points must have shape (n, d) with d >= 1')
-    if not np.all(np.isfinite(pts)):
-        raise ValueError('points must contain only finite values')
+    pts = coerce_point_array(
+        raw_points,
+        name='points',
+        dim=int(raw_points.shape[1]),
+    )
 
     if model is None:
         model = FitModel()
@@ -318,7 +384,7 @@ def fit_weights_from_separators(
             ids=ids,
             index_mode=index_mode,
             image=image,
-            image_search=image_search,
+            image_search=image_search_value,
             confidence=confidence,
             allow_empty=True,
         )
@@ -327,14 +393,14 @@ def fit_weights_from_separators(
     return _fit_power_weights_resolved(
         resolved,
         model=model,
-        r_min=r_min,
-        weight_shift=weight_shift,
+        r_min=r_min_value,
+        weight_shift=weight_shift_value,
         solver=solver,
         linear_backend=linear_backend,
-        admm_max_iter=admm_max_iter,
-        admm_rho=admm_rho,
-        admm_abs_tol=admm_abs_tol,
-        admm_rel_tol=admm_rel_tol,
+        admm_max_iter=admm_max_iter_value,
+        admm_rho=admm_rho_value,
+        admm_abs_tol=admm_abs_tol_value,
+        admm_rel_tol=admm_rel_tol_value,
         connectivity_check=connectivity_check,
     )
 
@@ -353,26 +419,45 @@ def _fit_power_weights_resolved(
     admm_rel_tol: float,
     connectivity_check: Literal['none', 'diagnose', 'warn', 'raise'],
 ) -> SeparatorFitResult:
+    solver = require_string_choice(
+        solver,
+        name='solver',
+        choices=('direct', 'admm'),
+    )
+    linear_backend = require_string_choice(
+        linear_backend,
+        name='linear_backend',
+        choices=('dense', 'sparse'),
+    )
+    connectivity_check = require_string_choice(
+        connectivity_check,
+        name='connectivity_check',
+        choices=('none', 'diagnose', 'warn', 'raise'),
+    )
+    admm_max_iter = require_positive_index(
+        admm_max_iter,
+        name='admm_max_iter',
+        maximum=sys.maxsize,
+    )
+    admm_rho = require_positive_finite_real(admm_rho, name='admm_rho')
+    admm_abs_tol = require_positive_finite_real(
+        admm_abs_tol,
+        name='admm_abs_tol',
+    )
+    admm_rel_tol = require_positive_finite_real(
+        admm_rel_tol,
+        name='admm_rel_tol',
+    )
     n = int(constraints.n_points)
     m = int(constraints.n_constraints)
     warnings_list = list(constraints.warnings)
 
-    if solver not in ('direct', 'admm'):
-        raise ValueError("solver must be 'direct' or 'admm'")
-    if linear_backend not in ('dense', 'sparse'):
-        raise ValueError("linear_backend must be 'dense' or 'sparse'")
-    if admm_max_iter <= 0:
-        raise ValueError('admm_max_iter must be > 0')
-    if admm_rho <= 0:
-        raise ValueError('admm_rho must be > 0')
-    if admm_abs_tol <= 0 or admm_rel_tol <= 0:
-        raise ValueError('admm_abs_tol and admm_rel_tol must be > 0')
+    r_min, weight_shift = validate_weight_representation_options(
+        r_min,
+        weight_shift,
+    )
     if linear_backend == 'sparse':
         _require_scipy_sparse()
-    if connectivity_check not in ('none', 'diagnose', 'warn', 'raise'):
-        raise ValueError(
-            'connectivity_check must be none, diagnose, warn, or raise'
-        )
 
     problem = build_power_fit_problem(constraints, model=model)
     accepted_hard_bounds = None

@@ -34,6 +34,23 @@ a compatibility-only route and was not removed.
 
 ## Changed behavior and fixes
 
+- Spatial and planar Python entry points now use one strict input contract.
+  Exact integer fields reject booleans and lossy float/string conversions;
+  flags and masks accept only Python or NumPy Booleans; string modes accept
+  only Python or NumPy scalar strings and store canonical built-in strings;
+  and numerical arrays, scalar options, and tolerances reject non-real or
+  non-finite values before numerical work. String arrays, bytes, numeric
+  values, and arbitrary equality objects are rejected before choice
+  comparison. Domain values are canonical owned tuples, retained inverse
+  arrays are owned and read-only, left-handed `PeriodicCell` bases fail at
+  construction, and remapping checks signed-int64 shift range before casting.
+  Normalization revalidates integer metadata in mutable raw cell records and
+  rejects a coordinate/tolerance relationship whose quantized key is not
+  finite and signed-int64 representable before constructing topology or
+  applying in-place annotations.
+  These are invalid-input and ownership corrections: valid forward/inverse
+  results, public signatures/defaults/schemas, objective formulas, and native
+  resource policy are unchanged.
 - Separator external IDs now consistently require unique non-negative integer
   values. Python integers and NumPy integer scalars are accepted; floats,
   strings, booleans, and other lossy conversions are rejected. Raw observation

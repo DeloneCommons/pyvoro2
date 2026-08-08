@@ -3,11 +3,29 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from operator import index
+import sys
 from typing import Literal, Sequence
 
 import numpy as np
 
+from ..._internal.inputs import (
+    coerce_finite_matrix,
+    coerce_finite_vector,
+    coerce_point_array,
+    owned_readonly_array,
+)
+from ..._internal.validation import (
+    INT64_MAX,
+    INT64_MIN,
+    require_bool,
+    require_bool_mask,
+    require_finite_real,
+    require_index,
+    require_index_array,
+    require_nonnegative_index,
+    require_string_choice,
+    require_string_tuple,
+)
 from ..._internal.spatial.domain_geometry import geometry3d
 from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ..._internal.planar.domain_geometry import geometry2d
@@ -25,29 +43,6 @@ DomainAny = Domain2D | Domain3D
 
 def _plain_value(value: object) -> object:
     return value.item() if hasattr(value, 'item') else value
-
-
-def _readonly_array(
-    value: np.ndarray | None,
-    *,
-    dtype: np.dtype | type | None = None,
-) -> np.ndarray | None:
-    if value is None:
-        return None
-    arr = np.array(value, dtype=dtype, copy=True)
-    arr.setflags(write=False)
-    return arr
-
-
-def _strict_integer(value: object, *, name: str) -> int:
-    """Return one integer without truncating or parsing another type."""
-
-    if isinstance(value, (bool, np.bool_)):
-        raise ValueError(f'{name} must be an integer')
-    try:
-        return int(index(value))
-    except TypeError as exc:
-        raise ValueError(f'{name} must be an integer') from exc
 
 
 def _validated_ids_array(
@@ -68,10 +63,15 @@ def _validated_ids_array(
         raise ValueError('ids must be a 1D sequence')
     if n_points is not None and ids_arr.size != n_points:
         raise ValueError('ids must have length n_points')
-    values = [
-        _strict_integer(value, name=f'ids[{position}]')
-        for position, value in enumerate(ids_arr)
-    ]
+    values: list[int] = []
+    for position, value in enumerate(ids_arr):
+        try:
+            values.append(require_index(value, name=f'ids[{position}]'))
+        except ValueError:
+            raise ValueError(
+                f'ids[{position}] must be an integer '
+                '(exact and non-Boolean)'
+            ) from None
     if any(value < 0 for value in values):
         raise ValueError('ids must be non-negative')
     largest = max(values, default=0)
@@ -99,17 +99,16 @@ def _external_id_label(ids: np.ndarray, site_index: int) -> int:
 def _readonly_index_array(value: np.ndarray, *, name: str) -> np.ndarray:
     """Return a read-only int64 array without lossy element conversion."""
 
-    array = np.asarray(value)
+    array = np.asarray(value, dtype=object)
     if array.ndim != 1:
         raise ValueError(f'{name} must have shape (m,)')
-    values = [
-        _strict_integer(item, name=f'{name}[{position}]')
-        for position, item in enumerate(array)
-    ]
-    try:
-        owned = np.array(values, dtype=np.int64, copy=True)
-    except (OverflowError, TypeError, ValueError) as exc:
-        raise ValueError(f'{name} must contain int64-compatible integers') from exc
+    owned = require_index_array(
+        array,
+        name=name,
+        shape=array.shape,
+        minimum=INT64_MIN,
+        maximum=INT64_MAX,
+    )
     owned.setflags(write=False)
     return owned
 
@@ -141,121 +140,140 @@ class SeparatorObservations:
     warnings: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            'i',
-            _readonly_index_array(self.i, name='SeparatorObservations.i'),
+        measurement = require_string_choice(
+            self.measurement,
+            name='measurement',
+            choices=('fraction', 'position'),
         )
-        object.__setattr__(
-            self,
-            'j',
-            _readonly_index_array(self.j, name='SeparatorObservations.j'),
+        warnings = require_string_tuple(self.warnings, name='warnings')
+        object.__setattr__(self, 'measurement', measurement)
+        object.__setattr__(self, 'warnings', warnings)
+        n_points = require_nonnegative_index(
+            self.n_points,
+            name='SeparatorObservations.n_points',
+            maximum=sys.maxsize,
         )
-        object.__setattr__(
-            self,
-            'shifts',
-            _readonly_array(self.shifts, dtype=np.int64),
+        object.__setattr__(self, 'n_points', n_points)
+
+        i = _readonly_index_array(self.i, name='SeparatorObservations.i')
+        j = _readonly_index_array(self.j, name='SeparatorObservations.j')
+        m = int(i.shape[0])
+        if j.shape != (m,):
+            raise ValueError('SeparatorObservations.j must have shape (m,)')
+        raw_shifts = np.asarray(self.shifts, dtype=object)
+        if raw_shifts.ndim != 2 or raw_shifts.shape[0] != m:
+            raise ValueError('SeparatorObservations.shifts must have shape (m, d)')
+        shifts = require_index_array(
+            raw_shifts,
+            name='SeparatorObservations.shifts',
+            shape=raw_shifts.shape,
+            minimum=INT64_MIN,
+            maximum=INT64_MAX,
         )
-        object.__setattr__(
-            self,
-            'target',
-            _readonly_array(self.target, dtype=np.float64),
+        shifts.setflags(write=False)
+
+        target = owned_readonly_array(
+            coerce_finite_vector(
+                self.target,
+                name='SeparatorObservations.target',
+                n=m,
+            ),
+            dtype=np.float64,
         )
-        object.__setattr__(
-            self,
-            'confidence',
-            _readonly_array(self.confidence, dtype=np.float64),
+        confidence = owned_readonly_array(
+            coerce_finite_vector(
+                self.confidence,
+                name='SeparatorObservations.confidence',
+                n=m,
+            ),
+            dtype=np.float64,
         )
-        object.__setattr__(
-            self,
-            'distance',
-            _readonly_array(self.distance, dtype=np.float64),
+        distance = owned_readonly_array(
+            coerce_finite_vector(
+                self.distance,
+                name='SeparatorObservations.distance',
+                n=m,
+            ),
+            dtype=np.float64,
         )
-        object.__setattr__(
-            self,
-            'distance2',
-            _readonly_array(self.distance2, dtype=np.float64),
+        distance2 = owned_readonly_array(
+            coerce_finite_vector(
+                self.distance2,
+                name='SeparatorObservations.distance2',
+                n=m,
+            ),
+            dtype=np.float64,
         )
-        object.__setattr__(self, 'delta', _readonly_array(self.delta, dtype=np.float64))
-        object.__setattr__(
-            self,
-            'target_fraction',
-            _readonly_array(self.target_fraction, dtype=np.float64),
+        delta = owned_readonly_array(
+            coerce_finite_matrix(
+                self.delta,
+                name='SeparatorObservations.delta',
+                shape=(m, raw_shifts.shape[1]),
+            ),
+            dtype=np.float64,
         )
-        object.__setattr__(
-            self,
-            'target_position',
-            _readonly_array(self.target_position, dtype=np.float64),
+        target_fraction = owned_readonly_array(
+            coerce_finite_vector(
+                self.target_fraction,
+                name='SeparatorObservations.target_fraction',
+                n=m,
+            ),
+            dtype=np.float64,
         )
-        object.__setattr__(
-            self,
-            'input_index',
-            _readonly_array(self.input_index, dtype=np.int64),
+        target_position = owned_readonly_array(
+            coerce_finite_vector(
+                self.target_position,
+                name='SeparatorObservations.target_position',
+                n=m,
+            ),
+            dtype=np.float64,
         )
-        object.__setattr__(
-            self,
-            'explicit_shift',
-            _readonly_array(self.explicit_shift, dtype=bool),
+        input_index_raw = np.asarray(self.input_index, dtype=object)
+        if input_index_raw.shape != (m,):
+            raise ValueError('SeparatorObservations.input_index must have shape (m,)')
+        input_index = require_index_array(
+            input_index_raw,
+            name='SeparatorObservations.input_index',
+            shape=(m,),
+            minimum=0,
+            maximum=INT64_MAX,
         )
+        input_index.setflags(write=False)
+        explicit_shift = require_bool_mask(
+            self.explicit_shift,
+            name='SeparatorObservations.explicit_shift',
+            length=m,
+        )
+
+        object.__setattr__(self, 'i', i)
+        object.__setattr__(self, 'j', j)
+        object.__setattr__(self, 'shifts', shifts)
+        object.__setattr__(self, 'target', target)
+        object.__setattr__(self, 'confidence', confidence)
+        object.__setattr__(self, 'distance', distance)
+        object.__setattr__(self, 'distance2', distance2)
+        object.__setattr__(self, 'delta', delta)
+        object.__setattr__(self, 'target_fraction', target_fraction)
+        object.__setattr__(self, 'target_position', target_position)
+        object.__setattr__(self, 'input_index', input_index)
+        object.__setattr__(self, 'explicit_shift', explicit_shift)
         object.__setattr__(
             self,
             'ids',
             (
                 None
                 if self.ids is None
-                else _validated_ids_array(self.ids, int(self.n_points))
+                else _validated_ids_array(self.ids, n_points)
             ),
         )
-        object.__setattr__(self, 'warnings', tuple(self.warnings))
-
-        m = int(self.i.shape[0])
-        if self.i.shape != (m,) or self.j.shape != (m,):
-            raise ValueError('SeparatorObservations.i/j must have shape (m,)')
-        if self.shifts.ndim != 2 or self.shifts.shape[0] != m:
-            raise ValueError('SeparatorObservations.shifts must have shape (m, d)')
-        for name in (
-            'target',
-            'confidence',
-            'distance',
-            'distance2',
-            'target_fraction',
-            'target_position',
-            'input_index',
-            'explicit_shift',
-        ):
-            arr = getattr(self, name)
-            if arr.shape != (m,):
-                raise ValueError(f'SeparatorObservations.{name} must have shape (m,)')
-        if self.delta.ndim != 2 or self.delta.shape[0] != m:
-            raise ValueError('SeparatorObservations.delta must have shape (m, d)')
-        if self.delta.shape[1] != self.shifts.shape[1]:
-            raise ValueError(
-                'SeparatorObservations.delta and shifts must use the same dimension'
-            )
-        if np.any(self.i < 0) or np.any(self.i >= int(self.n_points)):
+        if np.any(self.i < 0) or np.any(self.i >= n_points):
             raise ValueError(
                 'SeparatorObservations.i contains a site index out of range'
             )
-        if np.any(self.j < 0) or np.any(self.j >= int(self.n_points)):
+        if np.any(self.j < 0) or np.any(self.j >= n_points):
             raise ValueError(
                 'SeparatorObservations.j contains a site index out of range'
             )
-        if self.measurement not in ('fraction', 'position'):
-            raise ValueError('measurement must be "fraction" or "position"')
-        for name in (
-            'target',
-            'confidence',
-            'distance',
-            'distance2',
-            'delta',
-            'target_fraction',
-            'target_position',
-        ):
-            arr = np.asarray(getattr(self, name))
-            if not np.all(np.isfinite(arr)):
-                raise ValueError(
-                    f'SeparatorObservations.{name} must contain only finite values'
-                )
         if np.any(self.confidence < 0.0):
             raise ValueError('SeparatorObservations.confidence must be non-negative')
         if np.any(self.distance <= 0.0) or np.any(self.distance2 <= 0.0):
@@ -274,7 +292,8 @@ class SeparatorObservations:
     def pair_labels(self, *, use_ids: bool = False) -> tuple[np.ndarray, np.ndarray]:
         """Return the left/right pair labels as indices or external ids."""
 
-        if use_ids:
+        use_ids_value = require_bool(use_ids, name='use_ids')
+        if use_ids_value:
             if self.ids is None:
                 raise ValueError(
                     'use_ids=True requires ids on the resolved constraint set'
@@ -285,7 +304,8 @@ class SeparatorObservations:
     def to_records(self, *, use_ids: bool = False) -> tuple[dict[str, object], ...]:
         """Return one plain-Python record per constraint row."""
 
-        left, right = self.pair_labels(use_ids=use_ids)
+        use_ids_value = require_bool(use_ids, name='use_ids')
+        left, right = self.pair_labels(use_ids=use_ids_value)
         rows: list[dict[str, object]] = []
         left_is_int = np.issubdtype(np.asarray(left).dtype, np.integer)
         right_is_int = np.issubdtype(np.asarray(right).dtype, np.integer)
@@ -313,9 +333,11 @@ class SeparatorObservations:
     def subset(self, mask: np.ndarray) -> SeparatorObservations:
         """Return a subset with row order preserved."""
 
-        mask = np.asarray(mask, dtype=bool)
-        if mask.shape != (self.n_constraints,):
-            raise ValueError('mask must have shape (m,)')
+        mask = require_bool_mask(
+            mask,
+            name='mask',
+            length=self.n_constraints,
+        )
         return SeparatorObservations(
             n_points=self.n_points,
             i=self.i[mask].copy(),
@@ -370,13 +392,36 @@ def resolve_separator_observations(
         allow_empty: Allow zero constraints and return an empty resolved object.
     """
 
-    pts = np.asarray(points, dtype=float)
-    if pts.ndim != 2 or pts.shape[1] not in (2, 3):
+    measurement = require_string_choice(
+        measurement,
+        name='measurement',
+        choices=('fraction', 'position'),
+    )
+    index_mode = require_string_choice(
+        index_mode,
+        name='index_mode',
+        choices=('index', 'id'),
+    )
+    image = require_string_choice(
+        image,
+        name='image',
+        choices=('nearest', 'given_only'),
+    )
+    image_search_value = require_nonnegative_index(
+        image_search,
+        name='image_search',
+        maximum=sys.maxsize,
+    )
+    allow_empty_value = require_bool(allow_empty, name='allow_empty')
+
+    raw_points = np.asarray(points, dtype=object)
+    if raw_points.ndim != 2 or raw_points.shape[1] not in (2, 3):
         raise ValueError('points must have shape (n, d) with d in {2, 3}')
-    if not np.all(np.isfinite(pts)):
-        raise ValueError('points must contain only finite values')
-    if measurement not in ('fraction', 'position'):
-        raise ValueError('measurement must be "fraction" or "position"')
+    pts = coerce_point_array(
+        raw_points,
+        name='points',
+        dim=int(raw_points.shape[1]),
+    )
 
     ids_arr = None if ids is None else _validated_ids_array(ids, int(pts.shape[0]))
 
@@ -385,23 +430,16 @@ def resolve_separator_observations(
         n_points=pts.shape[0],
         ids=ids_arr,
         index_mode=index_mode,
-        allow_empty=allow_empty,
+        allow_empty=allow_empty_value,
         shift_dim=pts.shape[1],
     )
 
     target_arr = np.asarray(target, dtype=np.float64)
-    if not np.all(np.isfinite(target_arr)):
-        raise ValueError('constraint values must contain only finite values')
-
     m = int(i_idx.shape[0])
     if confidence is None:
         omega = np.ones(m, dtype=np.float64)
     else:
-        omega = np.asarray(confidence, dtype=float)
-        if omega.shape != (m,):
-            raise ValueError('confidence must have shape (m,)')
-        if not np.all(np.isfinite(omega)):
-            raise ValueError('confidence must contain only finite values')
+        omega = coerce_finite_vector(confidence, name='confidence', n=m)
         if np.any(omega < 0):
             raise ValueError('confidence must be non-negative')
 
@@ -414,7 +452,7 @@ def resolve_separator_observations(
         shift_given,
         domain=domain,
         image=image,
-        image_search=image_search,
+        image_search=image_search_value,
     )
     warnings = warnings + warnings2
 
@@ -442,21 +480,42 @@ def resolve_separator_observations(
             warnings=warnings,
         )
 
-    pj_star = pts2[j_idx] + shift_to_cart(shifts_used, domain)
-    delta = pj_star - pts2[i_idx]
-    d2 = np.einsum('mi,mi->m', delta, delta)
+    shift_cart = shift_to_cart(shifts_used, domain)
+    with np.errstate(all='ignore'):
+        pj_star = pts2[j_idx] + shift_cart
+    _require_finite_connector_geometry(pj_star, stage='endpoint translation')
+
+    with np.errstate(all='ignore'):
+        delta = pj_star - pts2[i_idx]
+    _require_finite_connector_geometry(delta, stage='coordinate difference')
+
+    with np.errstate(all='ignore'):
+        d2 = np.einsum('mi,mi->m', delta, delta)
+    _require_finite_connector_geometry(d2, stage='squared distance')
     if np.any(d2 <= 0.0):
         raise ValueError(
             'some constraints have zero distance (coincident points/image)'
         )
-    d = np.sqrt(d2)
+    with np.errstate(all='ignore'):
+        d = np.sqrt(d2)
+    _require_finite_connector_geometry(d, stage='distance')
 
     if measurement == 'fraction':
         target_fraction = target_arr.copy()
-        target_position = target_fraction * d
+        with np.errstate(all='ignore'):
+            target_position = target_fraction * d
+        _require_finite_connector_geometry(
+            target_position,
+            stage='fraction-to-position conversion',
+        )
     else:
         target_position = target_arr.copy()
-        target_fraction = target_position / d
+        with np.errstate(all='ignore'):
+            target_fraction = target_position / d
+        _require_finite_connector_geometry(
+            target_fraction,
+            stage='position-to-fraction conversion',
+        )
 
     return SeparatorObservations(
         n_points=int(pts.shape[0]),
@@ -481,6 +540,20 @@ def resolve_separator_observations(
 # ---------------------------- internal helpers ----------------------------
 
 
+def _require_finite_connector_geometry(
+    values: np.ndarray,
+    *,
+    stage: str,
+) -> None:
+    """Reject non-representable derived connector geometry without warnings."""
+
+    if not np.all(np.isfinite(values)):
+        raise ValueError(
+            f'derived separator connector {stage} must contain only finite '
+            'values'
+        )
+
+
 def _parse_constraints(
     constraints: ConstraintInput,
     *,
@@ -497,8 +570,11 @@ def _parse_constraints(
         ``(i, j, value, shift)``
     """
 
-    if index_mode not in ('index', 'id'):
-        raise ValueError('index_mode must be "index" or "id"')
+    index_mode = require_string_choice(
+        index_mode,
+        name='index_mode',
+        choices=('index', 'id'),
+    )
     if index_mode == 'id':
         if ids is None:
             raise ValueError('ids must be provided when index_mode="id"')
@@ -526,8 +602,20 @@ def _parse_constraints(
             raise ValueError(
                 f'constraint {k} must have length 3 or 4: (i, j, value[, shift])'
             )
-        ii = _strict_integer(c[0], name=f'constraint {k} endpoint i')
-        jj = _strict_integer(c[1], name=f'constraint {k} endpoint j')
+        try:
+            ii = require_index(c[0], name=f'constraint {k} endpoint i')
+        except ValueError:
+            raise ValueError(
+                f'constraint {k} endpoint i must be an integer '
+                '(exact and non-Boolean)'
+            ) from None
+        try:
+            jj = require_index(c[1], name=f'constraint {k} endpoint j')
+        except ValueError:
+            raise ValueError(
+                f'constraint {k} endpoint j must be an integer '
+                '(exact and non-Boolean)'
+            ) from None
         if id_to_index is not None:
             if ii not in id_to_index or jj not in id_to_index:
                 raise ValueError(f'constraint {k} uses id not present in ids')
@@ -539,7 +627,10 @@ def _parse_constraints(
             raise ValueError(f'constraint {k} has i == j (degenerate)')
         i_idx[k] = ii
         j_idx[k] = jj
-        val[k] = float(c[2])
+        val[k] = require_finite_real(
+            c[2],
+            name=f'constraint {k} value',
+        )
 
         if len(c) == 4:
             sh = c[3]
@@ -550,7 +641,15 @@ def _parse_constraints(
                 raise ValueError(
                     f'constraint {k} shift must be a length-{shift_dim} tuple'
                 )
-            shifts[k] = tuple(int(v) for v in sh)
+            shifts[k] = tuple(
+                require_index(
+                    value,
+                    name=f'constraint {k} shift[{axis}]',
+                    minimum=INT64_MIN,
+                    maximum=INT64_MAX,
+                )
+                for axis, value in enumerate(sh)
+            )
             shift_given[k] = True
 
     return i_idx, j_idx, val, shifts, shift_given, tuple(warnings)
@@ -581,9 +680,14 @@ def _geometry_for_dim(dim: int, domain: DomainAny | None):
 
 
 def _maybe_remap_points(points: np.ndarray, domain: DomainAny | None) -> np.ndarray:
-    pts = np.asarray(points, dtype=float)
-    if pts.ndim != 2:
+    raw = np.asarray(points, dtype=object)
+    if raw.ndim != 2:
         raise ValueError('points must have shape (n, d)')
+    pts = coerce_point_array(
+        raw,
+        name='points',
+        dim=int(raw.shape[1]),
+    )
     return _geometry_for_dim(int(pts.shape[1]), domain).remap_cart(pts)
 
 
@@ -600,17 +704,28 @@ def _resolve_constraint_shifts(
 ) -> tuple[np.ndarray, tuple[str, ...]]:
     """Return per-constraint integer shifts to apply to site j."""
 
+    image = require_string_choice(
+        image,
+        name='image',
+        choices=('nearest', 'given_only'),
+    )
     m = i_idx.shape[0]
     warnings: list[str] = []
     dim = int(points.shape[1])
     geom = _geometry_for_dim(dim, domain)
 
-    shifts = np.asarray(shifts, dtype=np.int64)
-    if shifts.shape != (m, dim):
-        raise ValueError(f'shifts must have shape (m,{dim})')
-    shift_given = np.asarray(shift_given, dtype=bool)
-    if shift_given.shape != (m,):
-        raise ValueError('shift_given must have shape (m,)')
+    shifts = require_index_array(
+        shifts,
+        name='shifts',
+        shape=(m, dim),
+        minimum=INT64_MIN,
+        maximum=INT64_MAX,
+    )
+    shift_given = require_bool_mask(
+        shift_given,
+        name='shift_given',
+        length=m,
+    )
 
     if not geom.has_any_periodic_axis:
         geom.validate_shifts(shifts[shift_given])
@@ -625,10 +740,11 @@ def _resolve_constraint_shifts(
         geom.validate_shifts(shifts2)
         return shifts2, tuple(warnings)
 
-    if image != 'nearest':
-        raise ValueError('image must be "nearest" or "given_only"')
-    if image_search < 0:
-        raise ValueError('image_search must be >= 0')
+    image_search = require_nonnegative_index(
+        image_search,
+        name='image_search',
+        maximum=sys.maxsize,
+    )
 
     missing = ~provided_mask
     if np.any(missing):
@@ -659,7 +775,14 @@ def _resolve_constraint_shifts(
 
 
 def shift_to_cart(shifts: np.ndarray, domain: DomainAny | None) -> np.ndarray:
-    sh = np.asarray(shifts, dtype=np.int64)
-    if sh.ndim != 2:
+    raw = np.asarray(shifts, dtype=object)
+    if raw.ndim != 2:
         raise ValueError('shifts must have shape (m, d)')
+    sh = require_index_array(
+        raw,
+        name='shifts',
+        shape=raw.shape,
+        minimum=INT64_MIN,
+        maximum=INT64_MAX,
+    )
     return _geometry_for_dim(int(sh.shape[1]), domain).shift_to_cart(sh)

@@ -898,6 +898,35 @@ periodic constructor parameters must be finite, ordered where applicable, and
 safe for the arithmetic evaluated by Voro++. Violations raise `ValueError`
 before native construction.
 
+The rest of the stable forward input surface uses the same strict source-type
+policy. External IDs are exact non-Boolean integers, non-negative, unique,
+length-aligned where site input is available, and signed-int64 representable;
+direct diagnostic `expected_ids` use the same contract. Search counts and
+normalization example caps are non-negative exact integers, with
+`max_examples=0` retaining its no-examples boundary. Duplicate pair limits are
+positive exact integers. Public flags accept only Python or NumPy Boolean
+scalars. Duplicate thresholds are positive finite reals, and shift,
+normalization, and diagnostic tolerances use their documented positive or
+non-negative finite ranges. These stricter rejections do not change signatures,
+defaults, result schemas, or valid forward values.
+
+Normalization revalidates mutable raw cell metadata at each public
+normalization boundary: cell and adjacent-cell IDs, local/global vertex
+indices, and lattice shifts use exact signed-int64-compatible rules with their
+field-specific non-negative constraints. Coordinate/tolerance quantization is
+accepted only when the quotient and rounded key are finite and signed-int64
+representable; unsupported relationships raise before topology construction
+or in-place annotation.
+
+All domain constructors canonicalize bounds, periodic flags, triclinic vectors,
+and origins into owned nested built-in tuples. `Box.from_points` rejects empty
+or non-finite data before reduction and accepts non-negative padding only when
+the resulting bounds remain finite and strictly ordered. `PeriodicCell`
+requires a right-handed basis while retaining its existing conditioning
+warning and rejection thresholds. Remap helpers validate exact Boolean flags,
+finite non-negative `eps`, and finite points, and reject a lattice shift that
+cannot fit signed int64 before casting. ADR 0011 records this contract.
+
 All 18 internal native construction routes repeat converted-value checks and
 checked constructor arithmetic before allocation. An aggregate source-derived
 estimate of known eager native construction allocations may be at most exactly
@@ -1315,6 +1344,28 @@ the private numerical contract.
 The realization matcher accepts weight-first and radius-representation inputs
 as mutually exclusive current routes. New workflows use fitted mathematical
 weights; direct radii remain a supported advanced representation input.
+
+Separator integer, Boolean, finite-value, and ownership policy is shared with
+the forward layer. Observation endpoints, shifts, provenance indices, search
+counts, iteration counts, and active-set hysteresis counts are exact
+non-Boolean integers with field-specific ranges. Flags and masks are exact
+Booleans. Model parameters, confidence, solver tolerances, radii floors, and
+optional representation shifts reject non-real or non-finite input before
+solver work. A nonzero `r_min` and explicit `weight_shift` are rejected as a
+deterministic input conflict before solving, active-set iteration, prediction,
+objective evaluation, or radius construction. Finite observation source
+coordinates must also yield finite representable connector differences,
+squared distances, distances, and measurement conversions. Model and option
+scalars are stored as built-in Python values.
+`SeparatorObservations`, `L2Regularization.reference`, and directly retained
+problem arrays own C-contiguous read-only copies; `FitModel.penalties` owns a
+tuple. The documented wider non-negative separator external-ID range remains
+unchanged. These adoption rules change invalid-input rejection only, not the
+R1/R2 objective, backend selection, solver defaults, active-set mathematics,
+or result/report schemas. In particular, finite extreme-scale source inputs
+retain R1/R2's stabilized handling of derived scaled-row infinities inside the
+canonical problem builder; direct problem construction itself is
+finite-strict.
 
 The active-set outer workflow and its path/result types remain **experimental**.
 The explicit SciPy sparse linear backend is **provisional**. It supports direct

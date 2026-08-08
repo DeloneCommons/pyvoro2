@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..._internal.inputs import coerce_finite_vector
+from ..._internal.validation import require_string
 from ._numerics import (
     _stable_incidence_accumulate,
     _stable_scaled_difference,
@@ -28,12 +30,7 @@ def _scipy_sparse():
 
 
 def _vector(value: np.ndarray, n_sites: int, *, name: str) -> np.ndarray:
-    vector = np.asarray(value, dtype=np.float64)
-    if vector.shape != (n_sites,):
-        raise ValueError(f'{name} must have shape (n_sites,)')
-    if not np.all(np.isfinite(vector)):
-        raise ValueError(f'{name} must contain only finite values')
-    return vector
+    return coerce_finite_vector(value, name=name, n=n_sites)
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +132,7 @@ class SeparatorObservationGraphView:
         format is a conversion choice, not part of the mathematical contract.
         """
 
+        format = require_string(format, name='format')
         sparse = _scipy_sparse()
         columns = np.arange(self.n_observations, dtype=np.int64)
         rows = np.concatenate((self.site_i, self.site_j))
@@ -281,6 +279,7 @@ class SeparatorQuadraticOperatorView:
     def observation_laplacian_sparse(self, *, format: str = 'csr') -> object:
         """Return ``L_obs`` in a requested optional SciPy sparse format."""
 
+        format = require_string(format, name='format')
         sparse = _scipy_sparse()
         graph = self.observation_graph
         incidence = graph.incidence_sparse(format='csc')
@@ -297,6 +296,7 @@ class SeparatorQuadraticOperatorView:
     ) -> object:
         """Return ``A`` in a requested optional SciPy sparse format."""
 
+        format = require_string(format, name='format')
         sparse = _scipy_sparse()
         matrix = self.observation_laplacian_sparse(format=format)
         strength = float(self.regularization_strength)

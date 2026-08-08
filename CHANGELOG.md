@@ -43,6 +43,23 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Completed strict Python input adoption across spatial and planar forward
+  APIs, domains, duplicate checks, normalization and diagnostics, and separator
+  inverse workflows. Exact integer and Boolean fields no longer accept lossy
+  conversion or truthiness; string modes reject arrays, bytes, numeric values,
+  and arbitrary equality objects before choice comparison; NumPy string
+  scalars are retained only as canonical built-in strings; and numerical
+  inputs and tolerances reject non-real or non-finite values before reductions,
+  casts, linear algebra, or solver loops.
+  Domains now own canonical nested float/Boolean tuples, retained observation,
+  regularization, mask, and problem arrays are owned and read-only,
+  left-handed `PeriodicCell` inputs fail at construction, and remapping checks
+  signed-int64 shift representability before conversion. Normalization now
+  revalidates exact integer metadata in mutable raw cell records and rejects
+  coordinate/tolerance quantization outside its finite signed-int64 key range
+  before topology construction or in-place annotation. Public signatures,
+  defaults, result schemas, valid numerical behavior, R1/R2 mathematics, and
+  the R3-A native resource policy are unchanged.
 - Hardened all 12 spatial and 6 planar native container-construction routes.
   Native grid controls now use strict positive exact-integer semantics,
   point/query/radius and domain values are rejected when malformed or

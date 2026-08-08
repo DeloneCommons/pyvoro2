@@ -53,6 +53,20 @@ scalars are accepted. With `index_mode='id'`, raw observation endpoints must be
 those exact integer IDs; floats, numeric strings, and booleans are rejected
 rather than converted.
 
+The same exact policy applies to direct observation indices, periodic shift
+components, search and iteration counts, and active-set hysteresis counts.
+Public flags and masks accept only Python or NumPy Booleans. Confidence,
+targets, model parameters, regularization references, solver tolerances,
+`r_min`, and optional `weight_shift` must use finite real numeric values in
+their documented positive, non-negative, or signed ranges. Validation happens
+before casting or solver work.
+
+Resolved observations own read-only C-contiguous copies of their numerical and
+mask data. Model scalars are canonical built-in floats,
+`L2Regularization.reference` is an owned read-only float64 copy even when its
+strength is zero, and `FitModel.penalties` is an owned tuple. Mutating a caller
+array or list after construction therefore does not change these values.
+
 The repository-owned `examples/chemvoro_workflow.py` script is the canonical
 chemistry-neutral downstream example. It uses only current canonical imports and
 keeps application metadata outside pyvoro2 in an external-ID-keyed sidecar:

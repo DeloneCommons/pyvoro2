@@ -28,6 +28,14 @@ explicit `blocks` has length 2. `init_mem` and block counts are positive exact
 integers, `block_size` is a positive finite real scalar, and the same exact
 1-GiB known-eager-allocation cap applies before native construction.
 
+Planar bounds are copied into nested built-in-float tuples and rectangular
+periodicity into built-in-Boolean tuples. Public flags require Python or NumPy
+Boolean scalars; IDs and counts require exact non-Boolean integers; and
+explicit tolerances must be finite in their documented positive or
+non-negative range. `Box.from_points` rejects empty/non-finite inputs before
+reduction. Rectangular remapping validates finite points and `eps` and checks
+signed-int64 shift range before conversion.
+
 ## Basic compute
 
 ```python

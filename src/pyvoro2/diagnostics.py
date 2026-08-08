@@ -23,6 +23,15 @@ import warnings
 import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
+from ._internal.inputs import coerce_external_id_array
+from ._internal.validation import (
+    require_bool,
+    require_nonnegative_finite_real,
+    require_optional_bool,
+    require_optional_nonnegative_finite_real,
+    require_string,
+    require_string_choice,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +40,23 @@ class TessellationIssue:
     severity: Literal['info', 'warning', 'error']
     message: str
     examples: tuple[Any, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'code', require_string(self.code, name='code'))
+        object.__setattr__(
+            self,
+            'severity',
+            require_string_choice(
+                self.severity,
+                name='severity',
+                choices=('info', 'warning', 'error'),
+            ),
+        )
+        object.__setattr__(
+            self,
+            'message',
+            require_string(self.message, name='message'),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,6 +211,43 @@ def analyze_tessellation(
     Returns:
         TessellationDiagnostics
     """
+    if mode is not None:
+        mode = require_string_choice(
+            mode,
+            name='mode',
+            choices=('standard', 'power'),
+        )
+    volume_tol_rel = require_nonnegative_finite_real(
+        volume_tol_rel,
+        name='volume_tol_rel',
+    )
+    volume_tol_abs = require_nonnegative_finite_real(
+        volume_tol_abs,
+        name='volume_tol_abs',
+    )
+    check_reciprocity = require_bool(
+        check_reciprocity,
+        name='check_reciprocity',
+    )
+    check_plane_mismatch = require_bool(
+        check_plane_mismatch,
+        name='check_plane_mismatch',
+    )
+    plane_offset_tol = require_optional_nonnegative_finite_real(
+        plane_offset_tol,
+        name='plane_offset_tol',
+    )
+    plane_angle_tol = require_optional_nonnegative_finite_real(
+        plane_angle_tol,
+        name='plane_angle_tol',
+    )
+    mark_faces = require_bool(mark_faces, name='mark_faces')
+    expected_ids_array = (
+        None
+        if expected_ids is None
+        else coerce_external_id_array(expected_ids, name='expected_ids')
+    )
+
     issues: list[TessellationIssue] = []
 
     # --- Volume sanity ---
@@ -237,9 +300,8 @@ def analyze_tessellation(
 
     # --- Missing ids (optional) ---
     missing_ids: list[int] = []
-    if expected_ids is not None:
-        exp_set = [int(x) for x in expected_ids]
-        exp = set(exp_set)
+    if expected_ids_array is not None:
+        exp = set(expected_ids_array.tolist())
         present = set(present_ids)
         missing_ids = sorted(exp - present)
         if missing_ids:
@@ -497,7 +559,9 @@ def analyze_tessellation(
         volume_gap=float(gap),
         volume_overlap=float(overlap),
         n_sites_expected=int(
-            len(expected_ids) if expected_ids is not None else len(set(present_ids))
+            expected_ids_array.size
+            if expected_ids_array is not None
+            else len(set(present_ids))
         ),
         n_cells_returned=int(len(cells)),
         missing_ids=tuple(int(x) for x in missing_ids),
@@ -554,8 +618,23 @@ def validate_tessellation(
         TessellationDiagnostics
     """
 
-    if level not in ('basic', 'strict'):
-        raise ValueError('level must be \'basic\' or \'strict\'')
+    level = require_string_choice(
+        level,
+        name='level',
+        choices=('basic', 'strict'),
+    )
+    if mode is not None:
+        mode = require_string_choice(
+            mode,
+            name='mode',
+            choices=('standard', 'power'),
+        )
+
+    require_reciprocity = require_optional_bool(
+        require_reciprocity,
+        name='require_reciprocity',
+    )
+    mark_faces = require_optional_bool(mark_faces, name='mark_faces')
 
     periodic = _is_periodic_domain(domain)
     if require_reciprocity is None:
@@ -568,13 +647,13 @@ def validate_tessellation(
         domain,
         expected_ids=expected_ids,
         mode=mode,
-        volume_tol_rel=float(volume_tol_rel),
-        volume_tol_abs=float(volume_tol_abs),
+        volume_tol_rel=volume_tol_rel,
+        volume_tol_abs=volume_tol_abs,
         check_reciprocity=bool(periodic),
         check_plane_mismatch=bool(periodic),
         plane_offset_tol=plane_offset_tol,
         plane_angle_tol=plane_angle_tol,
-        mark_faces=bool(mark_faces),
+        mark_faces=mark_faces,
     )
 
     if level == 'strict':

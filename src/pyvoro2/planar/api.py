@@ -20,9 +20,21 @@ from .._internal.inputs import (
     require_query_index_range,
     validate_forward_mode,
     validate_duplicate_check_mode,
+    validate_duplicate_options,
 )
 from .._internal.power_input import ResolvedPowerInput, resolve_power_input
-from .._internal.validation import CPP_INT_MAX, require_positive_index
+from .._internal.validation import (
+    CPP_INT_MAX,
+    PY_SSIZE_T_MAX,
+    require_bool,
+    require_nonnegative_finite_real,
+    require_nonnegative_index,
+    require_optional_bool,
+    require_optional_nonnegative_finite_real,
+    require_positive_finite_real,
+    require_positive_index,
+    require_string_choice,
+)
 from ..result import TessellationResult, _build_tessellation_result
 from .._internal.planar.domain_geometry import geometry2d
 from .._internal.planar.edge_shifts import _add_periodic_edge_shifts_inplace
@@ -131,21 +143,30 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, domain: Domain2D) -> None:
 
 def _resolve_compute_output(
     *,
-    output: str,
-    normalize: str,
-) -> Literal['result', 'cells']:
+    output: object,
+    normalize: object,
+) -> tuple[
+    Literal['result', 'cells'],
+    Literal['none', 'vertices', 'topology'],
+]:
     """Validate and resolve the planar output selector."""
 
-    if not isinstance(output, str) or output not in ('result', 'cells'):
-        raise ValueError('output must be one of: result, cells')
-    if normalize not in ('none', 'vertices', 'topology'):
-        raise ValueError('normalize must be one of: none, vertices, topology')
-
-    resolved: Literal['result', 'cells'] = (
-        'result' if output == 'result' else 'cells'
+    output_value = require_string_choice(
+        output,
+        name='output',
+        choices=('result', 'cells'),
+    )
+    normalize_value = require_string_choice(
+        normalize,
+        name='normalize',
+        choices=('none', 'vertices', 'topology'),
     )
 
-    if normalize != 'none':
+    resolved: Literal['result', 'cells'] = (
+        'result' if output_value == 'result' else 'cells'
+    )
+
+    if normalize_value != 'none':
         if resolved == 'cells':
             raise ValueError(
                 'output="cells" cannot be combined with normalization; '
@@ -153,7 +174,7 @@ def _resolve_compute_output(
             )
         resolved = 'result'
 
-    return resolved
+    return resolved, normalize_value  # type: ignore[return-value]
 
 
 def _finish_compute_output(
@@ -291,11 +312,91 @@ def compute(
     known eager native construction allocations may be at most exactly 1 GiB.
     """
 
-    resolved_output = _resolve_compute_output(
+    resolved_output, normalize = _resolve_compute_output(
         output=output,
         normalize=normalize,
     )
-    validate_forward_mode(mode)
+    mode = validate_forward_mode(mode)  # type: ignore[assignment]
+    duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
+        duplicate_check
+    )
+    tessellation_check = require_string_choice(  # type: ignore[assignment]
+        tessellation_check,
+        name='tessellation_check',
+        choices=('none', 'diagnose', 'warn', 'raise'),
+    )
+    duplicate_threshold_value, duplicate_wrap_value, duplicate_max_pairs_value = (
+        validate_duplicate_options(
+            threshold=duplicate_threshold,
+            wrap=duplicate_wrap,
+            max_pairs=duplicate_max_pairs,
+        )
+    )
+    edge_shift_search_value = require_nonnegative_index(
+        edge_shift_search,
+        name='edge_shift_search',
+        maximum=PY_SSIZE_T_MAX,
+    )
+    user_return_vertices = require_bool(
+        return_vertices,
+        name='return_vertices',
+    )
+    user_return_adjacency = require_bool(
+        return_adjacency,
+        name='return_adjacency',
+    )
+    user_return_edges = require_bool(return_edges, name='return_edges')
+    user_return_edge_shifts = require_bool(
+        return_edge_shifts,
+        name='return_edge_shifts',
+    )
+    include_empty_value = require_bool(include_empty, name='include_empty')
+    validate_edge_shifts_value = require_bool(
+        validate_edge_shifts,
+        name='validate_edge_shifts',
+    )
+    repair_edge_shifts_value = require_bool(
+        repair_edge_shifts,
+        name='repair_edge_shifts',
+    )
+    return_diagnostics_value = require_bool(
+        return_diagnostics,
+        name='return_diagnostics',
+    )
+    tessellation_require_reciprocity_value = require_optional_bool(
+        tessellation_require_reciprocity,
+        name='tessellation_require_reciprocity',
+    )
+    edge_shift_tol_value = require_optional_nonnegative_finite_real(
+        edge_shift_tol,
+        name='edge_shift_tol',
+    )
+    normalization_tol_value = (
+        None
+        if normalization_tol is None
+        else require_positive_finite_real(
+            normalization_tol,
+            name='normalization_tol',
+        )
+    )
+    area_tol_rel_value = require_nonnegative_finite_real(
+        tessellation_area_tol_rel,
+        name='tessellation_area_tol_rel',
+    )
+    area_tol_abs_value = require_nonnegative_finite_real(
+        tessellation_area_tol_abs,
+        name='tessellation_area_tol_abs',
+    )
+    line_offset_tol_value = require_optional_nonnegative_finite_real(
+        tessellation_line_offset_tol,
+        name='tessellation_line_offset_tol',
+    )
+    line_angle_tol_value = require_optional_nonnegative_finite_real(
+        tessellation_line_angle_tol,
+        name='tessellation_line_angle_tol',
+    )
+    if repair_edge_shifts_value:
+        validate_edge_shifts_value = True
     init_mem_value = require_positive_index(
         init_mem,
         name='init_mem',
@@ -326,19 +427,8 @@ def compute(
         block_size=block_size_value,
     )
 
-    if int(edge_shift_search) < 0:
-        raise ValueError('edge_shift_search must be >= 0')
-    if tessellation_check not in ('none', 'diagnose', 'warn', 'raise'):
-        raise ValueError(
-            'tessellation_check must be one of: none, diagnose, warn, raise'
-        )
-    user_return_vertices = bool(return_vertices)
-    user_return_adjacency = bool(return_adjacency)
-    user_return_edges = bool(return_edges)
-    user_return_edge_shifts = bool(return_edge_shifts)
-
     periodic = bool(geom.has_any_periodic_axis)
-    need_diag = bool(return_diagnostics) or tessellation_check != 'none'
+    need_diag = return_diagnostics_value or tessellation_check != 'none'
     need_norm_vertices = normalize in ('vertices', 'topology')
     need_norm_topology = normalize == 'topology'
 
@@ -373,23 +463,20 @@ def compute(
             raise ValueError('return_edge_shifts requires return_vertices=True')
 
     if internal_return_edge_shifts:
-        if repair_edge_shifts:
-            validate_edge_shifts = True
-        if edge_shift_tol is not None and float(edge_shift_tol) < 0:
-            raise ValueError('edge_shift_tol must be >= 0')
+        if repair_edge_shifts_value:
+            validate_edge_shifts_value = True
 
     ids_internal = np.arange(n, dtype=np.int32)
     ids_user = coerce_id_array(ids, n=n)
 
-    validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
         _duplicate_check(
             pts,
-            threshold=float(duplicate_threshold),
+            threshold=duplicate_threshold_value,
             domain=domain,
-            wrap=bool(duplicate_wrap),
+            wrap=duplicate_wrap_value,
             mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=int(duplicate_max_pairs),
+            max_pairs=duplicate_max_pairs_value,
         )
 
     periodic_flags = geom.periodic_axes
@@ -422,7 +509,7 @@ def compute(
             init_mem_value,
             opts,
         )
-        if include_empty:
+        if include_empty_value:
             add_empty_cells_inplace(
                 cells,
                 n=n,
@@ -441,10 +528,10 @@ def compute(
             periodic_mask=geom.periodic_axes,
             mode=mode,
             radii=rr,
-            search=int(edge_shift_search),
-            tol=edge_shift_tol,
-            validate=bool(validate_edge_shifts),
-            repair=bool(repair_edge_shifts),
+            search=edge_shift_search_value,
+            tol=edge_shift_tol_value,
+            validate=validate_edge_shifts_value,
+            repair=repair_edge_shifts_value,
         )
 
     if ids_user is not None:
@@ -458,17 +545,17 @@ def compute(
             domain,
             expected_ids=expected,
             mode=mode,
-            area_tol_rel=float(tessellation_area_tol_rel),
-            area_tol_abs=float(tessellation_area_tol_abs),
+            area_tol_rel=area_tol_rel_value,
+            area_tol_abs=area_tol_abs_value,
             check_reciprocity=bool(periodic),
             check_line_mismatch=bool(periodic),
-            line_offset_tol=tessellation_line_offset_tol,
-            line_angle_tol=tessellation_line_angle_tol,
+            line_offset_tol=line_offset_tol_value,
+            line_angle_tol=line_angle_tol_value,
             mark_edges=bool(periodic),
         )
 
-        if tessellation_require_reciprocity is None:
-            tessellation_require_reciprocity = bool(periodic) and mode in (
+        if tessellation_require_reciprocity_value is None:
+            tessellation_require_reciprocity_value = bool(periodic) and mode in (
                 'standard',
                 'power',
             )
@@ -476,7 +563,7 @@ def compute(
         if tessellation_check in ('warn', 'raise'):
             ok = bool(diag.ok_area) and (
                 bool(diag.ok_reciprocity)
-                if bool(tessellation_require_reciprocity)
+                if tessellation_require_reciprocity_value
                 else True
             )
             if not ok:
@@ -496,7 +583,7 @@ def compute(
         normalized_vertices = normalize_vertices(
             cells,
             domain=domain,
-            tol=normalization_tol,
+            tol=normalization_tol_value,
             require_edge_shifts=True,
             copy_cells=True,
         )
@@ -504,7 +591,7 @@ def compute(
             normalized_topology = normalize_edges(
                 normalized_vertices,
                 domain=domain,
-                tol=normalization_tol,
+                tol=normalization_tol_value,
                 copy_cells=False,
             )
 
@@ -518,7 +605,7 @@ def compute(
 
     return _finish_compute_output(
         output=resolved_output,
-        return_diagnostics=bool(return_diagnostics),
+        return_diagnostics=return_diagnostics_value,
         domain=domain,
         mode=mode,
         sites=pts,
@@ -558,7 +645,21 @@ def locate(
     estimates raise ``ValueError`` before construction.
     """
 
-    validate_forward_mode(mode)
+    mode = validate_forward_mode(mode)  # type: ignore[assignment]
+    duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
+        duplicate_check
+    )
+    duplicate_threshold_value, duplicate_wrap_value, duplicate_max_pairs_value = (
+        validate_duplicate_options(
+            threshold=duplicate_threshold,
+            wrap=duplicate_wrap,
+            max_pairs=duplicate_max_pairs,
+        )
+    )
+    return_owner_position_value = require_bool(
+        return_owner_position,
+        name='return_owner_position',
+    )
     init_mem_value = require_positive_index(
         init_mem,
         name='init_mem',
@@ -591,15 +692,14 @@ def locate(
         block_size=block_size_value,
     )
 
-    validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
         _duplicate_check(
             pts,
-            threshold=float(duplicate_threshold),
+            threshold=duplicate_threshold_value,
             domain=domain,
-            wrap=bool(duplicate_wrap),
+            wrap=duplicate_wrap_value,
             mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=int(duplicate_max_pairs),
+            max_pairs=duplicate_max_pairs_value,
         )
 
     periodic_flags = geom.periodic_axes
@@ -643,7 +743,7 @@ def locate(
         'found': found,
         'owner_id': owner_id,
     }
-    if return_owner_position:
+    if return_owner_position_value:
         out['owner_pos'] = np.asarray(owner_pos, dtype=np.float64)
     return out
 
@@ -682,7 +782,50 @@ def ghost_cells(
     estimates raise ``ValueError`` before construction.
     """
 
-    validate_forward_mode(mode)
+    mode = validate_forward_mode(mode)  # type: ignore[assignment]
+    duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
+        duplicate_check
+    )
+    duplicate_threshold_value, duplicate_wrap_value, duplicate_max_pairs_value = (
+        validate_duplicate_options(
+            threshold=duplicate_threshold,
+            wrap=duplicate_wrap,
+            max_pairs=duplicate_max_pairs,
+        )
+    )
+    edge_shift_search_value = require_nonnegative_index(
+        edge_shift_search,
+        name='edge_shift_search',
+        maximum=PY_SSIZE_T_MAX,
+    )
+    return_vertices_value = require_bool(
+        return_vertices,
+        name='return_vertices',
+    )
+    return_adjacency_value = require_bool(
+        return_adjacency,
+        name='return_adjacency',
+    )
+    return_edges_value = require_bool(return_edges, name='return_edges')
+    return_edge_shifts_value = require_bool(
+        return_edge_shifts,
+        name='return_edge_shifts',
+    )
+    include_empty_value = require_bool(include_empty, name='include_empty')
+    validate_edge_shifts_value = require_bool(
+        validate_edge_shifts,
+        name='validate_edge_shifts',
+    )
+    repair_edge_shifts_value = require_bool(
+        repair_edge_shifts,
+        name='repair_edge_shifts',
+    )
+    edge_shift_tol_value = require_optional_nonnegative_finite_real(
+        edge_shift_tol,
+        name='edge_shift_tol',
+    )
+    if repair_edge_shifts_value:
+        validate_edge_shifts_value = True
     init_mem_value = require_positive_index(
         init_mem,
         name='init_mem',
@@ -727,32 +870,33 @@ def ghost_cells(
         block_size=block_size_value,
     )
 
-    if int(edge_shift_search) < 0:
-        raise ValueError('edge_shift_search must be >= 0')
-    if return_edge_shifts:
+    if return_edge_shifts_value:
         if not geom.has_any_periodic_axis:
             raise ValueError(
                 'return_edge_shifts is only supported for periodic domains '
                 '(RectangularCell with any periodic axis)'
             )
-        if not return_edges:
+        if not return_edges_value:
             raise ValueError('return_edge_shifts requires return_edges=True')
-        if not return_vertices:
+        if not return_vertices_value:
             raise ValueError('return_edge_shifts requires return_vertices=True')
 
-    validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
         _duplicate_check(
             pts,
-            threshold=float(duplicate_threshold),
+            threshold=duplicate_threshold_value,
             domain=domain,
-            wrap=bool(duplicate_wrap),
+            wrap=duplicate_wrap_value,
             mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=int(duplicate_max_pairs),
+            max_pairs=duplicate_max_pairs_value,
         )
 
     periodic_flags = geom.periodic_axes
-    opts = (bool(return_vertices), bool(return_adjacency), bool(return_edges))
+    opts = (
+        return_vertices_value,
+        return_adjacency_value,
+        return_edges_value,
+    )
 
     core = _require_core2d()
     if mode == 'standard':
@@ -784,7 +928,7 @@ def ghost_cells(
     else:
         raise ValueError(f'unknown mode: {mode}')
 
-    if return_edge_shifts:
+    if return_edge_shifts_value:
         _add_periodic_edge_shifts_inplace(
             cells,
             lattice_vectors=geom.lattice_vectors_cart,
@@ -793,13 +937,13 @@ def ghost_cells(
             radii=rr,
             site_positions=pts,
             ghost_radii=gr if mode == 'power' else None,
-            search=int(edge_shift_search),
-            tol=edge_shift_tol,
-            validate=bool(validate_edge_shifts),
-            repair=bool(repair_edge_shifts),
+            search=edge_shift_search_value,
+            tol=edge_shift_tol_value,
+            validate=validate_edge_shifts_value,
+            repair=repair_edge_shifts_value,
         )
 
-    if not include_empty:
+    if not include_empty_value:
         cells = [cell for cell in cells if not bool(cell.get('empty', False))]
 
     if ids_user is not None:

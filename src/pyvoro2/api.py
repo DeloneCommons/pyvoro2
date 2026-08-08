@@ -20,6 +20,7 @@ from ._internal.inputs import (
     require_query_index_range,
     validate_forward_mode,
     validate_duplicate_check_mode,
+    validate_duplicate_options,
 )
 from ._internal.spatial.domain_geometry import (
     _NativePeriodicSnapshot,
@@ -27,7 +28,17 @@ from ._internal.spatial.domain_geometry import (
 )
 from ._internal.spatial.face_shifts import _add_periodic_face_shifts_inplace
 from ._internal.power_input import ResolvedPowerInput, resolve_power_input
-from ._internal.validation import CPP_INT_MAX, require_positive_index
+from ._internal.validation import (
+    CPP_INT_MAX,
+    PY_SSIZE_T_MAX,
+    require_bool,
+    require_nonnegative_finite_real,
+    require_nonnegative_index,
+    require_optional_bool,
+    require_optional_nonnegative_finite_real,
+    require_positive_index,
+    require_string_choice,
+)
 from .duplicates import duplicate_check as _duplicate_check
 from .diagnostics import (
     TessellationDiagnostics,
@@ -209,12 +220,14 @@ def _add_empty_cells_inplace(
     cells.sort(key=lambda cc: int(cc.get('id', 0)))
 
 
-def _validate_output(output: str) -> Literal['result', 'cells']:
+def _validate_output(output: object) -> Literal['result', 'cells']:
     """Validate and resolve the public compute output selector."""
 
-    if not isinstance(output, str) or output not in ('result', 'cells'):
-        raise ValueError('output must be one of: result, cells')
-    return output  # type: ignore[return-value]
+    return require_string_choice(
+        output,
+        name='output',
+        choices=('result', 'cells'),
+    )  # type: ignore[return-value]
 
 
 def _finish_compute_output(
@@ -399,7 +412,79 @@ def compute(
         ValueError: If inputs are inconsistent or an unknown mode is provided.
     """
     resolved_output = _validate_output(output)
-    validate_forward_mode(mode)
+    mode = validate_forward_mode(mode)  # type: ignore[assignment]
+    duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
+        duplicate_check
+    )
+    tessellation_check = require_string_choice(  # type: ignore[assignment]
+        tessellation_check,
+        name='tessellation_check',
+        choices=('none', 'diagnose', 'warn', 'raise'),
+    )
+    duplicate_threshold_value, duplicate_wrap_value, duplicate_max_pairs_value = (
+        validate_duplicate_options(
+            threshold=duplicate_threshold,
+            wrap=duplicate_wrap,
+            max_pairs=duplicate_max_pairs,
+        )
+    )
+    face_shift_search_value = require_nonnegative_index(
+        face_shift_search,
+        name='face_shift_search',
+        maximum=PY_SSIZE_T_MAX,
+    )
+    return_vertices_value = require_bool(
+        return_vertices,
+        name='return_vertices',
+    )
+    return_adjacency_value = require_bool(
+        return_adjacency,
+        name='return_adjacency',
+    )
+    return_faces_value = require_bool(return_faces, name='return_faces')
+    return_face_shifts_value = require_bool(
+        return_face_shifts,
+        name='return_face_shifts',
+    )
+    include_empty_value = require_bool(include_empty, name='include_empty')
+    validate_face_shifts_value = require_bool(
+        validate_face_shifts,
+        name='validate_face_shifts',
+    )
+    repair_face_shifts_value = require_bool(
+        repair_face_shifts,
+        name='repair_face_shifts',
+    )
+    return_diagnostics_value = require_bool(
+        return_diagnostics,
+        name='return_diagnostics',
+    )
+    tessellation_require_reciprocity_value = require_optional_bool(
+        tessellation_require_reciprocity,
+        name='tessellation_require_reciprocity',
+    )
+    face_shift_tol_value = require_optional_nonnegative_finite_real(
+        face_shift_tol,
+        name='face_shift_tol',
+    )
+    volume_tol_rel_value = require_nonnegative_finite_real(
+        tessellation_volume_tol_rel,
+        name='tessellation_volume_tol_rel',
+    )
+    volume_tol_abs_value = require_nonnegative_finite_real(
+        tessellation_volume_tol_abs,
+        name='tessellation_volume_tol_abs',
+    )
+    plane_offset_tol_value = require_optional_nonnegative_finite_real(
+        tessellation_plane_offset_tol,
+        name='tessellation_plane_offset_tol',
+    )
+    plane_angle_tol_value = require_optional_nonnegative_finite_real(
+        tessellation_plane_angle_tol,
+        name='tessellation_plane_angle_tol',
+    )
+    if repair_face_shifts_value:
+        validate_face_shifts_value = True
     init_mem_value = require_positive_index(
         init_mem,
         name='init_mem',
@@ -449,24 +534,22 @@ def compute(
     )
 
     # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
-    validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
         _run_native_duplicate_check(
             pts=pts,
             domain=domain,
             periodic_snapshot=native_cell,
-            threshold=float(duplicate_threshold),
-            wrap=bool(duplicate_wrap),
+            threshold=duplicate_threshold_value,
+            wrap=duplicate_wrap_value,
             mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=int(duplicate_max_pairs),
+            max_pairs=duplicate_max_pairs_value,
         )
 
-    opts = (bool(return_vertices), bool(return_adjacency), bool(return_faces))
-
-    if tessellation_check not in ('none', 'diagnose', 'warn', 'raise'):
-        raise ValueError(
-            'tessellation_check must be one of: none, diagnose, warn, raise'
-        )
+    opts = (
+        return_vertices_value,
+        return_adjacency_value,
+        return_faces_value,
+    )
 
     core = _require_core()
 
@@ -476,22 +559,16 @@ def compute(
         bounds = native_bounds
         periodic_flags = geom.periodic_axes
         is_periodic = geom.has_any_periodic_axis
-        if return_face_shifts:
+        if return_face_shifts_value:
             if not is_periodic:
                 raise ValueError(
                     'return_face_shifts is only supported for periodic domains '
                     '(PeriodicCell, or OrthorhombicCell with any periodic axis)'
                 )
-            if not return_faces:
+            if not return_faces_value:
                 raise ValueError('return_face_shifts requires return_faces=True')
-            if not return_vertices:
+            if not return_vertices_value:
                 raise ValueError('return_face_shifts requires return_vertices=True')
-            if face_shift_search < 0:
-                raise ValueError('face_shift_search must be >= 0')
-            if repair_face_shifts:
-                validate_face_shifts = True
-            if face_shift_tol is not None and float(face_shift_tol) < 0:
-                raise ValueError('face_shift_tol must be >= 0')
 
         if mode == 'standard':
             cells = core.compute_box_standard(
@@ -520,14 +597,14 @@ def compute(
         else:
             raise ValueError(f'unknown mode: {mode}')
 
-        if include_empty:
+        if include_empty_value:
             if isinstance(domain, OrthorhombicCell) and any(periodic_flags):
                 sites_for_empty = domain.remap_cart(pts, return_shifts=False)
             else:
                 sites_for_empty = pts
             _add_empty_cells_inplace(cells, n=n, sites=sites_for_empty, opts=opts)
 
-        if return_face_shifts:
+        if return_face_shifts_value:
             assert isinstance(domain, OrthorhombicCell)
             a, b, cvec = domain.lattice_vectors
             _add_periodic_face_shifts_inplace(
@@ -536,16 +613,16 @@ def compute(
                 periodic_mask=periodic_flags,
                 mode=mode,
                 radii=rr,
-                search=int(face_shift_search),
-                tol=face_shift_tol,
-                validate=bool(validate_face_shifts),
-                repair=bool(repair_face_shifts),
+                search=face_shift_search_value,
+                tol=face_shift_tol_value,
+                validate=validate_face_shifts_value,
+                repair=repair_face_shifts_value,
             )
         if ids_user is not None:
             _remap_ids_inplace(cells, ids_user)
 
         diag: TessellationDiagnostics | None = None
-        do_diag = bool(return_diagnostics) or tessellation_check != 'none'
+        do_diag = return_diagnostics_value or tessellation_check != 'none'
         if do_diag:
             expected = ids_user.tolist() if ids_user is not None else list(range(n))
             diag = analyze_tessellation(
@@ -553,17 +630,17 @@ def compute(
                 domain,
                 expected_ids=expected,
                 mode=mode,
-                volume_tol_rel=float(tessellation_volume_tol_rel),
-                volume_tol_abs=float(tessellation_volume_tol_abs),
+                volume_tol_rel=volume_tol_rel_value,
+                volume_tol_abs=volume_tol_abs_value,
                 check_reciprocity=bool(is_periodic),
                 check_plane_mismatch=bool(is_periodic),
-                plane_offset_tol=tessellation_plane_offset_tol,
-                plane_angle_tol=tessellation_plane_angle_tol,
+                plane_offset_tol=plane_offset_tol_value,
+                plane_angle_tol=plane_angle_tol_value,
                 mark_faces=bool(is_periodic),
             )
 
-            if tessellation_require_reciprocity is None:
-                tessellation_require_reciprocity = bool(is_periodic) and mode in (
+            if tessellation_require_reciprocity_value is None:
+                tessellation_require_reciprocity_value = bool(is_periodic) and mode in (
                     'standard',
                     'power',
                 )
@@ -571,7 +648,7 @@ def compute(
             if tessellation_check in ('warn', 'raise'):
                 ok = bool(diag.ok_volume) and (
                     bool(diag.ok_reciprocity)
-                    if bool(tessellation_require_reciprocity)
+                    if tessellation_require_reciprocity_value
                     else True
                 )
                 if not ok:
@@ -587,7 +664,7 @@ def compute(
 
         return _finish_compute_output(
             output=resolved_output,
-            return_diagnostics=bool(return_diagnostics),
+            return_diagnostics=return_diagnostics_value,
             dimension=3,
             domain=domain,
             mode=mode,
@@ -596,8 +673,8 @@ def compute(
             cells=cells,
             power_input=power_input,
             diagnostics=diag,
-            boundaries_available=bool(return_faces),
-            periodic_shifts_available=bool(return_face_shifts),
+            boundaries_available=return_faces_value,
+            periodic_shifts_available=return_face_shifts_value,
         )
 
     # --- PeriodicCell (triclinic) ---
@@ -613,17 +690,11 @@ def compute(
         pts_i = cell.cart_to_internal(pts)
     pts_i = coerce_point_array(pts_i, name='points', dim=3)
 
-    if return_face_shifts:
-        if not return_faces:
+    if return_face_shifts_value:
+        if not return_faces_value:
             raise ValueError('return_face_shifts requires return_faces=True')
-        if not return_vertices:
+        if not return_vertices_value:
             raise ValueError('return_face_shifts requires return_vertices=True')
-        if face_shift_search < 0:
-            raise ValueError('face_shift_search must be >= 0')
-        if repair_face_shifts:
-            validate_face_shifts = True
-        if face_shift_tol is not None and float(face_shift_tol) < 0:
-            raise ValueError('face_shift_tol must be >= 0')
 
     if mode == 'standard':
         cells = core.compute_periodic_standard(
@@ -651,13 +722,13 @@ def compute(
         raise ValueError(f'unknown mode: {mode}')
 
     # Determine periodic-image shifts for face neighbors (optional)
-    if include_empty:
+    if include_empty_value:
         # Voro++ remaps inserted points into the primary cell; mirror that here for
         # any empty-cell records we inject.
         sites_for_empty = cell.remap_internal(pts_i, return_shifts=False)
         _add_empty_cells_inplace(cells, n=n, sites=sites_for_empty, opts=opts)
 
-    if return_face_shifts:
+    if return_face_shifts_value:
         a = np.array([bx, 0.0, 0.0], dtype=np.float64)
         b = np.array([bxy, by, 0.0], dtype=np.float64)
         cvec = np.array([bxz, byz, bz], dtype=np.float64)
@@ -667,10 +738,10 @@ def compute(
             periodic_mask=(True, True, True),
             mode=mode,
             radii=rr,
-            search=int(face_shift_search),
-            tol=face_shift_tol,
-            validate=bool(validate_face_shifts),
-            repair=bool(repair_face_shifts),
+            search=face_shift_search_value,
+            tol=face_shift_tol_value,
+            validate=validate_face_shifts_value,
+            repair=repair_face_shifts_value,
         )
 
     # Remap ids (and face neighbor ids) to user ids if requested
@@ -678,7 +749,7 @@ def compute(
         _remap_ids_inplace(cells, ids_user)
 
     # Transform vertices back to Cartesian if requested
-    if return_vertices:
+    if return_vertices_value:
         for c in cells:
             verts = np.asarray(c.get('vertices', []), dtype=np.float64)
             if verts.size:
@@ -691,7 +762,7 @@ def compute(
             c['site'] = cell.internal_to_cart(site_i.reshape(1, 3)).reshape(3).tolist()
 
     diag = None
-    do_diag = bool(return_diagnostics) or tessellation_check != 'none'
+    do_diag = return_diagnostics_value or tessellation_check != 'none'
     if do_diag:
         expected = ids_user.tolist() if ids_user is not None else list(range(n))
         diag = analyze_tessellation(
@@ -699,24 +770,24 @@ def compute(
             domain,
             expected_ids=expected,
             mode=mode,
-            volume_tol_rel=float(tessellation_volume_tol_rel),
-            volume_tol_abs=float(tessellation_volume_tol_abs),
+            volume_tol_rel=volume_tol_rel_value,
+            volume_tol_abs=volume_tol_abs_value,
             check_reciprocity=True,
             check_plane_mismatch=True,
-            plane_offset_tol=tessellation_plane_offset_tol,
-            plane_angle_tol=tessellation_plane_angle_tol,
+            plane_offset_tol=plane_offset_tol_value,
+            plane_angle_tol=plane_angle_tol_value,
             mark_faces=True,
         )
 
-        if tessellation_require_reciprocity is None:
+        if tessellation_require_reciprocity_value is None:
             # Standard Voronoi and power diagrams are true tessellations; missing
             # reciprocity/mismatch indicates a bug or numerical issue.
-            tessellation_require_reciprocity = mode in ('standard', 'power')
+            tessellation_require_reciprocity_value = mode in ('standard', 'power')
 
         if tessellation_check in ('warn', 'raise'):
             ok = bool(diag.ok_volume) and (
                 bool(diag.ok_reciprocity)
-                if bool(tessellation_require_reciprocity)
+                if tessellation_require_reciprocity_value
                 else True
             )
             if not ok:
@@ -732,7 +803,7 @@ def compute(
 
     return _finish_compute_output(
         output=resolved_output,
-        return_diagnostics=bool(return_diagnostics),
+        return_diagnostics=return_diagnostics_value,
         dimension=3,
         domain=domain,
         mode=mode,
@@ -741,8 +812,8 @@ def compute(
         cells=cells,
         power_input=power_input,
         diagnostics=diag,
-        boundaries_available=bool(return_faces),
-        periodic_shifts_available=bool(return_face_shifts),
+        boundaries_available=return_faces_value,
+        periodic_shifts_available=return_face_shifts_value,
     )
 
 
@@ -804,7 +875,21 @@ def locate(
         image of the primary domain. This is useful when you need a consistent
         nearest-image geometry for a given query.
     """
-    validate_forward_mode(mode)
+    mode = validate_forward_mode(mode)  # type: ignore[assignment]
+    duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
+        duplicate_check
+    )
+    duplicate_threshold_value, duplicate_wrap_value, duplicate_max_pairs_value = (
+        validate_duplicate_options(
+            threshold=duplicate_threshold,
+            wrap=duplicate_wrap,
+            max_pairs=duplicate_max_pairs,
+        )
+    )
+    return_owner_position_value = require_bool(
+        return_owner_position,
+        name='return_owner_position',
+    )
     init_mem_value = require_positive_index(
         init_mem,
         name='init_mem',
@@ -852,16 +937,15 @@ def locate(
     )
 
     # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
-    validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
         _run_native_duplicate_check(
             pts=pts,
             domain=domain,
             periodic_snapshot=native_cell,
-            threshold=float(duplicate_threshold),
-            wrap=bool(duplicate_wrap),
+            threshold=duplicate_threshold_value,
+            wrap=duplicate_wrap_value,
             mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=int(duplicate_max_pairs),
+            max_pairs=duplicate_max_pairs_value,
         )
 
     core = _require_core()
@@ -935,7 +1019,7 @@ def locate(
         # Convert owner positions back to Cartesian if requested.
         # Note: owner_pos may already be outside the primary cell due to
         # periodic images.
-        if return_owner_position:
+        if return_owner_position_value:
             owner_pos = cell.internal_to_cart(np.asarray(owner_pos, dtype=np.float64))
 
     # Remap owner IDs to user IDs if requested.
@@ -953,7 +1037,7 @@ def locate(
         'found': found,
         'owner_id': owner_id,
     }
-    if return_owner_position:
+    if return_owner_position_value:
         out['owner_pos'] = np.asarray(owner_pos, dtype=np.float64)
     return out
 
@@ -1042,7 +1126,27 @@ def ghost_cells(
     Raises:
         ValueError: if inputs are inconsistent.
     """
-    validate_forward_mode(mode)
+    mode = validate_forward_mode(mode)  # type: ignore[assignment]
+    duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
+        duplicate_check
+    )
+    duplicate_threshold_value, duplicate_wrap_value, duplicate_max_pairs_value = (
+        validate_duplicate_options(
+            threshold=duplicate_threshold,
+            wrap=duplicate_wrap,
+            max_pairs=duplicate_max_pairs,
+        )
+    )
+    return_vertices_value = require_bool(
+        return_vertices,
+        name='return_vertices',
+    )
+    return_adjacency_value = require_bool(
+        return_adjacency,
+        name='return_adjacency',
+    )
+    return_faces_value = require_bool(return_faces, name='return_faces')
+    include_empty_value = require_bool(include_empty, name='include_empty')
     init_mem_value = require_positive_index(
         init_mem,
         name='init_mem',
@@ -1103,19 +1207,22 @@ def ghost_cells(
     )
 
     # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
-    validate_duplicate_check_mode(duplicate_check)
     if duplicate_check != 'off' and n > 1:
         _run_native_duplicate_check(
             pts=pts,
             domain=domain,
             periodic_snapshot=native_cell,
-            threshold=float(duplicate_threshold),
-            wrap=bool(duplicate_wrap),
+            threshold=duplicate_threshold_value,
+            wrap=duplicate_wrap_value,
             mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=int(duplicate_max_pairs),
+            max_pairs=duplicate_max_pairs_value,
         )
 
-    opts = (bool(return_vertices), bool(return_adjacency), bool(return_faces))
+    opts = (
+        return_vertices_value,
+        return_adjacency_value,
+        return_faces_value,
+    )
     core = _require_core()
 
     # --- Rectangular containers (Box / OrthorhombicCell) ---
@@ -1212,7 +1319,7 @@ def ghost_cells(
             raise ValueError(f'unknown mode: {mode}')
 
         # Convert vertices/site back to Cartesian for PeriodicCell.
-        if return_vertices:
+        if return_vertices_value:
             for c in cells:
                 verts = np.asarray(c.get('vertices', []), dtype=np.float64)
                 if verts.size:
@@ -1238,7 +1345,7 @@ def ghost_cells(
         else:
             c['query'] = None
 
-    if not include_empty:
+    if not include_empty_value:
         cells = [c for c in cells if not bool(c.get('empty', False))]
 
     return cells

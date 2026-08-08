@@ -7,6 +7,14 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..domains import _default_snap_eps
+from .._internal.inputs import coerce_point_array, floor_to_int64
+from .._internal.validation import (
+    INT64_MAX,
+    require_bool,
+    require_bool_tuple,
+    require_nonnegative_finite_real,
+    require_ordered_bounds,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,23 +24,25 @@ class Box:
     bounds: tuple[tuple[float, float], tuple[float, float]]
 
     def __post_init__(self) -> None:
-        if len(self.bounds) != 2:
-            raise ValueError('bounds must have length 2')
-        for lo, hi in self.bounds:
-            if not np.isfinite(lo) or not np.isfinite(hi):
-                raise ValueError('bounds must be finite')
-            if not hi > lo:
-                raise ValueError('each bound must satisfy hi > lo')
+        bounds = require_ordered_bounds(self.bounds, name='bounds', dim=2)
+        object.__setattr__(self, 'bounds', bounds)
 
     @classmethod
     def from_points(cls, points: np.ndarray, padding: float = 2.0) -> 'Box':
         """Create a bounding box that encloses planar points."""
 
-        pts = np.asarray(points, dtype=float)
-        if pts.ndim != 2 or pts.shape[1] != 2:
-            raise ValueError('points must have shape (n, 2)')
-        mins = pts.min(axis=0) - float(padding)
-        maxs = pts.max(axis=0) + float(padding)
+        pts = coerce_point_array(points, name='points', dim=2)
+        if pts.shape[0] == 0:
+            raise ValueError('points must contain at least one point')
+        padding_value = require_nonnegative_finite_real(
+            padding,
+            name='padding',
+        )
+        with np.errstate(over='ignore', invalid='ignore'):
+            mins = pts.min(axis=0) - padding_value
+            maxs = pts.max(axis=0) + padding_value
+        if not np.all(np.isfinite(mins)) or not np.all(np.isfinite(maxs)):
+            raise ValueError('points and padding must produce finite bounds')
         return cls(
             bounds=((float(mins[0]), float(maxs[0])), (float(mins[1]), float(maxs[1])))
         )
@@ -50,20 +60,10 @@ class RectangularCell:
     periodic: tuple[bool, bool] = (True, True)
 
     def __post_init__(self) -> None:
-        if len(self.bounds) != 2:
-            raise ValueError('bounds must have length 2')
-        for lo, hi in self.bounds:
-            if not np.isfinite(lo) or not np.isfinite(hi):
-                raise ValueError('bounds must be finite')
-            if not hi > lo:
-                raise ValueError('each bound must satisfy hi > lo')
-        if len(self.periodic) != 2:
-            raise ValueError('periodic must have length 2')
-        object.__setattr__(
-            self,
-            'periodic',
-            (bool(self.periodic[0]), bool(self.periodic[1])),
-        )
+        bounds = require_ordered_bounds(self.bounds, name='bounds', dim=2)
+        periodic = require_bool_tuple(self.periodic, name='periodic', length=2)
+        object.__setattr__(self, 'bounds', bounds)
+        object.__setattr__(self, 'periodic', periodic)
 
     @property
     def lattice_vectors(self) -> tuple[np.ndarray, np.ndarray]:
@@ -83,9 +83,11 @@ class RectangularCell:
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Remap Cartesian points into the primary rectangular domain."""
 
-        pts = np.asarray(points, dtype=float)
-        if pts.ndim != 2 or pts.shape[1] != 2:
-            raise ValueError('points must have shape (n, 2)')
+        return_shifts_value = require_bool(
+            return_shifts,
+            name='return_shifts',
+        )
+        pts = coerce_point_array(points, name='points', dim=2)
 
         (xmin, xmax), (ymin, ymax) = self.bounds
         lx = float(xmax - xmin)
@@ -99,9 +101,7 @@ class RectangularCell:
                 lp = max(lp, ly)
             eps_val = _default_snap_eps(lp)
         else:
-            eps_val = float(eps)
-            if eps_val < 0.0:
-                raise ValueError('eps must be >= 0')
+            eps_val = require_nonnegative_finite_real(eps, name='eps')
 
         x = pts[:, 0].astype(float, copy=True)
         y = pts[:, 1].astype(float, copy=True)
@@ -116,8 +116,13 @@ class RectangularCell:
             if not is_periodic:
                 continue
             coord = x if axis == 0 else y
-            s = np.floor((coord - lo) / length).astype(np.int64)
-            coord -= s * length
+            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+                quotient = (coord - lo) / length
+            s = floor_to_int64(quotient, name=f'points axis {axis} shift')
+            with np.errstate(over='ignore', invalid='ignore'):
+                coord -= s * length
+            if not np.all(np.isfinite(coord)):
+                raise ValueError('remapped points must contain only finite values')
             shifts[:, axis] = s
 
             if eps_val > 0.0:
@@ -126,6 +131,10 @@ class RectangularCell:
                     coord[m0] = lo
                 m1 = coord >= (hi - eps_val)
                 if np.any(m1):
+                    if np.any(shifts[m1, axis] == INT64_MAX):
+                        raise ValueError(
+                            'remap shifts must be representable as signed int64'
+                        )
                     coord[m1] = lo
                     shifts[m1, axis] += 1
 
@@ -135,6 +144,6 @@ class RectangularCell:
                 y = coord
 
         out = np.stack([x, y], axis=1).astype(np.float64)
-        if return_shifts:
+        if return_shifts_value:
             return out, shifts
         return out

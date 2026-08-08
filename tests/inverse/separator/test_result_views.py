@@ -75,6 +75,9 @@ def test_successful_fit_views_share_existing_arrays_and_values() -> None:
         weight_shift=3.0,
         connectivity_check='diagnose',
     )
+    fit_warnings = ('first', 'second')
+    fit = replace(fit, warnings=fit_warnings)
+    assert fit.warnings is fit_warnings
     assert '_originating_observations' not in {
         field.name for field in fields(type(fit))
     }
@@ -636,6 +639,9 @@ def test_active_set_views_keep_inner_final_outer_and_path_layers_separate() -> N
         connectivity_check='diagnose',
         unaccounted_pair_check='diagnose',
     )
+    result_warnings = ('first', 'second')
+    result = replace(result, warnings=result_warnings)
+    assert result.warnings is result_warnings
 
     assert result.inner_fit is result.fit
     assert result.final_realization is result.realized

@@ -9,6 +9,12 @@ import warnings
 
 import numpy as np
 
+from ..._internal.inputs import coerce_point_array
+from ..._internal.validation import (
+    require_bool,
+    require_string_choice,
+    require_string_tuple,
+)
 from .constraints import (
     _external_id_label,
     _validated_ids_array,
@@ -136,6 +142,13 @@ class RealizedGeometryView:
     realized_but_unaccounted_pairs: tuple[UnaccountedRealizedPair, ...]
     warnings: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'warnings',
+            require_string_tuple(self.warnings, name='warnings'),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class RealizedPairDiagnostics:
@@ -153,6 +166,13 @@ class RealizedPairDiagnostics:
     tessellation_diagnostics: TessellationDiagnosticsAny | None
     unaccounted_pairs: tuple[UnaccountedRealizedPair, ...] = ()
     warnings: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'warnings',
+            require_string_tuple(self.warnings, name='warnings'),
+        )
 
     @property
     def requested_image_matching(self) -> RequestedImageMatchView:
@@ -188,11 +208,12 @@ class RealizedPairDiagnostics:
     ) -> tuple[dict[str, object], ...]:
         """Return one plain-Python record per candidate pair."""
 
+        use_ids_value = require_bool(use_ids, name='use_ids')
         if constraints.n_constraints != int(self.realized.shape[0]):
             raise ValueError(
                 'constraints do not match the realized diagnostics length'
             )
-        left, right = constraints.pair_labels(use_ids=use_ids)
+        left, right = constraints.pair_labels(use_ids=use_ids_value)
         rows: list[dict[str, object]] = []
         left_is_int = np.issubdtype(np.asarray(left).dtype, np.integer)
         right_is_int = np.issubdtype(np.asarray(right).dtype, np.integer)
@@ -242,7 +263,12 @@ class RealizedPairDiagnostics:
 
         from .report import build_realized_report
 
-        return build_realized_report(self, constraints, use_ids=use_ids)
+        use_ids_value = require_bool(use_ids, name='use_ids')
+        return build_realized_report(
+            self,
+            constraints,
+            use_ids=use_ids_value,
+        )
 
 
 def match_realized_pairs(
@@ -266,19 +292,38 @@ def match_realized_pairs(
     of mathematical ``weights`` (preferred) or backend-compatible ``radii``.
     """
 
-    pts = np.asarray(points, dtype=float)
-    if pts.ndim != 2 or pts.shape[1] <= 0:
+    tessellation_check = require_string_choice(
+        tessellation_check,
+        name='tessellation_check',
+        choices=('none', 'diagnose', 'warn', 'raise'),
+    )
+    unaccounted_pair_check = require_string_choice(
+        unaccounted_pair_check,
+        name='unaccounted_pair_check',
+        choices=('none', 'diagnose', 'warn', 'raise'),
+    )
+    return_boundary_measure_value = require_bool(
+        return_boundary_measure,
+        name='return_boundary_measure',
+    )
+    return_cells_value = require_bool(return_cells, name='return_cells')
+    return_tessellation_diagnostics_value = require_bool(
+        return_tessellation_diagnostics,
+        name='return_tessellation_diagnostics',
+    )
+    raw_points = np.asarray(points, dtype=object)
+    if raw_points.ndim != 2 or raw_points.shape[1] <= 0:
         raise ValueError('points must have shape (n, d) with d >= 1')
+    pts = coerce_point_array(
+        raw_points,
+        name='points',
+        dim=int(raw_points.shape[1]),
+    )
     if pts.shape[0] != constraints.n_points:
         raise ValueError('points do not match the resolved constraint set')
     if constraints.dim != pts.shape[1]:
         raise ValueError('points do not match the resolved constraint dimension')
     _supported_realization_dim(constraints)
-    if unaccounted_pair_check not in ('none', 'diagnose', 'warn', 'raise'):
-        raise ValueError(
-            'unaccounted_pair_check must be none, diagnose, warn, or raise'
-        )
-
     dim = int(pts.shape[1])
     if dim == 2:
         cells, tessellation_diagnostics, periodic = _compute_planar_cells(
@@ -286,8 +331,10 @@ def match_realized_pairs(
             domain=domain,
             weights=weights,
             radii=radii,
-            return_boundary_measure=return_boundary_measure,
-            return_tessellation_diagnostics=return_tessellation_diagnostics,
+            return_boundary_measure=return_boundary_measure_value,
+            return_tessellation_diagnostics=(
+                return_tessellation_diagnostics_value
+            ),
             tessellation_check=tessellation_check,
         )
         boundary_key = 'edges'
@@ -299,8 +346,10 @@ def match_realized_pairs(
             domain=domain,
             weights=weights,
             radii=radii,
-            return_boundary_measure=return_boundary_measure,
-            return_tessellation_diagnostics=return_tessellation_diagnostics,
+            return_boundary_measure=return_boundary_measure_value,
+            return_tessellation_diagnostics=(
+                return_tessellation_diagnostics_value
+            ),
             tessellation_check=tessellation_check,
         )
         boundary_key = 'faces'
@@ -315,7 +364,7 @@ def match_realized_pairs(
         cells,
         boundary_key=boundary_key,
         shift_dim=shift_dim,
-        return_boundary_measure=return_boundary_measure,
+        return_boundary_measure=return_boundary_measure_value,
         measure_field=measure_field,
     )
 
@@ -327,7 +376,9 @@ def match_realized_pairs(
     endpoint_j_empty = np.zeros(m, dtype=bool)
     realized_shifts_rows: list[tuple[ShiftTuple, ...]] = []
     boundary_measure = (
-        np.full(m, np.nan, dtype=np.float64) if return_boundary_measure else None
+        np.full(m, np.nan, dtype=np.float64)
+        if return_boundary_measure_value
+        else None
     )
     unrealized: list[int] = []
 
@@ -370,7 +421,7 @@ def match_realized_pairs(
             constraints,
             shifts_by_pair=shifts_by_pair,
             measure_by_pair_shift=measure_by_pair_shift,
-            include_boundary_measure=return_boundary_measure,
+            include_boundary_measure=return_boundary_measure_value,
         )
         if unaccounted_pairs:
             message = _format_unaccounted_pairs_message(unaccounted_pairs)
@@ -388,7 +439,7 @@ def match_realized_pairs(
         endpoint_i_empty=endpoint_i_empty,
         endpoint_j_empty=endpoint_j_empty,
         boundary_measure=boundary_measure,
-        cells=cells if return_cells else None,
+        cells=cells if return_cells_value else None,
         tessellation_diagnostics=tessellation_diagnostics,
         unaccounted_pairs=unaccounted_pairs,
         warnings=tuple(warning_messages),

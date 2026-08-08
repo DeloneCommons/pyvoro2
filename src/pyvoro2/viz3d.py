@@ -36,6 +36,7 @@ from typing import Any, Iterable, Sequence, Literal
 
 import numpy as np
 
+from ._internal.validation import require_string_choice
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from .normalize import NormalizedTopology, NormalizedVertices
 from ._internal.spatial.domain_utils import (
@@ -557,9 +558,12 @@ def view_tessellation(
 
     import warnings
 
+    show_vertex_labels = require_string_choice(
+        show_vertex_labels,
+        name='show_vertex_labels',
+        choices=('off', 'auto', 'on'),
+    )
     py3Dmol = _require_py3dmol()
-    if show_vertex_labels not in ('off', 'auto', 'on'):
-        raise ValueError('show_vertex_labels must be one of: \'off\', \'auto\', \'on\'')
     st = style or VizStyle()
     v = py3Dmol.view(width=width, height=height)
     v.setBackgroundColor(st.background)

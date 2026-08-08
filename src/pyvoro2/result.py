@@ -9,6 +9,7 @@ from typing import Any, Literal, Sequence
 import numpy as np
 
 from ._internal.power_input import ResolvedPowerInput
+from ._internal.validation import require_string_choice
 from ._internal.weight_transforms import weights_to_radii
 
 
@@ -158,10 +159,14 @@ class TessellationResult:
     def __post_init__(self) -> None:
         """Validate the common contract and take ownership of aligned arrays."""
 
+        mode = require_string_choice(
+            self.mode,
+            name='mode',
+            choices=('standard', 'power'),
+        )
+        object.__setattr__(self, 'mode', mode)
         if self.dimension not in (2, 3):
             raise ValueError('dimension must be 2 or 3')
-        if self.mode not in ('standard', 'power'):
-            raise ValueError('mode must be "standard" or "power"')
         if not isinstance(self.cells, list):
             raise ValueError('cells must be a list of dictionaries')
         if not all(isinstance(cell, dict) for cell in self.cells):
@@ -707,10 +712,13 @@ def _build_tessellation_result(
     Records are not normalized, recomputed, or geometrically verified here.
     """
 
+    mode = require_string_choice(
+        mode,
+        name='mode',
+        choices=('standard', 'power'),
+    )
     if dimension not in (2, 3):
         raise ValueError('dimension must be 2 or 3')
-    if mode not in ('standard', 'power'):
-        raise ValueError('mode must be "standard" or "power"')
     if not isinstance(power_input, ResolvedPowerInput):
         raise ValueError('power_input must be a ResolvedPowerInput')
     if not isinstance(cells, list):

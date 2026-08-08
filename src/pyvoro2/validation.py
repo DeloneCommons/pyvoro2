@@ -13,10 +13,17 @@ actionable errors.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import sys
 from typing import Any, Literal
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.spatial.domain_utils import is_periodic_domain
+from ._internal.validation import (
+    require_bool,
+    require_nonnegative_index,
+    require_string,
+    require_string_choice,
+)
 from .normalize import NormalizedVertices, NormalizedTopology
 
 
@@ -29,6 +36,23 @@ class NormalizationIssue:
     severity: Literal['info', 'warning', 'error']
     message: str
     examples: tuple[Any, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'code', require_string(self.code, name='code'))
+        object.__setattr__(
+            self,
+            'severity',
+            require_string_choice(
+                self.severity,
+                name='severity',
+                choices=('info', 'warning', 'error'),
+            ),
+        )
+        object.__setattr__(
+            self,
+            'message',
+            require_string(self.message, name='message'),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,14 +149,35 @@ def validate_normalized_topology(
             `normalized` includes edges (i.e., is a NormalizedTopology).
         check_euler: Check Euler characteristic per cell (V - E + F == 2)
             as a warning-level sanity check.
-        max_examples: Max number of example tuples to attach per issue.
+        max_examples: Non-negative maximum number of example tuples to attach
+            per issue.
 
     Returns:
         NormalizationDiagnostics
     """
 
-    if level not in ('basic', 'strict'):
-        raise ValueError('level must be \'basic\' or \'strict\'')
+    level = require_string_choice(
+        level,
+        name='level',
+        choices=('basic', 'strict'),
+    )
+
+    check_vertex_face_shift = require_bool(
+        check_vertex_face_shift,
+        name='check_vertex_face_shift',
+    )
+    check_face_vertex_sets = require_bool(
+        check_face_vertex_sets,
+        name='check_face_vertex_sets',
+    )
+    check_incidence = require_bool(check_incidence, name='check_incidence')
+    check_euler = require_bool(check_euler, name='check_euler')
+    max_examples = require_nonnegative_index(
+        max_examples,
+        name='max_examples',
+        maximum=sys.maxsize,
+    )
+    example_probe_limit = max(max_examples, 1)
 
     cells = list(normalized.cells)
     n_cells = len(cells)
@@ -184,7 +229,7 @@ def validate_normalized_topology(
             g = int(gid)
             s = _as_shift(vsh[k])
             if g in m and m[g] != s:
-                if len(dup_examples) < max_examples:
+                if len(dup_examples) < example_probe_limit:
                     dup_examples.append((cid, g, m[g], s))
             else:
                 m[g] = s
@@ -197,7 +242,7 @@ def validate_normalized_topology(
                         'A cell contains the same global vertex id with different '
                         'vertex_shift values. This indicates a broken normalization.'
                     ),
-                    examples=tuple(dup_examples),
+                    examples=tuple(dup_examples[:max_examples]),
                 )
             )
         gid_shift_by_cell[cid] = m
@@ -246,7 +291,7 @@ def validate_normalized_topology(
                                 'A periodic neighbor face is missing adjacent_shift. '
                                 'Ensure compute(..., return_face_shifts=True) was used.'
                             ),
-                            examples=((cid, j),),
+                            examples=((cid, j),)[:max_examples],
                         )
                     )
                     continue
@@ -254,7 +299,7 @@ def validate_normalized_topology(
                 s = _as_shift(f.get('adjacent_shift', (0, 0, 0)))
                 cj = cell_by_id.get(j)
                 if cj is None:
-                    if len(missing_neighbor_cells) < max_examples:
+                    if len(missing_neighbor_cells) < example_probe_limit:
                         missing_neighbor_cells.append((cid, j, s))
                     continue
                 map_j = gid_shift_by_cell.get(j)
@@ -269,13 +314,13 @@ def validate_normalized_topology(
                     ti = vsh_list[vk]
                     tj = map_j.get(gid)
                     if tj is None:
-                        if len(missing_shared_vertex) < max_examples:
+                        if len(missing_shared_vertex) < example_probe_limit:
                             missing_shared_vertex.append((cid, j, s, gid))
                         continue
                     exp = (tj[0] + s[0], tj[1] + s[1], tj[2] + s[2])
                     if ti != exp:
                         n_vfs_mismatch += 1
-                        if len(examples) < max_examples:
+                        if len(examples) < example_probe_limit:
                             examples.append((cid, j, s, gid, ti, tj))
 
         if missing_neighbor_cells:
@@ -287,7 +332,7 @@ def validate_normalized_topology(
                         'A face references a neighbor cell id that is not present '
                         'in the normalized output.'
                     ),
-                    examples=tuple(missing_neighbor_cells),
+                    examples=tuple(missing_neighbor_cells[:max_examples]),
                 )
             )
         if missing_shared_vertex:
@@ -300,7 +345,7 @@ def validate_normalized_topology(
                         'that is not present in the neighbor cell. '
                         'This suggests inconsistent vertex normalization.'
                     ),
-                    examples=tuple(missing_shared_vertex),
+                    examples=tuple(missing_shared_vertex[:max_examples]),
                 )
             )
         if examples:
@@ -313,7 +358,7 @@ def validate_normalized_topology(
                         'a periodic face: expected vertex_shift_i == '
                         'vertex_shift_j + adjacent_shift.'
                     ),
-                    examples=tuple(examples),
+                    examples=tuple(examples[:max_examples]),
                 )
             )
 
@@ -369,7 +414,7 @@ def validate_normalized_topology(
             sj = _face_gid_set(j, fr)
             if si != sj:
                 n_face_set_mismatch += 1
-                if len(examples) < max_examples:
+                if len(examples) < example_probe_limit:
                     examples.append((i, j, s, tuple(sorted(si)), tuple(sorted(sj))))
 
         if examples:
@@ -381,7 +426,7 @@ def validate_normalized_topology(
                         'Reciprocal periodic faces do not reference the same set of '
                         'global vertex ids.'
                     ),
-                    examples=tuple(examples),
+                    examples=tuple(examples[:max_examples]),
                 )
             )
 
@@ -422,11 +467,11 @@ def validate_normalized_topology(
             deg = len(ss)
             if deg < v_err:
                 n_vertices_low += 1
-                if len(bad_v_err) < max_examples:
+                if len(bad_v_err) < example_probe_limit:
                     bad_v_err.append((gid, deg))
             elif deg < v_warn:
                 n_vertices_low += 1
-                if len(bad_v_warn) < max_examples:
+                if len(bad_v_warn) < example_probe_limit:
                     bad_v_warn.append((gid, deg))
 
         bad_e_warn: list[tuple[int, int]] = []
@@ -435,11 +480,11 @@ def validate_normalized_topology(
             deg = len(ss)
             if deg < e_err:
                 n_edges_low += 1
-                if len(bad_e_err) < max_examples:
+                if len(bad_e_err) < example_probe_limit:
                     bad_e_err.append((eid, deg))
             elif deg < e_warn:
                 n_edges_low += 1
-                if len(bad_e_warn) < max_examples:
+                if len(bad_e_warn) < example_probe_limit:
                     bad_e_warn.append((eid, deg))
 
         if bad_v_err:
@@ -451,7 +496,7 @@ def validate_normalized_topology(
                         'In a fully periodic tessellation, some global vertices are '
                         'incident to fewer than 3 cells.'
                     ),
-                    examples=tuple(bad_v_err),
+                    examples=tuple(bad_v_err[:max_examples]),
                 )
             )
         if bad_v_warn:
@@ -463,7 +508,7 @@ def validate_normalized_topology(
                         'Some global vertices are incident to fewer than 4 cells '
                         '(may indicate degeneracy or issues).'
                     ),
-                    examples=tuple(bad_v_warn),
+                    examples=tuple(bad_v_warn[:max_examples]),
                 )
             )
         if bad_e_err:
@@ -475,7 +520,7 @@ def validate_normalized_topology(
                         'In a fully periodic tessellation, some global edges are '
                         'incident to fewer than 2 cells.'
                     ),
-                    examples=tuple(bad_e_err),
+                    examples=tuple(bad_e_err[:max_examples]),
                 )
             )
         if bad_e_warn:
@@ -487,7 +532,7 @@ def validate_normalized_topology(
                         'Some global edges are incident to fewer than 3 cells '
                         '(may indicate degeneracy or issues).'
                     ),
-                    examples=tuple(bad_e_warn),
+                    examples=tuple(bad_e_warn[:max_examples]),
                 )
             )
 
@@ -530,7 +575,7 @@ def validate_normalized_topology(
             chi = V - E + F
             if chi != 2:
                 n_bad_euler += 1
-                if len(examples) < max_examples:
+                if len(examples) < example_probe_limit:
                     examples.append((cid, chi, V, E, F))
 
         if examples:
@@ -542,7 +587,7 @@ def validate_normalized_topology(
                         'Some cells do not satisfy Euler characteristic V - E + F == 2 '
                         '(may indicate degeneracy).'
                     ),
-                    examples=tuple(examples),
+                    examples=tuple(examples[:max_examples]),
                 )
             )
 

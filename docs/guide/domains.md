@@ -89,6 +89,18 @@ cell = PeriodicCell(
 )
 ```
 
+All domain constructors require finite real bounds, vectors, and origins.
+Bounds, vectors, origins, and periodic flags are copied into canonical nested
+Python tuples, so later mutation of a caller list or array cannot change the
+domain. Periodic flags must be actual Python or NumPy Booleans. A
+`PeriodicCell` basis must be right-handed (`determinant > 0`); pyvoro2 does not
+silently reorder or flip vectors. The existing near-degeneracy rejection and
+ill-conditioning warning thresholds still apply.
+
+`Box.from_points(...)` validates a non-empty finite point matrix before taking
+minimums or maximums. Padding must be finite and non-negative. Zero padding is
+valid only when the points still give strictly ordered bounds on every axis.
+
 ### Constructing from Voro++ parameters
 
 Voro++ also describes triclinic periodic cells using six lower-triangular parameters:
@@ -109,6 +121,12 @@ Both periodic domain classes provide remapping utilities that appear in several 
 - `remap_cart(points, return_shifts=True|False)`
 
 They wrap coordinates into the primary cell and optionally return the integer lattice shift.
+
+Point arrays and an explicit `eps` are validated before flooring. `eps` must
+be finite and non-negative, and `return_shifts` must be a Python or NumPy
+Boolean. A remap whose lattice-shift quotient cannot fit signed int64 raises
+`ValueError` before integer conversion; the established shift-sign convention
+is unchanged.
 
 These helpers are used internally (for example, in visualization wrapping and in periodic graph work),
 but they are also useful when you want to align your own data to the primary cell.

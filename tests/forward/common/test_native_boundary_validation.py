@@ -451,21 +451,22 @@ def test_integer_coordinate_arrays_reach_standard_and_power_native_calls(
 
 @pytest.mark.parametrize('dim', [2, 3])
 @pytest.mark.parametrize('bad_value', [0.0, np.nan, True, '0'])
-def test_corrupted_domain_bounds_are_rejected_before_native(
+def test_domain_bounds_are_owned_after_construction(
     monkeypatch,
     dim: int,
     bad_value: object,
 ) -> None:
-    core = NoNativeCalls()
+    core = RecordingCore()
     _install_core(monkeypatch, dim, core)
     bounds = [[0.0, 2.0] for _ in range(dim)]
     domain_type = pyvoro2.Box if dim == 3 else planar.Box
     domain = domain_type(bounds=bounds)
     bounds[0][1] = bad_value
 
-    with pytest.raises(ValueError, match='domain bounds'):
-        _invoke(dim, 'compute', domain=domain)
-    assert core.count == 0
+    _invoke(dim, 'compute', domain=domain)
+
+    assert domain.bounds == tuple((0.0, 2.0) for _ in range(dim))
+    assert len(core.calls) == 1
 
 
 @pytest.mark.parametrize(
@@ -475,117 +476,74 @@ def test_corrupted_domain_bounds_are_rejected_before_native(
         [[True, False, False], [False, True, False], [False, False, True]],
     ],
 )
-def test_retained_periodic_vector_kinds_are_rejected_before_native(
-    monkeypatch,
+def test_periodic_vector_kinds_are_rejected_at_construction(
     vectors: list[list[object]],
 ) -> None:
-    core = NoNativeCalls()
-    _install_core(monkeypatch, 3, core)
-    domain = pyvoro2.PeriodicCell(vectors=vectors)
-
-    with pytest.raises(ValueError, match=r'PeriodicCell\.vectors.*real numeric'):
-        _invoke(3, 'compute', domain=domain)
-    assert core.count == 0
+    with pytest.raises(ValueError, match=r'vectors.*real numeric'):
+        pyvoro2.PeriodicCell(vectors=vectors)
 
 
 @pytest.mark.parametrize('operation', ['compute', 'locate', 'ghost_cells'])
-@pytest.mark.parametrize(
-    ('bad_value', 'message'),
-    [
-        (2 + 0j, 'real numeric'),
-        (True, 'real numeric'),
-        ('2.0', 'real numeric'),
-        (np.nan, 'finite'),
-        (np.inf, 'finite'),
-        (10**1000, 'float64'),
-    ],
-)
-def test_mutated_periodic_vectors_are_rejected_without_numpy_warning(
+@pytest.mark.parametrize('bad_value', [2 + 0j, True, '2.0', np.nan, np.inf])
+def test_periodic_vectors_are_owned_without_numpy_warning(
     monkeypatch,
     operation: str,
     bad_value: object,
-    message: str,
 ) -> None:
-    core = NoNativeCalls()
+    core = RecordingCore()
     _install_core(monkeypatch, 3, core)
     domain, vectors, _origin = _mutable_periodic_cell()
     vectors[0][0] = bad_value
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter('always')
-        with pytest.raises(
-            ValueError,
-            match=rf'PeriodicCell\.vectors.*{message}',
-        ):
-            _invoke(3, operation, domain=domain)
+        _invoke(3, operation, domain=domain)
     assert caught == []
-    assert core.count == 0
+    assert domain.vectors == (
+        (2.0, 0.0, 0.0),
+        (0.25, 2.0, 0.0),
+        (0.1, -0.2, 2.0),
+    )
+    assert len(core.calls) == 1
 
 
 @pytest.mark.parametrize('operation', ['compute', 'locate', 'ghost_cells'])
-@pytest.mark.parametrize(
-    ('bad_value', 'message'),
-    [
-        (0.1 + 0j, 'real numeric'),
-        (False, 'real numeric'),
-        ('0.1', 'real numeric'),
-        (np.nan, 'finite'),
-        (-np.inf, 'finite'),
-        (10**1000, 'float64'),
-    ],
-)
-def test_mutated_periodic_origin_is_rejected_without_numpy_warning(
+@pytest.mark.parametrize('bad_value', [0.1 + 0j, False, '0.1', np.nan, -np.inf])
+def test_periodic_origin_is_owned_without_numpy_warning(
     monkeypatch,
     operation: str,
     bad_value: object,
-    message: str,
 ) -> None:
-    core = NoNativeCalls()
+    core = RecordingCore()
     _install_core(monkeypatch, 3, core)
     domain, _vectors, origin = _mutable_periodic_cell()
     origin[0] = bad_value
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter('always')
-        with pytest.raises(
-            ValueError,
-            match=rf'PeriodicCell\.origin.*{message}',
-        ):
-            _invoke(3, operation, domain=domain)
+        _invoke(3, operation, domain=domain)
     assert caught == []
-    assert core.count == 0
+    assert domain.origin == (0.1, -0.1, 0.2)
+    assert len(core.calls) == 1
 
 
 @pytest.mark.parametrize('bad_value', [True, '0.1'])
-def test_retained_periodic_origin_kinds_are_rejected_before_native(
-    monkeypatch,
+def test_periodic_origin_kinds_are_rejected_at_construction(
     bad_value: object,
 ) -> None:
-    core = NoNativeCalls()
-    _install_core(monkeypatch, 3, core)
-    domain = pyvoro2.PeriodicCell(
-        vectors=((2.0, 0.0, 0.0), (0.25, 2.0, 0.0), (0.1, -0.2, 2.0)),
-        origin=(bad_value, 0.0, 0.0),
-    )
-
-    with pytest.raises(ValueError, match=r'PeriodicCell\.origin.*real numeric'):
-        _invoke(3, 'compute', domain=domain)
-    assert core.count == 0
+    with pytest.raises(ValueError, match=r'origin.*real numeric'):
+        pyvoro2.PeriodicCell(
+            vectors=((2.0, 0.0, 0.0), (0.25, 2.0, 0.0), (0.1, -0.2, 2.0)),
+            origin=(bad_value, 0.0, 0.0),
+        )
 
 
-@pytest.mark.parametrize(
-    ('target', 'message'),
-    [
-        ('vectors', r'PeriodicCell\.vectors.*shape'),
-        ('origin', r'PeriodicCell\.origin.*shape'),
-    ],
-)
-def test_mutated_periodic_shapes_are_rejected_before_native(
+@pytest.mark.parametrize('target', ['vectors', 'origin'])
+def test_periodic_shapes_are_owned_after_construction(
     monkeypatch,
     target: str,
-    message: str,
 ) -> None:
-    core = NoNativeCalls()
+    core = RecordingCore()
     _install_core(monkeypatch, 3, core)
     domain, vectors, origin = _mutable_periodic_cell()
     if target == 'vectors':
@@ -593,9 +551,11 @@ def test_mutated_periodic_shapes_are_rejected_before_native(
     else:
         origin.append(0.0)
 
-    with pytest.raises(ValueError, match=message):
-        _invoke(3, 'compute', domain=domain)
-    assert core.count == 0
+    _invoke(3, 'compute', domain=domain)
+
+    assert np.asarray(domain.vectors).shape == (3, 3)
+    assert np.asarray(domain.origin).shape == (3,)
+    assert len(core.calls) == 1
 
 
 def test_warning_level_periodic_cell_warns_only_at_explicit_construction(

@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 from typing import Any, Literal
+import sys
 
 import warnings
 
 import numpy as np
 
 from ..duplicates import DuplicateError, DuplicatePair
+from .._internal.inputs import coerce_point_array, floor_to_int64
+from .._internal.validation import (
+    require_bool,
+    require_positive_finite_real,
+    require_positive_index,
+    require_string_choice,
+)
 from .domains import Box, RectangularCell
 
 Domain2D = Box | RectangularCell
@@ -25,30 +33,32 @@ def duplicate_check(
 ) -> tuple[DuplicatePair, ...]:
     """Detect planar point pairs closer than an absolute threshold."""
 
-    if mode not in ('raise', 'warn', 'return'):
-        raise ValueError("mode must be one of: 'raise', 'warn', 'return'")
+    mode = require_string_choice(
+        mode,
+        name='mode',
+        choices=('raise', 'warn', 'return'),
+    )
 
-    thr = float(threshold)
-    if not np.isfinite(thr) or thr <= 0.0:
-        raise ValueError('threshold must be a positive finite number')
-    max_pairs_i = int(max_pairs)
-    if max_pairs_i <= 0:
-        raise ValueError('max_pairs must be > 0')
+    thr = require_positive_finite_real(threshold, name='threshold')
+    wrap_value = require_bool(wrap, name='wrap')
+    max_pairs_i = require_positive_index(
+        max_pairs,
+        name='max_pairs',
+        maximum=sys.maxsize,
+    )
 
-    pts = np.asarray(points, dtype=np.float64)
-    if pts.ndim != 2 or pts.shape[1] != 2:
-        raise ValueError('points must have shape (n, 2)')
-    if not np.all(np.isfinite(pts)):
-        raise ValueError('points must contain only finite values')
+    pts = coerce_point_array(points, name='points', dim=2)
     n = int(pts.shape[0])
     if n <= 1:
         return tuple()
 
-    if domain is not None and wrap and isinstance(domain, RectangularCell):
+    if domain is not None and wrap_value and isinstance(domain, RectangularCell):
         pts = np.asarray(domain.remap_cart(pts), dtype=np.float64)
 
     h2 = thr * thr
-    grid = np.floor(pts / thr).astype(np.int64)
+    with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+        quotient = pts / thr
+    grid = floor_to_int64(quotient, name='duplicate grid coordinates')
     neigh = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)]
 
     buckets: dict[tuple[int, int], list[int]] = {}

@@ -7,6 +7,13 @@ from typing import Sequence
 
 import numpy as np
 
+from ..._internal.validation import (
+    require_bool,
+    require_optional_string,
+    require_string,
+    require_string_choice,
+    require_string_tuple,
+)
 from .constraints import (
     _external_id_label,
     _validated_ids_array,
@@ -68,6 +75,18 @@ class ConnectivityDiagnostics:
     offsets_identified_in_objective: bool = False
     gauge_policy: str = ''
     messages: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'gauge_policy',
+            require_string(self.gauge_policy, name='gauge_policy'),
+        )
+        object.__setattr__(
+            self,
+            'messages',
+            require_string_tuple(self.messages, name='messages'),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,6 +199,19 @@ class PowerFitObjectiveBreakdown:
     hard_max_violation: float
     hard_max_tolerance: float
 
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'penalty_terms',
+            tuple(
+                (
+                    require_string(name, name=f'penalty_terms[{index}][0]'),
+                    value,
+                )
+                for index, (name, value) in enumerate(self.penalty_terms)
+            ),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class HardConstraintConflictTerm:
@@ -190,6 +222,13 @@ class HardConstraintConflictTerm:
     site_j: int
     relation: str
     bound_value: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'relation',
+            require_string(self.relation, name='relation'),
+        )
 
     def _to_record(self, ids: np.ndarray | None) -> dict[str, object]:
         """Return a record using IDs already validated by the caller."""
@@ -229,6 +268,13 @@ class HardConstraintConflict:
     cycle_nodes: tuple[int, ...]
     terms: tuple[HardConstraintConflictTerm, ...]
     message: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'message',
+            require_string(self.message, name='message'),
+        )
 
     @property
     def constraint_indices(self) -> tuple[int, ...]:
@@ -282,6 +328,16 @@ class SeparatorIdentificationView:
     unconstrained_sites: tuple[int, ...] | None
     connectivity: ConnectivityDiagnostics | None
 
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'component_alignment_policy',
+            require_optional_string(
+                self.component_alignment_policy,
+                name='component_alignment_policy',
+            ),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class SeparatorObservationView:
@@ -303,6 +359,17 @@ class SeparatorObservationView:
     rms_residual: float | None
     max_residual: float | None
     requested_shifts: np.ndarray
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'measurement',
+            require_string_choice(
+                self.measurement,
+                name='measurement',
+                choices=('fraction', 'position'),
+            ),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -330,6 +397,36 @@ class SeparatorSolverTerminationView:
     hard_feasible: bool
     conflict: HardConstraintConflict | None
     warnings: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'status',
+            require_string(self.status, name='status'),
+        )
+        object.__setattr__(
+            self,
+            'status_detail',
+            require_optional_string(self.status_detail, name='status_detail'),
+        )
+        object.__setattr__(
+            self,
+            'solver',
+            require_string(self.solver, name='solver'),
+        )
+        object.__setattr__(
+            self,
+            'linear_backend',
+            require_optional_string(
+                self.linear_backend,
+                name='linear_backend',
+            ),
+        )
+        object.__setattr__(
+            self,
+            'warnings',
+            require_string_tuple(self.warnings, name='warnings'),
+        )
 
 
 class _ObservationBoundResult:
@@ -437,6 +534,43 @@ class SeparatorFitResult(_ObservationBoundResult):
         self,
         _originating_observations_init: SeparatorObservations | None,
     ) -> None:
+        object.__setattr__(
+            self,
+            'status',
+            require_string(self.status, name='status'),
+        )
+        object.__setattr__(
+            self,
+            'status_detail',
+            require_optional_string(self.status_detail, name='status_detail'),
+        )
+        object.__setattr__(
+            self,
+            'measurement',
+            require_string_choice(
+                self.measurement,
+                name='measurement',
+                choices=('fraction', 'position'),
+            ),
+        )
+        object.__setattr__(
+            self,
+            'solver',
+            require_string(self.solver, name='solver'),
+        )
+        object.__setattr__(
+            self,
+            'linear_backend',
+            require_optional_string(
+                self.linear_backend,
+                name='linear_backend',
+            ),
+        )
+        object.__setattr__(
+            self,
+            'warnings',
+            require_string_tuple(self.warnings, name='warnings'),
+        )
         if _originating_observations_init is not None:
             object.__setattr__(
                 self,
@@ -612,9 +746,10 @@ class SeparatorFitResult(_ObservationBoundResult):
         *,
         use_ids: bool = False,
     ) -> tuple[dict[str, object], ...]:
+        use_ids_value = require_bool(use_ids, name='use_ids')
         if constraints.n_constraints != int(self.target.shape[0]):
             raise ValueError('constraints do not match the fit result length')
-        left, right = constraints.pair_labels(use_ids=use_ids)
+        left, right = constraints.pair_labels(use_ids=use_ids_value)
         from .problem import _edge_diagnostics_for_result
 
         edge_diag = _edge_diagnostics_for_result(self, constraints)
@@ -672,7 +807,8 @@ class SeparatorFitResult(_ObservationBoundResult):
     ) -> dict[str, object]:
         from .report import build_fit_report
 
-        return build_fit_report(self, constraints, use_ids=use_ids)
+        use_ids_value = require_bool(use_ids, name='use_ids')
+        return build_fit_report(self, constraints, use_ids=use_ids_value)
 
 
 def _separator_fit_result_getstate(
