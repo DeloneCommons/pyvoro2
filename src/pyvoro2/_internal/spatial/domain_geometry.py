@@ -13,7 +13,10 @@ from ..inputs import (
     coerce_finite_vector,
     coerce_native_block_parameters,
     coerce_point_array,
-    round_to_int64,
+)
+from ..periodic_images import (
+    MinimumImageBatch,
+    minimum_image_displacements as _minimum_image_displacements,
 )
 from ..validation import (
     CPP_INT_MAX,
@@ -385,26 +388,43 @@ class DomainGeometry3D:
                         'shifts on non-periodic axes must be 0 for OrthorhombicCell'
                     )
 
+    def minimum_image_displacements(
+        self,
+        pi: np.ndarray,
+        pj: np.ndarray,
+        *,
+        tie_orientation: np.ndarray,
+        image_search: int,
+    ) -> MinimumImageBatch:
+        """Return shared exact-certified minimum-image geometry."""
+
+        if isinstance(self.domain, (OrthorhombicCell, PeriodicCell)):
+            return _minimum_image_displacements(
+                pi,
+                pj,
+                lattice_vectors=self.lattice_vectors_cart,
+                periodic_axes=self.periodic_axes,
+                tie_orientation=tie_orientation,
+                image_search=image_search,
+            )
+        raise ValueError('nearest-image shifts require a periodic domain')
+
     def nearest_image_shifts(
         self,
         pi: np.ndarray,
         pj: np.ndarray,
         *,
-        search: int,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Return nearest-image shifts and a boundary-hit mask.
+        tie_orientation: np.ndarray,
+        image_search: int,
+    ) -> np.ndarray:
+        """Return shifts from the shared certified minimum-image primitive."""
 
-        The boundary-hit mask is only informative for triclinic search, where a
-        best candidate lying on the search boundary suggests that a larger
-        search window may be advisable.
-        """
-
-        if isinstance(self.domain, OrthorhombicCell):
-            shifts = _nearest_image_shifts_orthorhombic(pi, pj, self.domain)
-            return shifts, np.zeros(shifts.shape[0], dtype=bool)
-        if isinstance(self.domain, PeriodicCell):
-            return _nearest_image_shifts_triclinic(pi, pj, self.domain, search=search)
-        raise ValueError('nearest-image shifts require a periodic domain')
+        return self.minimum_image_displacements(
+            pi,
+            pj,
+            tie_orientation=tie_orientation,
+            image_search=image_search,
+        ).shift
 
     def resolve_block_counts(
         self,
@@ -470,57 +490,3 @@ def geometry3d(domain: Domain3D | None) -> DomainGeometry3D:
     """Return the internal geometry adapter for a 3D domain."""
 
     return DomainGeometry3D(domain)
-
-
-def _nearest_image_shifts_orthorhombic(
-    pi: np.ndarray,
-    pj: np.ndarray,
-    cell: OrthorhombicCell,
-) -> np.ndarray:
-    (xmin, xmax), (ymin, ymax), (zmin, zmax) = cell.bounds
-    lengths = np.array([xmax - xmin, ymax - ymin, zmax - zmin], dtype=float)
-    periodic = np.array(cell.periodic, dtype=bool)
-    pi_array = coerce_point_array(pi, name='pi', dim=3)
-    pj_array = coerce_point_array(pj, name='pj', dim=3)
-    if pi_array.shape != pj_array.shape:
-        raise ValueError('pi and pj must have the same shape')
-    delta = pj_array - pi_array
-    shifts = np.zeros_like(delta, dtype=np.int64)
-    for ax in range(3):
-        if not periodic[ax]:
-            continue
-        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-            quotient = -delta[:, ax] / lengths[ax]
-        shifts[:, ax] = round_to_int64(
-            quotient,
-            name=f'nearest-image axis {ax} shift',
-        )
-    return shifts
-
-
-def _nearest_image_shifts_triclinic(
-    pi: np.ndarray,
-    pj: np.ndarray,
-    cell: PeriodicCell,
-    *,
-    search: int,
-) -> tuple[np.ndarray, np.ndarray]:
-    a, b, c = (np.asarray(v, dtype=float) for v in cell.vectors)
-    rng = np.arange(-search, search + 1, dtype=np.int64)
-    cand = np.array(np.meshgrid(rng, rng, rng, indexing='ij')).reshape(3, -1).T
-    pi_array = coerce_point_array(pi, name='pi', dim=3)
-    pj_array = coerce_point_array(pj, name='pj', dim=3)
-    if pi_array.shape != pj_array.shape:
-        raise ValueError('pi and pj must have the same shape')
-    base = pj_array - pi_array
-    trans = (
-        cand[:, 0:1] * a[None, :]
-        + cand[:, 1:2] * b[None, :]
-        + cand[:, 2:3] * c[None, :]
-    )
-    diff = base[:, None, :] + trans[None, :, :]
-    d2 = np.einsum('mki,mki->mk', diff, diff)
-    best = np.argmin(d2, axis=1)
-    shifts = cand[best].astype(np.int64)
-    boundary_hits = np.any(np.abs(shifts) == int(search), axis=1)
-    return shifts, boundary_hits.astype(bool)

@@ -11,7 +11,10 @@ from ...planar.domains import Box, RectangularCell
 from ..inputs import (
     coerce_native_block_parameters,
     coerce_point_array,
-    round_to_int64,
+)
+from ..periodic_images import (
+    MinimumImageBatch,
+    minimum_image_displacements as _minimum_image_displacements,
 )
 from ..validation import (
     CPP_INT_MAX,
@@ -146,32 +149,43 @@ class DomainGeometry2D:
                     'shifts on non-periodic axes must be 0 for RectangularCell'
                 )
 
+    def minimum_image_displacements(
+        self,
+        pi: np.ndarray,
+        pj: np.ndarray,
+        *,
+        tie_orientation: np.ndarray,
+        image_search: int,
+    ) -> MinimumImageBatch:
+        """Return shared exact-certified rectangular minimum images."""
+
+        if not isinstance(self.domain, RectangularCell):
+            raise ValueError('nearest-image shifts require a periodic planar domain')
+        return _minimum_image_displacements(
+            pi,
+            pj,
+            lattice_vectors=self.lattice_vectors_cart,
+            periodic_axes=self.periodic_axes,
+            tie_orientation=tie_orientation,
+            image_search=image_search,
+        )
+
     def nearest_image_shifts(
         self,
         pi: np.ndarray,
         pj: np.ndarray,
+        *,
+        tie_orientation: np.ndarray,
+        image_search: int,
     ) -> np.ndarray:
-        if not isinstance(self.domain, RectangularCell):
-            raise ValueError('nearest-image shifts require a periodic planar domain')
-        (xmin, xmax), (ymin, ymax) = self.domain.bounds
-        lengths = np.array([xmax - xmin, ymax - ymin], dtype=float)
-        periodic = np.array(self.domain.periodic, dtype=bool)
-        pi_array = coerce_point_array(pi, name='pi', dim=2)
-        pj_array = coerce_point_array(pj, name='pj', dim=2)
-        if pi_array.shape != pj_array.shape:
-            raise ValueError('pi and pj must have the same shape')
-        delta = pj_array - pi_array
-        shifts = np.zeros_like(delta, dtype=np.int64)
-        for ax in range(2):
-            if not periodic[ax]:
-                continue
-            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-                quotient = -delta[:, ax] / lengths[ax]
-            shifts[:, ax] = round_to_int64(
-                quotient,
-                name=f'nearest-image axis {ax} shift',
-            )
-        return shifts
+        """Return shifts from the shared certified minimum-image primitive."""
+
+        return self.minimum_image_displacements(
+            pi,
+            pj,
+            tie_orientation=tie_orientation,
+            image_search=image_search,
+        ).shift
 
     def resolve_block_counts(
         self,

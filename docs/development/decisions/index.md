@@ -25,6 +25,7 @@ Each record has a status:
 9. [Certified scalar proximal solver](0009-certified-scalar-proximal-solver.md)
 10. [Strict native construction preconditions](0010-native-construction-preconditions.md)
 11. [Strict public input and ownership contract](0011-strict-input-and-ownership-contract.md)
+12. [Certified periodic nearest-image geometry](0012-certified-periodic-image-geometry.md)
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the

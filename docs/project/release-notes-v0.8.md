@@ -8,7 +8,7 @@ v0.8.0 is intended to complete the compatibility removals announced for v0.7, qu
 standard CPython 3.14 and the full binary distribution matrix, and make the
 documented public contract match the reorganized source tree. These claims remain
 pending until the audit remediation and final qualification are complete. It does not add a
-new numerical method, inverse observation family, domain type, or solver.
+new public inverse method, inverse observation family, domain type, or solver.
 Prescribed cell measures remain planned for v0.9, and mixed separator-plus-
 measure fitting remains planned for v0.10.
 
@@ -34,6 +34,21 @@ a compatibility-only route and was not removed.
 
 ## Changed behavior and fixes
 
+- Periodic nearest-image inference is now mathematically certified for the
+  exact dyadic values represented by supplied binary64 coordinates and lattice
+  vectors. Orthogonal/partially periodic cells use an exact per-axis fast path,
+  while fully periodic non-orthogonal 3D cells exact-enumerate a proof-derived
+  finite box. This fixes the audited skewed-cell case that previously selected
+  `(1, 0, -1)` instead of `(2, -1, -1)`. Exact ties respect lattice translation
+  and pair reversal; explicit user-provided shifts still select their requested
+  image. `image_search` retains its signature and default as a bounded
+  performance hint only and can no longer change a successful result. A
+  private bounded resource failure raises without returning an approximation.
+  Separator inference and periodic duplicate distance evaluation share this
+  geometry when wrapping is enabled (`wrap=True`, or `duplicate_wrap=True` in
+  forward operations). With wrapping disabled, the established unwrapped
+  Cartesian check is preserved. Duplicate candidate-generation and mandatory
+  backend-safety policy independent of `duplicate_wrap` remain assigned to R5.
 - Spatial and planar Python entry points now use one strict input contract.
   Exact integer fields reject booleans and lossy float/string conversions;
   flags and masks accept only Python or NumPy Booleans; string modes accept
@@ -122,6 +137,8 @@ The first four corrections above are API-contract consistency work from issue
 and schema corrections are the approved prerelease correctness work from issue
 #36. The scalar proximal correction is the approved implementation work from
 issue #37 and adds no public tolerance option, dependency, or solver method.
+The certified periodic-image correction is the issue #40 implementation and
+adds no public result schema, lattice API, or dependency.
 These changes add no legacy scaling mode. ADMM results can change where the
 earlier mismatch/L2 relative scaling was inconsistent or the former scalar
 loop returned an uncertified iterate.

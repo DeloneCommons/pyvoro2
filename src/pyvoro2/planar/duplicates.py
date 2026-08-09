@@ -1,4 +1,11 @@
-"""Planar near-duplicate point detection."""
+"""Planar near-duplicate detection with wrapped periodic certification.
+
+When periodic wrapping is enabled (``wrap=True``), evaluated candidate-pair
+distances use the shared certified minimum-image primitive.  With wrapping
+disabled, the established unwrapped Cartesian check is preserved.  R4 does
+not redesign the existing spatial-hash candidate scanner; periodic seam
+completeness and mandatory safety independent of wrapping remain R5.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +18,8 @@ import numpy as np
 
 from ..duplicates import DuplicateError, DuplicatePair
 from .._internal.inputs import coerce_point_array, floor_to_int64
+from .._internal.periodic_images import exact_distance_less_than
+from .._internal.planar.domain_geometry import geometry2d
 from .._internal.validation import (
     require_bool,
     require_positive_finite_real,
@@ -31,7 +40,7 @@ def duplicate_check(
     mode: Literal['raise', 'warn', 'return'] = 'raise',
     max_pairs: int = 10,
 ) -> tuple[DuplicatePair, ...]:
-    """Detect planar point pairs closer than an absolute threshold."""
+    """Detect candidate planar pairs closer than an absolute threshold."""
 
     mode = require_string_choice(
         mode,
@@ -52,8 +61,11 @@ def duplicate_check(
     if n <= 1:
         return tuple()
 
+    periodic_geometry = None
     if domain is not None and wrap_value and isinstance(domain, RectangularCell):
         pts = np.asarray(domain.remap_cart(pts), dtype=np.float64)
+        if any(domain.periodic):
+            periodic_geometry = geometry2d(domain)
 
     h2 = thr * thr
     with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
@@ -71,9 +83,23 @@ def duplicate_check(
             if not cand:
                 continue
             for j in cand:
-                d = x - pts[j]
-                dist2 = float(d[0] * d[0] + d[1] * d[1])
-                if dist2 < h2:
+                if periodic_geometry is None:
+                    d = x - pts[j]
+                    dist2 = float(d[0] * d[0] + d[1] * d[1])
+                    close = dist2 < h2
+                else:
+                    minimum = periodic_geometry.minimum_image_displacements(
+                        pts[j:j + 1],
+                        pts[i:i + 1],
+                        tie_orientation=np.array([1], dtype=np.int8),
+                        image_search=1,
+                    )
+                    dist2 = float(minimum.distance_squared[0])
+                    close = exact_distance_less_than(
+                        minimum.exact_distance_key[0],
+                        thr,
+                    )
+                if close:
                     found.append(
                         DuplicatePair(
                             i=int(j),

@@ -11,9 +11,12 @@
 - **Decisions:** [ADR 0004](decisions/0004-canonical-inverse-namespace.md),
   [ADR 0005](decisions/0005-tessellation-result-contract.md),
   [ADR 0006](decisions/0006-v0.8-cleanup-release.md),
-  [ADR 0007](decisions/0007-separator-objective-contract.md), and
-  [ADR 0008](decisions/0008-separator-solver-and-linear-backend.md), and
-  [ADR 0009](decisions/0009-certified-scalar-proximal-solver.md)
+  [ADR 0007](decisions/0007-separator-objective-contract.md),
+  [ADR 0008](decisions/0008-separator-solver-and-linear-backend.md),
+  [ADR 0009](decisions/0009-certified-scalar-proximal-solver.md),
+  [ADR 0010](decisions/0010-native-construction-preconditions.md),
+  [ADR 0011](decisions/0011-strict-input-and-ownership-contract.md), and
+  [ADR 0012](decisions/0012-certified-periodic-image-geometry.md)
 
 This inventory is the authoritative v0.8 lifecycle contract for public imports,
 return routes, record schemas, defaults, and scientific semantics. It has been
@@ -935,6 +938,32 @@ unsafe override. This is a defensive change to invalid-input rejection, not a
 new public name, signature, default, result schema, or valid numerical
 behavior. The exact layering and estimate policy are fixed by ADR 0010.
 
+Periodic nearest-image inference now certifies the exact Euclidean minimum for
+the dyadic rational values represented by supplied binary64 coordinates and
+lattice components. Rectangular and orthorhombic domains use an exact per-axis
+fast path; fully periodic non-orthogonal 3D cells exact-enumerate a
+proof-derived finite coefficient box. Separator tie orientation uses the
+resolved internal site indices in the fixed point ordering, so lattice
+translation and pair reversal retain their expected shift/displacement
+invariants. External IDs remain metadata and do not participate in geometric
+tie selection; no point-array permutation invariant or public tie mode is
+introduced. Explicit observation shifts remain authoritative even when a
+different image is nearer.
+
+The public `image_search` parameter remains a non-negative exact integer with
+default one in all three separator entry points below. It is now only a capped
+incumbent-seeding hint: it may change private candidate counts and runtime but
+cannot change a successful inferred shift, displacement, or distance. There is
+no approximate mode or boundary-warning result. If exact certification exceeds
+the frozen private resource or signed-int64 shift contract, inference raises
+without returning an approximate image. When periodic wrapping is enabled
+(`wrap=True`, or `duplicate_wrap=True` in forward operations), periodic
+duplicate checks use the same exact pair-distance primitive for pairs evaluated
+by the current scanner. With wrapping disabled, the established unwrapped
+Cartesian check is preserved. R5 still owns complete seam scanning and
+mandatory native-safety policy independent of `duplicate_wrap`. ADR 0012
+records this contract.
+
 ### Exact current inverse signatures and defaults
 
 The stable high-level calls are:
@@ -1026,14 +1055,19 @@ The following boundaries are already accepted:
   reported soft objectives;
 - positive-strength scalar-penalty proximal coordinates succeed only with
   private proved exact point signs or an adjacent numeric-binary64 sign bracket,
-  while an uncertified attempt maps to the existing `numerical_failure` schema.
+  while an uncertified attempt maps to the existing `numerical_failure` schema;
+- inferred periodic nearest images are exact-certified, explicit image shifts
+  remain authoritative, and `image_search` is a correctness-neutral seed hint.
 
 See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 [ADR 0005](decisions/0005-tessellation-result-contract.md), as refined by
 [ADR 0006](decisions/0006-v0.8-cleanup-release.md), together with
-[ADR 0007](decisions/0007-separator-objective-contract.md) and
-[ADR 0008](decisions/0008-separator-solver-and-linear-backend.md), and
-[ADR 0009](decisions/0009-certified-scalar-proximal-solver.md).
+[ADR 0007](decisions/0007-separator-objective-contract.md),
+[ADR 0008](decisions/0008-separator-solver-and-linear-backend.md),
+[ADR 0009](decisions/0009-certified-scalar-proximal-solver.md),
+[ADR 0010](decisions/0010-native-construction-preconditions.md),
+[ADR 0011](decisions/0011-strict-input-and-ownership-contract.md), and
+[ADR 0012](decisions/0012-certified-periodic-image-geometry.md).
 
 ## Lifecycle summary for the v0.8 API
 

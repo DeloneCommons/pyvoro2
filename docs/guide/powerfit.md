@@ -189,6 +189,20 @@ observations = inverse.resolve_separator_observations(
 Each raw tuple is `(i, j, value[, shift])`, where `shift=(na, nb, nc)` is the
 integer lattice image applied to site `j`.
 
+An explicit shift names that image and is used unchanged, even if another
+image is nearer. If a periodic observation omits the shift and
+`image='nearest'`, pyvoro2 certifies the minimum-image displacement for the
+exact binary64 values supplied. Exact ties use stable endpoint orientation, so
+reversing an ordered pair negates its shift and displacement. For separator
+inference, the stable keys are the resolved internal site indices in the fixed
+point ordering. External IDs remain metadata and do not participate in exact-
+tie geometry; relabeling them cannot change the selected image. This does not
+define a point-array permutation invariant or a public tie mode. The public
+`image_search=1` default remains available as a performance hint: it seeds a
+bounded incumbent search but cannot change a successful shift, displacement,
+or distance. Certification that exceeds the private bounded resource contract
+fails explicitly; increasing `image_search` is not a correctness remedy.
+
 The resolved `SeparatorObservations` object stores the validated pair indices,
 shifts, connector geometry, and targets in both fraction and position form.
 

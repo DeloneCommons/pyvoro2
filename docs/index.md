@@ -193,6 +193,12 @@ A Python-side near-duplicate precheck can run before the native call:
 result = pv.compute(points, domain=cell, duplicate_check='raise')
 ```
 
+When periodic wrapping is enabled with `duplicate_wrap=True`, distances for
+candidate pairs evaluated by this optional scanner use certified minimum-image
+geometry. With wrapping disabled, the established unwrapped Cartesian check
+is preserved. Complete seam scanning and mandatory safety independent of
+`duplicate_wrap` remain tracked separately in the v0.8 remediation plan.
+
 For stricter post-hoc checks, see:
 
 - `pyvoro2.validate_tessellation(..., level='strict')`;

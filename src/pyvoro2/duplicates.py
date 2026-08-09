@@ -12,6 +12,13 @@ The check is intentionally simple:
   - compare each point only to points in its own grid cell and neighboring 26
     cells
 
+When periodic wrapping is enabled (``wrap=True``), distances for candidate
+pairs that are evaluated use the shared certified minimum-image primitive.
+With wrapping disabled, the established unwrapped Cartesian check is
+preserved.  Candidate generation itself is unchanged and is not yet a complete
+periodic seam scanner; mandatory safety independent of wrapping is owned by
+v0.8 R5.
+
 Expected complexity is O(n) for typical inputs.
 """
 
@@ -27,7 +34,9 @@ import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.spatial.domain_utils import is_periodic_domain
+from ._internal.spatial.domain_geometry import geometry3d
 from ._internal.inputs import coerce_point_array, floor_to_int64
+from ._internal.periodic_images import exact_distance_less_than
 from ._internal.validation import (
     require_bool,
     require_positive_finite_real,
@@ -77,9 +86,12 @@ def duplicate_check(
             effective Voro++ duplicate check (distance < 1e-5).
         domain: Optional domain. If provided and `wrap=True`, points are first
             remapped into the primary periodic domain for periodic domains,
-            matching what Voro++ will do internally.
+            matching what Voro++ will do internally. Distances for evaluated
+            periodic candidate pairs use certified minimum-image geometry;
+            candidate generation is not yet complete across every seam.
         wrap: Whether to remap points into the primary domain when `domain` has
-            periodicity.
+            periodicity. With `wrap=False`, preserve the unwrapped Cartesian
+            distance check.
         mode: Behavior when duplicates are found:
             - 'raise' (default): raise :class:`DuplicateError`
             - 'warn': emit a RuntimeWarning and return the pairs
@@ -109,11 +121,13 @@ def duplicate_check(
     if n <= 1:
         return tuple()
 
+    periodic_geometry = None
     if domain is not None and wrap_value and is_periodic_domain(domain):
         # Domain remap is authoritative for how Voro++ will interpret periodic
         # coordinates. (For PeriodicCell, this matches the internal remap used
         # when inserting points.)
         pts = np.asarray(domain.remap_cart(pts), dtype=np.float64)
+        periodic_geometry = geometry3d(domain)
 
     h = thr
     h2 = h * h
@@ -141,9 +155,25 @@ def duplicate_check(
             if not cand:
                 continue
             for j in cand:
-                d = x - pts[j]
-                dist2 = float(d[0] * d[0] + d[1] * d[1] + d[2] * d[2])
-                if dist2 < h2:
+                if periodic_geometry is None:
+                    d = x - pts[j]
+                    dist2 = float(
+                        d[0] * d[0] + d[1] * d[1] + d[2] * d[2]
+                    )
+                    close = dist2 < h2
+                else:
+                    minimum = periodic_geometry.minimum_image_displacements(
+                        pts[j:j + 1],
+                        pts[i:i + 1],
+                        tie_orientation=np.array([1], dtype=np.int8),
+                        image_search=1,
+                    )
+                    dist2 = float(minimum.distance_squared[0])
+                    close = exact_distance_less_than(
+                        minimum.exact_distance_key[0],
+                        thr,
+                    )
+                if close:
                     found.append(
                         DuplicatePair(
                             i=int(j), j=int(i), distance=float(np.sqrt(dist2))

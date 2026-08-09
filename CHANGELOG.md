@@ -43,6 +43,21 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Replaced bounded periodic nearest-image inference with one private certified
+  2D/3D geometry primitive. Orthogonal and partially periodic domains use exact
+  per-axis choices; fully periodic non-orthogonal 3D cells exact-enumerate a
+  proof-derived finite box over the dyadic rational values represented by the
+  supplied binary64 data. The known skewed-cell regression now selects
+  `(2, -1, -1)` instead of `(1, 0, -1)`. Exact ties are deterministic under
+  lattice translation and pair reversal, explicit user shifts remain
+  authoritative, and resource exhaustion fails structurally without an
+  approximate fallback. `image_search` keeps its public default and signature
+  as a correctness-neutral incumbent-seeding hint. Separator inference and
+  periodic duplicate pair-distance evaluation share the primitive when
+  wrapping is enabled (`wrap=True`, or `duplicate_wrap=True` in forward
+  operations); with wrapping disabled, the established unwrapped Cartesian
+  check is preserved. Complete duplicate candidate scanning and mandatory
+  safety independent of `duplicate_wrap` remain R5.
 - Completed strict Python input adoption across spatial and planar forward
   APIs, domains, duplicate checks, normalization and diagnostics, and separator
   inverse workflows. Exact integer and Boolean fields no longer accept lossy

@@ -165,7 +165,7 @@ def test_observation_endpoints_reject_lossy_integer_conversions(
         )
 
 
-def test_resolve_separator_observations_warns_on_triclinic_search_boundary():
+def test_resolve_separator_observations_has_no_search_boundary_warning():
     from pyvoro2 import PeriodicCell
     from pyvoro2.inverse.separator import resolve_separator_observations
 
@@ -182,7 +182,7 @@ def test_resolve_separator_observations_warns_on_triclinic_search_boundary():
     )
 
     assert tuple(int(v) for v in constraints.shifts[0]) == (-1, 0, 0)
-    assert any('image_search boundary' in msg for msg in constraints.warnings)
+    assert not any('image_search boundary' in msg for msg in constraints.warnings)
 
 
 def test_resolve_separator_observations_supports_planar_box() -> None:

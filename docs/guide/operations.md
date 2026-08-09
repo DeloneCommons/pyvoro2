@@ -44,8 +44,17 @@ result = pyvoro2.compute(
 )
 ```
 
-This checks for point pairs closer than ~`1e-5` (in your coordinate units).
-Using `duplicate_check='raise'` prevents Voro++ from terminating the process.
+This checks candidate point pairs closer than ~`1e-5` (in your coordinate
+units). When periodic wrapping is enabled with `duplicate_wrap=True`,
+distances for pairs that the scanner evaluates use certified minimum-image
+geometry. With wrapping disabled, the established unwrapped Cartesian check
+is preserved.
+
+The current scanner is not yet complete across every periodic seam, and the
+public modes, threshold, and `duplicate_wrap` options do not yet impose a mandatory
+backend-safety floor. `duplicate_check='raise'` reduces risk but is not a
+process-safety guarantee; complete candidate generation and mandatory safety
+independent of `duplicate_wrap` are v0.8 R5 work.
 
 Note: `duplicate_check='warn'` only reports the issue and still enters the C++ layer.
 If your points truly violate Voro++'s hard threshold, the process may still terminate.

@@ -42,3 +42,34 @@ def test_duplicate_check_periodic_wrap_catches_modulo_duplicates() -> None:
     # Without wrapping, distance is ~L -> no duplicate.
     pairs = pyvoro2.duplicate_check(pts, domain=dom, wrap=False, mode='return')
     assert pairs == tuple()
+
+
+def test_duplicate_check_wrap_controls_minimum_image_distance() -> None:
+    domain = pyvoro2.OrthorhombicCell(
+        bounds=((0.0, 1.0), (0.0, 1.0), (0.0, 1.0)),
+        periodic=(True, True, True),
+    )
+    points = np.array(
+        [[0.1, 0.25, 0.25], [0.9, 0.25, 0.25]],
+        dtype=np.float64,
+    )
+
+    wrapped = pyvoro2.duplicate_check(
+        points,
+        threshold=0.5,
+        domain=domain,
+        wrap=True,
+        mode='return',
+    )
+    unwrapped = pyvoro2.duplicate_check(
+        points,
+        threshold=0.5,
+        domain=domain,
+        wrap=False,
+        mode='return',
+    )
+
+    assert len(wrapped) == 1
+    assert (wrapped[0].i, wrapped[0].j) == (0, 1)
+    assert wrapped[0].distance == pytest.approx(0.2)
+    assert unwrapped == tuple()

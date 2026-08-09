@@ -26,6 +26,7 @@ from ..._internal.validation import (
     require_string_choice,
     require_string_tuple,
 )
+from ..._internal.periodic_images import MinimumImageBatch
 from ..._internal.spatial.domain_geometry import geometry3d
 from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ..._internal.planar.domain_geometry import geometry2d
@@ -386,8 +387,8 @@ def resolve_separator_observations(
             external IDs. Endpoint values must be integers in either mode;
             floats, numeric strings, and booleans are rejected.
         image: Shift resolution policy for tuples that do not specify a shift.
-        image_search: Search radius for nearest-image resolution in triclinic
-            periodic 3D cells. It is ignored for the current planar backend.
+        image_search: Bounded incumbent-seeding hint for certified periodic
+            nearest-image inference. It cannot change a successful result.
         confidence: Optional non-negative per-constraint weights.
         allow_empty: Allow zero constraints and return an empty resolved object.
     """
@@ -444,7 +445,7 @@ def resolve_separator_observations(
             raise ValueError('confidence must be non-negative')
 
     pts2 = _maybe_remap_points(pts, domain)
-    shifts_used, warnings2 = _resolve_constraint_shifts(
+    shifts_used, warnings2, inferred_geometry = _resolve_constraint_shifts(
         pts2,
         i_idx,
         j_idx,
@@ -480,17 +481,43 @@ def resolve_separator_observations(
             warnings=warnings,
         )
 
-    shift_cart = shift_to_cart(shifts_used, domain)
-    with np.errstate(all='ignore'):
-        pj_star = pts2[j_idx] + shift_cart
-    _require_finite_connector_geometry(pj_star, stage='endpoint translation')
-
-    with np.errstate(all='ignore'):
-        delta = pj_star - pts2[i_idx]
+    if inferred_geometry is None:
+        shift_cart = shift_to_cart(shifts_used, domain)
+        with np.errstate(all='ignore'):
+            pj_star = pts2[j_idx] + shift_cart
+        _require_finite_connector_geometry(
+            pj_star,
+            stage='endpoint translation',
+        )
+        with np.errstate(all='ignore'):
+            delta = pj_star - pts2[i_idx]
+    else:
+        missing = ~shift_given
+        delta = np.empty((m, pts.shape[1]), dtype=np.float64)
+        if np.any(shift_given):
+            explicit_shift_cart = shift_to_cart(
+                shifts_used[shift_given],
+                domain,
+            )
+            with np.errstate(all='ignore'):
+                explicit_endpoint = (
+                    pts2[j_idx[shift_given]] + explicit_shift_cart
+                )
+            _require_finite_connector_geometry(
+                explicit_endpoint,
+                stage='explicit endpoint translation',
+            )
+            with np.errstate(all='ignore'):
+                delta[shift_given] = (
+                    explicit_endpoint - pts2[i_idx[shift_given]]
+                )
+        delta[missing] = inferred_geometry.displacement
     _require_finite_connector_geometry(delta, stage='coordinate difference')
 
     with np.errstate(all='ignore'):
         d2 = np.einsum('mi,mi->m', delta, delta)
+    if inferred_geometry is not None:
+        d2[~shift_given] = inferred_geometry.distance_squared
     _require_finite_connector_geometry(d2, stage='squared distance')
     if np.any(d2 <= 0.0):
         raise ValueError(
@@ -701,7 +728,7 @@ def _resolve_constraint_shifts(
     domain: DomainAny | None,
     image: Literal['nearest', 'given_only'],
     image_search: int,
-) -> tuple[np.ndarray, tuple[str, ...]]:
+) -> tuple[np.ndarray, tuple[str, ...], MinimumImageBatch | None]:
     """Return per-constraint integer shifts to apply to site j."""
 
     image = require_string_choice(
@@ -729,7 +756,7 @@ def _resolve_constraint_shifts(
 
     if not geom.has_any_periodic_axis:
         geom.validate_shifts(shifts[shift_given])
-        return np.zeros((m, dim), dtype=np.int64), tuple(warnings)
+        return np.zeros((m, dim), dtype=np.int64), tuple(warnings), None
 
     shifts2 = shifts.copy()
     provided_mask = shift_given.copy()
@@ -738,7 +765,7 @@ def _resolve_constraint_shifts(
         if np.any(~provided_mask):
             raise ValueError('some constraints are missing shifts (image="given_only")')
         geom.validate_shifts(shifts2)
-        return shifts2, tuple(warnings)
+        return shifts2, tuple(warnings), None
 
     image_search = require_nonnegative_index(
         image_search,
@@ -747,31 +774,26 @@ def _resolve_constraint_shifts(
     )
 
     missing = ~provided_mask
+    inferred_geometry = None
     if np.any(missing):
-        if dim == 2:
-            resolved = geom.nearest_image_shifts(
-                points[i_idx[missing]],
-                points[j_idx[missing]],
-            )
-            boundary_hits = np.zeros(resolved.shape[0], dtype=bool)
-        else:
-            resolved, boundary_hits = geom.nearest_image_shifts(
-                points[i_idx[missing]],
-                points[j_idx[missing]],
-                search=image_search,
-            )
-        shifts2[missing] = resolved
+        tie_orientation = np.where(
+            i_idx[missing] < j_idx[missing],
+            1,
+            -1,
+        ).astype(np.int8)
+        inferred_geometry = geom.minimum_image_displacements(
+            points[i_idx[missing]],
+            points[j_idx[missing]],
+            tie_orientation=tie_orientation,
+            image_search=image_search,
+        )
+        shifts2[missing] = inferred_geometry.shift
         warnings.append(
             'some constraints did not specify shifts; using nearest-image shifts'
         )
-        if dim == 3 and geom.is_triclinic and np.any(boundary_hits):
-            warnings.append(
-                'some nearest-image shifts touch the image_search boundary; '
-                'increase image_search for extra safety in skewed triclinic cells'
-            )
 
     geom.validate_shifts(shifts2)
-    return shifts2, tuple(warnings)
+    return shifts2, tuple(warnings), inferred_geometry
 
 
 def shift_to_cart(shifts: np.ndarray, domain: DomainAny | None) -> np.ndarray:

@@ -267,6 +267,44 @@ independent of NumPy warning and floating-point error settings while leaving
 the raw records themselves mutable. ADR 0011 fixes this R3-B contract and its
 boundary from R4–R9.
 
+### Certified periodic minimum-image geometry
+
+The dimension-neutral private module `_internal.periodic_images` is the one
+mathematical source for inferred periodic nearest images and for the distance
+of periodic duplicate pairs that the current scanners evaluate when wrapping
+is enabled (`wrap=True`, or `duplicate_wrap=True` in forward operations).
+Spatial and planar domain adapters provide canonical row-oriented lattice
+vectors and periodic-axis masks; they do not implement separate image
+algorithms.
+
+Rectangular 2D and orthorhombic 3D domains use exact per-axis floor/ceiling
+choices. Fully periodic non-orthogonal 3D cells align the supplied binary64
+coordinates and basis to exact dyadic integers, prepare an exact rational
+basis inverse, derive a finite coefficient box from an incumbent norm bound,
+and exact-compare every integer candidate in that box. Successful private
+results include exact distance keys and deterministic work metadata. A bounded
+seed can tighten the box, but it has no correctness authority.
+
+Separator inference derives an orientation token from the resolved internal
+site indices within the fixed resolved problem. External ID values remain
+metadata and do not participate in geometric tie selection. This makes exact
+ties respect lattice translation and pair reversal without introducing a
+point-array permutation invariant or public tie mode. Explicit observation
+shifts remain authoritative and bypass inference. The public `image_search`
+parameter keeps its default and exact non-negative-integer contract but is only
+a capped incumbent-seeding hint. If exact certification would exceed the
+frozen private candidate budget or signed-int64 shift contract, the operation
+raises a structured private runtime error without an approximate fallback.
+
+When periodic wrapping is enabled (`wrap=True`, or `duplicate_wrap=True` in
+forward operations), periodic duplicate distance evaluation consumes the same
+primitive. With wrapping disabled, the established unwrapped Cartesian check
+is preserved. R4 does not redesign the candidate scanner or public duplicate
+policy. Complete periodic seam scanning, mandatory backend-safety policy
+independent of `duplicate_wrap`, and generator containment remain R5. ADR 0012
+fixes the exact problem, proof box, tie rule, resource/cache policy, and this
+R4/R5 boundary.
+
 ### Neutral weight/radius transforms
 
 The sole implementations of `weights_to_radii` and `radii_to_weights` now live

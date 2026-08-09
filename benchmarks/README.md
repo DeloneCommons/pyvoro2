@@ -1,4 +1,38 @@
-# Static quadratic separator benchmarks
+# Numerical algorithm benchmarks
+
+## Certified periodic-image benchmark
+
+`benchmark_periodic_images.py` reports deterministic exact candidate counts,
+seed counts, basis-cache activity, and median local timings for batches of 1,
+10, 100, 1000, and 10000 pairs. It covers the exact orthogonal fast path and a
+representative triclinic proof-box path. The former bounded
+`image_search=1` cube is reimplemented in the benchmark only to provide timing
+context; it is not a correctness oracle or a production fallback.
+
+```bash
+python benchmarks/benchmark_periodic_images.py --repeats 3
+```
+
+The report has no wall-clock pass/fail threshold. Exact and seed candidate
+counts are the portable performance qualification; correctness is covered by
+independent analytic and fixed-cube exact oracles in the test suite.
+
+The R4 implementation report was recorded on 2026-08-09 under WSL2, Python
+3.13.14, and NumPy 2.5.1 with three repeats. Timings are local context, not CI
+requirements. The two exact basis preparations produced two cache misses and
+38 hits across warm-up and measured calls; cache size remained two of 128.
+
+| Pairs | Orth exact candidates | Orth time | Triclinic exact candidates | Triclinic seed candidates | Triclinic time | Former cube time (context) |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 8 | 0.12 ms | 2 | 27 | 0.31 ms | 0.06 ms |
+| 10 | 80 | 0.57 ms | 20 | 270 | 2.05 ms | 0.05 ms |
+| 100 | 800 | 4.86 ms | 200 | 2,700 | 19.98 ms | 0.14 ms |
+| 1,000 | 8,000 | 47.42 ms | 2,000 | 27,000 | 200.05 ms | 0.89 ms |
+| 10,000 | 80,000 | 486.39 ms | 20,000 | 270,000 | 2.03 s | 8.44 ms |
+
+The representative triclinic case used two proof-box candidates per pair;
+neither family approached the 1,000,000 per-pair or 5,000,000 per-batch exact
+candidate limits.
 
 ## Certified scalar proximal benchmark
 
