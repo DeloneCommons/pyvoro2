@@ -17,6 +17,7 @@ from pyvoro2._internal.periodic_images import (
     _MAX_SEED_CANDIDATES,
     exact_distance_less_than,
     minimum_image_displacements,
+    MinimumImageBatch,
     MinimumImageCertificationError,
 )
 from pyvoro2._internal.planar.domain_geometry import geometry2d
@@ -110,6 +111,111 @@ def _exact_exhaustive_oracle(
     return best_shift, displacement_float, distance_float, tie_count
 
 
+def _fraction_exhaustive_minimizers(
+    pi: np.ndarray,
+    pj: np.ndarray,
+    lattice: np.ndarray,
+    *,
+    radius: int,
+) -> tuple[
+    tuple[tuple[int, ...], ...],
+    tuple[tuple[Fraction, ...], ...],
+    Fraction,
+]:
+    """Return every fixed-cube minimizer using direct Fraction arithmetic.
+
+    This second-form oracle deliberately avoids the production/common-denominator
+    dyadic representation.  Each binary64 value is converted independently, and
+    displacement and squared-distance arithmetic remain as ``Fraction`` objects.
+    """
+
+    dimension = pi.size
+    delta = tuple(
+        Fraction.from_float(float(pj[axis]))
+        - Fraction.from_float(float(pi[axis]))
+        for axis in range(dimension)
+    )
+    exact_lattice = tuple(
+        tuple(
+            Fraction.from_float(float(lattice[row, column]))
+            for column in range(dimension)
+        )
+        for row in range(dimension)
+    )
+
+    best_distance: Fraction | None = None
+    minimizers: list[tuple[int, ...]] = []
+    displacements: list[tuple[Fraction, ...]] = []
+    for shift in product(range(-radius, radius + 1), repeat=dimension):
+        values = tuple(
+            delta[column]
+            + sum(
+                (
+                    shift[row] * exact_lattice[row][column]
+                    for row in range(dimension)
+                ),
+                Fraction(0),
+            )
+            for column in range(dimension)
+        )
+        distance = sum(
+            (value * value for value in values),
+            Fraction(0),
+        )
+        if best_distance is None or distance < best_distance:
+            best_distance = distance
+            minimizers = [shift]
+            displacements = [values]
+        elif distance == best_distance:
+            minimizers.append(shift)
+            displacements.append(values)
+
+    assert best_distance is not None
+    assert minimizers
+    assert all(
+        all(abs(component) < radius for component in shift)
+        for shift in minimizers
+    )
+    return tuple(minimizers), tuple(displacements), best_distance
+
+
+def _assert_result_matches_fraction_oracle(
+    result: MinimumImageBatch,
+    pi: np.ndarray,
+    pj: np.ndarray,
+    lattice: np.ndarray,
+    *,
+    radius: int,
+    orientation: int,
+) -> tuple[tuple[int, ...], ...]:
+    minimizers, displacements, exact_distance = (
+        _fraction_exhaustive_minimizers(
+            pi,
+            pj,
+            lattice,
+            radius=radius,
+        )
+    )
+    expected_shift = (
+        min(minimizers) if orientation == 1 else max(minimizers)
+    )
+    selected = minimizers.index(expected_shift)
+
+    assert tuple(result.shift[0]) == expected_shift
+    np.testing.assert_array_equal(
+        result.displacement[0],
+        tuple(float(value) for value in displacements[selected]),
+    )
+    key = result.exact_distance_key[0]
+    assert (
+        Fraction(key.numerator, 1 << key.denominator_exponent)
+        == exact_distance
+    )
+    assert float(result.distance_squared[0]) == float(exact_distance)
+    assert int(result.tie_count[0]) == len(minimizers)
+    return minimizers
+
+
 def _minimum(
     pi: np.ndarray,
     pj: np.ndarray,
@@ -145,8 +251,17 @@ def test_fixed_skewed_triclinic_regression_matches_independent_oracle() -> None:
         orientation=1,
     )
     result = _minimum(pi, pj, lattice)
+    fraction_minimizers = _assert_result_matches_fraction_oracle(
+        result,
+        pi,
+        pj,
+        lattice,
+        radius=8,
+        orientation=1,
+    )
 
     assert expected[0] == (2, -1, -1)
+    assert fraction_minimizers == ((2, -1, -1),)
     assert tuple(result.shift[0]) == expected[0]
     np.testing.assert_allclose(
         result.displacement[0],
@@ -160,6 +275,83 @@ def test_fixed_skewed_triclinic_regression_matches_independent_oracle() -> None:
     assert result.certified is True
     assert result.method == 'triclinic-finite-box'
     assert int(result.candidate_count[0]) < 100
+
+
+@pytest.mark.parametrize(
+    (
+        'scale',
+        'lattice_rows',
+        'pi_scaled',
+        'fractional_delta',
+        'lattice_translation',
+        'radius',
+    ),
+    (
+        pytest.param(
+            1.0,
+            ((1.0, 0.0, 0.0), (0.4, 1.3, 0.0), (-0.2, 0.5, 0.9)),
+            (0.125, -0.25, 0.375),
+            (0.42, -0.48, 0.37),
+            (3, -2, 1),
+            8,
+            id='ordinary-skew',
+        ),
+        pytest.param(
+            1e-3,
+            ((1.0, 0.0, 0.0), (0.6, 1.2, 0.0), (-0.4, 0.5, 0.9)),
+            (-0.3, 0.2, 0.7),
+            (-0.47, 0.38, -0.41),
+            (-3, 2, 1),
+            8,
+            id='small-scale',
+        ),
+        pytest.param(
+            1e3,
+            ((1.0, 0.0, 0.0), (-0.55, 1.1, 0.0), (0.35, -0.65, 0.8)),
+            (0.2, -0.4, 0.1),
+            (0.49, -0.31, 0.44),
+            (4, -3, 2),
+            10,
+            id='large-scale',
+        ),
+        pytest.param(
+            1.0,
+            ((1.0, 0.0, 0.0), (1.5, 1.0, 0.0), (1.25, -0.75, 0.9)),
+            (-0.75, 0.125, 0.33),
+            (-0.48, 0.47, -0.32),
+            (2, -4, 3),
+            10,
+            id='strong-skew',
+        ),
+    ),
+)
+def test_second_form_fraction_oracle_matches_high_risk_triclinic_cases(
+    scale: float,
+    lattice_rows: tuple[tuple[float, ...], ...],
+    pi_scaled: tuple[float, ...],
+    fractional_delta: tuple[float, ...],
+    lattice_translation: tuple[int, ...],
+    radius: int,
+) -> None:
+    lattice = scale * np.array(lattice_rows, dtype=np.float64)
+    pi = scale * np.array(pi_scaled, dtype=np.float64)
+    pj = pi + (
+        np.array(fractional_delta, dtype=np.float64)
+        + np.array(lattice_translation, dtype=np.int64)
+    ) @ lattice
+
+    result = _minimum(pi, pj, lattice, image_search=0)
+    minimizers = _assert_result_matches_fraction_oracle(
+        result,
+        pi,
+        pj,
+        lattice,
+        radius=radius,
+        orientation=1,
+    )
+
+    assert len(minimizers) == 1
+    assert result.method == 'triclinic-finite-box'
 
 
 @pytest.mark.parametrize('dimension', (2, 3))
@@ -234,10 +426,30 @@ def test_triclinic_exact_tie_is_repeatable_and_reversal_compatible() -> None:
     pj = 0.5 * lattice[0]
 
     forward = _minimum(pi, pj, lattice, orientation=1, image_search=0)
+    backward = _minimum(pi, pj, lattice, orientation=-1, image_search=0)
     repeated = _minimum(pi, pj, lattice, orientation=1, image_search=0)
     reverse = _minimum(pj, pi, lattice, orientation=-1, image_search=0)
 
+    minimizers = _assert_result_matches_fraction_oracle(
+        forward,
+        pi,
+        pj,
+        lattice,
+        radius=3,
+        orientation=1,
+    )
+    _assert_result_matches_fraction_oracle(
+        backward,
+        pi,
+        pj,
+        lattice,
+        radius=3,
+        orientation=-1,
+    )
+
+    assert minimizers == ((-1, 0, 0), (0, 0, 0))
     assert tuple(forward.shift[0]) == (-1, 0, 0)
+    assert tuple(backward.shift[0]) == (0, 0, 0)
     assert int(forward.tie_count[0]) == 2
     np.testing.assert_array_equal(repeated.shift, forward.shift)
     np.testing.assert_array_equal(reverse.shift, -forward.shift)
@@ -363,8 +575,17 @@ def test_warning_level_ill_conditioned_cell_still_certifies_exactly() -> None:
         orientation=1,
     )
     result = _minimum(pi, pj, canonical_lattice)
+    fraction_minimizers = _assert_result_matches_fraction_oracle(
+        result,
+        pi,
+        pj,
+        canonical_lattice,
+        radius=3,
+        orientation=1,
+    )
 
     assert np.linalg.cond(canonical_lattice) == pytest.approx(2e11)
+    assert fraction_minimizers == ((0, 0, 0),)
     assert expected[0] == (0, 0, 0)
     assert tuple(result.shift[0]) == expected[0]
     np.testing.assert_array_equal(result.displacement[0], expected[1])
