@@ -203,6 +203,90 @@ PYBIND11_MODULE(_core, m) {
     return estimate.total();
   });
   m.def(
+      "_test_rectangular_safety_candidate_count",
+      [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
+         std::array<std::array<double, 2>, 3> bounds,
+         std::array<bool, 3> periodic,
+         py::array_t<double, py::array::c_style | py::array::forcecast>
+             inserted_queries) {
+        native::require_matrix_shape(points, 3, "points");
+        native::require_matrix_shape(inserted_queries, 3, "queries");
+        native::require_finite_array(points, "points");
+        native::require_finite_array(inserted_queries, "queries");
+        native::require_primary_containment(points, bounds, "points");
+        native::require_primary_containment(inserted_queries, bounds,
+                                            "queries");
+        return native::require_rectangular_duplicate_safety<3>(
+            points, bounds, periodic, &inserted_queries);
+      },
+      py::arg("points"),
+      py::arg("bounds"),
+      py::arg("periodic"),
+      py::arg("inserted_queries"));
+  m.def(
+      "_test_periodic_safety_candidate_count",
+      [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
+         std::array<double, 6> cell_params,
+         py::array_t<double, py::array::c_style | py::array::forcecast>
+             inserted_queries) {
+        native::require_matrix_shape(points, 3, "points");
+        native::require_matrix_shape(inserted_queries, 3, "queries");
+        native::require_finite_array(points, "points");
+        native::require_finite_array(inserted_queries, "queries");
+        native::require_periodic_primary_containment(points, cell_params,
+                                                     "points");
+        native::require_periodic_primary_containment(
+            inserted_queries, cell_params, "queries");
+        return native::require_periodic_duplicate_safety(
+            points, cell_params, &inserted_queries);
+      },
+      py::arg("points"),
+      py::arg("cell_params"),
+      py::arg("inserted_queries"));
+  m.def(
+      "_test_periodic_safety_certificate",
+      [](std::array<double, 6> cell_params) {
+        const native::PeriodicSafetyGeometry geometry =
+            native::periodic_safety_geometry(cell_params);
+        return py::make_tuple(geometry.coefficient_bound_upper,
+                              geometry.bins);
+      },
+      py::arg("cell_params"));
+  m.def(
+      "_test_periodic_safety_keys",
+      [](std::array<double, 3> point,
+         std::array<double, 6> cell_params) {
+        const native::PeriodicSafetyGeometry geometry =
+            native::periodic_safety_geometry(cell_params);
+        return native::periodic_safety_keys(point.data(), geometry);
+      },
+      py::arg("point"),
+      py::arg("cell_params"));
+  m.def(
+      "_test_periodic_pair_is_unsafe",
+      [](std::array<double, 3> left,
+         std::array<double, 3> right,
+         std::array<double, 6> cell_params) {
+        const native::PeriodicSafetyGeometry geometry =
+            native::periodic_safety_geometry(cell_params);
+        return native::periodic_pair_is_unsafe(
+            left.data(), right.data(), geometry);
+      },
+      py::arg("left"),
+      py::arg("right"),
+      py::arg("cell_params"));
+  m.def(
+      "_test_periodic_key_alias_budget",
+      [](std::vector<std::size_t> key_counts) {
+        std::size_t cumulative_aliases = 0;
+        for (const std::size_t key_count : key_counts) {
+          native::count_triclinic_key_aliases(
+              key_count, cumulative_aliases);
+        }
+        return cumulative_aliases;
+      },
+      py::arg("key_counts"));
+  m.def(
       "_test_periodic_resource_estimate",
       [](std::array<double, 6> cell_params,
          std::array<int, 3> blocks,
@@ -706,7 +790,7 @@ m.def(
        std::tuple<bool, bool, bool> opts_tuple,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
       native::preflight_box<3>(points, ids, nullptr, bounds, blocks, periodic,
-                               init_mem, 3, &queries);
+                               init_mem, 3, &queries, nullptr, true, false);
       const auto n = points.shape(0);
 
       const auto opts = parse_opts(opts_tuple);
@@ -776,7 +860,8 @@ m.def(
        py::array_t<double, py::array::c_style | py::array::forcecast> queries,
        py::array_t<double, py::array::c_style | py::array::forcecast> ghost_radii) {
       native::preflight_box<3>(points, ids, &radii, bounds, blocks, periodic,
-                               init_mem, 4, &queries, &ghost_radii);
+                               init_mem, 4, &queries, &ghost_radii, true,
+                               false);
       const auto n = points.shape(0);
       const py::ssize_t m = queries.shape(0);
 
@@ -849,7 +934,8 @@ m.def(
        std::tuple<bool, bool, bool> opts_tuple,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
       native::preflight_periodic_3d(points, ids, nullptr, cell_params, blocks,
-                                    init_mem, 3, &queries);
+                                    init_mem, 3, &queries, nullptr, true,
+                                    false);
       const auto n = points.shape(0);
 
       const auto opts = parse_opts(opts_tuple);
@@ -914,7 +1000,8 @@ m.def(
        py::array_t<double, py::array::c_style | py::array::forcecast> queries,
        py::array_t<double, py::array::c_style | py::array::forcecast> ghost_radii) {
       native::preflight_periodic_3d(points, ids, &radii, cell_params, blocks,
-                                    init_mem, 4, &queries, &ghost_radii);
+                                    init_mem, 4, &queries, &ghost_radii, true,
+                                    false);
       const auto n = points.shape(0);
       const py::ssize_t m = queries.shape(0);
 

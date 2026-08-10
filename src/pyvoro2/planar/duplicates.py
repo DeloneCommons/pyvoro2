@@ -1,10 +1,8 @@
 """Planar near-duplicate detection with wrapped periodic certification.
 
-When periodic wrapping is enabled (``wrap=True``), evaluated candidate-pair
-distances use the shared certified minimum-image primitive.  With wrapping
-disabled, the established unwrapped Cartesian check is preserved.  R4 does
-not redesign the existing spatial-hash candidate scanner; periodic seam
-completeness and mandatory safety independent of wrapping remain R5.
+When periodic wrapping is enabled, seam-complete candidate generation is
+followed by the shared certified minimum-image primitive. Native-facing calls
+also apply an independent mandatory safety floor.
 """
 
 from __future__ import annotations
@@ -17,8 +15,8 @@ import warnings
 import numpy as np
 
 from ..duplicates import DuplicateError, DuplicatePair
-from .._internal.inputs import coerce_point_array, floor_to_int64
-from .._internal.periodic_images import exact_distance_less_than
+from .._internal.duplicate_scanning import scan_close_pairs
+from .._internal.inputs import coerce_point_array
 from .._internal.planar.domain_geometry import geometry2d
 from .._internal.validation import (
     require_bool,
@@ -67,65 +65,37 @@ def duplicate_check(
         if any(domain.periodic):
             periodic_geometry = geometry2d(domain)
 
-    h2 = thr * thr
-    with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-        quotient = pts / thr
-    grid = floor_to_int64(quotient, name='duplicate grid coordinates')
-    neigh = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)]
-
-    buckets: dict[tuple[int, int], list[int]] = {}
-    found: list[DuplicatePair] = []
-    for i in range(n):
-        key = (int(grid[i, 0]), int(grid[i, 1]))
-        x = pts[i]
-        for dx, dy in neigh:
-            cand = buckets.get((key[0] + dx, key[1] + dy))
-            if not cand:
-                continue
-            for j in cand:
-                if periodic_geometry is None:
-                    d = x - pts[j]
-                    dist2 = float(d[0] * d[0] + d[1] * d[1])
-                    close = dist2 < h2
-                else:
-                    minimum = periodic_geometry.minimum_image_displacements(
-                        pts[j:j + 1],
-                        pts[i:i + 1],
-                        tie_orientation=np.array([1], dtype=np.int8),
-                        image_search=1,
-                    )
-                    dist2 = float(minimum.distance_squared[0])
-                    close = exact_distance_less_than(
-                        minimum.exact_distance_key[0],
-                        thr,
-                    )
-                if close:
-                    found.append(
-                        DuplicatePair(
-                            i=int(j),
-                            j=int(i),
-                            distance=float(np.sqrt(dist2)),
-                        )
-                    )
-                    if len(found) >= max_pairs_i:
-                        break
-            if len(found) >= max_pairs_i:
-                break
-        if len(found) >= max_pairs_i:
-            break
-        buckets.setdefault(key, []).append(i)
-
-    pairs = tuple(found)
+    scan = scan_close_pairs(
+        pts,
+        radius=thr,
+        geometry=periodic_geometry,
+        max_pairs=max_pairs_i,
+    )
+    pairs = tuple(
+        DuplicatePair(i=i, j=j, distance=distance)
+        for i, j, distance in scan.pairs
+    )
     if not pairs:
         return pairs
 
-    msg = (
-        f'Found {len(pairs)} planar point pair(s) closer than '
-        f'threshold={thr:g}. Such near-duplicates may cause Voro++ '
-        'to terminate the process.'
+    count = (
+        f'at least {len(pairs)}; showing {len(pairs)}'
+        if scan.truncated
+        else str(len(pairs))
     )
+    msg = f'Found {count} planar point pair(s) closer than threshold={thr:g}.'
     if mode == 'raise':
-        raise DuplicateError(msg, pairs, thr)
+        raise DuplicateError(
+            msg,
+            pairs,
+            thr,
+            kind='user_threshold',
+            user_threshold=thr,
+            minimum_image_used=scan.minimum_image_used,
+            optional_wrap_used=bool(periodic_geometry is not None),
+            truncated=scan.truncated,
+            operation='duplicate_check',
+        )
     if mode == 'warn':
         warnings.warn(msg, RuntimeWarning, stacklevel=2)
     return pairs

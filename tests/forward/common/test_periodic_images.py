@@ -923,3 +923,23 @@ def test_exact_distance_key_controls_threshold_comparison() -> None:
     key = result.exact_distance_key[0]
     assert exact_distance_less_than(key, np.nextafter(0.5, np.inf))
     assert not exact_distance_less_than(key, 0.5)
+
+
+def test_exact_squared_distance_helper_is_inclusive_at_binary64_limit() -> None:
+    from pyvoro2._internal.periodic_images import (
+        ExactDistanceKey,
+        exact_distance_squared_less_equal,
+    )
+
+    numerator, denominator = float(1e-10).as_integer_ratio()
+    exponent = denominator.bit_length() - 1
+    key = ExactDistanceKey(
+        numerator=numerator,
+        denominator_exponent=exponent,
+    )
+    above = ExactDistanceKey(
+        numerator=numerator + 1,
+        denominator_exponent=exponent,
+    )
+    assert exact_distance_squared_less_equal(key, 1e-10)
+    assert not exact_distance_squared_less_equal(above, 1e-10)

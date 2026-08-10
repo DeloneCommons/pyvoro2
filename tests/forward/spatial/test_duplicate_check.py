@@ -73,3 +73,37 @@ def test_duplicate_check_wrap_controls_minimum_image_distance() -> None:
     assert (wrapped[0].i, wrapped[0].j) == (0, 1)
     assert wrapped[0].distance == pytest.approx(0.2)
     assert unwrapped == tuple()
+
+
+@pytest.mark.parametrize(
+    'threshold',
+    [1e-310, float(np.nextafter(0.0, 1.0))],
+)
+def test_triclinic_duplicate_check_handles_tiny_thresholds(
+    threshold: float,
+) -> None:
+    cell = pyvoro2.PeriodicCell(
+        (
+            (1.0, 0.0, 0.0),
+            (0.2, 1.0, 0.0),
+            (0.1, 0.3, 1.0),
+        )
+    )
+    separated = np.array([[0.1, 0.1, 0.1], [0.9, 0.9, 0.9]])
+    exact = np.array([[0.1, 0.1, 0.1], [0.1, 0.1, 0.1]])
+
+    with np.errstate(all='raise'):
+        assert pyvoro2.duplicate_check(
+            separated,
+            threshold=threshold,
+            domain=cell,
+            mode='return',
+        ) == ()
+        pairs = pyvoro2.duplicate_check(
+            exact,
+            threshold=threshold,
+            domain=cell,
+            mode='return',
+        )
+    assert len(pairs) == 1
+    assert (pairs[0].i, pairs[0].j, pairs[0].distance) == (0, 1, 0.0)

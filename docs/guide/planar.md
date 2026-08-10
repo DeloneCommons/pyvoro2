@@ -36,6 +36,13 @@ non-negative range. `Box.from_points` rejects empty/non-finite inputs before
 reduction. Rectangular remapping validates finite points and `eps` and checks
 signed-int64 shift range before conversion.
 
+Every inserted planar generator must lie in `[lo, hi)` on non-periodic axes;
+periodic axes are remapped first. Generator pairs at squared distance at most
+`1e-10` always raise before native insertion. The public duplicate mode,
+threshold, and wrap options control only optional diagnostics above that floor.
+`ghost_cells` queries are temporary generators and follow the same rule, while
+`locate` queries are not inserted.
+
 ## Basic compute
 
 ```python

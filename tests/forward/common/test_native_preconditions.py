@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
+from itertools import product
 import math
 import subprocess
 import sys
@@ -16,6 +18,169 @@ from pyvoro2 import _core, _core2d
 
 CPP_INT_MAX = int(np.iinfo(np.intc).max)
 EAGER_ALLOCATION_LIMIT_BYTES = 1 << 30
+NATIVE_SAFETY_DISTANCE = Fraction.from_float(1e-5)
+NATIVE_SAFETY_DISTANCE_SQUARED = Fraction.from_float(1e-10)
+NATIVE_BINARY64_WITNESS_PARAMS = (
+    0.00017856460945140374,
+    -5.725280006612657,
+    1.65273947780994,
+    -391.7349918299756,
+    113.08370683864604,
+    0.10045884903938922,
+)
+NATIVE_LARGE_SHIFT_WITNESS_LEFT = (
+    2.7785562527544788e-05,
+    0.6974223475701162,
+    0.1004588490393892,
+)
+
+
+def _as_fraction(value: float) -> Fraction:
+    """Interpret a binary64 test input exactly, without production helpers."""
+
+    return Fraction.from_float(float(value))
+
+
+def _fraction_periodic_lattice(
+    params: tuple[float, ...],
+) -> tuple[tuple[Fraction, ...], ...]:
+    bx, bxy, by, bxz, byz, bz = map(_as_fraction, params)
+    zero = Fraction()
+    return (
+        (bx, zero, zero),
+        (bxy, by, zero),
+        (bxz, byz, bz),
+    )
+
+
+def _fraction_periodic_inverse(
+    params: tuple[float, ...],
+) -> tuple[tuple[Fraction, ...], ...]:
+    """Closed-form inverse of the exact source-binary64 triangular basis."""
+
+    bx, bxy, by, bxz, byz, bz = map(_as_fraction, params)
+    zero = Fraction()
+    return (
+        (1 / bx, zero, zero),
+        (-bxy / (bx * by), 1 / by, zero),
+        (
+            (bxy * byz - bxz * by) / (bx * by * bz),
+            -byz / (by * bz),
+            1 / bz,
+        ),
+    )
+
+
+def _fraction_coefficient_bounds(
+    params: tuple[float, ...],
+) -> tuple[Fraction, ...]:
+    inverse = _fraction_periodic_inverse(params)
+    return tuple(
+        NATIVE_SAFETY_DISTANCE
+        * sum((abs(inverse[row][column]) for row in range(3)), Fraction())
+        for column in range(3)
+    )
+
+
+def _fraction_floor(value: Fraction) -> int:
+    return value.numerator // value.denominator
+
+
+def _fraction_ceil(value: Fraction) -> int:
+    return -((-value.numerator) // value.denominator)
+
+
+def _fraction_periodic_pair_is_unsafe(
+    left: tuple[float, float, float] | np.ndarray,
+    right: tuple[float, float, float] | np.ndarray,
+    params: tuple[float, ...],
+) -> bool:
+    """Independent exact all-shift oracle for bounded-size test cells."""
+
+    lattice = _fraction_periodic_lattice(params)
+    inverse = _fraction_periodic_inverse(params)
+    bounds = _fraction_coefficient_bounds(params)
+    delta = tuple(
+        _as_fraction(float(right[axis])) - _as_fraction(float(left[axis]))
+        for axis in range(3)
+    )
+    coefficient = tuple(
+        sum(
+            (delta[row] * inverse[row][column] for row in range(3)),
+            Fraction(),
+        )
+        for column in range(3)
+    )
+    ranges = tuple(
+        range(
+            _fraction_ceil(-coefficient[axis] - bounds[axis]),
+            _fraction_floor(-coefficient[axis] + bounds[axis]) + 1,
+        )
+        for axis in range(3)
+    )
+    for shift in product(*ranges):
+        displacement = tuple(
+            delta[coordinate]
+            + sum(
+                (
+                    shift[row] * lattice[row][coordinate]
+                    for row in range(3)
+                ),
+                Fraction(),
+            )
+            for coordinate in range(3)
+        )
+        distance_squared = sum(
+            (value * value for value in displacement), Fraction()
+        )
+        if distance_squared <= NATIVE_SAFETY_DISTANCE_SQUARED:
+            return True
+    return False
+
+
+def _native_scanner_reports_unsafe(
+    points: np.ndarray,
+    inserted_queries: np.ndarray,
+    params: tuple[float, ...],
+    *,
+    expected_message: str,
+) -> bool:
+    """Classify only the expected native duplicate rejection as unsafe."""
+
+    try:
+        _core._test_periodic_safety_candidate_count(
+            points,
+            params,
+            inserted_queries,
+        )
+    except ValueError as exc:
+        if expected_message not in str(exc):
+            raise
+        return True
+    return False
+
+
+def _fraction_periodic_key(
+    point: tuple[float, float, float] | np.ndarray,
+    params: tuple[float, ...],
+    bins: tuple[int, int, int],
+) -> tuple[int, int, int]:
+    inverse = _fraction_periodic_inverse(params)
+    exact_point = tuple(_as_fraction(float(value)) for value in point)
+    coefficient = tuple(
+        sum(
+            (
+                exact_point[row] * inverse[row][column]
+                for row in range(3)
+            ),
+            Fraction(),
+        )
+        for column in range(3)
+    )
+    return tuple(
+        _fraction_floor(coefficient[axis] * bins[axis]) % bins[axis]
+        for axis in range(3)
+    )
 
 
 def _periodic_known_eager_oracle(
@@ -259,6 +424,108 @@ def test_all_18_constructor_paths_accept_representative_valid_calls(
 
 
 @pytest.mark.parametrize('path', NATIVE_CONSTRUCTOR_PATHS, ids=lambda p: p.label)
+@pytest.mark.parametrize('value', [-np.nextafter(0.0, 1.0), 1.0])
+def test_direct_inserted_points_require_primary_half_open_coordinates(
+    path: NativePath,
+    value: float,
+) -> None:
+    points = np.full((1, path.dim), 0.25, dtype=np.float64)
+    points[0, 0] = value
+    with pytest.raises(ValueError, match='primary half-open interval'):
+        getattr(path.module, path.name)(
+            *_native_args(
+                path,
+                points=points,
+                ids=np.array([0], dtype=np.int32),
+                radii=np.array([0.0]),
+            )
+        )
+
+
+@pytest.mark.parametrize('path', NATIVE_CONSTRUCTOR_PATHS, ids=lambda p: p.label)
+def test_direct_persistent_duplicates_rejected_before_insertion(
+    path: NativePath,
+) -> None:
+    points = np.full((2, path.dim), 0.25, dtype=np.float64)
+    with pytest.raises(ValueError, match='backend-unsafe'):
+        getattr(path.module, path.name)(*_native_args(path, points=points))
+
+
+@pytest.mark.parametrize(
+    'path',
+    PERIODIC_CONSTRUCTOR_PATHS + BOX_CONSTRUCTOR_PATHS,
+    ids=lambda p: p.label,
+)
+def test_direct_periodic_seam_pair_rejected(path: NativePath) -> None:
+    points = np.full((2, path.dim), 0.25, dtype=np.float64)
+    points[0, 0] = 0.0
+    points[1, 0] = np.nextafter(1.0, 0.0)
+    overrides: dict[str, object] = {'points': points}
+    if path.geometry == 'box':
+        overrides['periodic'] = (True,) + (False,) * (path.dim - 1)
+    with pytest.raises(ValueError, match='backend-unsafe'):
+        getattr(path.module, path.name)(*_native_args(path, **overrides))
+
+
+@pytest.mark.parametrize(
+    'path',
+    tuple(
+        value for value in NATIVE_CONSTRUCTOR_PATHS
+        if value.operation == 'ghost'
+    ),
+    ids=lambda p: p.label,
+)
+def test_direct_ghost_duplicate_and_outside_query_rejected(
+    path: NativePath,
+) -> None:
+    points = np.full((1, path.dim), 0.25, dtype=np.float64)
+    duplicate_query = points.copy()
+    with pytest.raises(ValueError, match='backend-unsafe'):
+        getattr(path.module, path.name)(
+            *_native_args(
+                path,
+                points=points,
+                ids=np.array([0], dtype=np.int32),
+                radii=np.array([0.0]),
+                queries=duplicate_query,
+                ghost_radii=np.array([0.0]),
+            )
+        )
+
+    outside_query = np.full((1, path.dim), 0.5, dtype=np.float64)
+    outside_query[0, 0] = 1.0
+    with pytest.raises(ValueError, match='primary half-open interval'):
+        getattr(path.module, path.name)(
+            *_native_args(
+                path,
+                points=points,
+                ids=np.array([0], dtype=np.int32),
+                radii=np.array([0.0]),
+                queries=outside_query,
+                ghost_radii=np.array([0.0]),
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    'path',
+    tuple(
+        value for value in NATIVE_CONSTRUCTOR_PATHS
+        if value.operation == 'locate'
+    ),
+    ids=lambda p: p.label,
+)
+def test_direct_locate_queries_are_not_subject_to_insertion_containment(
+    path: NativePath,
+) -> None:
+    queries = np.full((1, path.dim), 2.0, dtype=np.float64)
+    result = getattr(path.module, path.name)(
+        *_native_args(path, queries=queries)
+    )
+    assert len(result) == 3
+
+
+@pytest.mark.parametrize('path', NATIVE_CONSTRUCTOR_PATHS, ids=lambda p: p.label)
 def test_all_18_constructor_paths_accept_smallest_empty_arrays(
     path: NativePath,
 ) -> None:
@@ -484,10 +751,9 @@ def test_all_planar_box_paths_construct_large_span_with_safe_block_widths(
     queries = np.empty((0, 2), dtype=np.float64)
     ghost_radii = np.empty(0, dtype=np.float64)
     if path.operation == 'ghost':
-        # Ghost containers are loop-owned. An out-of-domain query proves that
-        # construction succeeds without requesting downstream cell geometry
-        # whose arithmetic is outside this constructor-preflight regression.
-        queries = np.array([[-1.0, -1.0]], dtype=np.float64)
+        # Ghost containers are loop-owned. Keep the temporary generator in the
+        # primary half-open box while avoiding downstream extreme geometry.
+        queries = np.array([[0.5, 0.5]], dtype=np.float64)
         ghost_radii = np.zeros(1, dtype=np.float64)
 
     result = getattr(path.module, path.name)(
@@ -510,13 +776,12 @@ def test_all_planar_box_paths_construct_large_span_with_safe_block_widths(
             assert len(result) == 1
             record = result[0]
             assert isinstance(record, dict)
-            assert record['empty'] is True
-            assert record['area'] == 0.0
-            assert np.isfinite(record['area'])
-            assert record['site'] == [-1.0, -1.0]
-            assert record['vertices'] == []
-            assert record['adjacency'] == []
-            assert record['edges'] == []
+            assert record['empty'] is False
+            assert record['area'] == np.inf
+            assert record['site'] == [0.5, 0.5]
+            assert len(record['vertices']) == 4
+            assert len(record['adjacency']) == 4
+            assert len(record['edges']) == 4
         else:
             assert result == []
 
@@ -659,6 +924,14 @@ def test_direct_planar_ghost_rejects_reserved_ghost_id_conflict() -> None:
     ids = np.array([0, CPP_INT_MAX], dtype=np.int32)
     with pytest.raises(ValueError, match='reserved ghost ID'):
         getattr(path.module, path.name)(*_native_args(path, ids=ids))
+
+
+def test_spatial_ghost_does_not_claim_planar_synthetic_id_reservation() -> None:
+    path = NATIVE_CONSTRUCTOR_PATHS[8]
+    ids = np.array([0, CPP_INT_MAX], dtype=np.int32)
+    with pytest.raises(ValueError, match=r'range \[0, n\)') as caught:
+        getattr(path.module, path.name)(*_native_args(path, ids=ids))
+    assert 'reserved ghost ID' not in str(caught.value)
 
 
 @pytest.mark.parametrize(
@@ -1347,3 +1620,798 @@ def test_fixed_issue_matrix_returns_normally_in_subprocess(
     )
     assert completed.returncode == 0, completed.stderr
     assert completed.stdout.strip() == f'OK {label}'
+
+
+def test_r5_direct_native_safety_matrix_returns_exceptions_in_subprocess() -> None:
+    script = r'''
+        import numpy as np
+        from pyvoro2 import _core, _core2d
+
+        opts = (False, False, False)
+        bounds3 = ((0.0, 1.0),) * 3
+        bounds2 = ((0.0, 1.0),) * 2
+        blocks3 = (1, 1, 1)
+        blocks2 = (1, 1)
+        periodic3 = (True, False, False)
+        periodic2 = (True, False)
+        params = (1.0, 0.2, 1.0, 0.1, -0.1, 1.0)
+
+        cases = (
+            lambda: _core.compute_box_standard(
+                np.array([[1.0, 0.25, 0.25]]), np.array([0], np.int32),
+                bounds3, blocks3, periodic3, 1, opts,
+            ),
+            lambda: _core.compute_box_power(
+                np.full((2, 3), 0.25), np.array([0, 1], np.int32),
+                np.zeros(2), bounds3, blocks3, periodic3, 1, opts,
+            ),
+            lambda: _core.compute_periodic_standard(
+                np.array([[0.0, 0.25, 0.25],
+                          [np.nextafter(1.0, 0.0), 0.25, 0.25]]),
+                np.array([0, 1], np.int32), params, blocks3, 1, opts,
+            ),
+            lambda: _core.ghost_periodic_power(
+                np.array([[0.25, 0.25, 0.25]]), np.array([0], np.int32),
+                np.zeros(1), params, blocks3, 1, opts,
+                np.array([[0.25, 0.25, 0.25]]), np.zeros(1),
+            ),
+            lambda: _core2d.compute_box_standard(
+                np.full((2, 2), 0.25), np.array([0, 1], np.int32),
+                bounds2, blocks2, periodic2, 1, opts,
+            ),
+            lambda: _core2d.ghost_box_power(
+                np.array([[0.25, 0.25]]), np.array([0], np.int32),
+                np.zeros(1), bounds2, blocks2, periodic2, 1, opts,
+                np.array([[1.0, 0.5]]), np.zeros(1),
+            ),
+        )
+        for case in cases:
+            try:
+                case()
+            except ValueError:
+                pass
+            else:
+                raise SystemExit('missing R5 native safety exception')
+
+        _core.compute_box_standard(
+            np.array([[0.0, 0.25, 0.25], [0.75, 0.75, 0.75]]),
+            np.array([0, 1], np.int32), bounds3, blocks3,
+            (False, False, False), 1, opts,
+        )
+        _core2d.ghost_box_standard(
+            np.array([[0.25, 0.25]]), np.array([0], np.int32),
+            bounds2, blocks2, (False, False), 1, opts,
+            np.array([[0.75, 0.75]]),
+        )
+        print('OK R5 direct native safety')
+    '''
+    completed = subprocess.run(
+        [sys.executable, '-c', textwrap.dedent(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, (
+        f'R5 native safety subprocess returned {completed.returncode}\n'
+        f'stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}'
+    )
+    assert completed.stdout.strip() == 'OK R5 direct native safety'
+
+
+def test_native_portable_safety_arithmetic_in_subprocess() -> None:
+    script = r'''
+        import math
+        import numpy as np
+        from pyvoro2 import _core, _core2d
+
+        opts = (False, False, False)
+        unsafe_x = 6.287573474728336e-06
+        safe_x = 6.287573474728343e-06
+        delta_y = 7.776015676417624e-06
+        points2_unsafe = np.array([[0.0, delta_y], [unsafe_x, 0.0]])
+        points2_safe = np.array([[0.0, delta_y], [safe_x, 0.0]])
+        points3_unsafe = np.column_stack(
+            (points2_unsafe, np.full(2, 0.5))
+        )
+        points3_safe = np.column_stack((points2_safe, np.full(2, 0.5)))
+        u = 9.999999998039799e-06
+        tiny = 1.2705494208814505e-21
+        dy = 1.9800000000000001e-10
+        split2_unsafe = np.array([[u, dy], [-tiny, 0.0]])
+        split3_unsafe = np.column_stack(
+            (split2_unsafe, np.full(2, 0.5))
+        )
+
+        def require_value_error(label, case, match=None):
+            try:
+                case()
+            except ValueError as exc:
+                if match is not None and match not in str(exc):
+                    raise
+            else:
+                raise SystemExit(f'{label}: missing Python ValueError')
+
+        require_value_error(
+            'multidimensional-2d',
+            lambda: _core2d.compute_box_standard(
+                points2_unsafe, np.array([0, 1], np.int32),
+                ((0.0, 1.0),) * 2, (1, 1), (False, False), 1, opts,
+            ),
+        )
+        require_value_error(
+            'multidimensional-3d',
+            lambda: _core.compute_box_standard(
+                points3_unsafe, np.array([0, 1], np.int32),
+                ((0.0, 1.0),) * 3, (1, 1, 1),
+                (False, False, False), 1, opts,
+            ),
+        )
+        require_value_error(
+            'split-coordinate-2d',
+            lambda: _core2d.compute_box_standard(
+                split2_unsafe, np.array([0, 1], np.int32),
+                ((-1.0, 1.0),) * 2, (1, 1), (False, False), 1, opts,
+            ),
+            'backend-unsafe',
+        )
+        require_value_error(
+            'split-coordinate-3d',
+            lambda: _core.compute_box_standard(
+                split3_unsafe, np.array([0, 1], np.int32),
+                ((-1.0, 1.0),) * 3, (1, 1, 1),
+                (False, False, False), 1, opts,
+            ),
+            'backend-unsafe',
+        )
+
+        _core2d.compute_box_standard(
+            points2_safe, np.array([0, 1], np.int32),
+            ((0.0, 1.0),) * 2, (1, 1), (False, False), 1, opts,
+        )
+        _core.compute_box_standard(
+            points3_safe, np.array([0, 1], np.int32),
+            ((0.0, 1.0),) * 3, (1, 1, 1),
+            (False, False, False), 1, opts,
+        )
+
+        span = math.ldexp(1e-5, 63)
+        require_value_error(
+            'signed-int64-bin-boundary',
+            lambda: _core._test_rectangular_safety_candidate_count(
+                np.array([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]),
+                ((0.0, span),) * 3,
+                (False, False, False),
+                np.empty((0, 3)),
+            ),
+            'more sparse bins',
+        )
+
+        tiny_params = (1e-110, 0.0, 1e-110, 0.0, 0.0, 1e-110)
+        require_value_error(
+            'nonfinite-periodic-safety-geometry',
+            lambda: _core.compute_periodic_standard(
+                np.zeros((2, 3)), np.array([0, 1], np.int32),
+                tiny_params, (1, 1, 1), 1, opts,
+            ),
+        )
+        print('OK portable native safety arithmetic')
+    '''
+    completed = subprocess.run(
+        [sys.executable, '-c', textwrap.dedent(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, (
+        f'portable safety subprocess returned {completed.returncode}\n'
+        f'stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}'
+    )
+    assert completed.stdout.strip() == 'OK portable native safety arithmetic'
+
+
+def test_native_sparse_rectangular_scanner_keeps_large_span_locality() -> None:
+    bounds = ((0.0, 200.0),) * 3
+    periodic = (True, False, False)
+    axis = 1.000001 + 1.1e-5 * np.arange(17)
+    points = np.array(list(product(axis, repeat=3)), dtype=np.float64)
+    empty = np.empty((0, 3), dtype=np.float64)
+
+    within_count = _core._test_rectangular_safety_candidate_count(
+        points,
+        bounds,
+        periodic,
+        empty,
+    )
+    cross_count = _core._test_rectangular_safety_candidate_count(
+        points[::2],
+        bounds,
+        periodic,
+        points[1::2],
+    )
+    assert within_count < 1_000_000
+    assert cross_count < 1_000_000
+
+    located = _core.locate_box_standard(
+        points,
+        np.arange(len(points), dtype=np.int32),
+        bounds,
+        (1, 1, 1),
+        periodic,
+        1,
+        empty,
+    )
+    assert all(value.shape[0] == 0 for value in located)
+
+
+def test_native_sparse_key_overflow_fails_structurally_before_insertion() -> None:
+    points = np.array([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]])
+    with pytest.raises(ValueError, match='more sparse bins'):
+        _core.locate_box_standard(
+            points,
+            np.arange(len(points), dtype=np.int32),
+            ((0.0, 1e100),) * 3,
+            (1, 1, 1),
+            (True, False, False),
+            1,
+            np.empty((0, 3), dtype=np.float64),
+        )
+
+
+def test_native_binary64_certificate_encloses_fixed_fraction_witness() -> None:
+    bounds_raw, bins_raw = _core._test_periodic_safety_certificate(
+        NATIVE_BINARY64_WITNESS_PARAMS
+    )
+    bounds = tuple(map(float, bounds_raw))
+    bins = tuple(map(int, bins_raw))
+    exact = _fraction_coefficient_bounds(NATIVE_BINARY64_WITNESS_PARAMS)
+
+    assert all(
+        _as_fraction(bound) >= expected
+        for bound, expected in zip(bounds, exact)
+    )
+    assert exact[0] > Fraction(1, 4)
+    assert _as_fraction(float.fromhex('0x1.fffffffffffeep-3')) < exact[0]
+    assert bins == (3, 146, 10045)
+
+
+@pytest.mark.parametrize('expected_bins', [1, 2, 3, 4])
+def test_native_certified_layout_covers_small_bin_counts(
+    expected_bins: int,
+) -> None:
+    diagonal = (expected_bins + 0.5) * 1e-5
+    params = (diagonal, 0.0, diagonal, 0.0, 0.0, diagonal)
+    bounds_raw, bins_raw = _core._test_periodic_safety_certificate(params)
+    exact = _fraction_coefficient_bounds(params)
+
+    assert tuple(map(int, bins_raw)) == (expected_bins,) * 3
+    assert all(
+        _as_fraction(float(bound)) >= expected
+        for bound, expected in zip(bounds_raw, exact)
+    )
+
+
+@pytest.mark.parametrize('denominator', [2, 3, 4])
+def test_native_certified_bounds_cover_near_rational_transitions(
+    denominator: int,
+) -> None:
+    diagonal = denominator * 1e-5
+    diagonals = []
+    for direction in (0.0, None, math.inf):
+        value = diagonal
+        if direction is not None:
+            for _ in range(16):
+                value = np.nextafter(value, direction)
+        diagonals.append(float(value))
+
+    observed_bins = []
+    for value in diagonals:
+        params = (value, 0.0, value, 0.0, 0.0, value)
+        bounds_raw, bins_raw = _core._test_periodic_safety_certificate(params)
+        exact = _fraction_coefficient_bounds(params)
+        bins = tuple(map(int, bins_raw))
+        observed_bins.append(bins[0])
+        assert all(
+            _as_fraction(float(bound)) >= expected
+            for bound, expected in zip(bounds_raw, exact)
+        )
+        assert all(
+            count <= _fraction_floor(1 / expected)
+            for count, expected in zip(bins, exact)
+        )
+
+    assert observed_bins == [denominator - 1, denominator - 1, denominator]
+
+
+def test_native_certified_layout_retains_subnormal_positive_bounds() -> None:
+    params = (1e308, 0.0, 1e308, 0.0, 0.0, 1e308)
+    bounds_raw, bins_raw = _core._test_periodic_safety_certificate(params)
+    bounds = tuple(map(float, bounds_raw))
+
+    assert all(0.0 < bound < np.finfo(np.float64).tiny for bound in bounds)
+    assert tuple(map(int, bins_raw)) == (1 << 53,) * 3
+    assert all(
+        _as_fraction(bound) >= expected
+        for bound, expected in zip(bounds, _fraction_coefficient_bounds(params))
+    )
+
+
+def test_native_uncertain_key_alias_budget_is_cumulative() -> None:
+    assert _core._test_periodic_key_alias_budget(
+        [1, 500_001, 500_001]
+    ) == 1_000_000
+    with pytest.raises(ValueError, match='key aliases.*budget'):
+        _core._test_periodic_key_alias_budget([1, 500_001, 500_002])
+    with pytest.raises(ValueError, match='at least one certified key'):
+        _core._test_periodic_key_alias_budget([0])
+
+
+def test_native_interval_keys_cover_boundaries_and_periodic_seams() -> None:
+    diagonal = math.ldexp(1.0, -14)
+    boundary_params = (diagonal, 0.0, diagonal, 0.0, 0.0, diagonal)
+    _bounds, bins_raw = _core._test_periodic_safety_certificate(
+        boundary_params
+    )
+    bins = tuple(map(int, bins_raw))
+    boundary_point = (diagonal / 2.0,) * 3
+    boundary_keys = {
+        tuple(map(int, key))
+        for key in _core._test_periodic_safety_keys(
+            boundary_point, boundary_params
+        )
+    }
+    assert bins == (6, 6, 6)
+    assert (
+        _fraction_periodic_key(boundary_point, boundary_params, bins)
+        in boundary_keys
+    )
+    assert {key[0] for key in boundary_keys} == {2, 3}
+    assert {key[1] for key in boundary_keys} == {2, 3}
+    assert {key[2] for key in boundary_keys} == {2, 3}
+
+    seam_params = (1.0, 0.5, 1.0, 0.25, -0.5, 1.0)
+    _bounds, seam_bins_raw = _core._test_periodic_safety_certificate(
+        seam_params
+    )
+    seam_bins = tuple(map(int, seam_bins_raw))
+    # This nonzero Cartesian point has exact fractional coordinate (0, 1, 0).
+    seam_point = (0.5, 1.0, 0.0)
+    seam_keys = {
+        tuple(map(int, key))
+        for key in _core._test_periodic_safety_keys(seam_point, seam_params)
+    }
+    assert _fraction_periodic_key(seam_point, seam_params, seam_bins) in seam_keys
+    assert {key[0] for key in seam_keys} == {0, seam_bins[0] - 1}
+    assert {key[1] for key in seam_keys} == {0, seam_bins[1] - 1}
+
+
+def test_native_inclusive_threshold_and_false_positive_halo() -> None:
+    params = (1.0, 0.0, 1.0, 0.0, 0.0, 1.0)
+    denominator = 1 << 43
+    boundary = np.array(
+        [79091395 / denominator, 38492551 / denominator, 1 / denominator],
+        dtype=np.float64,
+    )
+    exact_boundary_squared = sum(
+        (_as_fraction(value) ** 2 for value in boundary), Fraction()
+    )
+    assert exact_boundary_squared == NATIVE_SAFETY_DISTANCE_SQUARED
+
+    inside = boundary.copy()
+    inside[0] = np.nextafter(inside[0], 0.0)
+    outside_one_ulp = boundary.copy()
+    outside_one_ulp[0] = np.nextafter(outside_one_ulp[0], math.inf)
+    outside_two_ulps = outside_one_ulp.copy()
+    outside_two_ulps[0] = np.nextafter(outside_two_ulps[0], math.inf)
+
+    origin = (0.0, 0.0, 0.0)
+    assert _fraction_periodic_pair_is_unsafe(origin, inside, params)
+    assert _fraction_periodic_pair_is_unsafe(origin, boundary, params)
+    assert not _fraction_periodic_pair_is_unsafe(origin, outside_one_ulp, params)
+    assert not _fraction_periodic_pair_is_unsafe(origin, outside_two_ulps, params)
+    assert _core._test_periodic_pair_is_unsafe(origin, inside, params)
+    assert _core._test_periodic_pair_is_unsafe(origin, boundary, params)
+    # The outward interval deliberately rejects the first safe binary64 point.
+    assert _core._test_periodic_pair_is_unsafe(origin, outside_one_ulp, params)
+    assert not _core._test_periodic_pair_is_unsafe(origin, outside_two_ulps, params)
+
+
+@pytest.mark.parametrize(
+    ('left', 'right', 'params'),
+    [
+        (
+            NATIVE_LARGE_SHIFT_WITNESS_LEFT,
+            (0.0, 0.0, 0.0),
+            NATIVE_BINARY64_WITNESS_PARAMS,
+        ),
+        (
+            (0.75, 0.0, 0.0),
+            (0.25, np.nextafter(1.0, 0.0), np.nextafter(1.0, 0.0)),
+            (1.0, 1.5, 1.0, 0.0, 0.0, 1.0),
+        ),
+    ],
+    ids=['large-shift-13530--68-1', 'shift-2--1--1'],
+)
+def test_native_outward_shift_boxes_reach_unsafe_images(
+    left: tuple[float, float, float],
+    right: tuple[float, float, float],
+    params: tuple[float, ...],
+) -> None:
+    assert _fraction_periodic_pair_is_unsafe(left, right, params)
+    assert _core._test_periodic_pair_is_unsafe(left, right, params)
+
+
+@pytest.mark.parametrize(
+    'path',
+    tuple(
+        path
+        for path in PERIODIC_CONSTRUCTOR_PATHS
+        if path.operation != 'ghost'
+    ),
+    ids=lambda p: p.label,
+)
+def test_native_large_shift_persistent_pair_fails_before_insertion(
+    path: NativePath,
+) -> None:
+    points = np.array(
+        [NATIVE_LARGE_SHIFT_WITNESS_LEFT, (0.0, 0.0, 0.0)],
+        dtype=np.float64,
+    )
+    with pytest.raises(ValueError, match='backend-unsafe periodic pair'):
+        getattr(path.module, path.name)(
+            *_native_args(
+                path,
+                points=points,
+                cell_params=NATIVE_BINARY64_WITNESS_PARAMS,
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    'path',
+    tuple(
+        path
+        for path in PERIODIC_CONSTRUCTOR_PATHS
+        if path.operation == 'ghost'
+    ),
+    ids=lambda p: p.label,
+)
+def test_native_large_shift_ghost_pair_fails_before_insertion(
+    path: NativePath,
+) -> None:
+    points = np.zeros((1, 3), dtype=np.float64)
+    query = np.array([NATIVE_LARGE_SHIFT_WITNESS_LEFT], dtype=np.float64)
+    with pytest.raises(ValueError, match='backend-unsafe periodic ghost'):
+        getattr(path.module, path.name)(
+            *_native_args(
+                path,
+                points=points,
+                ids=np.array([0], dtype=np.int32),
+                radii=np.zeros(1),
+                queries=query,
+                ghost_radii=np.zeros(1),
+                cell_params=NATIVE_BINARY64_WITNESS_PARAMS,
+            )
+        )
+
+
+def test_native_interval_classifier_matches_fixed_seed_fraction_oracle() -> None:
+    rng = np.random.default_rng(20260813)
+    exact_unsafe_count = 0
+    false_negative_count = 0
+    false_positive_count = 0
+
+    for case in range(256):
+        diagonal = rng.uniform(0.5, 2.0, size=3)
+        if case % 4 < 2:
+            off_diagonal = (0.0, 0.0, 0.0)
+        else:
+            off_diagonal = tuple(rng.uniform(-2.0, 2.0, size=3))
+        params = (
+            float(diagonal[0]),
+            float(off_diagonal[0]),
+            float(diagonal[1]),
+            float(off_diagonal[1]),
+            float(off_diagonal[2]),
+            float(diagonal[2]),
+        )
+        left = rng.uniform(-1.0, 1.0, size=3)
+        shift = rng.integers(-8, 9, size=3)
+        lattice = np.array(
+            [
+                [params[0], 0.0, 0.0],
+                [params[1], params[2], 0.0],
+                [params[3], params[4], params[5]],
+            ],
+            dtype=np.float64,
+        )
+        residual = rng.normal(size=3)
+        boundary_scale = 1.0 - 1e-8 if case % 2 == 0 else 1.0 + 1e-8
+        residual *= (
+            NATIVE_SAFETY_DISTANCE
+            * boundary_scale
+            / np.linalg.norm(residual)
+        )
+        right = left - shift @ lattice + residual
+
+        expected = _fraction_periodic_pair_is_unsafe(left, right, params)
+        actual = bool(
+            _core._test_periodic_pair_is_unsafe(left, right, params)
+        )
+        exact_unsafe_count += int(expected)
+        false_negative_count += int(expected and not actual)
+        false_positive_count += int(actual and not expected)
+
+    assert exact_unsafe_count == 128
+    assert false_negative_count == 0
+    assert false_positive_count == 0
+
+
+def test_native_candidate_scanner_matches_fixed_seed_fraction_oracle() -> None:
+    rng = np.random.default_rng(20260814)
+    empty = np.empty((0, 3), dtype=np.float64)
+    statistics = {
+        'persistent': {
+            'total': 0,
+            'exact_unsafe': 0,
+            'false_negative': 0,
+            'false_positive': 0,
+        },
+        'ghost': {
+            'total': 0,
+            'exact_unsafe': 0,
+            'false_negative': 0,
+            'false_positive': 0,
+        },
+    }
+    cell_kinds = {'diagonal': 0, 'sheared': 0}
+    pair_kinds = {'interior': 0, 'seam': 0}
+
+    for case in range(256):
+        diagonal = rng.uniform(0.75, 2.0, size=3)
+        is_sheared = case % 4 >= 2
+        if is_sheared:
+            off_diagonal = rng.uniform(-0.35, 0.35, size=3)
+            cell_kinds['sheared'] += 1
+        else:
+            off_diagonal = np.zeros(3, dtype=np.float64)
+            cell_kinds['diagonal'] += 1
+        params = (
+            float(diagonal[0]),
+            float(off_diagonal[0]),
+            float(diagonal[1]),
+            float(off_diagonal[1]),
+            float(off_diagonal[2]),
+            float(diagonal[2]),
+        )
+
+        direction = rng.normal(size=3)
+        is_seam = (case // 4) % 2 == 1
+        if is_seam:
+            # Make the x image cross the periodic seam.  Keeping the left
+            # endpoint one binary64 step below bx also exercises uncertain
+            # seam-key aliases without violating half-open containment.
+            direction[0] = abs(direction[0]) + 0.5
+        direction /= np.linalg.norm(direction)
+        boundary_scale = 1.0 - 1e-8 if case % 2 == 0 else 1.0 + 1e-8
+        residual = (
+            float(NATIVE_SAFETY_DISTANCE)
+            * boundary_scale
+            * direction
+        )
+
+        if is_seam:
+            pair_kinds['seam'] += 1
+            left = np.array(
+                [
+                    np.nextafter(diagonal[0], 0.0),
+                    rng.uniform(0.25, 0.75) * diagonal[1],
+                    rng.uniform(0.25, 0.75) * diagonal[2],
+                ],
+                dtype=np.float64,
+            )
+            right = np.array(
+                [residual[0], left[1] + residual[1], left[2] + residual[2]],
+                dtype=np.float64,
+            )
+        else:
+            pair_kinds['interior'] += 1
+            left = rng.uniform(0.25, 0.75, size=3) * diagonal
+            right = left + residual
+            left = np.asarray(left, dtype=np.float64)
+            right = np.asarray(right, dtype=np.float64)
+
+        assert np.all(left >= 0.0)
+        assert np.all(left < diagonal)
+        assert np.all(right >= 0.0)
+        assert np.all(right < diagonal)
+        expected = _fraction_periodic_pair_is_unsafe(left, right, params)
+
+        dispatches = (
+            (
+                'persistent',
+                np.vstack((left, right)),
+                empty,
+                'backend-unsafe periodic pair',
+            ),
+            (
+                'ghost',
+                left[None, :],
+                right[None, :],
+                'backend-unsafe periodic ghost',
+            ),
+        )
+        for label, points, inserted_queries, message in dispatches:
+            actual = _native_scanner_reports_unsafe(
+                points,
+                inserted_queries,
+                params,
+                expected_message=message,
+            )
+            statistics[label]['total'] += 1
+            statistics[label]['exact_unsafe'] += int(expected)
+            statistics[label]['false_negative'] += int(
+                expected and not actual
+            )
+            statistics[label]['false_positive'] += int(
+                actual and not expected
+            )
+
+    expected_statistics = {
+        'total': 256,
+        'exact_unsafe': 128,
+        'false_negative': 0,
+        'false_positive': 0,
+    }
+    assert cell_kinds == {'diagonal': 128, 'sheared': 128}
+    assert pair_kinds == {'interior': 128, 'seam': 128}
+    assert statistics['persistent'] == expected_statistics
+    assert statistics['ghost'] == expected_statistics
+
+
+def test_native_triclinic_sparse_scanner_has_exact_local_work_counts() -> None:
+    params = (2.0, 0.25, 2.0, 0.1, -0.2, 2.0)
+    axis = 0.2 + 2.1e-5 * np.arange(17)
+    points = np.array(list(product(axis, repeat=3)), dtype=np.float64)
+    empty = np.empty((0, 3), dtype=np.float64)
+
+    within_count = _core._test_periodic_safety_candidate_count(
+        points, params, empty
+    )
+    cross_count = _core._test_periodic_safety_candidate_count(
+        points[::2], params, points[1::2]
+    )
+
+    assert len(points) == 4913
+    assert within_count == 1660
+    assert cross_count == 1567
+    assert within_count < len(points) * (len(points) - 1) // 2
+
+
+def test_native_seam_aliases_are_deduplicated_for_persistent_and_ghost_scans(
+) -> None:
+    params = (2.0, 0.0, 2.0, 0.0, 0.0, 2.0)
+    left = []
+    right = []
+    for index in range(64):
+        y = 0.1 + index * 0.025
+        left.append((0.0, y, 0.2))
+        right.append(
+            (
+                np.nextafter(2.0, 0.0),
+                y + 8e-6,
+                0.2 + 8e-6,
+            )
+        )
+    persistent = np.asarray(left, dtype=np.float64)
+    ghosts = np.asarray(right, dtype=np.float64)
+    empty = np.empty((0, 3), dtype=np.float64)
+
+    within_count = _core._test_periodic_safety_candidate_count(
+        np.vstack((persistent, ghosts)), params, empty
+    )
+    cross_count = _core._test_periodic_safety_candidate_count(
+        persistent, params, ghosts
+    )
+
+    assert within_count == 64
+    assert cross_count == 64
+
+
+def test_native_binary64_triclinic_certificate_in_subprocess() -> None:
+    script = r'''
+        import numpy as np
+        from pyvoro2 import _core
+
+        params = (
+            0.00017856460945140374,
+            -5.725280006612657,
+            1.65273947780994,
+            -391.7349918299756,
+            113.08370683864604,
+            0.10045884903938922,
+        )
+        left = (
+            2.7785562527544788e-05,
+            0.6974223475701162,
+            0.1004588490393892,
+        )
+        right = (0.0, 0.0, 0.0)
+        bounds, bins = _core._test_periodic_safety_certificate(params)
+        if not (bounds[0] > 0.25 and tuple(bins) == (3, 146, 10045)):
+            raise SystemExit('binary64 certificate did not enclose witness')
+        if not _core._test_periodic_pair_is_unsafe(left, right, params):
+            raise SystemExit('large-shift witness was missed')
+
+        points = np.array([left, right], dtype=np.float64)
+        try:
+            _core.compute_periodic_standard(
+                points,
+                np.array([0, 1], dtype=np.int32),
+                params,
+                (1, 1, 1),
+                1,
+                (False, False, False),
+            )
+        except ValueError as exc:
+            if 'backend-unsafe periodic pair' not in str(exc):
+                raise
+        else:
+            raise SystemExit('persistent witness reached insertion')
+
+        try:
+            _core.ghost_periodic_standard(
+                np.zeros((1, 3)),
+                np.array([0], dtype=np.int32),
+                params,
+                (1, 1, 1),
+                1,
+                (False, False, False),
+                np.array([left], dtype=np.float64),
+            )
+        except ValueError as exc:
+            if 'backend-unsafe periodic ghost' not in str(exc):
+                raise
+        else:
+            raise SystemExit('ghost witness reached insertion')
+        print('OK R5 binary64 triclinic certificate')
+    '''
+    completed = subprocess.run(
+        [sys.executable, '-c', textwrap.dedent(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, (
+        f'binary64 certificate subprocess returned {completed.returncode}\n'
+        f'stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}'
+    )
+    assert completed.stdout.strip() == 'OK R5 binary64 triclinic certificate'
+
+
+def test_native_shift_enumeration_budget_fails_structurally() -> None:
+    params = (1e-8, 0.0, 1e-8, 0.0, 0.0, 1e-8)
+    with pytest.raises(ValueError, match='shift enumeration.*budget'):
+        _core._test_periodic_pair_is_unsafe(
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+            params,
+        )
+
+
+def test_native_uncertifiable_keys_and_shifts_fail_structurally() -> None:
+    identity = (1.0, 0.0, 1.0, 0.0, 0.0, 1.0)
+    with pytest.raises(ValueError, match='key.*cannot certify'):
+        _core._test_periodic_safety_keys((1e308, 0.0, 0.0), identity)
+    with pytest.raises(ValueError, match='shift enumeration.*exact binary64'):
+        _core._test_periodic_pair_is_unsafe(
+            (1e308, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+            identity,
+        )
+    with pytest.raises(ValueError, match='cannot certify.*inverse basis'):
+        _core._test_periodic_safety_certificate(
+            (1e-310, 0.0, 1e-310, 0.0, 0.0, 1e-310)
+        )

@@ -26,6 +26,7 @@ Each record has a status:
 10. [Strict native construction preconditions](0010-native-construction-preconditions.md)
 11. [Strict public input and ownership contract](0011-strict-input-and-ownership-contract.md)
 12. [Certified periodic nearest-image geometry](0012-certified-periodic-image-geometry.md)
+13. [Central generator preparation and mandatory backend safety](0013-central-generator-preparation-and-backend-safety.md)
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the

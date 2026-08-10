@@ -260,7 +260,7 @@ def test_planar_locate_remaps_owner_ids(fake_core) -> None:
 
 def test_planar_ghost_cells_remap_neighbor_ids(fake_core) -> None:
     pts = np.array([[0.0, 0.0], [1.0, 0.0]], dtype=float)
-    queries = np.array([[0.5, 0.5], [9.0, 9.0]], dtype=float)
+    queries = np.array([[0.5, 0.5], [1.5, 0.5]], dtype=float)
     out = pv2.ghost_cells(
         pts,
         queries,
@@ -424,7 +424,15 @@ def test_planar_compute_tessellation_check_raise(fake_core) -> None:
                     {'adjacent_cell': -1, 'vertices': [2, 3]},
                     {'adjacent_cell': -1, 'vertices': [3, 0]},
                 ],
-            }
+            },
+            {
+                'id': 1,
+                'area': 0.0,
+                'site': [0.9, 0.5],
+                'vertices': [],
+                'adjacency': [],
+                'edges': [],
+            },
         ]
 
     fake_core.compute_box_standard = broken_compute_box_standard

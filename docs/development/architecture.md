@@ -235,7 +235,11 @@ preflight validates converted arrays and controls, checks every derived C++
 `int` and byte-count operation, proves the finite constructor arithmetic used
 by the current vendored sources, and enforces the aggregate 1-GiB cap on known
 eager construction allocations. The direct `_core` and `_core2d` routes are
-therefore defensive even when the public wrapper is bypassed. Exact original
+therefore defensive even when the public wrapper is bypassed. Their preflight
+also requires primary half-open coordinates for every inserted generator and
+uses local complete candidate scans to reject persistent and temporary-ghost
+pairs within the fixed backend-safety floor before any `put()`. Locate queries
+are not insertion-checked. Exact original
 Python type semantics remain the wrapper's responsibility because pybind11
 conversion may already have erased that information. ADR 0010 fixes the
 ordering, resource policy, source-trace requirement, and R3-A scope.
@@ -296,14 +300,40 @@ a capped incumbent-seeding hint. If exact certification would exceed the
 frozen private candidate budget or signed-int64 shift contract, the operation
 raises a structured private runtime error without an approximate fallback.
 
-When periodic wrapping is enabled (`wrap=True`, or `duplicate_wrap=True` in
-forward operations), periodic duplicate distance evaluation consumes the same
-primitive. With wrapping disabled, the established unwrapped Cartesian check
-is preserved. R4 does not redesign the candidate scanner or public duplicate
-policy. Complete periodic seam scanning, mandatory backend-safety policy
-independent of `duplicate_wrap`, and generator containment remain R5. ADR 0012
-fixes the exact problem, proof box, tie rule, resource/cache policy, and this
-R4/R5 boundary.
+Periodic duplicate distance evaluation consumes the same primitive. Mandatory
+forward safety always wraps; `duplicate_wrap=False` selects the established
+unwrapped Cartesian distance only for optional user-threshold diagnostics.
+ADR 0012 fixes the exact problem, proof box, tie rule, and resource/cache
+policy.
+
+### Central generator preparation and duplicate safety
+
+The private shared module `_internal.generator_preparation` is the single
+native-facing boundary for persistent generators in `compute`, `locate`, and
+`ghost_cells`, and for temporary ghost generators. It builds a frozen owned
+snapshot of input and primary Cartesian coordinates, primary native
+coordinates, remap shifts, internal and external IDs, radii, and operation/domain
+metadata. Box points are not wrapped; rectangular/orthorhombic periodic axes
+use their domain remapper; a triclinic operation reuses one validated periodic
+snapshot for Cartesian/internal conversion and coupled remapping.
+
+Non-periodic inserted coordinates satisfy `lo <= x < hi`; triclinic native
+coordinates satisfy `[0, bx) × [0, by) × [0, bz)`. Locate queries are not
+inserted and remain outside this containment rule. Mandatory pair safety uses
+the fixed squared floor `1e-10` inclusively and the R4 exact key for periodic
+classification. Public duplicate modes and thresholds control only strict
+safe-above-floor diagnostics. External IDs remain Python provenance; native
+storage uses `0..n-1`.
+
+Candidate generation is separate from distance classification. Rectangular
+domains use primary-coordinate spatial buckets with neighbor wrapping only on
+periodic axes. Triclinic cells bucket primary fractional coordinates using
+exact source-binary64 keys and inverse-basis column bounds. Both feed R4 for
+final periodic classification and avoid unconditional all-pairs work for
+ordinary well-separated inputs. Raw standard compute output must contain every
+internal ID exactly once; raw power output may contain a unique subset for
+hidden cells. ADR 0013 fixes this preparation, policy, provenance, ghost,
+native-backstop, and R5/R8 boundary.
 
 ### Neutral weight/radius transforms
 

@@ -186,25 +186,34 @@ active-set workflow are available explicitly from
 
 ## Numerical safety notes
 
-Voro++ uses fixed absolute tolerances internally, including a hard
-near-duplicate check around approximately `1e-5` in container distance units.
-Very small or very large coordinate systems can therefore cause process
-termination inside the backend or loss of geometric accuracy.
+Voro++ uses fixed absolute tolerances internally. pyvoro2 always rejects
+generator pairs whose squared distance is at most `1e-10` before native
+insertion; very small or very large coordinate systems can still lose
+geometric accuracy.
 
 pyvoro2 does not silently rescale coordinates. Rescale explicitly when using
 unusual units.
 
-A Python-side near-duplicate precheck can run before the native call:
+A user policy can add a diagnostic range above the mandatory `1e-5` safety
+distance:
 
 ```python
-result = pv.compute(points, domain=cell, duplicate_check='raise')
+result = pv.compute(
+    points,
+    domain=cell,
+    duplicate_check='raise',
+    duplicate_threshold=1e-3,
+)
 ```
 
-When periodic wrapping is enabled with `duplicate_wrap=True`, distances for
-candidate pairs evaluated by this optional scanner use certified minimum-image
-geometry. With wrapping disabled, the established unwrapped Cartesian check
-is preserved. Complete seam scanning and mandatory safety independent of
-`duplicate_wrap` remain tracked separately in the v0.8 remediation plan.
+`duplicate_check='off'`, `warn`, and `raise` affect only safe pairs below the
+configured user threshold. Mandatory violations always raise. For periodic
+domains mandatory safety always uses certified minimum-image geometry;
+`duplicate_wrap=False` changes only the optional diagnostic metric.
+
+Inserted generators must lie in each non-periodic half-open interval
+`[lo, hi)`; periodic axes are remapped. This includes temporary ghost
+generators. Locate query points themselves are not inserted.
 
 For stricter post-hoc checks, see:
 

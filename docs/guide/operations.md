@@ -19,45 +19,42 @@ result schema, and wrapper conveniences.
 
 ## Coordinate scale and numerical safety
 
-Voro++ uses a few **fixed absolute tolerances** internally (notably a hard
-near-duplicate check around `~1e-5` in the coordinate units of the container).
-This is fast and robust for “order-1” coordinate systems, but it means that
-very small unit systems can be problematic.
-
-If your coordinates are in SI meters for atomistic systems (typical distances
-around `1e-10`), Voro++ may treat distinct sites as “too close” and terminate
-the process.
+Voro++ uses **fixed absolute tolerances** internally. pyvoro2 reserves the
+distance through `1e-5` (squared distance at most `1e-10`) as a mandatory
+backend-safety regime and rejects any generator pair there before insertion.
+This prevents public duplicate options from admitting a known fatal/invalid
+native pair, but very small unit systems can still be unsuitable for meaningful
+geometry.
 
 pyvoro2 intentionally does **not** rescale inputs automatically.
 If you work in very small or very large units, **rescale explicitly** before
 calling `compute`, `locate`, or `ghost_cells` (for example, multiply all
 coordinates and domain vectors by a constant).
 
-As an additional safety net, you can ask pyvoro2 to run a fast **Python-side**
-near-duplicate pre-check before entering the C++ layer:
+You can also request an optional **Python-side** policy above the mandatory
+floor:
 
 ```python
 result = pyvoro2.compute(
     points,
     domain=cell,
-    duplicate_check='raise',  # recommended ("warn" is diagnostic only)
+    duplicate_check='raise',
+    duplicate_threshold=1e-3,
 )
 ```
 
-This checks candidate point pairs closer than ~`1e-5` (in your coordinate
-units). When periodic wrapping is enabled with `duplicate_wrap=True`,
-distances for pairs that the scanner evaluates use certified minimum-image
-geometry. With wrapping disabled, the established unwrapped Cartesian check
-is preserved.
+`duplicate_check='off'` disables only this additional policy. `warn` warns for
+a safe pair strictly below the user threshold and then proceeds; `raise`
+raises `DuplicateError`. A threshold at or below `1e-5` adds no optional range.
+`duplicate_wrap=False` selects unwrapped Cartesian distance only for the
+optional policy. Mandatory periodic safety always uses certified minimum-image
+geometry, including seams, corners, partial periodicity, and triclinic cells.
 
-The current scanner is not yet complete across every periodic seam, and the
-public modes, threshold, and `duplicate_wrap` options do not yet impose a mandatory
-backend-safety floor. `duplicate_check='raise'` reduces risk but is not a
-process-safety guarantee; complete candidate generation and mandatory safety
-independent of `duplicate_wrap` are v0.8 R5 work.
-
-Note: `duplicate_check='warn'` only reports the issue and still enters the C++ layer.
-If your points truly violate Voro++'s hard threshold, the process may still terminate.
+All inserted generators also obey native containment. On every non-periodic
+axis the valid interval is half-open: `lo <= x < hi`. Periodic axes are remapped
+to their primary interval. This applies to the persistent sites used by all
+three operations and to temporary `ghost_cells` generators. Locate queries are
+not inserted and retain their existing outside-query behavior.
 
 ## Native construction controls and rejection
 
@@ -228,6 +225,11 @@ ghost = pyvoro2.ghost_cells(points, queries, domain=cell)
 ```
 
 Each returned record describes the polyhedron of the ghost cell.
+
+A ghost query is temporarily inserted. It must therefore lie in every
+non-periodic half-open interval and be safely distinct from the persistent
+generators. An outside non-periodic ghost now raises `ValueError`; a valid
+inserted ghost may still produce an empty cell geometrically.
 
 ### `query` vs `site` in periodic domains
 

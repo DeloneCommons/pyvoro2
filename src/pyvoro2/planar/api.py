@@ -10,17 +10,18 @@ import numpy as np
 
 from .._internal.cell_output import add_empty_cells_inplace, remap_ids_inplace
 from .._internal.inputs import (
-    coerce_id_array,
     coerce_native_block_parameters,
     coerce_nonnegative_scalar_or_vector,
     coerce_nonnegative_vector,
     coerce_point_array,
-    require_internal_id_range,
-    require_planar_ghost_site_id_range,
-    require_query_index_range,
     validate_forward_mode,
     validate_duplicate_check_mode,
     validate_duplicate_options,
+)
+from .._internal.generator_preparation import (
+    prepare_generators,
+    prepare_temporary_generators,
+    validate_compute_internal_ids,
 )
 from .._internal.power_input import ResolvedPowerInput, resolve_power_input
 from .._internal.validation import (
@@ -44,7 +45,6 @@ from .diagnostics import (
     analyze_tessellation,
 )
 from .domains import Box, RectangularCell
-from .duplicates import duplicate_check as _duplicate_check
 from .normalize import normalize_edges, normalize_vertices
 
 _core2d = None
@@ -124,9 +124,9 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, domain: Domain2D) -> None:
     if length_scale < 1e-3:
         warnings.warn(
             'The planar domain length scale appears very small '
-            f'(L≈{length_scale:.3g}). Voro++ uses fixed absolute tolerances '
-            '(~1e-5) and may terminate the process if points are too close in '
-            'these units. Consider rescaling your coordinates before calling '
+            f'(L≈{length_scale:.3g}). pyvoro2 reserves distances through '
+            '1e-5 for backend safety, and Voro++ uses other fixed absolute '
+            'tolerances. Consider rescaling your coordinates before calling '
             'pyvoro2.planar.',
             RuntimeWarning,
             stacklevel=3,
@@ -310,6 +310,10 @@ def compute(
     supplied, must be positive and finite. Points and radii are validated for
     shape and finiteness before construction, and the aggregate estimate of
     known eager native construction allocations may be at most exactly 1 GiB.
+    Generators must lie in each non-periodic half-open interval ``[lo, hi)``;
+    periodic axes are remapped before native dispatch. Backend-unsafe pairs at
+    squared distance at most ``1e-10`` always raise. ``duplicate_check`` and
+    its threshold/wrap options control only diagnostics above that floor.
     """
 
     resolved_output, normalize = _resolve_compute_output(
@@ -409,7 +413,6 @@ def compute(
     )
     pts = coerce_point_array(points, name='points', dim=2)
     n = int(pts.shape[0])
-    require_internal_id_range(n)
     power_input = resolve_power_input(
         mode=mode,
         weights=weights,
@@ -420,6 +423,22 @@ def compute(
 
     geom = geometry2d(domain)
     bounds = geom.native_bounds
+    prepared = prepare_generators(
+        pts,
+        geometry=geom,
+        operation='compute',
+        external_ids=ids,
+        backend_radii=rr,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold_value,
+        duplicate_wrap=duplicate_wrap_value,
+        duplicate_max_pairs=duplicate_max_pairs_value,
+    )
+    pts = prepared.input_points_cart
+    pts_native = prepared.native_points
+    ids_internal = prepared.internal_ids
+    ids_user = prepared.external_ids if ids is not None else None
+    rr = prepared.backend_radii
     _warn_if_scale_suspicious(pts=pts, domain=domain)
     nx, ny = geom.resolve_block_counts(
         n_sites=n,
@@ -466,19 +485,6 @@ def compute(
         if repair_edge_shifts_value:
             validate_edge_shifts_value = True
 
-    ids_internal = np.arange(n, dtype=np.int32)
-    ids_user = coerce_id_array(ids, n=n)
-
-    if duplicate_check != 'off' and n > 1:
-        _duplicate_check(
-            pts,
-            threshold=duplicate_threshold_value,
-            domain=domain,
-            wrap=duplicate_wrap_value,
-            mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=duplicate_max_pairs_value,
-        )
-
     periodic_flags = geom.periodic_axes
     opts = (
         internal_return_vertices,
@@ -489,7 +495,7 @@ def compute(
 
     if mode == 'standard':
         cells = core.compute_box_standard(
-            pts,
+            pts_native,
             ids_internal,
             bounds,
             (nx, ny),
@@ -500,7 +506,7 @@ def compute(
     elif mode == 'power':
         assert rr is not None
         cells = core.compute_box_power(
-            pts,
+            pts_native,
             ids_internal,
             rr,
             bounds,
@@ -509,17 +515,20 @@ def compute(
             init_mem_value,
             opts,
         )
+        validate_compute_internal_ids(cells, n=n, mode=mode)
         if include_empty_value:
             add_empty_cells_inplace(
                 cells,
                 n=n,
-                sites=pts,
+                sites=prepared.primary_points_cart,
                 opts=opts,
                 measure_key='area',
                 boundary_key='edges',
             )
     else:
         raise ValueError(f'unknown mode: {mode}')
+    if mode == 'standard':
+        validate_compute_internal_ids(cells, n=n, mode=mode)
 
     if internal_return_edge_shifts:
         _add_periodic_edge_shifts_inplace(
@@ -643,6 +652,9 @@ def locate(
     semantics; ``block_size`` is positive and finite. Malformed or non-finite
     points, queries, radii, domains, and over-cap known eager native allocation
     estimates raise ``ValueError`` before construction.
+    Generator points use the same half-open containment and mandatory duplicate
+    safety as :func:`compute`; locate queries themselves are not inserted and
+    retain their existing query semantics.
     """
 
     mode = validate_forward_mode(mode)  # type: ignore[assignment]
@@ -674,17 +686,29 @@ def locate(
     q = coerce_point_array(queries, name='queries', dim=2)
 
     n = int(pts.shape[0])
-    require_internal_id_range(n)
     rr: np.ndarray | None = None
     if mode == 'power':
         if radii is None:
             raise ValueError('radii is required for mode="power"')
         rr = coerce_nonnegative_vector(radii, name='radii', n=n)
-    ids_internal = np.arange(n, dtype=np.int32)
-    ids_user = coerce_id_array(ids, n=n)
-
     geom = geometry2d(domain)
     bounds = geom.native_bounds
+    prepared = prepare_generators(
+        pts,
+        geometry=geom,
+        operation='locate',
+        external_ids=ids,
+        backend_radii=rr,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold_value,
+        duplicate_wrap=duplicate_wrap_value,
+        duplicate_max_pairs=duplicate_max_pairs_value,
+    )
+    pts = prepared.input_points_cart
+    pts_native = prepared.native_points
+    ids_internal = prepared.internal_ids
+    ids_user = prepared.external_ids if ids is not None else None
+    rr = prepared.backend_radii
     _warn_if_scale_suspicious(pts=pts, domain=domain)
     nx, ny = geom.resolve_block_counts(
         n_sites=n,
@@ -692,22 +716,12 @@ def locate(
         block_size=block_size_value,
     )
 
-    if duplicate_check != 'off' and n > 1:
-        _duplicate_check(
-            pts,
-            threshold=duplicate_threshold_value,
-            domain=domain,
-            wrap=duplicate_wrap_value,
-            mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=duplicate_max_pairs_value,
-        )
-
     periodic_flags = geom.periodic_axes
     core = _require_core2d()
 
     if mode == 'standard':
         found, owner_id, owner_pos = core.locate_box_standard(
-            pts,
+            pts_native,
             ids_internal,
             bounds,
             (nx, ny),
@@ -718,7 +732,7 @@ def locate(
     elif mode == 'power':
         assert rr is not None
         found, owner_id, owner_pos = core.locate_box_power(
-            pts,
+            pts_native,
             ids_internal,
             rr,
             bounds,
@@ -780,6 +794,10 @@ def ghost_cells(
     semantics; ``block_size`` is positive and finite. Malformed or non-finite
     points, queries, radii, domains, and over-cap known eager native allocation
     estimates raise ``ValueError`` before construction.
+    Both persistent sites and each temporary ghost generator use half-open
+    containment and mandatory duplicate safety. Periodic axes are remapped;
+    an outside non-periodic ghost query raises instead of producing an empty
+    ghost cell.
     """
 
     mode = validate_forward_mode(mode)  # type: ignore[assignment]
@@ -841,8 +859,6 @@ def ghost_cells(
 
     n = int(pts.shape[0])
     m = int(q.shape[0])
-    require_planar_ghost_site_id_range(n)
-    require_query_index_range(m)
 
     rr: np.ndarray | None = None
     gr: np.ndarray | None = None
@@ -858,11 +874,37 @@ def ghost_cells(
             n=m,
             length_name='m',
         )
-    ids_internal = np.arange(n, dtype=np.int32)
-    ids_user = coerce_id_array(ids, n=n)
-
     geom = geometry2d(domain)
     bounds = geom.native_bounds
+    prepared = prepare_generators(
+        pts,
+        geometry=geom,
+        operation='ghost_cells',
+        external_ids=ids,
+        backend_radii=rr,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold_value,
+        duplicate_wrap=duplicate_wrap_value,
+        duplicate_max_pairs=duplicate_max_pairs_value,
+        reserve_ghost_id=True,
+    )
+    temporary = prepare_temporary_generators(
+        q,
+        persistent=prepared,
+        geometry=geom,
+        backend_radii=gr,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold_value,
+        duplicate_wrap=duplicate_wrap_value,
+        duplicate_max_pairs=duplicate_max_pairs_value,
+    )
+    pts = prepared.input_points_cart
+    pts_native = prepared.native_points
+    q_native = temporary.native_points
+    ids_internal = prepared.internal_ids
+    ids_user = prepared.external_ids if ids is not None else None
+    rr = prepared.backend_radii
+    gr = temporary.backend_radii
     _warn_if_scale_suspicious(pts=pts, domain=domain)
     nx, ny = geom.resolve_block_counts(
         n_sites=n,
@@ -881,16 +923,6 @@ def ghost_cells(
         if not return_vertices_value:
             raise ValueError('return_edge_shifts requires return_vertices=True')
 
-    if duplicate_check != 'off' and n > 1:
-        _duplicate_check(
-            pts,
-            threshold=duplicate_threshold_value,
-            domain=domain,
-            wrap=duplicate_wrap_value,
-            mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=duplicate_max_pairs_value,
-        )
-
     periodic_flags = geom.periodic_axes
     opts = (
         return_vertices_value,
@@ -901,20 +933,20 @@ def ghost_cells(
     core = _require_core2d()
     if mode == 'standard':
         cells = core.ghost_box_standard(
-            pts,
+            pts_native,
             ids_internal,
             bounds,
             (nx, ny),
             periodic_flags,
             init_mem_value,
             opts,
-            q,
+            q_native,
         )
     elif mode == 'power':
         assert rr is not None
         assert gr is not None
         cells = core.ghost_box_power(
-            pts,
+            pts_native,
             ids_internal,
             rr,
             bounds,
@@ -922,7 +954,7 @@ def ghost_cells(
             periodic_flags,
             init_mem_value,
             opts,
-            q,
+            q_native,
             gr,
         )
     else:
@@ -935,7 +967,7 @@ def ghost_cells(
             periodic_mask=geom.periodic_axes,
             mode=mode,
             radii=rr,
-            site_positions=pts,
+            site_positions=prepared.primary_points_cart,
             ghost_radii=gr if mode == 'power' else None,
             search=edge_shift_search_value,
             tol=edge_shift_tol_value,

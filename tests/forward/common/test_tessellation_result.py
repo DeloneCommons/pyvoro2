@@ -604,57 +604,26 @@ def test_builder_rejects_duplicate_and_unknown_raw_cells() -> None:
         )
 
 
-def test_omitted_and_explicit_standard_empty_cells_align_identically() -> None:
-    points = np.array([[0.5, 0.5, 0.5], [0.5, 0.5, 0.5]])
-    ids = np.array([20, 10])
+def test_standard_compute_rejects_omitted_native_ids(monkeypatch) -> None:
+    points = np.array([[0.25, 0.5, 0.5], [0.75, 0.5, 0.5]])
     domain = pv.Box(((0.0, 1.0), (0.0, 1.0), (0.0, 1.0)))
-    geometry = {
-        'return_vertices': False,
-        'return_adjacency': False,
-        'return_faces': False,
-    }
-    omitted_cells = pv.compute(
-        points,
-        domain=domain,
-        ids=ids,
-        include_empty=False,
-        output='cells',
-        **geometry,
-    )
-    explicit_cells = pv.compute(
-        points,
-        domain=domain,
-        ids=ids,
-        include_empty=True,
-        output='cells',
-        **geometry,
-    )
 
-    omitted = _build(
-        dimension=3,
-        domain=domain,
-        mode='standard',
-        sites=points,
-        ids=ids,
-        cells=omitted_cells,
-    )
-    explicit = _build(
-        dimension=3,
-        domain=domain,
-        mode='standard',
-        sites=points,
-        ids=ids,
-        cells=explicit_cells,
-    )
+    class MissingIDCore:
+        @staticmethod
+        def compute_box_standard(*args):
+            return [{'id': 0}]
 
-    assert omitted_cells == []
-    assert all(cell.get('empty') is True for cell in explicit_cells)
-    np.testing.assert_array_equal(omitted.empty_mask, [True, True])
-    np.testing.assert_array_equal(explicit.empty_mask, omitted.empty_mask)
-    np.testing.assert_array_equal(omitted.cell_measures, [0.0, 0.0])
-    np.testing.assert_array_equal(
-        explicit.cell_measures, omitted.cell_measures
-    )
+    monkeypatch.setattr(api3d, '_core', MissingIDCore())
+    monkeypatch.setattr(api3d, '_CORE_IMPORT_ERROR', None)
+    with pytest.raises(RuntimeError, match='every internal ID'):
+        pv.compute(
+            points,
+            domain=domain,
+            output='cells',
+            return_vertices=False,
+            return_adjacency=False,
+            return_faces=False,
+        )
 
 
 def test_available_boundaries_use_empty_collection_for_omitted_hidden_site() -> None:

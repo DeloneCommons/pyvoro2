@@ -398,7 +398,7 @@ PYBIND11_MODULE(_core2d, m) {
          py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
         native::preflight_box<2>(points, ids, nullptr, bounds, blocks,
                                  periodic, init_mem, 2, &queries, nullptr,
-                                 true);
+                                 true, true);
         const auto n = points.shape(0);
         const auto opts = parse_opts(opts_tuple);
 
@@ -456,7 +456,7 @@ PYBIND11_MODULE(_core2d, m) {
          py::array_t<double, py::array::c_style | py::array::forcecast> ghost_radii) {
         native::preflight_box<2>(points, ids, &radii, bounds, blocks,
                                  periodic, init_mem, 3, &queries,
-                                 &ghost_radii, true);
+                                 &ghost_radii, true, true);
         const auto n = points.shape(0);
         const py::ssize_t m_q = queries.shape(0);
         const auto opts = parse_opts(opts_tuple);

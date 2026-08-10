@@ -107,6 +107,8 @@ class _BasisData:
     denominator_exponent: int
     inverse: tuple[tuple[Fraction, ...], ...] | None
     inverse_column_l1: tuple[Fraction, ...] | None
+    inverse_column_numerators: tuple[tuple[int, ...], ...] | None
+    inverse_column_denominators: tuple[int, ...] | None
     orthogonal: bool
     bit_patterns: tuple[int, ...]
     condition_number: float
@@ -151,6 +153,15 @@ class _TriclinicPlan:
     seed_count: int
     seed_truncated: bool
     tie_orientation: int
+
+
+@dataclass(frozen=True, slots=True)
+class _ExactTriclinicBucketLayout:
+    """Exact source-binary64 data for sparse triclinic bucket scans."""
+
+    keys: tuple[tuple[int, ...], ...]
+    bins: tuple[int, ...]
+    coefficient_bounds: tuple[Fraction, ...]
 
 
 def _readonly_array(values: object, *, dtype: np.dtype | type) -> np.ndarray:
@@ -255,6 +266,8 @@ def _prepare_basis(
 
     inverse = None
     inverse_column_l1 = None
+    inverse_column_numerators = None
+    inverse_column_denominators = None
     if not orthogonal:
         if dimension != 3 or not all(periodic_axes):
             raise _BasisPreparationError(
@@ -265,9 +278,43 @@ def _prepare_basis(
             raise _BasisPreparationError(
                 'canonical triclinic lattice must be exactly right-handed'
             )
-        inverse = _inverse_fraction_matrix(fractions)
+
+    # Fully periodic 3D bucket layouts need the same exact inverse whether the
+    # supplied PeriodicCell happens to be skew or diagonal.  Keeping its
+    # integer form on the existing bounded basis cache avoids Fraction work in
+    # the per-point R5-SC-001 key loop.
+    if dimension == 3 and all(periodic_axes):
+        if orthogonal:
+            inverse = tuple(
+                tuple(
+                    Fraction(1, 1) / fractions[row][row]
+                    if row == column
+                    else Fraction()
+                    for column in range(dimension)
+                )
+                for row in range(dimension)
+            )
+        else:
+            inverse = _inverse_fraction_matrix(fractions)
         inverse_column_l1 = tuple(
             sum((abs(inverse[row][column]) for row in range(dimension)), Fraction())
+            for column in range(dimension)
+        )
+        inverse_column_denominators = tuple(
+            math.lcm(
+                *(inverse[row][column].denominator for row in range(dimension))
+            )
+            for column in range(dimension)
+        )
+        inverse_column_numerators = tuple(
+            tuple(
+                inverse[row][column].numerator
+                * (
+                    inverse_column_denominators[column]
+                    // inverse[row][column].denominator
+                )
+                for row in range(dimension)
+            )
             for column in range(dimension)
         )
 
@@ -282,6 +329,8 @@ def _prepare_basis(
         denominator_exponent=exponent,
         inverse=inverse,
         inverse_column_l1=inverse_column_l1,
+        inverse_column_numerators=inverse_column_numerators,
+        inverse_column_denominators=inverse_column_denominators,
         orthogonal=orthogonal,
         bit_patterns=bit_patterns,
         condition_number=condition,
@@ -307,6 +356,109 @@ def _basis_cache_clear() -> None:
     """Clear the private bounded basis cache for deterministic tests."""
 
     _prepare_basis.cache_clear()
+
+
+def _exact_triclinic_bucket_layout(
+    points: np.ndarray,
+    *,
+    origin: np.ndarray,
+    lattice_vectors: np.ndarray,
+    radius: float,
+) -> _ExactTriclinicBucketLayout:
+    """Return exact keys and proof-sized bins for a triclinic scan.
+
+    All values are interpreted as their exact source-binary64 dyadics.  The
+    cached inverse is rational, point/origin subtraction and multiplication
+    use integers, and modulo/key assignment uses Euclidean integer division.
+    Thus a point is never rounded across a bucket boundary or the 0/1 seam.
+    """
+
+    pts = np.asarray(points, dtype=np.float64)
+    origin_array = np.asarray(origin, dtype=np.float64)
+    lattice = np.asarray(lattice_vectors, dtype=np.float64)
+    radius_value = float(radius)
+    if pts.ndim != 2 or pts.shape[1] != 3:
+        raise ValueError('triclinic bucket points must have shape (n, 3)')
+    if origin_array.shape != (3,):
+        raise ValueError('triclinic bucket origin must have shape (3,)')
+    if lattice.shape != (3, 3):
+        raise ValueError('triclinic bucket lattice must have shape (3, 3)')
+    if not (
+        np.all(np.isfinite(pts))
+        and np.all(np.isfinite(origin_array))
+        and np.all(np.isfinite(lattice))
+    ):
+        raise ValueError('triclinic bucket inputs must be finite')
+    if not math.isfinite(radius_value) or radius_value <= 0.0:
+        raise ValueError('triclinic bucket radius must be positive and finite')
+
+    basis = _prepare_basis(
+        *_basis_key(lattice, (True, True, True)),
+    )
+    inverse_l1 = basis.inverse_column_l1
+    inverse_numerators = basis.inverse_column_numerators
+    inverse_denominators = basis.inverse_column_denominators
+    if (
+        inverse_l1 is None
+        or inverse_numerators is None
+        or inverse_denominators is None
+    ):
+        raise _BasisPreparationError(
+            'triclinic bucket layout requires an exact three-dimensional inverse'
+        )
+
+    radius_fraction = Fraction.from_float(radius_value)
+    coefficient_bounds = tuple(
+        radius_fraction * value for value in inverse_l1
+    )
+    if any(bound <= 0 for bound in coefficient_bounds):
+        raise _BasisPreparationError(
+            'triclinic coefficient bounds must be exactly positive'
+        )
+    bins = tuple(
+        1 if bound >= 1 else bound.denominator // bound.numerator
+        for bound in coefficient_bounds
+    )
+
+    origin_parts = tuple(_dyadic_parts(float(value)) for value in origin_array)
+    keys: list[tuple[int, ...]] = []
+    for point in pts:
+        point_parts = tuple(_dyadic_parts(float(value)) for value in point)
+        exponent = max(
+            *(item[1] for item in origin_parts),
+            *(item[1] for item in point_parts),
+        )
+        delta = tuple(
+            (
+                point_parts[axis][0]
+                << (exponent - point_parts[axis][1])
+            ) - (
+                origin_parts[axis][0]
+                << (exponent - origin_parts[axis][1])
+            )
+            for axis in range(3)
+        )
+        point_key: list[int] = []
+        for column in range(3):
+            coordinate_numerator = sum(
+                delta[row] * inverse_numerators[column][row]
+                for row in range(3)
+            )
+            coordinate_denominator = (
+                (1 << exponent) * inverse_denominators[column]
+            )
+            modulo_numerator = coordinate_numerator % coordinate_denominator
+            point_key.append(
+                (modulo_numerator * bins[column])
+                // coordinate_denominator
+            )
+        keys.append(tuple(point_key))
+
+    return _ExactTriclinicBucketLayout(
+        keys=tuple(keys),
+        bins=bins,
+        coefficient_bounds=coefficient_bounds,
+    )
 
 
 def _aligned_integer_geometry(
@@ -865,4 +1017,28 @@ def exact_distance_less_than(
     return (
         key.numerator * denominator * denominator
         < numerator * numerator * (1 << key.denominator_exponent)
+    )
+
+
+def exact_distance_squared_less_equal(
+    key: ExactDistanceKey,
+    threshold_squared: float,
+) -> bool:
+    """Compare an exact squared-distance key to a binary64 squared limit.
+
+    Unlike :func:`exact_distance_less_than`, this helper is inclusive and its
+    argument is already a squared distance.  It exists for the fixed backend
+    safety boundary; user radius comparisons keep the established strict
+    helper above.
+    """
+
+    threshold_value = float(threshold_squared)
+    if not math.isfinite(threshold_value) or threshold_value < 0.0:
+        raise ValueError(
+            'threshold_squared must be a non-negative finite binary64 value'
+        )
+    numerator, denominator = threshold_value.as_integer_ratio()
+    return (
+        key.numerator * denominator
+        <= numerator * (1 << key.denominator_exponent)
     )

@@ -53,11 +53,26 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   authoritative, and resource exhaustion fails structurally without an
   approximate fallback. `image_search` keeps its public default and signature
   as a correctness-neutral incumbent-seeding hint. Separator inference and
-  periodic duplicate pair-distance evaluation share the primitive when
-  wrapping is enabled (`wrap=True`, or `duplicate_wrap=True` in forward
-  operations); with wrapping disabled, the established unwrapped Cartesian
-  check is preserved. Complete duplicate candidate scanning and mandatory
-  safety independent of `duplicate_wrap` remain R5.
+  periodic duplicate pair-distance evaluation share the primitive. Mandatory
+  forward safety always wraps; disabling optional wrapping preserves the
+  established unwrapped Cartesian user-threshold check.
+- Centralized spatial and planar generator preparation for `compute`, `locate`,
+  and `ghost_cells`. Inserted generators now use half-open non-periodic
+  containment and primary periodic coordinates, including temporary ghost
+  generators. A fixed inclusive squared-distance floor of `1e-10` is mandatory
+  under every public duplicate option; safe pairs above it retain optional
+  off/warn/raise policy. Exact source-binary64 triclinic keys and inverse-basis
+  bounds make the local candidate scan complete across bucket boundaries and
+  periodic seams without unconditional all-pairs work on ordinary clouds;
+  sparse bin counts retain radius locality across large spans, and positive
+  subnormal triclinic thresholds remain valid duplicate-check inputs.
+  `DuplicateError` preserves its positional contract while adding safety,
+  policy, truncation, operation, and external-ID provenance. Direct native
+  calls repeat containment and duplicate checks before insertion, using
+  outward-rounded binary64 intervals for triclinic keys, shift ranges, and
+  squared-distance lower bounds rather than relying on extended `long double`
+  precision. Raw standard/power compute IDs are validated before result
+  packaging.
 - Completed strict Python input adoption across spatial and planar forward
   APIs, domains, duplicate checks, normalization and diagnostics, and separator
   inverse workflows. Exact integer and Boolean fields no longer accept lossy

@@ -45,10 +45,25 @@ a compatibility-only route and was not removed.
   performance hint only and can no longer change a successful result. A
   private bounded resource failure raises without returning an approximation.
   Separator inference and periodic duplicate distance evaluation share this
-  geometry when wrapping is enabled (`wrap=True`, or `duplicate_wrap=True` in
-  forward operations). With wrapping disabled, the established unwrapped
-  Cartesian check is preserved. Duplicate candidate-generation and mandatory
-  backend-safety policy independent of `duplicate_wrap` remain assigned to R5.
+  geometry. Mandatory forward safety always wraps; disabling optional wrapping
+  preserves the established unwrapped Cartesian user-threshold check.
+- Spatial and planar forward operations now prepare every inserted generator
+  through one private boundary. Non-periodic coordinates must lie in `[lo,
+  hi)`, periodic coordinates are remapped before dispatch, and temporary ghost
+  generators follow the same rule. A fixed inclusive squared-distance floor of
+  `1e-10` is always enforced with certified periodic minimum-image geometry;
+  `duplicate_check`, its threshold and wrap flag, and pair-report truncation
+  cannot weaken it. Safe pairs above the floor retain the existing optional
+  off/warn/raise behavior. `DuplicateError` keeps its public positional
+  behavior and adds safety/policy/operation/external-ID provenance. Native
+  bindings repeat primary containment and local duplicate checks before every
+  insertion. Triclinic Python buckets use exact source-binary64 keys and
+  inverse-basis bounds; the direct-native backstop uses outward-rounded
+  binary64 intervals for every uncertain key and lattice-shift range, without
+  requiring extended `long double` precision. Sparse bucket keys retain radius
+  locality even when a domain has very many possible bins, and positive
+  subnormal diagnostic thresholds remain supported. Malformed raw compute ID
+  sets fail before result packaging.
 - Spatial and planar Python entry points now use one strict input contract.
   Exact integer fields reject booleans and lossy float/string conversions;
   flags and masks accept only Python or NumPy Booleans; string modes accept

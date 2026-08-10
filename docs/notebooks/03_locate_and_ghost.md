@@ -70,11 +70,12 @@ This is useful for:
 - inspecting local environments,
 - building “what-if” analyses without recomputing the entire tessellation.
 
-For a non-periodic `Box`, a query outside the box may yield an empty result when `include_empty=True`.
+A ghost query is temporarily inserted. On every non-periodic axis it must lie in the half-open interval `lo <= x < hi`; an outside query raises before native dispatch. A contained query may still yield an empty cell geometrically.
 ```python
+ghost_queries = queries[:2]  # both lie inside the non-periodic box
 ghost = pv.ghost_cells(
     points,
-    queries,
+    ghost_queries,
     domain=box,
     include_empty=True,
     return_vertices=True,
@@ -82,16 +83,22 @@ ghost = pv.ghost_cells(
 )
 
 # Show a compact summary
-[(g['query_index'], bool(g.get('empty', False)), float(g.get('volume', 0.0))) for g in ghost]
+summary = [(g['query_index'], bool(g.get('empty', False)), float(g.get('volume', 0.0))) for g in ghost]
+
+try:
+    pv.ghost_cells(points, queries[2:], domain=box)
+except ValueError as exc:
+    outside_error = str(exc)
+
+summary, outside_error
 ```
 **Output**
 
 ```text
-[(0, False, 0.21887577215282997),
- (1, False, 3.3710997729938335),
- (2, True, 0.0)]
+([(0, False, 0.21887577215282997), (1, False, 3.3710997729938335)],
+ 'ghost_cells temporary ghost generator index 0 (external ID 0) is outside the native primary domain on axis 0: value=5.0, required interval [-2.0, 2.0)')
 ```
 ## Notes
 
-- In a periodic domain, `locate` and `ghost_cells` wrap queries into a primary domain.
+- In a periodic domain, persistent and ghost generators are wrapped into a primary domain. `locate` queries themselves keep query semantics.
 - In power mode (`mode='power'`), a ghost cell also needs a radius/weight for the query site (`ghost_radius`).

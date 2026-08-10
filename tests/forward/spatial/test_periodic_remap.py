@@ -63,12 +63,8 @@ def test_remap_cart_respects_origin() -> None:
     assert np.allclose(rem[0], [19.0, 2.0, 0.0])
 
 
-def test_compute_does_not_pre_wrap_periodic_points(monkeypatch) -> None:
-    """Ensure compute() passes raw internal coordinates to the C++ layer.
-
-    Voro++ applies periodic remapping internally. Pre-wrapping in Python is
-    both redundant and can be incorrect for sheared cells.
-    """
+def test_compute_passes_primary_periodic_points(monkeypatch) -> None:
+    """Ensure compute() remaps sheared internal coordinates before dispatch."""
     cell = _sheared_cell()
     pts = np.array([[1.0, 12.0, 0.0], [5.0, 5.0, 5.0]], dtype=float)
 
@@ -97,6 +93,5 @@ def test_compute_does_not_pre_wrap_periodic_points(monkeypatch) -> None:
     )
 
     assert 'pts_i' in captured
-    # Internal basis equals Cartesian for this cell, so the captured point
-    # should remain unwrapped (y==12, not y==2).
-    assert np.isclose(captured['pts_i'][0, 1], 12.0)
+    # Internal basis equals Cartesian and y wrapping couples x through bxy.
+    np.testing.assert_allclose(captured['pts_i'][0], [9.0, 2.0, 0.0])

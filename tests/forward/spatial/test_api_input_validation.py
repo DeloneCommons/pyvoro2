@@ -126,9 +126,9 @@ def test_duplicate_check_argument_raises_before_cpp() -> None:
 
 def test_duplicate_check_argument_warns(monkeypatch) -> None:
     dom = _box()
-    pts = np.array([[0.1, 0.2, 0.3], [0.1, 0.2, 0.3]], dtype=float)
+    pts = np.array([[0.1, 0.2, 0.3], [0.1001, 0.2, 0.3]], dtype=float)
 
-    # Prevent calling into Voro++ with duplicates (it can terminate the process).
+    # Isolate optional safe-above-floor warning behavior from native geometry.
     def fake_compute_box_standard(
         pts, ids_internal, bounds, blocks, periodic_flags, init_mem, opts
     ):
@@ -146,6 +146,7 @@ def test_duplicate_check_argument_warns(monkeypatch) -> None:
             pts,
             domain=dom,
             duplicate_check='warn',
+            duplicate_threshold=1e-3,
             return_vertices=False,
             return_adjacency=False,
             return_faces=False,

@@ -32,6 +32,9 @@ class RecordingCore:
                     np.full(count, -1, dtype=np.int32),
                     np.full((count, dim), np.nan, dtype=np.float64),
                 )
+            if name.startswith('compute_'):
+                points = np.asarray(args[0])
+                return [{'id': i} for i in range(len(points))]
             return []
 
         return call
@@ -577,7 +580,10 @@ def test_warning_level_periodic_cell_warns_only_at_explicit_construction(
     _install_core(monkeypatch, 3, core)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter('always')
-        _invoke(3, 'compute', domain=domain, blocks=(1, 1, 1))
+        points = np.array([[0.1, 0.1, 0.0], [0.6, 0.6, 0.0]])
+        _invoke(
+            3, 'compute', domain=domain, blocks=(1, 1, 1), points=points
+        )
 
     replayed = [
         warning
@@ -612,7 +618,8 @@ def test_warning_level_compute_reuses_one_snapshot_under_warning_as_error(
     )
     with warnings.catch_warnings():
         warnings.simplefilter('error')
-        _invoke(3, 'compute', domain=domain, blocks=blocks)
+        points = np.array([[0.1, 0.1, 0.0], [0.6, 0.6, 0.0]])
+        _invoke(3, 'compute', domain=domain, blocks=blocks, points=points)
 
     assert snapshot_calls == 1
     assert core.calls[0][0] == 'compute_periodic_standard'
@@ -629,7 +636,8 @@ def test_warning_level_query_operations_reach_native_under_warning_as_error(
 
     with warnings.catch_warnings():
         warnings.simplefilter('error')
-        _invoke(3, operation, domain=domain)
+        points = np.array([[0.1, 0.1, 0.0], [0.6, 0.6, 0.0]])
+        _invoke(3, operation, domain=domain, points=points)
 
     prefix = 'locate' if operation == 'locate' else 'ghost'
     assert core.calls[0][0] == f'{prefix}_periodic_standard'
@@ -641,11 +649,14 @@ def test_public_ghost_query_index_boundary_precedes_native_dispatch(
     dim: int,
 ) -> None:
     monkeypatch.setattr(input_helpers, 'CPP_INT_MAX', 1)
-    points = np.zeros((1, dim), dtype=np.float64)
+    points = np.full((1, dim), 0.25, dtype=np.float64)
+    queries = np.vstack(
+        [np.full(dim, 0.5), np.full(dim, 0.75), np.full(dim, 1.0)]
+    )
 
     recording_core = RecordingCore()
     _install_core(monkeypatch, dim, recording_core)
-    _invoke(dim, 'ghost_cells', points=points, queries=np.zeros((2, dim)))
+    _invoke(dim, 'ghost_cells', points=points, queries=queries[:2])
     assert len(recording_core.calls) == 1
 
     rejecting_core = NoNativeCalls()
@@ -654,7 +665,7 @@ def test_public_ghost_query_index_boundary_precedes_native_dispatch(
         ValueError,
         match=r'queries length.*query indices.*destination range',
     ):
-        _invoke(dim, 'ghost_cells', points=points, queries=np.zeros((3, dim)))
+        _invoke(dim, 'ghost_cells', points=points, queries=queries)
     assert rejecting_core.count == 0
 
 
@@ -665,7 +676,8 @@ def test_public_planar_ghost_reserves_native_ghost_id_before_dispatch(
 
     recording_core = RecordingCore()
     _install_core(monkeypatch, 2, recording_core)
-    _invoke(2, 'ghost_cells', points=np.zeros((2, 2)))
+    points = np.array([[0.25, 0.25], [1.25, 1.25]])
+    _invoke(2, 'ghost_cells', points=points)
     assert len(recording_core.calls) == 1
 
     rejecting_core = NoNativeCalls()
@@ -674,7 +686,10 @@ def test_public_planar_ghost_reserves_native_ghost_id_before_dispatch(
         ValueError,
         match=r'points/site length.*destination range.*reserved.*ghost ID',
     ):
-        _invoke(2, 'ghost_cells', points=np.zeros((3, 2)))
+        more_points = np.array(
+            [[0.25, 0.25], [0.75, 0.75], [1.25, 1.25]]
+        )
+        _invoke(2, 'ghost_cells', points=more_points)
     assert rejecting_core.count == 0
 
 

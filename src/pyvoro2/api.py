@@ -11,21 +11,20 @@ import numpy as np
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.spatial.domain_utils import domain_length_scale
 from ._internal.inputs import (
-    coerce_id_array,
     coerce_native_block_parameters,
     coerce_nonnegative_scalar_or_vector,
     coerce_nonnegative_vector,
     coerce_point_array,
-    require_internal_id_range,
-    require_query_index_range,
     validate_forward_mode,
     validate_duplicate_check_mode,
     validate_duplicate_options,
 )
-from ._internal.spatial.domain_geometry import (
-    _NativePeriodicSnapshot,
-    geometry3d,
+from ._internal.generator_preparation import (
+    prepare_generators,
+    prepare_temporary_generators,
+    validate_compute_internal_ids,
 )
+from ._internal.spatial.domain_geometry import geometry3d
 from ._internal.spatial.face_shifts import _add_periodic_face_shifts_inplace
 from ._internal.power_input import ResolvedPowerInput, resolve_power_input
 from ._internal.validation import (
@@ -39,7 +38,6 @@ from ._internal.validation import (
     require_positive_index,
     require_string_choice,
 )
-from .duplicates import duplicate_check as _duplicate_check
 from .diagnostics import (
     TessellationDiagnostics,
     TessellationError,
@@ -76,14 +74,10 @@ def _require_core():
 def _warn_if_scale_suspicious(*, pts: np.ndarray, length_scale: float) -> None:
     """Warn if the coordinate scale is likely to be numerically problematic.
 
-    Voro++ uses a few fixed absolute tolerances internally (notably a hard
-    duplicate/near-duplicate check around ~1e-5 in container units). If the
-    user's coordinate system is extremely small or extremely large, this can
-    lead to:
-
-      - hard process termination inside the C++ library (not catchable as a
-        Python exception), or
-      - loss of geometric accuracy.
+    Voro++ uses fixed absolute tolerances internally. pyvoro2 rejects every
+    generator pair in the fixed backend-safety regime before insertion, but an
+    extremely small or large coordinate system can still lose geometric
+    accuracy.
 
     pyvoro2 intentionally does **not** rescale user inputs automatically.
     Instead we emit a warning to encourage explicit rescaling by the caller.
@@ -102,8 +96,8 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, length_scale: float) -> None:
     if L < 1e-3:
         warnings.warn(
             'The domain length scale appears very small (L≈{:.3g}). '
-            'Voro++ uses fixed absolute tolerances (~1e-5) and may terminate '
-            'the process if points are too close in these units. Consider '
+            'pyvoro2 reserves distances through 1e-5 for backend safety, and '
+            'Voro++ uses other fixed absolute tolerances. Consider '
             'rescaling your coordinates (e.g. multiply by a constant) before '
             'calling pyvoro2.'.format(L),
             RuntimeWarning,
@@ -117,39 +111,6 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, length_scale: float) -> None:
             RuntimeWarning,
             stacklevel=3,
         )
-
-
-def _run_native_duplicate_check(
-    *,
-    pts: np.ndarray,
-    domain: Box | OrthorhombicCell | PeriodicCell,
-    periodic_snapshot: _NativePeriodicSnapshot | None,
-    threshold: float,
-    wrap: bool,
-    mode: Literal['warn', 'raise'],
-    max_pairs: int,
-) -> None:
-    """Run duplicate detection using prepared periodic geometry when needed."""
-
-    points_for_check = pts
-    domain_for_check: Box | OrthorhombicCell | PeriodicCell | None = domain
-    wrap_for_check = wrap
-    if periodic_snapshot is not None:
-        domain_for_check = None
-        wrap_for_check = False
-        if wrap:
-            points_for_check = np.asarray(
-                periodic_snapshot.remap_cart(pts),
-                dtype=np.float64,
-            )
-    _duplicate_check(
-        points_for_check,
-        threshold=threshold,
-        domain=domain_for_check,
-        wrap=wrap_for_check,
-        mode=mode,
-        max_pairs=max_pairs,
-    )
 
 
 def _remap_ids_inplace(cells: list[dict[str, Any]], ids_user: np.ndarray) -> None:
@@ -330,19 +291,14 @@ def compute(
         points: Point coordinates, shape (n, 3).
         domain: Domain object.
         ids: Optional integer IDs returned in output. Defaults to `range(n)`.
-        duplicate_check: Optional near-duplicate pre-check for generator points.
-            If set to ``"raise"``, pyvoro2 runs :func:`pyvoro2.duplicate_check`
-            and raises :class:`pyvoro2.DuplicateError` *before* entering the C++
-            layer when a potentially fatal near-duplicate is detected.
-
-            If set to ``"warn"``, a warning is emitted but computation proceeds.
-            **Important:** ``"warn"`` does *not* protect you from Voro++ hard
-            exits. If points are closer than Voro++'s internal absolute
-            threshold (~1e-5 in container units), the process may still
-            terminate. Use ``duplicate_check="raise"`` to prevent this.
-        duplicate_threshold: Absolute distance threshold used by the pre-check.
-        duplicate_wrap: If True, points are remapped into the primary domain
-            for periodic domains before checking (matching Voro++ behavior).
+        duplicate_check: Optional policy above the mandatory backend-safety
+            distance. ``"off"`` skips that additional policy, ``"warn"`` emits
+            a warning, and ``"raise"`` raises :class:`pyvoro2.DuplicateError`.
+            Backend-unsafe pairs always raise before native insertion.
+        duplicate_threshold: Absolute distance for the optional policy. Values
+            at or below ``1e-5`` add no range above mandatory safety.
+        duplicate_wrap: Whether the optional policy uses periodic minimum-image
+            distance. Mandatory periodic safety always uses certified wrapping.
         duplicate_max_pairs: Maximum number of near-duplicate pairs reported.
         block_size: Positive finite approximate grid block size. If provided,
             block counts are derived unless explicit ``blocks`` are supplied.
@@ -410,6 +366,12 @@ def compute(
 
     Raises:
         ValueError: If inputs are inconsistent or an unknown mode is provided.
+
+    Every generator must lie in each non-periodic half-open interval
+    ``[lo, hi)``; periodic axes are remapped before native dispatch. Generator
+    pairs at squared distance at most ``1e-10`` always raise before insertion.
+    The public duplicate options control only additional diagnostics above this
+    backend-safety floor.
     """
     resolved_output = _validate_output(output)
     mode = validate_forward_mode(mode)  # type: ignore[assignment]
@@ -497,7 +459,6 @@ def compute(
     )
     pts = coerce_point_array(points, name='points', dim=3)
     n = int(pts.shape[0])
-    require_internal_id_range(n)
     power_input = resolve_power_input(
         mode=mode,
         weights=weights,
@@ -505,11 +466,6 @@ def compute(
         n=n,
     )
     rr = power_input.backend_radii
-
-    # Internal IDs are always 0..n-1. If `ids=...` is provided, we remap on return.
-    ids_internal = np.arange(n, dtype=np.int32)
-
-    ids_user = coerce_id_array(ids, n=n)
 
     geom = geometry3d(domain)
     if isinstance(domain, (Box, OrthorhombicCell)):
@@ -520,6 +476,23 @@ def compute(
         native_bounds = None
         native_cell = geom.native_periodic_snapshot()
         native_params = native_cell.params
+    prepared = prepare_generators(
+        pts,
+        geometry=geom,
+        operation='compute',
+        external_ids=ids,
+        backend_radii=rr,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold_value,
+        duplicate_wrap=duplicate_wrap_value,
+        duplicate_max_pairs=duplicate_max_pairs_value,
+        periodic_snapshot=native_cell,
+    )
+    pts = prepared.input_points_cart
+    pts_native = prepared.native_points
+    ids_internal = prepared.internal_ids
+    ids_user = prepared.external_ids if ids is not None else None
+    rr = prepared.backend_radii
     native_scale = (
         native_cell.length_scale
         if native_cell is not None
@@ -532,18 +505,6 @@ def compute(
         block_size=block_size_value,
         periodic_snapshot=native_cell,
     )
-
-    # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
-    if duplicate_check != 'off' and n > 1:
-        _run_native_duplicate_check(
-            pts=pts,
-            domain=domain,
-            periodic_snapshot=native_cell,
-            threshold=duplicate_threshold_value,
-            wrap=duplicate_wrap_value,
-            mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=duplicate_max_pairs_value,
-        )
 
     opts = (
         return_vertices_value,
@@ -572,7 +533,7 @@ def compute(
 
         if mode == 'standard':
             cells = core.compute_box_standard(
-                pts,
+                pts_native,
                 ids_internal,
                 bounds,
                 (nx, ny, nz),
@@ -584,7 +545,7 @@ def compute(
         elif mode == 'power':
             assert rr is not None
             cells = core.compute_box_power(
-                pts,
+                pts_native,
                 ids_internal,
                 rr,
                 bounds,
@@ -597,11 +558,10 @@ def compute(
         else:
             raise ValueError(f'unknown mode: {mode}')
 
+        validate_compute_internal_ids(cells, n=n, mode=mode)
+
         if include_empty_value:
-            if isinstance(domain, OrthorhombicCell) and any(periodic_flags):
-                sites_for_empty = domain.remap_cart(pts, return_shifts=False)
-            else:
-                sites_for_empty = pts
+            sites_for_empty = prepared.primary_points_cart
             _add_empty_cells_inplace(cells, n=n, sites=sites_for_empty, opts=opts)
 
         if return_face_shifts_value:
@@ -679,16 +639,13 @@ def compute(
 
     # --- PeriodicCell (triclinic) ---
     #
-    # IMPORTANT: we do **not** pre-wrap points in Python for periodic domains.
-    # Voro++ applies an authoritative remapping (including shear-coupled terms)
-    # when inserting points into the periodic container.
+    # Generator preparation has already transformed and remapped points into
+    # Voro++'s primary internal half-open cell.
     cell = native_cell
     assert cell is not None
     assert native_params is not None
     bx, bxy, by, bxz, byz, bz = native_params
-    with np.errstate(over='ignore', invalid='ignore'):
-        pts_i = cell.cart_to_internal(pts)
-    pts_i = coerce_point_array(pts_i, name='points', dim=3)
+    pts_i = pts_native
 
     if return_face_shifts_value:
         if not return_faces_value:
@@ -721,11 +678,13 @@ def compute(
     else:
         raise ValueError(f'unknown mode: {mode}')
 
+    validate_compute_internal_ids(cells, n=n, mode=mode)
+
     # Determine periodic-image shifts for face neighbors (optional)
     if include_empty_value:
         # Voro++ remaps inserted points into the primary cell; mirror that here for
         # any empty-cell records we inject.
-        sites_for_empty = cell.remap_internal(pts_i, return_shifts=False)
+        sites_for_empty = pts_i
         _add_empty_cells_inplace(cells, n=n, sites=sites_for_empty, opts=opts)
 
     if return_face_shifts_value:
@@ -837,6 +796,9 @@ def locate(
     """Locate which generator owns each query point.
 
     This is a stateless wrapper around Voro++'s ``find_voronoi_cell``.
+    Persistent generators use half-open containment and mandatory duplicate
+    safety. Query points are not inserted and retain the existing query
+    semantics, including queries outside a non-periodic domain.
 
     Args:
         points: Generator coordinates, shape (n, 3).
@@ -844,13 +806,11 @@ def locate(
         domain: Domain object (Box, OrthorhombicCell, or PeriodicCell).
         ids: Optional user IDs aligned with points. If provided, returned
             owner IDs are remapped to these values.
-        duplicate_check: Optional near-duplicate pre-check for generator points.
-            See :func:`pyvoro2.duplicate_check`. Use ``"raise"`` to prevent
-            Voro++ hard exits on near-duplicates.
-            ``"warn"`` is diagnostic only and does not prevent hard exits.
-        duplicate_threshold: Absolute distance threshold used by the pre-check.
-        duplicate_wrap: If True, points are remapped into the primary domain
-            for periodic domains before checking.
+        duplicate_check: Optional off/warn/raise policy above the mandatory
+            backend-safety distance. Backend-unsafe pairs always raise.
+        duplicate_threshold: Absolute distance for the optional policy.
+        duplicate_wrap: Whether the optional policy uses periodic minimum-image
+            distance. Mandatory periodic safety always wraps.
         duplicate_max_pairs: Maximum number of near-duplicate pairs reported.
         block_size: Positive finite approximate grid block size. If provided,
             block counts are derived unless explicit ``blocks`` are supplied.
@@ -904,16 +864,11 @@ def locate(
     q = coerce_point_array(queries, name='queries', dim=3)
 
     n = int(pts.shape[0])
-    require_internal_id_range(n)
     rr: np.ndarray | None = None
     if mode == 'power':
         if radii is None:
             raise ValueError('radii is required for mode="power"')
         rr = coerce_nonnegative_vector(radii, name='radii', n=n)
-    ids_internal = np.arange(n, dtype=np.int32)
-
-    ids_user = coerce_id_array(ids, n=n)
-
     geom = geometry3d(domain)
     if isinstance(domain, (Box, OrthorhombicCell)):
         native_bounds = geom.native_bounds
@@ -923,6 +878,23 @@ def locate(
         native_bounds = None
         native_cell = geom.native_periodic_snapshot()
         native_params = native_cell.params
+    prepared = prepare_generators(
+        pts,
+        geometry=geom,
+        operation='locate',
+        external_ids=ids,
+        backend_radii=rr,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold_value,
+        duplicate_wrap=duplicate_wrap_value,
+        duplicate_max_pairs=duplicate_max_pairs_value,
+        periodic_snapshot=native_cell,
+    )
+    pts = prepared.input_points_cart
+    pts_native = prepared.native_points
+    ids_internal = prepared.internal_ids
+    ids_user = prepared.external_ids if ids is not None else None
+    rr = prepared.backend_radii
     native_scale = (
         native_cell.length_scale
         if native_cell is not None
@@ -936,18 +908,6 @@ def locate(
         periodic_snapshot=native_cell,
     )
 
-    # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
-    if duplicate_check != 'off' and n > 1:
-        _run_native_duplicate_check(
-            pts=pts,
-            domain=domain,
-            periodic_snapshot=native_cell,
-            threshold=duplicate_threshold_value,
-            wrap=duplicate_wrap_value,
-            mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=duplicate_max_pairs_value,
-        )
-
     core = _require_core()
 
     # --- Rectangular containers (Box / OrthorhombicCell) ---
@@ -958,7 +918,7 @@ def locate(
 
         if mode == 'standard':
             found, owner_id, owner_pos = core.locate_box_standard(
-                pts,
+                pts_native,
                 ids_internal,
                 bounds,
                 (nx, ny, nz),
@@ -969,7 +929,7 @@ def locate(
         elif mode == 'power':
             assert rr is not None
             found, owner_id, owner_pos = core.locate_box_power(
-                pts,
+                pts_native,
                 ids_internal,
                 rr,
                 bounds,
@@ -988,9 +948,8 @@ def locate(
         assert native_params is not None
         bx, bxy, by, bxz, byz, bz = native_params
         with np.errstate(over='ignore', invalid='ignore'):
-            pts_i = cell.cart_to_internal(pts)
             q_i = cell.cart_to_internal(q)
-        pts_i = coerce_point_array(pts_i, name='points', dim=3)
+        pts_i = pts_native
         q_i = coerce_point_array(q_i, name='queries', dim=3)
 
         if mode == 'standard':
@@ -1066,6 +1025,10 @@ def ghost_cells(
     """Compute ghost Voronoi/Laguerre cells at arbitrary query positions.
 
     This is a stateless wrapper around Voro++'s ``compute_ghost_cell`` routine.
+    Each query is temporarily inserted, so it uses the same containment and
+    mandatory duplicate-safety rules as persistent generators. An outside
+    non-periodic query therefore raises before native dispatch; a contained,
+    distinct query may still have an empty cell geometrically.
     It is useful for probing the tessellation at positions that are not part of
     the generator set (e.g. along a line/trajectory, or at grid points).
 
@@ -1083,13 +1046,12 @@ def ghost_cells(
         domain: Domain (Box, OrthorhombicCell, or PeriodicCell).
         ids: Optional user IDs aligned with points. If provided, face neighbor
             IDs are remapped to these values.
-        duplicate_check: Optional near-duplicate pre-check for generator points.
-            See :func:`pyvoro2.duplicate_check`. Use ``"raise"`` to prevent
-            Voro++ hard exits on near-duplicates.
-            ``"warn"`` is diagnostic only and does not prevent hard exits.
-        duplicate_threshold: Absolute distance threshold used by the pre-check.
-        duplicate_wrap: If True, points are remapped into the primary domain
-            for periodic domains before checking.
+        duplicate_check: Optional off/warn/raise policy above the mandatory
+            backend-safety distance. Backend-unsafe persistent or temporary
+            ghost generators always raise.
+        duplicate_threshold: Absolute distance for the optional policy.
+        duplicate_wrap: Whether the optional policy uses periodic minimum-image
+            distance. Mandatory periodic safety always wraps.
         duplicate_max_pairs: Maximum number of near-duplicate pairs reported.
         block_size: Positive finite approximate grid block size. If provided,
             block counts are derived unless explicit ``blocks`` are supplied.
@@ -1162,8 +1124,6 @@ def ghost_cells(
 
     n = int(pts.shape[0])
     m = int(q.shape[0])
-    require_internal_id_range(n)
-    require_query_index_range(m)
 
     rr: np.ndarray | None = None
     gr: np.ndarray | None = None
@@ -1180,10 +1140,6 @@ def ghost_cells(
             length_name='m',
         )
 
-    ids_internal = np.arange(n, dtype=np.int32)
-
-    ids_user = coerce_id_array(ids, n=n)
-
     geom = geometry3d(domain)
     if isinstance(domain, (Box, OrthorhombicCell)):
         native_bounds = geom.native_bounds
@@ -1193,6 +1149,36 @@ def ghost_cells(
         native_bounds = None
         native_cell = geom.native_periodic_snapshot()
         native_params = native_cell.params
+    prepared = prepare_generators(
+        pts,
+        geometry=geom,
+        operation='ghost_cells',
+        external_ids=ids,
+        backend_radii=rr,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold_value,
+        duplicate_wrap=duplicate_wrap_value,
+        duplicate_max_pairs=duplicate_max_pairs_value,
+        periodic_snapshot=native_cell,
+    )
+    temporary = prepare_temporary_generators(
+        q,
+        persistent=prepared,
+        geometry=geom,
+        backend_radii=gr,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold_value,
+        duplicate_wrap=duplicate_wrap_value,
+        duplicate_max_pairs=duplicate_max_pairs_value,
+        periodic_snapshot=native_cell,
+    )
+    pts = prepared.input_points_cart
+    pts_native = prepared.native_points
+    q_native = temporary.native_points
+    ids_internal = prepared.internal_ids
+    ids_user = prepared.external_ids if ids is not None else None
+    rr = prepared.backend_radii
+    gr = temporary.backend_radii
     native_scale = (
         native_cell.length_scale
         if native_cell is not None
@@ -1205,18 +1191,6 @@ def ghost_cells(
         block_size=block_size_value,
         periodic_snapshot=native_cell,
     )
-
-    # Optional near-duplicate pre-check (to avoid Voro++ hard exit).
-    if duplicate_check != 'off' and n > 1:
-        _run_native_duplicate_check(
-            pts=pts,
-            domain=domain,
-            periodic_snapshot=native_cell,
-            threshold=duplicate_threshold_value,
-            wrap=duplicate_wrap_value,
-            mode='warn' if duplicate_check == 'warn' else 'raise',
-            max_pairs=duplicate_max_pairs_value,
-        )
 
     opts = (
         return_vertices_value,
@@ -1231,16 +1205,11 @@ def ghost_cells(
         bounds = native_bounds
         periodic_flags = geom.periodic_axes
 
-        # Pre-wrap query points for periodic axes so the returned vertices are
-        # anchored at the same site that Voro++ uses internally.
-        q_call = q
-        if isinstance(domain, OrthorhombicCell) and any(periodic_flags):
-            q_call = domain.remap_cart(q, return_shifts=False)
-            q_call = coerce_point_array(q_call, name='queries', dim=3)
+        q_call = q_native
 
         if mode == 'standard':
             cells = core.ghost_box_standard(
-                pts,
+                pts_native,
                 ids_internal,
                 bounds,
                 (nx, ny, nz),
@@ -1255,7 +1224,7 @@ def ghost_cells(
             assert gr is not None
 
             cells = core.ghost_box_power(
-                pts,
+                pts_native,
                 ids_internal,
                 rr,
                 bounds,
@@ -1277,16 +1246,8 @@ def ghost_cells(
         assert native_params is not None
         bx, bxy, by, bxz, byz, bz = native_params
 
-        with np.errstate(over='ignore', invalid='ignore'):
-            pts_i = cell.cart_to_internal(pts)
-            q_i = cell.cart_to_internal(q)
-        pts_i = coerce_point_array(pts_i, name='points', dim=3)
-        q_i = coerce_point_array(q_i, name='queries', dim=3)
-
-        # As with OrthorhombicCell, we pre-wrap queries so vertices are anchored
-        # at the exact site coordinate used by Voro++.
-        q_i = cell.remap_internal(q_i, return_shifts=False)
-        q_i = coerce_point_array(q_i, name='queries', dim=3)
+        pts_i = pts_native
+        q_i = q_native
 
         if mode == 'standard':
             cells = core.ghost_periodic_standard(

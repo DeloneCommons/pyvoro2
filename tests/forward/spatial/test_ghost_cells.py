@@ -1,11 +1,12 @@
 import numpy as np
+import pytest
 
 import pyvoro2
 
 
-def test_ghost_cells_box_standard_inside_outside() -> None:
+def test_ghost_cells_box_standard_inside_and_outside_rejected() -> None:
     pts = np.array([[0.0, 0.0, 0.0]], dtype=float)
-    queries = np.array([[0.5, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=float)
+    queries = np.array([[0.5, 0.0, 0.0]], dtype=float)
     box = pyvoro2.Box(bounds=((-1, 1), (-1, 1), (-1, 1)))
 
     cells = pyvoro2.ghost_cells(
@@ -20,10 +21,9 @@ def test_ghost_cells_box_standard_inside_outside() -> None:
     )
 
     assert isinstance(cells, list)
-    assert len(cells) == 2
+    assert len(cells) == 1
 
     c0 = cells[0]
-    c1 = cells[1]
 
     assert c0['query_index'] == 0
     assert np.allclose(np.asarray(c0['query'], dtype=float), queries[0])
@@ -31,10 +31,12 @@ def test_ghost_cells_box_standard_inside_outside() -> None:
     # Expected half-space volume: x in [0.25, 1] -> 0.75 * 2 * 2 = 3.0
     assert abs(float(c0['volume']) - 3.0) < 1e-6
 
-    assert c1['query_index'] == 1
-    assert np.allclose(np.asarray(c1['query'], dtype=float), queries[1])
-    assert c1['empty'] is True
-    assert float(c1['volume']) == 0.0
+    with pytest.raises(ValueError, match='outside the native primary domain'):
+        pyvoro2.ghost_cells(
+            pts,
+            np.array([[2.0, 0.0, 0.0]]),
+            domain=box,
+        )
 
 
 def test_ghost_cells_box_power_volume_shift() -> None:

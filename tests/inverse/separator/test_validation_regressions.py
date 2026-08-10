@@ -433,6 +433,31 @@ def test_match_realized_pairs_supports_pre_resolved_planar_constraints():
     assert diag.unrealized == tuple()
 
 
+def test_realization_inherits_mandatory_forward_duplicate_safety():
+    import pyvoro2.planar as pv2
+    from pyvoro2 import DuplicateError
+    from pyvoro2.inverse.separator import (
+        match_realized_pairs,
+        resolve_separator_observations,
+    )
+
+    source_points = np.array([[0.0, 0.0], [2.0, 0.0]])
+    constraints = resolve_separator_observations(
+        source_points,
+        [(0, 1, 0.5)],
+    )
+    duplicate_points = np.array([[0.0, 0.0], [0.0, 0.0]])
+    with pytest.raises(DuplicateError) as caught:
+        match_realized_pairs(
+            duplicate_points,
+            domain=pv2.Box(((-1.0, 1.0), (-1.0, 1.0))),
+            radii=np.zeros(2),
+            constraints=constraints,
+        )
+    assert caught.value.kind == 'backend_safety'
+    assert caught.value.operation == 'compute'
+
+
 def test_active_set_supports_pre_resolved_planar_constraints():
     import pyvoro2.planar as pv2
     from pyvoro2.inverse.separator import (

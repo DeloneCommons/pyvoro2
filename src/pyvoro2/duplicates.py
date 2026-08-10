@@ -4,20 +4,9 @@ Voro++ contains an internal "duplicate" safeguard that can terminate the
 process (via `exit(1)`) if it detects two points closer than an absolute
 threshold (~1e-5 in container distance units).
 
-This module provides a fast *Python-side* pre-check to detect such cases before
-calling into the C++ library.
-
-The check is intentionally simple:
-  - spatial hashing on an integer grid with cell size == threshold
-  - compare each point only to points in its own grid cell and neighboring 26
-    cells
-
-When periodic wrapping is enabled (``wrap=True``), distances for candidate
-pairs that are evaluated use the shared certified minimum-image primitive.
-With wrapping disabled, the established unwrapped Cartesian check is
-preserved.  Candidate generation itself is unchanged and is not yet a complete
-periodic seam scanner; mandatory safety independent of wrapping is owned by
-v0.8 R5.
+This module provides the public diagnostic helper. Native-facing operations add
+an independent mandatory safety floor in the private generator-preparation
+layer, so turning an optional diagnostic off never weakens backend safety.
 
 Expected complexity is O(n) for typical inputs.
 """
@@ -33,10 +22,9 @@ import warnings
 import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
-from ._internal.spatial.domain_utils import is_periodic_domain
 from ._internal.spatial.domain_geometry import geometry3d
-from ._internal.inputs import coerce_point_array, floor_to_int64
-from ._internal.periodic_images import exact_distance_less_than
+from ._internal.duplicate_scanning import scan_close_pairs
+from ._internal.inputs import coerce_point_array
 from ._internal.validation import (
     require_bool,
     require_positive_finite_real,
@@ -59,11 +47,39 @@ class DuplicateError(ValueError):
     """Raised when near-duplicate points are detected."""
 
     def __init__(
-        self, message: str, pairs: tuple[DuplicatePair, ...], threshold: float
+        self,
+        message: str,
+        pairs: tuple[DuplicatePair, ...],
+        threshold: float,
+        *,
+        kind: str = 'user_threshold',
+        safety_distance_squared: float = 1e-10,
+        safety_distance: float = 1e-5,
+        user_threshold: float | None = None,
+        minimum_image_used: bool = False,
+        optional_wrap_used: bool = False,
+        truncated: bool = False,
+        operation: str = 'duplicate_check',
+        external_ids: tuple[tuple[int, int], ...] | None = None,
     ):
         super().__init__(message, pairs, threshold)
         self.pairs = pairs
         self.threshold = float(threshold)
+        self.kind = str(kind)
+        self.safety_distance_squared = float(safety_distance_squared)
+        self.safety_distance = float(safety_distance)
+        self.user_threshold = (
+            float(threshold) if user_threshold is None else float(user_threshold)
+        )
+        self.minimum_image_used = bool(minimum_image_used)
+        self.optional_wrap_used = bool(optional_wrap_used)
+        self.truncated = bool(truncated)
+        self.operation = str(operation)
+        self.external_ids = (
+            tuple((pair.i, pair.j) for pair in pairs)
+            if external_ids is None
+            else tuple(external_ids)
+        )
 
     def __str__(self) -> str:
         return str(self.args[0])
@@ -83,12 +99,12 @@ def duplicate_check(
     Args:
         points: Array-like of shape (n, 3).
         threshold: Absolute distance threshold. The default (1e-5) matches the
-            effective Voro++ duplicate check (distance < 1e-5).
+            public strict-distance diagnostic threshold.
         domain: Optional domain. If provided and `wrap=True`, points are first
             remapped into the primary periodic domain for periodic domains,
-            matching what Voro++ will do internally. Distances for evaluated
-            periodic candidate pairs use certified minimum-image geometry;
-            candidate generation is not yet complete across every seam.
+            matching native-facing preparation. Periodic candidate generation
+            is seam-complete and final distances use certified minimum-image
+            geometry.
         wrap: Whether to remap points into the primary domain when `domain` has
             periodicity. With `wrap=False`, preserve the unwrapped Cartesian
             distance check.
@@ -122,83 +138,46 @@ def duplicate_check(
         return tuple()
 
     periodic_geometry = None
-    if domain is not None and wrap_value and is_periodic_domain(domain):
-        # Domain remap is authoritative for how Voro++ will interpret periodic
-        # coordinates. (For PeriodicCell, this matches the internal remap used
-        # when inserting points.)
+    if domain is not None and wrap_value:
+        geometry = geometry3d(domain)
+        if geometry.has_any_periodic_axis:
+            # Domain remap is authoritative for primary-coordinate candidate
+            # generation; R4 remains authoritative for final distances.
+            periodic_geometry = geometry
+    if periodic_geometry is not None:
         pts = np.asarray(domain.remap_cart(pts), dtype=np.float64)
-        periodic_geometry = geometry3d(domain)
-
-    h = thr
-    h2 = h * h
-    # grid index for each point
-    with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-        quotient = pts / h
-    g = floor_to_int64(quotient, name='duplicate grid coordinates')
-
-    # Precompute neighbor offsets
-    neigh = [
-        (dx, dy, dz) for dx in (-1, 0, 1) for dy in (-1, 0, 1) for dz in (-1, 0, 1)
-    ]
-
-    buckets: dict[tuple[int, int, int], list[int]] = {}
-    found: list[DuplicatePair] = []
-
-    for i in range(n):
-        key = (int(g[i, 0]), int(g[i, 1]), int(g[i, 2]))
-        x = pts[i]
-
-        # Check points in this bucket and adjacent buckets
-        for dx, dy, dz in neigh:
-            nk = (key[0] + dx, key[1] + dy, key[2] + dz)
-            cand = buckets.get(nk)
-            if not cand:
-                continue
-            for j in cand:
-                if periodic_geometry is None:
-                    d = x - pts[j]
-                    dist2 = float(
-                        d[0] * d[0] + d[1] * d[1] + d[2] * d[2]
-                    )
-                    close = dist2 < h2
-                else:
-                    minimum = periodic_geometry.minimum_image_displacements(
-                        pts[j:j + 1],
-                        pts[i:i + 1],
-                        tie_orientation=np.array([1], dtype=np.int8),
-                        image_search=1,
-                    )
-                    dist2 = float(minimum.distance_squared[0])
-                    close = exact_distance_less_than(
-                        minimum.exact_distance_key[0],
-                        thr,
-                    )
-                if close:
-                    found.append(
-                        DuplicatePair(
-                            i=int(j), j=int(i), distance=float(np.sqrt(dist2))
-                        )
-                    )
-                    if len(found) >= max_pairs_i:
-                        break
-            if len(found) >= max_pairs_i:
-                break
-        if len(found) >= max_pairs_i:
-            break
-
-        buckets.setdefault(key, []).append(i)
-
-    pairs = tuple(found)
+    scan = scan_close_pairs(
+        pts,
+        radius=thr,
+        geometry=periodic_geometry,
+        max_pairs=max_pairs_i,
+    )
+    pairs = tuple(
+        DuplicatePair(i=i, j=j, distance=distance)
+        for i, j, distance in scan.pairs
+    )
     if not pairs:
         return pairs
 
-    msg = (
-        f'Found {len(pairs)} point pair(s) closer than threshold={thr:g}. '
-        'Such near-duplicates may cause Voro++ to terminate the process.'
+    count = (
+        f'at least {len(pairs)}; showing {len(pairs)}'
+        if scan.truncated
+        else str(len(pairs))
     )
+    msg = f'Found {count} point pair(s) closer than threshold={thr:g}.'
 
     if mode == 'raise':
-        raise DuplicateError(msg, pairs, thr)
+        raise DuplicateError(
+            msg,
+            pairs,
+            thr,
+            kind='user_threshold',
+            user_threshold=thr,
+            minimum_image_used=scan.minimum_image_used,
+            optional_wrap_used=bool(periodic_geometry is not None),
+            truncated=scan.truncated,
+            operation='duplicate_check',
+        )
     if mode == 'warn':
         warnings.warn(msg, RuntimeWarning, stacklevel=2)
     return pairs

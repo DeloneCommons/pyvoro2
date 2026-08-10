@@ -341,6 +341,27 @@ ghost_cells(
 `radii` are required when `mode='power'`; planar and spatial power ghost calls
 also require `ghost_radius`. There is no v0.6.3 forward `weights=` argument.
 
+All six current forward operations prepare inserted generators centrally.
+Non-periodic coordinates use the half-open interval `[lo, hi)` and periodic
+coordinates are remapped to their primary representation before native
+dispatch. This includes each temporary `ghost_cells` query; `locate` queries
+themselves are not inserted and retain their existing query semantics.
+
+The frozen backend-safety floor is squared distance `1e-10` (distance `1e-5`),
+inclusive. It is always active, uses certified minimum-image geometry for
+periodic pairs, and is not controlled by the public duplicate mode, threshold,
+wrap flag, or pair-report limit. The existing `off`/`warn`/`raise` policy
+applies only to safe pairs strictly below a user threshold above `1e-5`;
+`duplicate_wrap=False` changes only that optional metric.
+
+`DuplicatePair(i, j, distance)` is unchanged. `DuplicateError` remains a
+`ValueError` with compatible positional `args`, `.pairs`, `.threshold`, and
+string behavior. It additionally exposes `kind`, `safety_distance_squared`,
+`safety_distance`, `user_threshold`, `minimum_image_used`,
+`optional_wrap_used`, `truncated`, `operation`, and `external_ids`. Mandatory
+errors use `.threshold == 1e-5`; optional errors retain the configured user
+threshold.
+
 Supporting forward call defaults are also part of the observed surface:
 
 | Call | Current optional parameters and defaults |
