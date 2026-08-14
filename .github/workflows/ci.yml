@@ -47,6 +47,42 @@ jobs:
       - name: Build docs
         run: mkdocs build --strict
 
+  native-sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install sanitizer build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -U cmake ninja
+      - name: Build and install with ASan and UBSan
+        env:
+          CXXFLAGS: >-
+            -fsanitize=address,undefined -fno-omit-frame-pointer -O1 -g
+          LDFLAGS: -fsanitize=address,undefined
+        run: python -m pip install .[test]
+      - name: Run native safety regressions under ASan and UBSan
+        shell: bash
+        run: |
+          ASAN_LIB="$(g++ -print-file-name=libasan.so)"
+          UBSAN_LIB="$(g++ -print-file-name=libubsan.so)"
+          test -f "$ASAN_LIB"
+          test -f "$UBSAN_LIB"
+          env \
+            LD_PRELOAD="${ASAN_LIB}:${UBSAN_LIB}" \
+            ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+            UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
+            python -m pytest -q \
+              tests/forward/common/test_native_boundary_validation.py \
+              tests/forward/common/test_native_preconditions.py \
+              tests/forward/common/test_generator_preparation.py \
+              tests/forward/spatial/test_duplicate_check.py \
+              tests/forward/spatial/test_ghost_cells.py \
+              tests/forward/planar/test_api_dispatch.py
+
   test:
     strategy:
       fail-fast: false

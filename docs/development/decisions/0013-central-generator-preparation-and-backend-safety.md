@@ -173,8 +173,9 @@ outward-rounded binary64 intervals. Each primitive is forced through binary64
 storage before its endpoints are widened with `nextafter`, and fast-math builds
 are rejected. The runtime also requires round-to-nearest and verifies gradual
 subnormal underflow instead of silently operating with flush-to-zero. A point
-is indexed under every cyclic key allowed by its coefficient interval; aliases,
-neighboring keys, and candidate point indices are deduplicated before resource
+is indexed under every cyclic key allowed by its coefficient interval. Raw
+neighbor-key expansion is separately bounded; cyclic key aliases and candidate
+point indices are deduplicated before bucket lookup and candidate-comparison
 accounting. The shift search enumerates every integer allowed by the outward
 coefficient box. This proof does not rely on `long double` having more precision
 than binary64. An interval or integer range that cannot be represented or
