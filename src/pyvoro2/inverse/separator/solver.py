@@ -60,6 +60,7 @@ from .constraints import (
     SeparatorObservations,
     resolve_separator_observations,
 )
+from ._identity import _bind_fitting_source, _bind_originating_observations
 from .model import FitModel, HuberLoss, SquaredLoss
 from .problem import (
     _compute_edge_diagnostics,
@@ -74,7 +75,6 @@ from .problem import (
 from .types import (
     ConnectivityDiagnostics,
     SeparatorFitResult,
-    _bind_originating_observations,
 )
 
 
@@ -389,6 +389,8 @@ def fit_weights_from_separators(
             allow_empty=True,
         )
         measurement = resolved.measurement
+
+    _bind_fitting_source(resolved, pts, domain)
 
     return _fit_power_weights_resolved(
         resolved,

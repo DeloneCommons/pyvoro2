@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 
+from ...__about__ import __version__
 from ..._internal.validation import require_bool, require_index
 from .constraints import SeparatorObservations
 from .realize import RealizedPairDiagnostics
@@ -23,6 +24,33 @@ from .types import (
     HardConstraintConflict,
     SeparatorFitResult,
 )
+from ._identity import (
+    _observation_set_report,
+    _originating_observations,
+    _require_observation_association,
+    _source_report,
+)
+
+
+_REPORT_SCHEMA_NAME = 'pyvoro2.inverse.separator.report'
+_REPORT_SCHEMA_VERSION = 1
+
+
+def _report_envelope(
+    observations: SeparatorObservations,
+) -> dict[str, object]:
+    return {
+        'schema': {
+            'name': _REPORT_SCHEMA_NAME,
+            'version': _REPORT_SCHEMA_VERSION,
+        },
+        'producer': {
+            'name': 'pyvoro2',
+            'version': __version__,
+        },
+        'source': _source_report(observations),
+        'observation_set': _observation_set_report(observations),
+    }
 
 
 def _label_nodes(nodes: tuple[int, ...], ids: np.ndarray | None) -> list[object]:
@@ -296,11 +324,21 @@ def build_fit_report(
     """Return a JSON-friendly report for a low-level fit result."""
 
     use_ids_value = require_bool(use_ids, name='use_ids')
-    ids = constraints.ids if use_ids_value else None
+    originating = _originating_observations(
+        result,
+        context='fit report result',
+    )
+    _require_observation_association(
+        originating,
+        constraints,
+        context='fit report',
+    )
+    ids = originating.ids if use_ids_value else None
     state = result.state
     identification = result.identification
     termination = result.solver_termination
-    return {
+    report = {
+        **_report_envelope(originating),
         'kind': 'power_weight_fit',
         'summary': {
             'status': termination.status,
@@ -310,8 +348,8 @@ def build_fit_report(
             'solver': termination.solver,
             'linear_backend': termination.linear_backend,
             'measurement': result.measurement,
-            'n_constraints': int(constraints.n_constraints),
-            'n_points': int(constraints.n_points),
+            'n_constraints': int(originating.n_constraints),
+            'n_points': int(originating.n_points),
             'converged': bool(termination.converged),
             'status_detail': termination.status_detail,
             'n_iter': int(termination.n_iter),
@@ -325,11 +363,11 @@ def build_fit_report(
                 result.conflicting_constraint_indices
             ),
         },
-        'constraints': list(constraints.to_records(use_ids=use_ids_value)),
+        'constraints': list(originating.to_records(use_ids=use_ids_value)),
         'fit_records': list(
-            result.to_records(constraints, use_ids=use_ids_value)
+            result.to_records(originating, use_ids=use_ids_value)
         ),
-        'edge_diagnostics': _edge_diagnostics_record(result, constraints),
+        'edge_diagnostics': _edge_diagnostics_record(result, originating),
         'objective_breakdown': _objective_breakdown_record(
             result.objective
         ),
@@ -356,6 +394,7 @@ def build_fit_report(
             ids=ids,
         ),
     }
+    return _jsonable_report_value(report)
 
 
 def build_realized_report(
@@ -367,13 +406,23 @@ def build_realized_report(
     """Return a JSON-friendly report for realized-face matching."""
 
     use_ids_value = require_bool(use_ids, name='use_ids')
-    ids = constraints.ids if use_ids_value else None
+    originating = _originating_observations(
+        diagnostics,
+        context='realized report diagnostics',
+    )
+    _require_observation_association(
+        originating,
+        constraints,
+        context='realized report',
+    )
+    ids = originating.ids if use_ids_value else None
     matching = diagnostics.requested_image_matching
     geometry = diagnostics.geometry
-    return {
+    report = {
+        **_report_envelope(originating),
         'kind': 'realized_pair_diagnostics',
         'summary': {
-            'n_constraints': int(constraints.n_constraints),
+            'n_constraints': int(originating.n_constraints),
             'n_realized': int(np.count_nonzero(matching.any_realization)),
             'n_same_shift': int(np.count_nonzero(matching.same_requested_shift)),
             'n_other_shift': int(
@@ -385,7 +434,7 @@ def build_realized_report(
             ),
         },
         'records': list(
-            diagnostics.to_records(constraints, use_ids=use_ids_value)
+            diagnostics.to_records(originating, use_ids=use_ids_value)
         ),
         'unrealized': [
             int(idx) for idx in matching.unrealized_observation_indices
@@ -396,6 +445,7 @@ def build_realized_report(
             geometry.tessellation_diagnostics
         ),
     }
+    return _jsonable_report_value(report)
 
 
 def build_active_set_report(
@@ -419,6 +469,25 @@ def build_active_set_report(
     final_realization = result.final_realization
     outer_termination = result.outer_termination
     path = result.path
+    originating = result.constraints
+    fit_origin = _originating_observations(
+        inner_fit,
+        context='active report fit',
+    )
+    _require_observation_association(
+        originating.subset(path.active_mask),
+        fit_origin,
+        context='active report fit',
+    )
+    realized_origin = _originating_observations(
+        final_realization,
+        context='active report realization',
+    )
+    _require_observation_association(
+        originating,
+        realized_origin,
+        context='active report realization',
+    )
 
     history_rows: list[dict[str, object]] | None = None
     if path.history is not None:
@@ -467,7 +536,8 @@ def build_active_set_report(
         diagnostic_rows[int(idx)] for idx in path.marginal_constraint_indices
     ]
 
-    return {
+    report = {
+        **_report_envelope(originating),
         'kind': 'self_consistent_power_fit',
         'summary': {
             'termination': outer_termination.status,
@@ -517,10 +587,11 @@ def build_active_set_report(
             ids=(result.constraints.ids if use_ids_value else None),
         ),
     }
+    return _jsonable_report_value(report)
 
 
 def _jsonable_report_value(value: Any) -> Any:
-    """Convert nested report payloads into plain JSON-safe values."""
+    """Convert nested payloads to finite JSON-native values or fail closed."""
 
     if isinstance(value, dict):
         return {
@@ -532,8 +603,19 @@ def _jsonable_report_value(value: Any) -> Any:
     if isinstance(value, np.ndarray):
         return [_jsonable_report_value(item) for item in value.tolist()]
     if isinstance(value, np.generic):
-        return value.item()
-    return value
+        return _jsonable_report_value(value.item())
+    if value is None or type(value) in (str, bool, int):
+        return value
+    if type(value) is float:
+        if not np.isfinite(value):
+            raise ValueError(
+                'separator reports cannot contain NaN or infinite values'
+            )
+        return value
+    raise TypeError(
+        'separator reports require JSON-native values; received '
+        f'{type(value).__name__}'
+    )
 
 
 def dumps_report_json(
@@ -554,6 +636,7 @@ def dumps_report_json(
         _jsonable_report_value(report),
         indent=indent_value,
         sort_keys=sort_keys_value,
+        allow_nan=False,
     )
 
 

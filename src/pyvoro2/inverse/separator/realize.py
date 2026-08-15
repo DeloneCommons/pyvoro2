@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import InitVar, KW_ONLY, dataclass, fields
+import inspect
 from typing import Any, Literal, Sequence
 
 import warnings
@@ -34,6 +35,15 @@ from ...planar.diagnostics import (
     analyze_tessellation as analyze_tessellation2d,
 )
 from ...planar.domains import Box as Box2D, RectangularCell
+from ._identity import (
+    _ObservationBindingInit,
+    _ObservationBoundResult,
+    _bind_full_source,
+    _bind_originating_observations,
+    _originating_observations,
+    _require_observation_association,
+    _row_ids,
+)
 
 ShiftTuple = tuple[int, ...]
 MeasureKey = tuple[int, int, ShiftTuple]
@@ -60,6 +70,24 @@ def _supported_realization_dim(constraints: SeparatorObservations) -> None:
         raise ValueError(
             'match_realized_pairs currently supports only 2D and 3D resolved '
             'constraints'
+        )
+
+
+def _require_realization_domain(dim: int, domain: DomainAny) -> None:
+    """Validate the complete domain required by realization workflows."""
+
+    if dim == 2 and not isinstance(domain, (Box2D, RectangularCell)):
+        raise ValueError(
+            '2D points require a planar domain: pyvoro2.planar.Box or '
+            'RectangularCell'
+        )
+    if dim == 3 and not isinstance(
+        domain,
+        (Box3D, OrthorhombicCell, PeriodicCell),
+    ):
+        raise ValueError(
+            '3D points require a 3D domain: Box, OrthorhombicCell, or '
+            'PeriodicCell'
         )
 
 
@@ -151,7 +179,7 @@ class RealizedGeometryView:
 
 
 @dataclass(frozen=True, slots=True)
-class RealizedPairDiagnostics:
+class RealizedPairDiagnostics(_ObservationBoundResult):
     """Diagnostics for matching candidate constraints to realized boundaries."""
 
     realized: np.ndarray
@@ -166,13 +194,25 @@ class RealizedPairDiagnostics:
     tessellation_diagnostics: TessellationDiagnosticsAny | None
     unaccounted_pairs: tuple[UnaccountedRealizedPair, ...] = ()
     warnings: tuple[str, ...] = ()
+    _: KW_ONLY
+    _originating_observations_init: InitVar[
+        SeparatorObservations | None
+    ] = _ObservationBindingInit()
 
-    def __post_init__(self) -> None:
+    def __post_init__(
+        self,
+        _originating_observations_init: SeparatorObservations | None,
+    ) -> None:
         object.__setattr__(
             self,
             'warnings',
             require_string_tuple(self.warnings, name='warnings'),
         )
+        if _originating_observations_init is not None:
+            _bind_originating_observations(
+                self,
+                _originating_observations_init,
+            )
 
     @property
     def requested_image_matching(self) -> RequestedImageMatchView:
@@ -209,10 +249,15 @@ class RealizedPairDiagnostics:
         """Return one plain-Python record per candidate pair."""
 
         use_ids_value = require_bool(use_ids, name='use_ids')
-        if constraints.n_constraints != int(self.realized.shape[0]):
-            raise ValueError(
-                'constraints do not match the realized diagnostics length'
-            )
+        originating = _originating_observations(
+            self,
+            context='realized diagnostics records',
+        )
+        _require_observation_association(
+            originating,
+            constraints,
+            context='realized diagnostics records',
+        )
         left, right = constraints.pair_labels(use_ids=use_ids_value)
         rows: list[dict[str, object]] = []
         left_is_int = np.issubdtype(np.asarray(left).dtype, np.integer)
@@ -227,6 +272,7 @@ class RealizedPairDiagnostics:
             rows.append(
                 {
                     'constraint_index': int(k),
+                    'row_id': _row_ids(originating)[k],
                     'site_i': site_i,
                     'site_j': site_j,
                     'shift': tuple(int(v) for v in constraints.shifts[k]),
@@ -269,6 +315,43 @@ class RealizedPairDiagnostics:
             constraints,
             use_ids=use_ids_value,
         )
+
+
+def _realized_pair_diagnostics_getstate(
+    diagnostics: RealizedPairDiagnostics,
+) -> list[object]:
+    values = [getattr(diagnostics, field.name) for field in fields(diagnostics)]
+    values.append(getattr(diagnostics, '_originating_observations', None))
+    return values
+
+
+def _realized_pair_diagnostics_setstate(
+    diagnostics: RealizedPairDiagnostics,
+    state: list[object],
+) -> None:
+    diagnostic_fields = fields(diagnostics)
+    values = list(state)
+    if len(values) == len(diagnostic_fields) + 1:
+        originating = values.pop()
+    elif len(values) == len(diagnostic_fields):
+        originating = None
+    else:
+        raise ValueError('invalid RealizedPairDiagnostics reconstruction state')
+    for field, value in zip(diagnostic_fields, values):
+        object.__setattr__(diagnostics, field.name, value)
+    diagnostics.__post_init__(originating)
+
+
+RealizedPairDiagnostics.__getstate__ = _realized_pair_diagnostics_getstate
+RealizedPairDiagnostics.__setstate__ = _realized_pair_diagnostics_setstate
+_realized_diagnostics_signature = inspect.signature(RealizedPairDiagnostics)
+RealizedPairDiagnostics.__signature__ = _realized_diagnostics_signature.replace(
+    parameters=tuple(
+        parameter
+        for parameter in _realized_diagnostics_signature.parameters.values()
+        if parameter.name != '_originating_observations_init'
+    )
+)
 
 
 def match_realized_pairs(
@@ -324,6 +407,8 @@ def match_realized_pairs(
     if constraints.dim != pts.shape[1]:
         raise ValueError('points do not match the resolved constraint dimension')
     _supported_realization_dim(constraints)
+    _require_realization_domain(constraints.dim, domain)
+    _bind_full_source(constraints, pts, domain)
     dim = int(pts.shape[1])
     if dim == 2:
         cells, tessellation_diagnostics, periodic = _compute_planar_cells(
@@ -430,7 +515,7 @@ def match_realized_pairs(
             elif unaccounted_pair_check == 'raise':
                 raise UnaccountedRealizedPairError(message, unaccounted_pairs)
 
-    return RealizedPairDiagnostics(
+    diagnostics = RealizedPairDiagnostics(
         realized=realized,
         unrealized=tuple(unrealized),
         realized_same_shift=realized_same_shift,
@@ -444,6 +529,7 @@ def match_realized_pairs(
         unaccounted_pairs=unaccounted_pairs,
         warnings=tuple(warning_messages),
     )
+    return _bind_originating_observations(diagnostics, constraints)
 
 
 def _compute_3d_cells(

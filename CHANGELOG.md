@@ -173,6 +173,18 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - Separator external IDs and raw observation endpoints now enforce the
   documented non-negative integer contract consistently, accepting Python and
   NumPy integers while rejecting lossy float, string, and boolean conversions.
+- Bound separator rows, fits, realizations, active diagnostics, and reports to
+  one canonical two-layer identity contract. Every valid observation set now
+  has deterministic source-independent row IDs and an ordered set fingerprint;
+  resolver-backed observations additionally retain exact caller-order points,
+  domain representation, and ID provenance, while valid direct observations
+  remain honestly unbound until a source-aware use verifies and binds them.
+  Shape-only and bound/unbound associations now fail. Direct construction
+  recomputes and validates redundant geometry/measurement fields and preserves
+  owned read-only arrays. Observation-aligned records add `row_id`, and all
+  report families add schema version 1, producer, authoritative source, and
+  observation-set records with strict finite JSON serialization. The public
+  row-only builder chain and existing public signatures remain unchanged.
 - Distribution metadata checks now discover wheel and sdist artifacts in
   Python, so local and GitHub Actions Twine validation no longer depends on
   shell glob expansion.

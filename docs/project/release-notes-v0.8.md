@@ -146,6 +146,27 @@ a compatibility-only route and was not removed.
   when exact binary64-input checks prove that every within-component weight
   difference is unchanged. Positive L2 solutions are no longer shifted toward
   a previous outer iterate after certification.
+- Separator observations, fixed fits, realizations, active diagnostics, and
+  reports now share a canonical two-layer identity model. Every valid row has
+  a deterministic source-independent `row_id`, and every ordered observation
+  set has a fingerprint that remains stable if exact source provenance is
+  bound later. Resolver-created observations retain exact caller-order points,
+  domain representation, dimension/count, and ID provenance. Valid directly
+  constructed observations remain unbound and continue through the public
+  row-only problem/result/report chain; a first source-aware use may bind them
+  only after independently verifying their connector geometry. Bound/unbound,
+  different-source, and length-only associations are rejected. Omitted
+  `domain=None` preserves an existing domain binding, while it establishes an
+  exact no-domain source for an unbound object.
+- Observation-aligned record dictionaries add `row_id`. Fit, realized, and
+  active reports retain their existing kind and numerical fields and add the
+  common schema-1 `schema`, `producer`, `source`, and `observation_set` blocks.
+  An unbound source reports null fingerprint, points, domain, and IDs; this is
+  distinct from a bound `{"kind": "none"}` domain. Finite reports round-trip
+  exactly through strict JSON. Existing active failure states with non-finite
+  placeholders fail closed pending the separate R7 availability design.
+  Exact-key report consumers must accept these additive keys; no public source
+  argument, dependency, or native behavior is added.
 
 The first four corrections above are API-contract consistency work from issue
 #31 and do not change forward tessellation algorithms. The separator objective
@@ -154,6 +175,8 @@ and schema corrections are the approved prerelease correctness work from issue
 issue #37 and adds no public tolerance option, dependency, or solver method.
 The certified periodic-image correction is the issue #40 implementation and
 adds no public result schema, lattice API, or dependency.
+The separator identity and report-schema correction is the issue #42 R6
+implementation; valid fitted weights and realization geometry are unchanged.
 These changes add no legacy scaling mode. ADMM results can change where the
 earlier mismatch/L2 relative scaling was inconsistent or the former scalar
 loop returned an uncertified iterate.

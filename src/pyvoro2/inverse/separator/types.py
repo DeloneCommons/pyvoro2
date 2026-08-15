@@ -19,6 +19,13 @@ from .constraints import (
     _validated_ids_array,
     SeparatorObservations,
 )
+from ._identity import (
+    _ObservationBindingInit,
+    _ObservationBoundResult,
+    _originating_observations,
+    _require_observation_association,
+    _row_ids,
+)
 
 
 def _plain_value(value: object) -> object:
@@ -429,74 +436,6 @@ class SeparatorSolverTerminationView:
         )
 
 
-class _ObservationBoundResult:
-    """Private storage that does not alter the public dataclass field surface."""
-
-    __slots__ = ('_originating_observations',)
-
-
-class _ObservationBindingInit:
-    """Expose a private slot to ``dataclasses.replace`` as an init-only value."""
-
-    def __get__(
-        self,
-        instance: object | None,
-        owner: type[object] | None = None,
-    ) -> SeparatorObservations | None:
-        if instance is None:
-            return None
-        return getattr(instance, '_originating_observations', None)
-
-
-_OBSERVATION_ARRAY_FIELDS = (
-    'i',
-    'j',
-    'shifts',
-    'target',
-    'confidence',
-    'distance',
-    'distance2',
-    'delta',
-    'target_fraction',
-    'target_position',
-    'input_index',
-    'explicit_shift',
-    'ids',
-)
-
-
-def _observation_mismatch(
-    originating: SeparatorObservations,
-    supplied: SeparatorObservations,
-) -> str | None:
-    """Return the first field that differs between resolved observation sets."""
-
-    if originating is supplied:
-        return None
-    for name in ('n_points', 'measurement', 'warnings'):
-        if getattr(originating, name) != getattr(supplied, name):
-            return name
-    for name in _OBSERVATION_ARRAY_FIELDS:
-        expected = getattr(originating, name)
-        actual = getattr(supplied, name)
-        if expected is None or actual is None:
-            if expected is not actual:
-                return name
-        elif not np.array_equal(expected, actual):
-            return name
-    return None
-
-
-def _bind_originating_observations(
-    result: SeparatorFitResult,
-    observations: SeparatorObservations,
-) -> SeparatorFitResult:
-    """Associate a result with its resolved inputs without copying their arrays."""
-
-    object.__setattr__(result, '_originating_observations', observations)
-    return result
-
-
 @dataclass(frozen=True, slots=True)
 class SeparatorFitResult(_ObservationBoundResult):
     """Result of fitting power weights from separator observations."""
@@ -647,18 +586,15 @@ class SeparatorFitResult(_ObservationBoundResult):
         returned view shares arrays and does not copy them.
         """
 
-        originating = getattr(self, '_originating_observations', None)
-        if originating is None:
-            raise ValueError(
-                'fit result is not bound to originating observations; use a '
-                'solver- or problem-builder-produced result'
-            )
-        mismatch = _observation_mismatch(originating, observations)
-        if mismatch is not None:
-            raise ValueError(
-                'observations do not match the fit result originating '
-                f'observations ({mismatch})'
-            )
+        originating = _originating_observations(
+            self,
+            context='fit result',
+        )
+        _require_observation_association(
+            originating,
+            observations,
+            context='fit result',
+        )
 
         if self.measurement != originating.measurement:
             raise ValueError(
@@ -747,8 +683,16 @@ class SeparatorFitResult(_ObservationBoundResult):
         use_ids: bool = False,
     ) -> tuple[dict[str, object], ...]:
         use_ids_value = require_bool(use_ids, name='use_ids')
-        if constraints.n_constraints != int(self.target.shape[0]):
-            raise ValueError('constraints do not match the fit result length')
+        originating = _originating_observations(
+            self,
+            context='fit result records',
+        )
+        _require_observation_association(
+            originating,
+            constraints,
+            context='fit result records',
+        )
+        self.observation_view(constraints)
         left, right = constraints.pair_labels(use_ids=use_ids_value)
         from .problem import _edge_diagnostics_for_result
 
@@ -762,6 +706,7 @@ class SeparatorFitResult(_ObservationBoundResult):
             rows.append(
                 {
                     'constraint_index': int(k),
+                    'row_id': _row_ids(originating)[k],
                     'site_i': site_i,
                     'site_j': site_j,
                     'shift': tuple(int(v) for v in constraints.shifts[k]),

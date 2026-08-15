@@ -25,6 +25,7 @@ def test_no_work_fit_report_records_no_solver_or_linear_backend():
 
     report = build_fit_report(fit, observations)
     payload = json.loads(dumps_report_json(report))
+    assert payload == report
     assert report['summary']['solver'] == 'none'
     assert report['summary']['linear_backend'] is None
     assert report['summary']['n_iter'] == 0
@@ -162,6 +163,7 @@ def test_report_json_helpers_roundtrip_plain_report(tmp_path):
     payload = dumps_report_json(report, sort_keys=True)
     loaded = json.loads(payload)
 
+    assert loaded == report
     assert loaded['kind'] == 'power_weight_fit'
     assert loaded['summary']['status'] == 'infeasible_hard_constraints'
     assert loaded['conflict'] is not None

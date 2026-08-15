@@ -441,17 +441,20 @@ def test_realization_inherits_mandatory_forward_duplicate_safety():
         resolve_separator_observations,
     )
 
-    source_points = np.array([[0.0, 0.0], [2.0, 0.0]])
-    constraints = resolve_separator_observations(
-        source_points,
-        [(0, 1, 0.5)],
+    duplicate_points = np.array(
+        [[0.0, 0.0], [2.0, 0.0], [2.0, 0.0]],
     )
-    duplicate_points = np.array([[0.0, 0.0], [0.0, 0.0]])
+    domain = pv2.Box(((-1.0, 3.0), (-1.0, 1.0)))
+    constraints = resolve_separator_observations(
+        duplicate_points,
+        [(0, 1, 0.5)],
+        domain=domain,
+    )
     with pytest.raises(DuplicateError) as caught:
         match_realized_pairs(
             duplicate_points,
-            domain=pv2.Box(((-1.0, 1.0), (-1.0, 1.0))),
-            radii=np.zeros(2),
+            domain=domain,
+            radii=np.zeros(3),
             constraints=constraints,
         )
     assert caught.value.kind == 'backend_safety'

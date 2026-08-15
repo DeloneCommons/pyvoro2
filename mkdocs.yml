@@ -101,6 +101,7 @@ nav:
           - Strict public input and ownership contract: development/decisions/0011-strict-input-and-ownership-contract.md
           - Certified periodic nearest-image geometry: development/decisions/0012-certified-periodic-image-geometry.md
           - Central generator preparation and backend safety: development/decisions/0013-central-generator-preparation-and-backend-safety.md
+          - Two-layer separator observation and source identity: development/decisions/0014-separator-observation-and-source-identity.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

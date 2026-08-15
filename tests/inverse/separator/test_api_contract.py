@@ -1091,6 +1091,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
 
     assert set(constraints.to_records()[0]) == {
         'constraint_index',
+        'row_id',
         'site_i',
         'site_j',
         'shift',
@@ -1105,6 +1106,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
     }
     assert set(fit.to_records(constraints)[0]) == {
         'constraint_index',
+        'row_id',
         'site_i',
         'site_j',
         'shift',
@@ -1123,6 +1125,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
     }
     assert set(realized.to_records(constraints)[0]) == {
         'constraint_index',
+        'row_id',
         'site_i',
         'site_j',
         'shift',
@@ -1136,6 +1139,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
     }
     assert set(active.to_records()[0]) == {
         'constraint_index',
+        'row_id',
         'site_i',
         'site_j',
         'shift',
@@ -1163,6 +1167,10 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
 
     fit_report = fit.to_report(constraints)
     assert set(fit_report) == {
+        'schema',
+        'producer',
+        'source',
+        'observation_set',
         'kind',
         'summary',
         'constraints',
@@ -1197,6 +1205,10 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
 
     realized_report = realized.to_report(constraints)
     assert set(realized_report) == {
+        'schema',
+        'producer',
+        'source',
+        'observation_set',
         'kind',
         'summary',
         'records',
@@ -1216,6 +1228,10 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
 
     active_report = active.to_report()
     assert set(active_report) == {
+        'schema',
+        'producer',
+        'source',
+        'observation_set',
         'kind',
         'summary',
         'constraints',
@@ -1241,3 +1257,34 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
         'max_residual_all',
         'marginal_constraint_indices',
     }
+
+    for report in (
+        fit_report,
+        realized_report,
+        active_report,
+        active_report['fit'],
+        active_report['realized'],
+    ):
+        assert report['schema'] == {
+            'name': 'pyvoro2.inverse.separator.report',
+            'version': 1,
+        }
+        assert report['producer'] == {
+            'name': 'pyvoro2',
+            'version': pv.__version__,
+        }
+        assert set(report['source']) == {
+            'binding',
+            'fingerprint',
+            'dimension',
+            'n_points',
+            'points',
+            'domain',
+            'ids',
+        }
+        assert set(report['observation_set']) == {
+            'fingerprint',
+            'measurement',
+            'n_rows',
+            'row_ids',
+        }

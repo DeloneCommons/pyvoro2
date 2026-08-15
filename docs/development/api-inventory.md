@@ -15,8 +15,10 @@
   [ADR 0008](decisions/0008-separator-solver-and-linear-backend.md),
   [ADR 0009](decisions/0009-certified-scalar-proximal-solver.md),
   [ADR 0010](decisions/0010-native-construction-preconditions.md),
-  [ADR 0011](decisions/0011-strict-input-and-ownership-contract.md), and
-  [ADR 0012](decisions/0012-certified-periodic-image-geometry.md)
+  [ADR 0011](decisions/0011-strict-input-and-ownership-contract.md),
+  [ADR 0012](decisions/0012-certified-periodic-image-geometry.md),
+  [ADR 0013](decisions/0013-central-generator-preparation-and-backend-safety.md), and
+  [ADR 0014](decisions/0014-separator-observation-and-source-identity.md)
 
 This inventory is the authoritative v0.8 lifecycle contract for public imports,
 return routes, record schemas, defaults, and scientific semantics. It has been
@@ -601,6 +603,18 @@ into read-only arrays. `SeparatorFitResult`, realization diagnostics, and
 active-set result containers do not deep-freeze every contained array; callers
 must not infer deep immutability from the frozen outer dataclass.
 
+`SeparatorObservations` retains the exact public field list above and its
+existing public constructor signature. Direct construction validates an exact
+dimension of two or three, point count, integer endpoint/shift/input-index
+categories and ranges, aligned row shapes, distinct endpoints, unique
+non-negative input indices, finite non-negative confidence, finite nonzero
+connector geometry, IDs, and warnings. It recomputes distance values from
+`delta` and both measurement forms from the canonical target and distance.
+Finite redundant values are accepted only under
+`np.allclose(..., rtol=8*np.finfo(np.float64).eps, atol=0.0)` and are replaced
+by the recomputed binary64 values. This tolerance checks internal constructor
+consistency; it is not source equivalence.
+
 Issue #13 preserves those exact dataclass fields and adds the following
 provisional, non-copying access paths:
 
@@ -608,7 +622,7 @@ provisional, non-copying access paths:
 |---|---|---|
 | Fitted state | `SeparatorFitResult.state` | `weights` as `mathematical_weights`, backend `radii`, and compatibility `weight_shift` as `global_representation_shift` |
 | Identification | `SeparatorFitResult.identification` | informative positive-confidence components, global-gauge identification (`False` for separator data), observational component-offset identification, conservative objective selection, component-alignment policy, sites isolated in the informative graph as `unconstrained_sites`, and `connectivity` (whose compatibility `unconstrained_points` remains candidate-based) |
-| Observations | `SeparatorFitResult.observation_view(observations)` | measurement targets, confidence from the supplied resolved observations, predictions in all existing forms, residuals/summaries, and requested shifts; the supplied set must be the originating or a fully equivalent resolved set |
+| Observations | `SeparatorFitResult.observation_view(observations)` | measurement targets, confidence from the supplied resolved observations, predictions in all existing forms, residuals/summaries, and requested shifts; the supplied set must satisfy the exact observation/source association policy below |
 | Objective | `SeparatorFitResult.objective` | existing `objective_breakdown` object |
 | Algebraic diagnostics | `SeparatorFitResult.algebraic` | existing `edge_diagnostics` and `connectivity` objects; no graph-operator representation |
 | Fixed solver termination | `SeparatorFitResult.solver_termination` | status/detail, solver method, linear backend, iterations, convergence, hard feasibility, conflict, and warnings |
@@ -662,17 +676,34 @@ penalties do not make these fields true. An exact hard equality can fix an
 offset in a particular problem, but that separate constraint-identifiability
 case is outside the current view rather than generalized prematurely.
 
-The private originating-observation association used by `observation_view(...)`
-survives shallow and deep copying, pickle round trips, and
-`dataclasses.replace(...)`. It is an init-only implementation detail rather
-than an additional public dataclass field. To let `dataclasses.replace(...)`
-carry it, `inspect.signature(SeparatorFitResult)` includes the optional private
-keyword-only parameter `_originating_observations_init=None`; every established
-public parameter, default, and positional call was unchanged by issue #13.
-Issue #36 subsequently adds the defaulted `linear_backend` dataclass field.
-Results constructed directly through the existing public field arguments,
-without that association, cannot safely combine unknown observation metadata
-with fitted predictions, so the accessor raises `ValueError`.
+Every valid observation set has source-independent row IDs and an ordered
+observation-set fingerprint. Its namespace identity contains dimension, point
+count, measurement, and IDs; each row identity contains endpoints, shift,
+measurement, target, confidence, resolved connector and distance values, both
+measurement forms, and the explicit-shift flag. Warnings do not affect
+identity. Subsets preserve retained row IDs and input indices, while row
+reordering changes the set fingerprint. These identities do not change if
+exact source provenance is bound later.
+
+Source binding is separate, optional, exact, and monotonic. Resolver-created
+observations are bound; valid directly constructed observations remain
+unbound until a source-aware operation independently recomputes and verifies
+their connector geometry. The bound source contains caller-order points before
+periodic remapping, exact domain representation, dimension/count, and exact ID
+provenance. It survives subsets, shallow/deep copy, same-version pickle,
+`dataclasses.replace(...)`, and `copy.replace(...)` where available; an
+inconsistent replacement raises. Binding and origin associations are private,
+not public dataclass fields or source arguments.
+
+One association policy applies to views, records, reports, realization, and
+active-set operations: two unbound objects are accepted only for the exact same
+observation model; two bound objects are accepted only for the exact same
+source; a bound/unbound pair or two different bound sources are rejected.
+Fingerprint agreement never replaces exact comparison of canonical values.
+The private originating-observation association on fit and diagnostic results
+continues to survive copy, replacement, and pickle reconstruction. Reports use
+that authoritative origin rather than borrowing provenance from an arbitrary
+supplied object.
 
 The generated reference also documents these result/problem conveniences:
 
@@ -703,10 +734,10 @@ observation endpoints are strict integers in both `index_mode='index'` and
 
 | Producer | Exact keys |
 |---|---|
-| `SeparatorObservations.to_records()` | `constraint_index`, `site_i`, `site_j`, `shift`, `target`, `confidence`, `measurement`, `distance`, `target_fraction`, `target_position`, `input_index`, `explicit_shift` |
-| `SeparatorFitResult.to_records(...)` | `constraint_index`, `site_i`, `site_j`, `shift`, `measurement`, `target`, `predicted`, `predicted_fraction`, `predicted_position`, `residual`, `alpha`, `beta`, `z_obs`, `z_fit`, `algebraic_residual`, `edge_weight` |
-| `RealizedPairDiagnostics.to_records(...)` | `constraint_index`, `site_i`, `site_j`, `shift`, `realized`, `realized_same_shift`, `realized_other_shift`, `realized_shifts`, `endpoint_i_empty`, `endpoint_j_empty`, `boundary_measure` |
-| `PairConstraintDiagnostics.to_records(...)` / active result | `constraint_index`, `site_i`, `site_j`, `shift`, `target`, `confidence`, `predicted`, `predicted_fraction`, `predicted_position`, `residual`, `active`, `realized`, `realized_same_shift`, `realized_other_shift`, `realized_shifts`, `endpoint_i_empty`, `endpoint_j_empty`, `boundary_measure`, `toggle_count`, `realized_toggle_count`, `first_realized_iter`, `last_realized_iter`, `marginal`, `status` |
+| `SeparatorObservations.to_records()` | `constraint_index`, `row_id`, `site_i`, `site_j`, `shift`, `target`, `confidence`, `measurement`, `distance`, `target_fraction`, `target_position`, `input_index`, `explicit_shift` |
+| `SeparatorFitResult.to_records(...)` | `constraint_index`, `row_id`, `site_i`, `site_j`, `shift`, `measurement`, `target`, `predicted`, `predicted_fraction`, `predicted_position`, `residual`, `alpha`, `beta`, `z_obs`, `z_fit`, `algebraic_residual`, `edge_weight` |
+| `RealizedPairDiagnostics.to_records(...)` | `constraint_index`, `row_id`, `site_i`, `site_j`, `shift`, `realized`, `realized_same_shift`, `realized_other_shift`, `realized_shifts`, `endpoint_i_empty`, `endpoint_j_empty`, `boundary_measure` |
+| `PairConstraintDiagnostics.to_records(...)` / active result | `constraint_index`, `row_id`, `site_i`, `site_j`, `shift`, `target`, `confidence`, `predicted`, `predicted_fraction`, `predicted_position`, `residual`, `active`, `realized`, `realized_same_shift`, `realized_other_shift`, `realized_shifts`, `endpoint_i_empty`, `endpoint_j_empty`, `boundary_measure`, `toggle_count`, `realized_toggle_count`, `first_realized_iter`, `last_realized_iter`, `marginal`, `status` |
 | `HardConstraintConflictTerm.to_record()` | `constraint_index`, `site_i`, `site_j`, `relation`, `bound_value` |
 | `UnaccountedRealizedPair.to_record()` | `site_i`, `site_j`, `realized_shifts`, `boundary_measure` |
 
@@ -719,11 +750,28 @@ identification.
 
 ### Inverse report schemas retained in v0.8
 
+All three report families add the exact common top-level keys `schema`,
+`producer`, `source`, and `observation_set` while retaining their existing kind
+and family-specific keys. `schema` is exactly
+`{"name": "pyvoro2.inverse.separator.report", "version": 1}` and `producer`
+is exactly `{"name": "pyvoro2", "version": pyvoro2.__version__}`.
+`observation_set` has exactly `fingerprint`, `measurement`, `n_rows`, and
+`row_ids`.
+
 | Report | Exact top-level keys | Exact summary keys |
 |---|---|---|
-| fit | `kind`, `summary`, `constraints`, `fit_records`, `edge_diagnostics`, `objective_breakdown`, `weights`, `radii`, `weight_shift`, `used_shifts`, `warnings`, `conflict`, `connectivity` | `status`, `is_optimal`, `is_infeasible`, `hard_feasible`, `solver`, `linear_backend`, `measurement`, `n_constraints`, `n_points`, `converged`, `status_detail`, `n_iter`, `rms_residual`, `max_residual`, `conflicting_constraint_indices` |
-| realized | `kind`, `summary`, `records`, `unrealized`, `unaccounted_pairs`, `warnings`, `tessellation_diagnostics` | `n_constraints`, `n_realized`, `n_same_shift`, `n_other_shift`, `n_unrealized`, `n_unaccounted_pairs` |
-| active set | `kind`, `summary`, `constraints`, `fit`, `realized`, `diagnostics`, `marginal_records`, `history`, `path_summary`, `tessellation_diagnostics`, `warnings`, `connectivity` | `termination`, `converged`, `n_outer_iter`, `cycle_length`, `n_constraints`, `n_active_final`, `n_realized_final`, `rms_residual_all`, `max_residual_all`, `marginal_constraint_indices` |
+| fit | `schema`, `producer`, `source`, `observation_set`, `kind`, `summary`, `constraints`, `fit_records`, `edge_diagnostics`, `objective_breakdown`, `weights`, `radii`, `weight_shift`, `used_shifts`, `warnings`, `conflict`, `connectivity` | `status`, `is_optimal`, `is_infeasible`, `hard_feasible`, `solver`, `linear_backend`, `measurement`, `n_constraints`, `n_points`, `converged`, `status_detail`, `n_iter`, `rms_residual`, `max_residual`, `conflicting_constraint_indices` |
+| realized | `schema`, `producer`, `source`, `observation_set`, `kind`, `summary`, `records`, `unrealized`, `unaccounted_pairs`, `warnings`, `tessellation_diagnostics` | `n_constraints`, `n_realized`, `n_same_shift`, `n_other_shift`, `n_unrealized`, `n_unaccounted_pairs` |
+| active set | `schema`, `producer`, `source`, `observation_set`, `kind`, `summary`, `constraints`, `fit`, `realized`, `diagnostics`, `marginal_records`, `history`, `path_summary`, `tessellation_diagnostics`, `warnings`, `connectivity` | `termination`, `converged`, `n_outer_iter`, `cycle_length`, `n_constraints`, `n_active_final`, `n_realized_final`, `rms_residual_all`, `max_residual_all`, `marginal_constraint_indices` |
+
+`source` has exactly `binding`, `fingerprint`, `dimension`, `n_points`,
+`points`, `domain`, and `ids`. An unbound source reports
+`binding="unbound"` and null fingerprint, points, domain, and IDs. A bound
+source reports `binding="bound"`, its exact fingerprint and caller-order source
+data. Bound domain records use only `none`, `planar_box`,
+`planar_rectangular_cell`, `spatial_box`, `spatial_orthorhombic_cell`, or
+`spatial_periodic_cell`, with the fields fixed by ADR 0014. A bound
+`{"kind": "none"}` domain is distinct from unbound `domain=null`.
 
 Nested fit `edge_diagnostics` uses the fields of
 `AlgebraicEdgeDiagnostics`; `objective_breakdown` uses the fields of
@@ -744,7 +792,7 @@ records contain all `ActiveSetPathSummary` fields. Tessellation report records
 provide dimension-neutral measure/boundary keys plus the corresponding 2D
 area/edge or 3D volume/face aliases.
 
-Issue #13 does not add, remove, or rename report keys. Existing fit report
+Issue #13 did not add, remove, or rename report keys. Existing fit report
 state keys (`weights`, `radii`, `weight_shift`), `connectivity`, observation
 records/summaries, `objective_breakdown`, `edge_diagnostics`, and solver
 summary/conflict/warnings correspond respectively to the state,
@@ -756,7 +804,12 @@ describe realized geometry. Active `fit`, `realized`, `diagnostics`, `summary`,
 per-candidate diagnostics, outer termination, and active-set path.
 Issue #36 subsequently adds the approved nested
 `objective_breakdown.hard_max_tolerance` key and separates the fit-summary
-`solver` and `linear_backend` fields.
+`solver` and `linear_backend` fields. Issue #42 adds the common versioned
+envelope and `row_id` values above without renaming or removing those existing
+fields. Report builders return JSON-native values. Finite fit, realized, and
+active reports round-trip exactly; JSON serialization rejects NaN and infinity.
+Existing non-finite active failure placeholders therefore fail closed pending
+the separate R7 final-state availability design.
 
 ### Historical calls exercised by repository examples
 
@@ -1045,6 +1098,24 @@ through the `fit_*` parameters. Report helper defaults and the
 objective/model/active-set constructor defaults are exactly those listed in
 the retained constructor table above.
 
+The public row-only chain
+
+```text
+SeparatorObservations
+-> build_power_fit_problem
+-> build_power_fit_result
+-> build_fit_report
+```
+
+remains valid for directly constructed source-unbound observations; none of
+these builders gains a public points, domain, or source argument. If an already
+resolved observation object is fitted with points, those points establish or
+verify exact source points. Omitted/default `domain=None` makes no additional
+domain assertion against an already bound object and does not erase its bound
+domain. For an unbound object it binds the explicit no-domain representation.
+An explicit non-`None` domain must match or establish that exact domain.
+Realization and active-set operations verify the complete source they use.
+
 SciPy is optional. `linear_backend='dense'` uses NumPy and never imports SciPy.
 Explicit `linear_backend='sparse'` and explicit sparse matrix conversion import
 SciPy lazily and raise an actionable `ImportError` when it is absent. There is
@@ -1078,7 +1149,11 @@ The following boundaries are already accepted:
   private proved exact point signs or an adjacent numeric-binary64 sign bracket,
   while an uncertified attempt maps to the existing `numerical_failure` schema;
 - inferred periodic nearest images are exact-certified, explicit image shifts
-  remain authoritative, and `image_search` is a correctness-neutral seed hint.
+  remain authoritative, and `image_search` is a correctness-neutral seed hint;
+- source-independent row and observation-set identity is always available,
+  while exact geometry-source provenance is optional and monotonic;
+- row-aligned records carry stable row IDs and report schema version 1 carries
+  authoritative source and observation-set provenance.
 
 See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 [ADR 0005](decisions/0005-tessellation-result-contract.md), as refined by
@@ -1087,8 +1162,10 @@ See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 [ADR 0008](decisions/0008-separator-solver-and-linear-backend.md),
 [ADR 0009](decisions/0009-certified-scalar-proximal-solver.md),
 [ADR 0010](decisions/0010-native-construction-preconditions.md),
-[ADR 0011](decisions/0011-strict-input-and-ownership-contract.md), and
-[ADR 0012](decisions/0012-certified-periodic-image-geometry.md).
+[ADR 0011](decisions/0011-strict-input-and-ownership-contract.md),
+[ADR 0012](decisions/0012-certified-periodic-image-geometry.md),
+[ADR 0013](decisions/0013-central-generator-preparation-and-backend-safety.md),
+and [ADR 0014](decisions/0014-separator-observation-and-source-identity.md).
 
 ## Lifecycle summary for the v0.8 API
 
@@ -1263,7 +1340,7 @@ The preferred names have these final lifecycle assignments:
 
 | Name | v0.8 status | Meaning |
 |---|---|---|
-| `SeparatorObservations` | Stable | Resolved pairwise separator observations, including periodic image labels and confidence. |
+| `SeparatorObservations` | Stable | Canonical pairwise separator rows with periodic image labels, confidence, source-independent identity, and optional exact source binding. |
 | `resolve_separator_observations` | Stable | Validate and resolve raw separator observations against sites and domain. |
 | `SeparatorFitResult` | Stable | Existing flat fit contract plus layered state, observation, identification, objective, algebraic, and fixed-solver access. |
 | `fit_weights_from_separators` | Stable | Preferred fixed-observation fit entry point. |
@@ -1417,10 +1494,11 @@ problem arrays own C-contiguous read-only copies; `FitModel.penalties` owns a
 tuple. The documented wider non-negative separator external-ID range remains
 unchanged. These adoption rules change invalid-input rejection only, not the
 R1/R2 objective, backend selection, solver defaults, active-set mathematics,
-or result/report schemas. In particular, finite extreme-scale source inputs
-retain R1/R2's stabilized handling of derived scaled-row infinities inside the
-canonical problem builder; direct problem construction itself is
-finite-strict.
+or valid numerical fit. R6 subsequently adds row/set identity, optional exact
+source binding, and report-schema metadata without changing public fit or
+builder signatures. In particular, finite extreme-scale source inputs retain
+R1/R2's stabilized handling of derived scaled-row infinities inside the
+canonical problem builder; direct problem construction itself is finite-strict.
 
 The active-set outer workflow and its path/result types remain **experimental**.
 The explicit SciPy sparse linear backend is **provisional**. It supports direct
@@ -1608,6 +1686,13 @@ The following are API even when no dedicated Python class represents them:
 - external IDs remain attached to original sites;
 - periodic neighbor shifts identify the realized image and are not silently
   replaced by a nearest image;
+- every valid separator observation row and ordered observation set has a
+  deterministic source-independent identity; warnings are not row identity;
+- exact separator source provenance, when known, preserves caller-order points,
+  exact domain representation, dimension/count, and ID provenance, and cannot
+  be erased or rebound;
+- unbound and bound observations never associate with one another, and two
+  bound origins associate only under exact canonical source equality;
 - zero-confidence separator rows do not identify weight differences or enter
   the informative observation graph; hard restrictions and penalties may
   constrain their predicted values but remain separate from data

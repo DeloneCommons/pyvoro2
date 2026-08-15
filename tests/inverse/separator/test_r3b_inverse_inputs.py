@@ -855,17 +855,20 @@ def test_result_builder_optional_strings_reject_before_weight_packaging(
 
 
 def test_numpy_string_scalars_canonicalize_across_inverse_boundaries() -> None:
+    points = _points()
+    domain = _box()
     observations = resolve_separator_observations(
-        _points(),
+        points,
         [(0, 1, 0.5)],
         measurement=np.str_('fraction'),
+        domain=domain,
         index_mode=np.str_('index'),
         image=np.str_('nearest'),
     )
     assert type(observations.measurement) is str
 
     fit = fit_weights_from_separators(
-        _points(),
+        points,
         observations,
         measurement=np.str_('fraction'),
         index_mode=np.str_('index'),
@@ -879,8 +882,8 @@ def test_numpy_string_scalars_canonicalize_across_inverse_boundaries() -> None:
     assert type(fit.linear_backend) is str
 
     realized = match_realized_pairs(
-        _points(),
-        domain=_box(),
+        points,
+        domain=domain,
         constraints=observations,
         weights=fit.weights,
         tessellation_check=np.str_('none'),
@@ -889,9 +892,9 @@ def test_numpy_string_scalars_canonicalize_across_inverse_boundaries() -> None:
     assert all(type(message) is str for message in realized.warnings)
 
     active = solve_self_consistent_power_weights(
-        _points(),
+        points,
         observations,
-        domain=_box(),
+        domain=domain,
         measurement=np.str_('fraction'),
         index_mode=np.str_('index'),
         image=np.str_('nearest'),

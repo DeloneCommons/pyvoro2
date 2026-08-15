@@ -50,6 +50,7 @@ from ._numerics import (
     _stable_sum_scalar,
 )
 from .constraints import SeparatorObservations
+from ._identity import _bind_originating_observations
 from .model import (
     ExponentialBoundaryPenalty,
     FitModel,
@@ -76,7 +77,6 @@ from .types import (
     PowerFitObjectiveBreakdown,
     PowerFitPredictions,
     SeparatorFitResult,
-    _bind_originating_observations,
     _readonly_array,
 )
 

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import InitVar, KW_ONLY, dataclass, fields
+import inspect
 import sys
 from typing import Literal, Sequence
 
@@ -36,7 +37,11 @@ from .constraints import (
     resolve_separator_observations,
 )
 from .model import FitModel
-from .realize import RealizedPairDiagnostics, match_realized_pairs
+from .realize import (
+    _require_realization_domain,
+    RealizedPairDiagnostics,
+    match_realized_pairs,
+)
 from .problem import (
     _build_active_set_connectivity_diagnostics,
     _standalone_gauge_policy_description,
@@ -53,6 +58,16 @@ from ...diagnostics import TessellationDiagnostics as TessellationDiagnostics3D
 from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ...planar.diagnostics import TessellationDiagnostics as TessellationDiagnostics2D
 from ...planar.domains import Box as Box2D, RectangularCell
+from ._identity import (
+    _ObservationBindingInit,
+    _ObservationBoundResult,
+    _bind_full_source,
+    _bind_originating_observations,
+    _originating_observations,
+    _require_observation_association,
+    _require_observation_row_data,
+    _row_ids,
+)
 
 ShiftTuple = tuple[int, ...]
 
@@ -183,7 +198,7 @@ class _ActiveSetPathAccumulator:
 
 
 @dataclass(frozen=True, slots=True)
-class PairConstraintDiagnostics:
+class PairConstraintDiagnostics(_ObservationBoundResult):
     site_i: np.ndarray
     site_j: np.ndarray
     shift: np.ndarray
@@ -207,13 +222,34 @@ class PairConstraintDiagnostics:
     last_realized_iter: np.ndarray
     marginal: np.ndarray
     status: tuple[str, ...]
+    _: KW_ONLY
+    _originating_observations_init: InitVar[
+        SeparatorObservations | None
+    ] = _ObservationBindingInit()
 
-    def __post_init__(self) -> None:
+    def __post_init__(
+        self,
+        _originating_observations_init: SeparatorObservations | None,
+    ) -> None:
         object.__setattr__(
             self,
             'status',
             require_string_tuple(self.status, name='status'),
         )
+        if _originating_observations_init is not None:
+            _bind_originating_observations(
+                self,
+                _originating_observations_init,
+            )
+            _require_observation_row_data(
+                _originating_observations_init,
+                i=self.site_i,
+                j=self.site_j,
+                shifts=self.shift,
+                target=self.target,
+                confidence=self.confidence,
+                context='active constraint diagnostics',
+            )
 
     def to_records(
         self,
@@ -223,6 +259,20 @@ class PairConstraintDiagnostics:
         """Return one plain-Python record per candidate pair."""
 
         ids_array = None if ids is None else _validated_ids_array(ids)
+        originating = _originating_observations(
+            self,
+            context='active constraint diagnostics records',
+        )
+        _require_observation_row_data(
+            originating,
+            i=self.site_i,
+            j=self.site_j,
+            shifts=self.shift,
+            target=self.target,
+            confidence=self.confidence,
+            context='active constraint diagnostics records',
+        )
+        row_ids = _row_ids(originating)
         rows: list[dict[str, object]] = []
         for k in range(int(self.site_i.shape[0])):
             realized_shifts = tuple(
@@ -232,6 +282,7 @@ class PairConstraintDiagnostics:
             rows.append(
                 {
                     'constraint_index': int(k),
+                    'row_id': row_ids[k],
                     'site_i': _label_value(self.site_i, k, ids_array),
                     'site_j': _label_value(self.site_j, k, ids_array),
                     'shift': tuple(int(v) for v in self.shift[k]),
@@ -258,6 +309,43 @@ class PairConstraintDiagnostics:
                 }
             )
         return tuple(rows)
+
+
+def _pair_constraint_diagnostics_getstate(
+    diagnostics: PairConstraintDiagnostics,
+) -> list[object]:
+    values = [getattr(diagnostics, field.name) for field in fields(diagnostics)]
+    values.append(getattr(diagnostics, '_originating_observations', None))
+    return values
+
+
+def _pair_constraint_diagnostics_setstate(
+    diagnostics: PairConstraintDiagnostics,
+    state: list[object],
+) -> None:
+    diagnostic_fields = fields(diagnostics)
+    values = list(state)
+    if len(values) == len(diagnostic_fields) + 1:
+        originating = values.pop()
+    elif len(values) == len(diagnostic_fields):
+        originating = None
+    else:
+        raise ValueError('invalid PairConstraintDiagnostics reconstruction state')
+    for field, value in zip(diagnostic_fields, values):
+        object.__setattr__(diagnostics, field.name, value)
+    diagnostics.__post_init__(originating)
+
+
+PairConstraintDiagnostics.__getstate__ = _pair_constraint_diagnostics_getstate
+PairConstraintDiagnostics.__setstate__ = _pair_constraint_diagnostics_setstate
+_pair_diagnostics_signature = inspect.signature(PairConstraintDiagnostics)
+PairConstraintDiagnostics.__signature__ = _pair_diagnostics_signature.replace(
+    parameters=tuple(
+        parameter
+        for parameter in _pair_diagnostics_signature.parameters.values()
+        if parameter.name != '_originating_observations_init'
+    )
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -351,6 +439,43 @@ class SelfConsistentPowerFitResult:
             self,
             'warnings',
             require_string_tuple(self.warnings, name='warnings'),
+        )
+        realized_origin = _originating_observations(
+            self.realized,
+            context='active result realization',
+        )
+        _require_observation_association(
+            self.constraints,
+            realized_origin,
+            context='active result realization',
+        )
+        diagnostics_origin = _originating_observations(
+            self.diagnostics,
+            context='active result diagnostics',
+        )
+        _require_observation_association(
+            self.constraints,
+            diagnostics_origin,
+            context='active result diagnostics',
+        )
+        _require_observation_row_data(
+            diagnostics_origin,
+            i=self.diagnostics.site_i,
+            j=self.diagnostics.site_j,
+            shifts=self.diagnostics.shift,
+            target=self.diagnostics.target,
+            confidence=self.diagnostics.confidence,
+            context='active result diagnostics',
+        )
+        fit_origin = _originating_observations(
+            self.fit,
+            context='active result fit',
+        )
+        expected_fit_origin = self.constraints.subset(self.active_mask)
+        _require_observation_association(
+            expected_fit_origin,
+            fit_origin,
+            context='active result fit',
         )
 
     @property
@@ -528,6 +653,8 @@ def solve_self_consistent_power_weights(
         name='points',
         dim=int(raw_points.shape[1]),
     )
+    if pts.shape[1] in (2, 3):
+        _require_realization_domain(int(pts.shape[1]), domain)
 
     if model is None:
         model = FitModel()
@@ -559,6 +686,8 @@ def solve_self_consistent_power_weights(
             confidence=confidence,
             allow_empty=True,
         )
+
+    _bind_full_source(resolved, pts, domain)
 
     m = resolved.n_constraints
     if active0 is None:
@@ -612,6 +741,7 @@ def solve_self_consistent_power_weights(
             admm_rel_tol=fit_admm_rel_tol_value,
             connectivity_check='diagnose',
         )
+        _bind_originating_observations(fit, active_constraints)
         if fit.weights is None:
             warnings_list.extend(fit.warnings)
             termination = (
@@ -620,7 +750,7 @@ def solve_self_consistent_power_weights(
                 else 'infeasible_active_set'
             )
             final_realized = _empty_realized_pair_diagnostics(
-                m,
+                resolved,
                 return_boundary_measure=return_boundary_measure_value,
             )
             diag_all = PairConstraintDiagnostics(
@@ -652,6 +782,7 @@ def solve_self_consistent_power_weights(
                 marginal=np.zeros(m, dtype=bool),
                 status=tuple(termination for _ in range(m)),
             )
+            _bind_originating_observations(diag_all, resolved)
             connectivity = None
             if connectivity_check != 'none':
                 connectivity = _build_active_set_connectivity_diagnostics(
@@ -723,6 +854,7 @@ def solve_self_consistent_power_weights(
             tessellation_check='none',
             unaccounted_pair_check='diagnose',
         )
+        _bind_originating_observations(diag, resolved)
         last_diag = diag
         n_unaccounted_pairs = len(diag.unaccounted_pairs)
         _record_path_iteration(
@@ -849,6 +981,7 @@ def solve_self_consistent_power_weights(
         admm_rel_tol=fit_admm_rel_tol_value,
         connectivity_check='diagnose',
     )
+    _bind_originating_observations(final_fit, active_constraints)
     warnings_list.extend(final_fit.warnings)
 
     if final_fit.status == 'numerical_failure':
@@ -884,6 +1017,7 @@ def solve_self_consistent_power_weights(
             tessellation_check=tessellation_check,
             unaccounted_pair_check=unaccounted_pair_check,
         )
+        _bind_originating_observations(final_realized, resolved)
         warnings_list.extend(final_realized.warnings)
         pred_all = full_problem.predict(final_fit.weights)
         pred_fraction = np.asarray(pred_all.fraction, dtype=np.float64)
@@ -896,7 +1030,7 @@ def solve_self_consistent_power_weights(
         pred = np.full(m, np.nan, dtype=np.float64)
         if final_realized is None:
             final_realized = _empty_realized_pair_diagnostics(
-                m,
+                resolved,
                 return_boundary_measure=return_boundary_measure_value,
             )
 
@@ -952,6 +1086,7 @@ def solve_self_consistent_power_weights(
         marginal=marginal.copy(),
         status=status,
     )
+    _bind_originating_observations(diag_all, resolved)
 
     connectivity = None
     if connectivity_check != 'none':
@@ -1173,9 +1308,10 @@ def _rebuild_fit_with_weights(
 
 
 def _empty_realized_pair_diagnostics(
-    m: int, *, return_boundary_measure: bool
+    constraints: SeparatorObservations, *, return_boundary_measure: bool
 ) -> RealizedPairDiagnostics:
-    return RealizedPairDiagnostics(
+    m = constraints.n_constraints
+    diagnostics = RealizedPairDiagnostics(
         realized=np.zeros(m, dtype=bool),
         unrealized=tuple(range(m)),
         realized_same_shift=np.zeros(m, dtype=bool),
@@ -1191,6 +1327,7 @@ def _empty_realized_pair_diagnostics(
         unaccounted_pairs=tuple(),
         warnings=tuple(),
     )
+    return _bind_originating_observations(diagnostics, constraints)
 
 
 def _build_constraint_statuses(

@@ -2288,9 +2288,11 @@ def test_scalar_failure_forwards_to_result_report_json_and_active_set(
         forced_failure,
     )
     points = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
+    domain = Box(((-2.0, 4.0), (-2.0, 2.0), (-2.0, 2.0)))
     observations = separator.resolve_separator_observations(
         points,
         [(0, 1, 0.25)],
+        domain=domain,
     )
     model = separator.FitModel(
         penalties=(separator.ExponentialBoundaryPenalty(),)
@@ -2330,7 +2332,7 @@ def test_scalar_failure_forwards_to_result_report_json_and_active_set(
         points,
         observations,
         model=model,
-        domain=Box(((-2.0, 4.0), (-2.0, 2.0), (-2.0, 2.0))),
+        domain=domain,
         fit_solver='admm',
         connectivity_check='diagnose',
         unaccounted_pair_check='diagnose',

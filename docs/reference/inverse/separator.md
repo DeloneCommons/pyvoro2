@@ -30,6 +30,65 @@ caller mutation after construction cannot change them. These validation and
 ownership rules do not change the documented objective or active-set
 mathematics.
 
+The public direct `SeparatorObservations` constructor accepts only dimensions
+two or three and requires exact point counts; aligned row shapes; in-range
+integer endpoints with `i != j`; dimension-aligned integer shifts; unique
+non-negative integer `input_index`; exact Boolean explicit-shift flags; finite
+non-negative confidence; finite, nonzero connector geometry; and valid IDs and
+warnings. It recomputes squared distance and distance from `delta`, then both
+measurement forms from the canonical target and distance. Finite redundant
+values are accepted only when
+`np.allclose(supplied, derived,
+rtol=8*np.finfo(np.float64).eps, atol=0.0)` and are replaced by the recomputed
+binary64 values. This is constructor consistency tolerance, not source
+equivalence.
+
+## Observation and source identity
+
+Every valid observation set has deterministic source-independent row IDs and
+an ordered observation-set fingerprint. Row IDs have the exact form
+
+```text
+pyvoro2-separator-row-v1:<namespace_sha256_hex>:<input_index>:<row_sha256_hex>
+```
+
+and appear in every observation-aligned record. The namespace contains
+dimension, point count, measurement, and IDs. A row includes its endpoints,
+shift, measurement, target, confidence, distance values, connector, both
+measurement forms, and explicit-shift flag; warnings do not affect identity.
+Subsets retain row IDs and input indices, duplicate input rows remain distinct,
+and reordering changes the observation-set fingerprint. Source binding never
+changes these identities.
+
+Canonical fingerprints normalize finite signed zero, encode floats with
+`float.hex()`, convert arrays to row-major nested lists, and serialize with
+sorted compact ASCII JSON that rejects non-finite values before SHA-256. Their
+public form is `sha256:<64 lowercase hex>`. Runtime association compares exact
+canonical values after fingerprint agreement rather than relying on the hash.
+
+Resolver-created observations are bound to exact caller-order points, exact
+domain representation, dimension/count, and ID provenance. Valid directly
+constructed observations are source-unbound. A first source-aware operation
+may bind them only after independently recomputing all row geometry. Binding is
+monotonic and private: it survives subsets, shallow/deep copy,
+`dataclasses.replace`, `copy.replace` where available, and same-version pickle;
+an inconsistent replacement or attempted rebind raises.
+
+Bound domain records use exactly `none`, `planar_box`,
+`planar_rectangular_cell`, `spatial_box`, `spatial_orthorhombic_cell`, or
+`spatial_periodic_cell`. Their fields are respectively `kind`; `kind,bounds`;
+`kind,bounds,periodic`; `kind,bounds`; `kind,bounds,periodic`; and
+`kind,vectors,origin`. Translated, periodically shifted, lattice-equivalent,
+and differently represented domains are not exact source equality.
+
+When points and an already resolved observation object are passed to a fitting
+function, the points establish or verify exact source points. Omitted/default
+`domain=None` makes no extra domain assertion and does not erase an existing
+bound domain. For an unbound object it binds an exact `{"kind": "none"}`
+domain; an explicit non-`None` domain establishes or verifies that exact
+domain. The observation object's IDs remain authoritative. Realization and
+active-set operations establish or verify the complete source they use.
+
 ## Layered result access
 
 The provisional view types below organize existing result data without adding
@@ -48,13 +107,14 @@ fields to the established result dataclasses or copying their arrays.
 | `SelfConsistentPowerFitResult` | `.inner_fit`, `.final_realization`, `.candidate_diagnostics` | existing final objects |
 | `SelfConsistentPowerFitResult` | `.outer_termination`, `.path` | `ActiveSetTerminationView`, `ActiveSetPathView` |
 
-`observation_view(...)` accepts the originating resolved observations or a
-fully equivalent independently resolved set. It checks pair indices,
-confidence, targets, requested shifts, and resolved geometry before combining
-observation-owned arrays with fit-owned predictions. The private binding is
-retained by shallow copies, deep copies, pickle round trips, and
-`dataclasses.replace(...)`. Directly constructed results without source
-observations fail closed when this accessor is called.
+`observation_view(...)` uses the shared exact origin policy before combining
+observation-owned arrays with fit-owned predictions. Two unbound objects match
+only when they have the exact same observation model; two bound objects match
+only when they have the exact same source. A bound/unbound pair and two bound
+objects from different sources are rejected. The private authoritative origin
+is retained by shallow copies, deep copies, pickle round trips, and
+`dataclasses.replace(...)`. Directly constructed results without authoritative
+origin observations fail closed when this accessor is called.
 `inspect.signature(SeparatorFitResult)` consequently includes the private
 optional keyword-only parameter `_originating_observations_init=None`; it is an
 init-only reconstruction channel, not a public result field or user input.
@@ -89,7 +149,8 @@ stored under the historical compatibility name `ConnectivityDiagnostics.gauge_po
 ## Problem-owned graph and quadratic views
 
 `SeparatorFitProblem` owns two additional provisional inspection views. They do
-not change its dataclass fields or bind the problem into a fit result.
+not change its dataclass fields. Its private authoritative observation origin
+is retained when an external result is built from the problem.
 
 | Problem access | Public view | Main contents |
 |---|---|---|
@@ -187,6 +248,58 @@ See the
 and
 [ADR 0007](../../development/decisions/0007-separator-objective-contract.md)
 for the complete formulas.
+
+## Report schema and source provenance
+
+The direct row-only chain from `SeparatorObservations` through
+`build_power_fit_problem`, `build_power_fit_result`, and `build_fit_report`
+remains supported without points or a domain. It reports an honest unbound
+source rather than fabricating geometry provenance.
+
+Fit, realized-pair, and active-set reports retain the kinds
+`power_weight_fit`, `realized_pair_diagnostics`, and
+`self_consistent_power_fit`. Every report also has this versioned envelope:
+
+```json
+{
+  "schema": {
+    "name": "pyvoro2.inverse.separator.report",
+    "version": 1
+  },
+  "producer": {
+    "name": "pyvoro2",
+    "version": "<pyvoro2.__version__>"
+  },
+  "source": {
+    "binding": "unbound",
+    "fingerprint": null,
+    "dimension": 2,
+    "n_points": 3,
+    "points": null,
+    "domain": null,
+    "ids": null
+  },
+  "observation_set": {
+    "fingerprint": "sha256:<64 lowercase hex>",
+    "measurement": "fraction",
+    "n_rows": 1,
+    "row_ids": ["pyvoro2-separator-row-v1:..."]
+  }
+}
+```
+
+The source block shown is the exact unbound shape. A bound source has the same
+keys with `binding="bound"`, its exact source
+fingerprint, caller-order point rows, exact domain record, and IDs. Bound
+`{"kind": "none"}` is distinct from unbound `domain=null`. Report provenance
+comes from the result or diagnostic's authoritative origin, never from an
+arbitrary same-length supplied object.
+
+Report builders return JSON-native values. `dumps_report_json(...)` rejects
+NaN and infinity. Finite fit, realized, and active reports therefore round-trip
+exactly through JSON. An existing active failure state that contains
+non-finite placeholders fails closed during serialization; null/unavailable
+active-state semantics belong to R7.
 
 ::: pyvoro2.inverse.separator
 :::

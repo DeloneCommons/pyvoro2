@@ -13,7 +13,13 @@ import numpy as np
 import pytest
 
 
-FIT_REPORT_KEYS = {
+REPORT_ENVELOPE_KEYS = {
+    'schema',
+    'producer',
+    'source',
+    'observation_set',
+}
+FIT_REPORT_KEYS = REPORT_ENVELOPE_KEYS | {
     'kind',
     'summary',
     'constraints',
@@ -28,7 +34,7 @@ FIT_REPORT_KEYS = {
     'conflict',
     'connectivity',
 }
-REALIZED_REPORT_KEYS = {
+REALIZED_REPORT_KEYS = REPORT_ENVELOPE_KEYS | {
     'kind',
     'summary',
     'records',
@@ -37,7 +43,7 @@ REALIZED_REPORT_KEYS = {
     'warnings',
     'tessellation_diagnostics',
 }
-ACTIVE_REPORT_KEYS = {
+ACTIVE_REPORT_KEYS = REPORT_ENVELOPE_KEYS | {
     'kind',
     'summary',
     'constraints',
@@ -136,9 +142,9 @@ def test_successful_fit_views_share_existing_arrays_and_values() -> None:
 
     report = fit.to_report(observations)
     assert set(report) == FIT_REPORT_KEYS
-    assert json.loads(separator.dumps_report_json(report))['kind'] == (
-        'power_weight_fit'
-    )
+    loaded = json.loads(separator.dumps_report_json(report))
+    assert loaded == report
+    assert loaded['kind'] == 'power_weight_fit'
 
 
 def test_observation_view_rejects_a_different_resolved_observation_set() -> None:
@@ -159,7 +165,12 @@ def test_observation_view_rejects_a_different_resolved_observation_set() -> None
     with pytest.raises(ValueError, match=r'\(target\)'):
         fit.observation_view(other_targets)
 
-    other_measurement = replace(observations, measurement='position')
+    other_measurement = inverse.resolve_separator_observations(
+        points,
+        [(0, 1, 0.5)],
+        measurement='position',
+        confidence=[0.75],
+    )
     with pytest.raises(ValueError, match=r'\(measurement\)'):
         fit.observation_view(other_measurement)
 
@@ -484,6 +495,7 @@ def test_infeasible_fit_views_preserve_conflict_and_none_arrays() -> None:
     report = fit.to_report(observations)
     assert set(report) == FIT_REPORT_KEYS
     loaded = json.loads(separator.dumps_report_json(report))
+    assert loaded == report
     assert loaded['summary']['status'] == 'infeasible_hard_constraints'
     assert loaded['conflict']['constraint_indices'] == [0, 1, 2]
 
@@ -589,7 +601,7 @@ def test_realization_views_separate_matching_from_optional_geometry() -> None:
     assert with_geometry.geometry.boundary_measure[0] > 0.0
     report = with_geometry.to_report(observations)
     assert set(report) == REALIZED_REPORT_KEYS
-    json.loads(separator.dumps_report_json(report))
+    assert json.loads(separator.dumps_report_json(report)) == report
 
     cell = PeriodicCell(
         vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
@@ -666,6 +678,7 @@ def test_active_set_views_keep_inner_final_outer_and_path_layers_separate() -> N
     assert set(report['fit']) == FIT_REPORT_KEYS
     assert set(report['realized']) == REALIZED_REPORT_KEYS
     loaded = json.loads(separator.dumps_report_json(report))
+    assert loaded == report
     assert loaded['summary']['termination'] == result.termination
     assert loaded['path_summary']['n_iterations'] == result.path_summary.n_iterations
 

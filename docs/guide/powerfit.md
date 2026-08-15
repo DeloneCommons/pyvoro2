@@ -205,6 +205,26 @@ fails explicitly; increasing `image_search` is not a correctness remedy.
 
 The resolved `SeparatorObservations` object stores the validated pair indices,
 shifts, connector geometry, and targets in both fraction and position form.
+Resolver-created observations are also bound to the exact caller-order points,
+domain representation, dimension/count, and ID provenance used here. The
+public direct constructor remains useful for already-resolved row data; a valid
+directly constructed object is source-unbound rather than being assigned
+fabricated points or a domain.
+
+When such an already resolved object is passed to a fitting function with
+points, those points establish or verify exact source points. Leaving
+`domain=None` makes no additional domain assertion and does not erase a domain
+already bound by the resolver. On an unbound object, the same call establishes
+an exact no-domain source; supplying a non-`None` domain establishes or verifies
+that exact representation. The observation object's owned IDs remain
+authoritative. Realization and active-set operations always verify the full
+source they use.
+
+Every valid object has source-independent row IDs and an ordered
+observation-set fingerprint. Row identity includes the complete canonical row
+model but not warnings. Subsetting retains row IDs and input indices, duplicate
+rows remain distinct, and reordering changes the set fingerprint. A later
+verified source binding never changes those identities.
 
 ## Step 2: define the fitting model
 
@@ -523,13 +543,21 @@ The complete mapping is:
 | Requested-image matching and realized geometry | `realized.requested_image_matching`, `realized.geometry` | all `RealizedPairDiagnostics` fields |
 | Experimental outer-loop termination and path | `result.outer_termination`, `result.path` | active-set termination fields, `active_mask`, `marginal_constraints`, `history`, `path_summary` |
 
-The observation accessor accepts the originating resolved observations or an
-independently resolved set with the same complete contents. It validates pair
-indices, confidence, targets, requested shifts, and resolved geometry before
-presenting observation-owned arrays beside the fit predictions. Its private
-source binding survives shallow copies, deep copies, pickle round trips, and
-`dataclasses.replace(...)`; a directly constructed result without source
-observations cannot safely provide this view and raises `ValueError`.
+The observation accessor applies one exact association rule before presenting
+observation-owned arrays beside fit predictions:
+
+- two source-unbound objects match only when they have the exact same
+  observation model;
+- two source-bound objects match only when they have the exact same canonical
+  source;
+- a bound/unbound pair and two differently bound sources are rejected.
+
+Length alone is never enough. Private observation origins and source bindings
+survive subsets, shallow and deep copies, same-version pickle round trips,
+`dataclasses.replace(...)`, and `copy.replace(...)` where available. A
+source-inconsistent replacement raises. Reports always use the authoritative
+origin held by the result or diagnostic rather than borrowing provenance from
+an arbitrary supplied object.
 
 For example, if hard interval or equality restrictions cannot all hold
 simultaneously, the fit returns:
@@ -544,7 +572,8 @@ instead of pretending the issue is merely slow convergence.
 
 Both low-level fits and active-set results also provide `to_records(...)` helpers
 that turn per-constraint diagnostics into plain Python rows for downstream
-packages, table exporters, or custom reporting.
+packages, table exporters, or custom reporting. Every observation-aligned row
+contains its stable `row_id` in addition to the existing fields.
 
 ### Measurement-space and difference-space diagnostics
 
@@ -955,9 +984,47 @@ fit_report = separator.build_fit_report(fit, observations, use_ids=True)
 solve_report = separator.build_active_set_report(result, use_ids=True)
 ```
 
-These report bundles stay plain-Python and JSON-friendly. They are useful when
-a downstream package wants a complete diagnostic payload for logging, caching,
-or UI work without manually unpacking NumPy-heavy result objects.
+These report bundles stay plain-Python and JSON-native. They are useful when a
+downstream package wants a complete diagnostic payload for logging, caching, or
+UI work without manually unpacking NumPy-heavy result objects. Every family
+retains its existing `kind` and adds the same versioned envelope:
+
+```python
+assert fit_report['schema'] == {
+    'name': 'pyvoro2.inverse.separator.report',
+    'version': 1,
+}
+assert fit_report['producer'] == {
+    'name': 'pyvoro2',
+    'version': pv.__version__,
+}
+
+source = fit_report['source']
+observation_set = fit_report['observation_set']
+```
+
+`observation_set` has exactly `fingerprint`, `measurement`, `n_rows`, and
+`row_ids`. `source` has exactly `binding`, `fingerprint`, `dimension`,
+`n_points`, `points`, `domain`, and `ids`. Resolver-backed reports use
+`binding='bound'` and retain exact caller-order points, the exact domain record,
+and ID provenance. A report produced by the valid public row-only chain uses:
+
+```python
+{
+    'binding': 'unbound',
+    'fingerprint': None,
+    'dimension': 2,
+    'n_points': 3,
+    'points': None,
+    'domain': None,
+    'ids': None,
+}
+```
+
+An unbound null domain is different from a bound source whose domain is
+`{'kind': 'none'}`. Bound domains retain exactly one of `none`, `planar_box`,
+`planar_rectangular_cell`, `spatial_box`, `spatial_orthorhombic_cell`, and
+`spatial_periodic_cell`.
 
 Report sections map to the same scientific layers:
 
@@ -986,6 +1053,11 @@ To serialize them directly:
 text = separator.dumps_report_json(solve_report, sort_keys=True)
 separator.write_report_json(solve_report, 'solve_report.json', sort_keys=True)
 ```
+
+`dumps_report_json(...)` rejects NaN and infinity. Finite fit, realized, and
+active reports round-trip exactly through JSON. An active failure that still
+contains non-finite final-state placeholders fails closed during serialization;
+R7 owns any future null/unavailable representation for that state.
 
 ## Native Huber fit on sparse outliers
 

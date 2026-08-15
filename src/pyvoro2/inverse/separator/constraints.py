@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import InitVar, KW_ONLY, dataclass, fields
+import inspect
 import sys
 from typing import Literal, Sequence
 
@@ -31,6 +32,15 @@ from ..._internal.spatial.domain_geometry import geometry3d
 from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ..._internal.planar.domain_geometry import geometry2d
 from ...planar.domains import Box as Box2D, RectangularCell
+from ._identity import (
+    _ObservationIdentityStorage,
+    _SourceBindingInit,
+    _SourceIdentity,
+    _bind_resolver_source,
+    _initialize_observation_identity,
+    _row_ids,
+    _source_identity,
+)
 
 ConstraintRow = (
     tuple[int | np.integer, int | np.integer, float]
@@ -114,8 +124,11 @@ def _readonly_index_array(value: np.ndarray, *, name: str) -> np.ndarray:
     return owned
 
 
+_REDUNDANT_VALUE_RTOL = 8.0 * np.finfo(np.float64).eps
+
+
 @dataclass(frozen=True, slots=True)
-class SeparatorObservations:
+class SeparatorObservations(_ObservationIdentityStorage):
     """Resolved pairwise separator observations.
 
     This object is the public boundary between downstream pair-selection logic
@@ -139,8 +152,10 @@ class SeparatorObservations:
     explicit_shift: np.ndarray
     ids: np.ndarray | None
     warnings: tuple[str, ...]
+    _: KW_ONLY
+    _source_binding_init: InitVar[_SourceIdentity | None] = _SourceBindingInit()
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, _source_binding_init: _SourceIdentity | None) -> None:
         measurement = require_string_choice(
             self.measurement,
             name='measurement',
@@ -164,6 +179,10 @@ class SeparatorObservations:
         raw_shifts = np.asarray(self.shifts, dtype=object)
         if raw_shifts.ndim != 2 or raw_shifts.shape[0] != m:
             raise ValueError('SeparatorObservations.shifts must have shape (m, d)')
+        if raw_shifts.shape[1] not in (2, 3):
+            raise ValueError(
+                'SeparatorObservations dimension must be exactly 2 or 3'
+            )
         shifts = require_index_array(
             raw_shifts,
             name='SeparatorObservations.shifts',
@@ -189,7 +208,7 @@ class SeparatorObservations:
             ),
             dtype=np.float64,
         )
-        distance = owned_readonly_array(
+        supplied_distance = owned_readonly_array(
             coerce_finite_vector(
                 self.distance,
                 name='SeparatorObservations.distance',
@@ -197,7 +216,7 @@ class SeparatorObservations:
             ),
             dtype=np.float64,
         )
-        distance2 = owned_readonly_array(
+        supplied_distance2 = owned_readonly_array(
             coerce_finite_vector(
                 self.distance2,
                 name='SeparatorObservations.distance2',
@@ -213,7 +232,7 @@ class SeparatorObservations:
             ),
             dtype=np.float64,
         )
-        target_fraction = owned_readonly_array(
+        supplied_target_fraction = owned_readonly_array(
             coerce_finite_vector(
                 self.target_fraction,
                 name='SeparatorObservations.target_fraction',
@@ -221,7 +240,7 @@ class SeparatorObservations:
             ),
             dtype=np.float64,
         )
-        target_position = owned_readonly_array(
+        supplied_target_position = owned_readonly_array(
             coerce_finite_vector(
                 self.target_position,
                 name='SeparatorObservations.target_position',
@@ -244,6 +263,44 @@ class SeparatorObservations:
             self.explicit_shift,
             name='SeparatorObservations.explicit_shift',
             length=m,
+        )
+
+        distance, distance2 = _derive_distances_from_delta(delta)
+        _require_redundant_match(
+            supplied_distance2,
+            distance2,
+            name='SeparatorObservations.distance2',
+        )
+        _require_redundant_match(
+            supplied_distance,
+            distance,
+            name='SeparatorObservations.distance',
+        )
+        target_fraction, target_position = _derive_target_representations(
+            target,
+            distance,
+            measurement=measurement,
+        )
+        _require_redundant_match(
+            supplied_target_fraction,
+            target_fraction,
+            name='SeparatorObservations.target_fraction',
+        )
+        _require_redundant_match(
+            supplied_target_position,
+            target_position,
+            name='SeparatorObservations.target_position',
+        )
+
+        distance = owned_readonly_array(distance, dtype=np.float64)
+        distance2 = owned_readonly_array(distance2, dtype=np.float64)
+        target_fraction = owned_readonly_array(
+            target_fraction,
+            dtype=np.float64,
+        )
+        target_position = owned_readonly_array(
+            target_position,
+            dtype=np.float64,
         )
 
         object.__setattr__(self, 'i', i)
@@ -275,12 +332,13 @@ class SeparatorObservations:
             raise ValueError(
                 'SeparatorObservations.j contains a site index out of range'
             )
+        if np.any(self.i == self.j):
+            raise ValueError('SeparatorObservations requires i != j rowwise')
+        if np.unique(self.input_index).size != self.input_index.size:
+            raise ValueError('SeparatorObservations.input_index must be unique')
         if np.any(self.confidence < 0.0):
             raise ValueError('SeparatorObservations.confidence must be non-negative')
-        if np.any(self.distance <= 0.0) or np.any(self.distance2 <= 0.0):
-            raise ValueError(
-                'SeparatorObservations distances must be strictly positive'
-            )
+        _initialize_observation_identity(self, _source_binding_init)
 
     @property
     def n_constraints(self) -> int:
@@ -316,6 +374,7 @@ class SeparatorObservations:
             rows.append(
                 {
                     'constraint_index': int(k),
+                    'row_id': _row_ids(self)[k],
                     'site_i': site_i,
                     'site_j': site_j,
                     'shift': tuple(int(v) for v in self.shifts[k]),
@@ -356,7 +415,54 @@ class SeparatorObservations:
             explicit_shift=self.explicit_shift[mask].copy(),
             ids=None if self.ids is None else self.ids.copy(),
             warnings=self.warnings,
+            _source_binding_init=_source_identity(self),
         )
+
+
+def _separator_observations_getstate(
+    observations: SeparatorObservations,
+) -> list[object]:
+    """Preserve private source binding and canonical ownership in copies."""
+
+    values = [getattr(observations, field.name) for field in fields(observations)]
+    values.append(_source_identity(observations))
+    return values
+
+
+def _separator_observations_setstate(
+    observations: SeparatorObservations,
+    state: list[object],
+) -> None:
+    """Restore current state while accepting older field-only snapshots."""
+
+    observation_fields = fields(observations)
+    values = list(state)
+    if len(values) == len(observation_fields) + 1:
+        source = values.pop()
+    elif len(values) == len(observation_fields):
+        source = None
+    else:
+        raise ValueError('invalid SeparatorObservations reconstruction state')
+    for field, value in zip(observation_fields, values):
+        object.__setattr__(observations, field.name, value)
+    observations.__post_init__(source)
+
+
+# Frozen slotted dataclasses need explicit hooks for inherited private slots.
+SeparatorObservations.__getstate__ = _separator_observations_getstate
+SeparatorObservations.__setstate__ = _separator_observations_setstate
+
+# The private InitVar is an internal reconstruction channel, not a public
+# source argument.  Preserve the exact public constructor signature exposed to
+# users and documentation while dataclasses.replace can still carry binding.
+_separator_observations_signature = inspect.signature(SeparatorObservations)
+SeparatorObservations.__signature__ = _separator_observations_signature.replace(
+    parameters=tuple(
+        parameter
+        for parameter in _separator_observations_signature.parameters.values()
+        if parameter.name != '_source_binding_init'
+    )
+)
 
 
 def resolve_separator_observations(
@@ -444,9 +550,8 @@ def resolve_separator_observations(
         if np.any(omega < 0):
             raise ValueError('confidence must be non-negative')
 
-    pts2 = _maybe_remap_points(pts, domain)
-    shifts_used, warnings2, inferred_geometry = _resolve_constraint_shifts(
-        pts2,
+    shifts_used, d, d2, delta, warnings2 = _derive_connector_geometry(
+        pts,
         i_idx,
         j_idx,
         shifts,
@@ -456,44 +561,151 @@ def resolve_separator_observations(
         image_search=image_search_value,
     )
     warnings = warnings + warnings2
+    target_fraction, target_position = _derive_target_representations(
+        target_arr,
+        d,
+        measurement=measurement,
+    )
 
-    if m == 0:
-        zeros_i = np.zeros(0, dtype=np.int64)
-        zeros_f = np.zeros(0, dtype=np.float64)
-        zeros_s = np.zeros((0, pts.shape[1]), dtype=np.int64)
-        zeros_b = np.zeros(0, dtype=bool)
-        return SeparatorObservations(
-            n_points=int(pts.shape[0]),
-            i=zeros_i,
-            j=zeros_i.copy(),
-            shifts=zeros_s,
-            target=zeros_f,
-            confidence=zeros_f,
-            measurement=measurement,
-            distance=zeros_f,
-            distance2=zeros_f,
-            delta=np.zeros((0, pts.shape[1]), dtype=np.float64),
-            target_fraction=zeros_f,
-            target_position=zeros_f,
-            input_index=zeros_i,
-            explicit_shift=zeros_b,
-            ids=ids_arr,
-            warnings=warnings,
+    observations = SeparatorObservations(
+        n_points=int(pts.shape[0]),
+        i=np.asarray(i_idx, dtype=np.int64),
+        j=np.asarray(j_idx, dtype=np.int64),
+        shifts=np.asarray(shifts_used, dtype=np.int64),
+        target=target_arr,
+        confidence=omega,
+        measurement=measurement,
+        distance=np.asarray(d, dtype=np.float64),
+        distance2=np.asarray(d2, dtype=np.float64),
+        delta=np.asarray(delta, dtype=np.float64),
+        target_fraction=np.asarray(target_fraction, dtype=np.float64),
+        target_position=np.asarray(target_position, dtype=np.float64),
+        input_index=np.arange(m, dtype=np.int64),
+        explicit_shift=np.asarray(shift_given, dtype=bool),
+        ids=ids_arr,
+        warnings=warnings,
+    )
+    return _bind_resolver_source(observations, pts, domain)
+
+
+# ---------------------------- internal helpers ----------------------------
+
+
+def _require_finite_connector_geometry(
+    values: np.ndarray,
+    *,
+    stage: str,
+) -> None:
+    """Reject non-representable derived connector geometry without warnings."""
+
+    if not np.all(np.isfinite(values)):
+        raise ValueError(
+            f'derived separator connector {stage} must contain only finite '
+            'values'
         )
 
+
+def _require_redundant_match(
+    supplied: np.ndarray,
+    derived: np.ndarray,
+    *,
+    name: str,
+) -> None:
+    """Require the frozen binary64 constructor-consistency tolerance."""
+
+    if not np.allclose(
+        supplied,
+        derived,
+        rtol=_REDUNDANT_VALUE_RTOL,
+        atol=0.0,
+    ):
+        raise ValueError(f'{name} is inconsistent with canonical geometry')
+
+
+def _derive_distances_from_delta(
+    delta: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return canonical distance and squared distance from connector rows."""
+
+    with np.errstate(all='ignore'):
+        distance2 = np.einsum('mi,mi->m', delta, delta)
+    _require_finite_connector_geometry(distance2, stage='squared distance')
+    if np.any(distance2 <= 0.0):
+        raise ValueError(
+            'SeparatorObservations delta must define finite nonzero connectors'
+        )
+    with np.errstate(all='ignore'):
+        distance = np.sqrt(distance2)
+    _require_finite_connector_geometry(distance, stage='distance')
+    return (
+        np.asarray(distance, dtype=np.float64),
+        np.asarray(distance2, dtype=np.float64),
+    )
+
+
+def _derive_target_representations(
+    target: np.ndarray,
+    distance: np.ndarray,
+    *,
+    measurement: Literal['fraction', 'position'],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return canonical fraction and position arrays from the selected target."""
+
+    if measurement == 'fraction':
+        target_fraction = np.asarray(target, dtype=np.float64).copy()
+        with np.errstate(all='ignore'):
+            target_position = target_fraction * distance
+        stage = 'fraction-to-position conversion'
+        checked = target_position
+    else:
+        target_position = np.asarray(target, dtype=np.float64).copy()
+        with np.errstate(all='ignore'):
+            target_fraction = target_position / distance
+        stage = 'position-to-fraction conversion'
+        checked = target_fraction
+    _require_finite_connector_geometry(checked, stage=stage)
+    return (
+        np.asarray(target_fraction, dtype=np.float64),
+        np.asarray(target_position, dtype=np.float64),
+    )
+
+
+def _derive_connector_geometry(
+    points: np.ndarray,
+    i_idx: np.ndarray,
+    j_idx: np.ndarray,
+    shifts: np.ndarray,
+    shift_given: np.ndarray,
+    *,
+    domain: DomainAny | None,
+    image: Literal['nearest', 'given_only'] = 'nearest',
+    image_search: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, tuple[str, ...]]:
+    """Resolve shifts and derive canonical connector geometry from a source."""
+
+    pts2 = _maybe_remap_points(points, domain)
+    shifts_used, warnings, inferred_geometry = _resolve_constraint_shifts(
+        pts2,
+        i_idx,
+        j_idx,
+        shifts,
+        shift_given,
+        domain=domain,
+        image=image,
+        image_search=image_search,
+    )
+    m = int(i_idx.shape[0])
+    dim = int(pts2.shape[1])
     if inferred_geometry is None:
         shift_cart = shift_to_cart(shifts_used, domain)
         with np.errstate(all='ignore'):
-            pj_star = pts2[j_idx] + shift_cart
-        _require_finite_connector_geometry(
-            pj_star,
-            stage='endpoint translation',
-        )
+            endpoint = pts2[j_idx] + shift_cart
+        _require_finite_connector_geometry(endpoint, stage='endpoint translation')
         with np.errstate(all='ignore'):
-            delta = pj_star - pts2[i_idx]
+            delta = endpoint - pts2[i_idx]
     else:
         missing = ~shift_given
-        delta = np.empty((m, pts.shape[1]), dtype=np.float64)
+        delta = np.empty((m, dim), dtype=np.float64)
         if np.any(shift_given):
             explicit_shift_cart = shift_to_cart(
                 shifts_used[shift_given],
@@ -514,71 +726,14 @@ def resolve_separator_observations(
         delta[missing] = inferred_geometry.displacement
     _require_finite_connector_geometry(delta, stage='coordinate difference')
 
-    with np.errstate(all='ignore'):
-        d2 = np.einsum('mi,mi->m', delta, delta)
-    if inferred_geometry is not None:
-        d2[~shift_given] = inferred_geometry.distance_squared
-    _require_finite_connector_geometry(d2, stage='squared distance')
-    if np.any(d2 <= 0.0):
-        raise ValueError(
-            'some constraints have zero distance (coincident points/image)'
-        )
-    with np.errstate(all='ignore'):
-        d = np.sqrt(d2)
-    _require_finite_connector_geometry(d, stage='distance')
-
-    if measurement == 'fraction':
-        target_fraction = target_arr.copy()
-        with np.errstate(all='ignore'):
-            target_position = target_fraction * d
-        _require_finite_connector_geometry(
-            target_position,
-            stage='fraction-to-position conversion',
-        )
-    else:
-        target_position = target_arr.copy()
-        with np.errstate(all='ignore'):
-            target_fraction = target_position / d
-        _require_finite_connector_geometry(
-            target_fraction,
-            stage='position-to-fraction conversion',
-        )
-
-    return SeparatorObservations(
-        n_points=int(pts.shape[0]),
-        i=np.asarray(i_idx, dtype=np.int64),
-        j=np.asarray(j_idx, dtype=np.int64),
-        shifts=np.asarray(shifts_used, dtype=np.int64),
-        target=target_arr,
-        confidence=omega,
-        measurement=measurement,
-        distance=np.asarray(d, dtype=np.float64),
-        distance2=np.asarray(d2, dtype=np.float64),
-        delta=np.asarray(delta, dtype=np.float64),
-        target_fraction=np.asarray(target_fraction, dtype=np.float64),
-        target_position=np.asarray(target_position, dtype=np.float64),
-        input_index=np.arange(m, dtype=np.int64),
-        explicit_shift=np.asarray(shift_given, dtype=bool),
-        ids=ids_arr,
-        warnings=warnings,
+    distance, distance2 = _derive_distances_from_delta(delta)
+    return (
+        np.asarray(shifts_used, dtype=np.int64),
+        np.asarray(distance, dtype=np.float64),
+        np.asarray(distance2, dtype=np.float64),
+        np.asarray(delta, dtype=np.float64),
+        warnings,
     )
-
-
-# ---------------------------- internal helpers ----------------------------
-
-
-def _require_finite_connector_geometry(
-    values: np.ndarray,
-    *,
-    stage: str,
-) -> None:
-    """Reject non-representable derived connector geometry without warnings."""
-
-    if not np.all(np.isfinite(values)):
-        raise ValueError(
-            f'derived separator connector {stage} must contain only finite '
-            'values'
-        )
 
 
 def _parse_constraints(
