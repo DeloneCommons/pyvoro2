@@ -43,6 +43,18 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Made the experimental separator active-set final state atomic. Final
+  `optimal` and weighted `max_iter` refits now recompute realization,
+  candidate diagnostics, residual summaries, and requested tessellation
+  diagnostics from the exact accepted weights. A no-weights final refit keeps
+  its inner fit status without replacing an established outer
+  `self_consistent`, `cycle_detected`, or `max_outer_iter` stop, and exposes
+  weights-dependent result layers and records as `None` instead of reusing
+  stale geometry or fabricating NaN rows. Active results add computed
+  availability/final-refit convergence properties, and active reports add an
+  `availability` block plus JSON-null unavailable sections while preserving
+  the schema-1 envelope, source provenance, row IDs, and strict exact JSON
+  round trips.
 - Replaced bounded periodic nearest-image inference with one private certified
   2D/3D geometry primitive. Orthogonal and partially periodic domains use exact
   per-axis choices; fully periodic non-orthogonal 3D cells exact-enumerate a

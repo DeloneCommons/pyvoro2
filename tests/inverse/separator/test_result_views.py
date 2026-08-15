@@ -45,6 +45,7 @@ REALIZED_REPORT_KEYS = REPORT_ENVELOPE_KEYS | {
 }
 ACTIVE_REPORT_KEYS = REPORT_ENVELOPE_KEYS | {
     'kind',
+    'availability',
     'summary',
     'constraints',
     'fit',
@@ -658,6 +659,9 @@ def test_active_set_views_keep_inner_final_outer_and_path_layers_separate() -> N
     assert result.inner_fit is result.fit
     assert result.final_realization is result.realized
     assert result.candidate_diagnostics is result.diagnostics
+    assert result.final_state_available is True
+    assert result.final_state_unavailable_reason is None
+    assert result.final_refit_converged is result.fit.converged
     termination = result.outer_termination
     assert termination.status == result.termination
     assert termination.converged is result.converged

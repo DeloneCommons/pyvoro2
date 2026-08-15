@@ -104,8 +104,18 @@ fields to the established result dataclasses or copying their arrays.
 | `SeparatorFitResult` | `.solver_termination` | `SeparatorSolverTerminationView` |
 | `RealizedPairDiagnostics` | `.requested_image_matching` | `RequestedImageMatchView` |
 | `RealizedPairDiagnostics` | `.geometry` | `RealizedGeometryView` |
-| `SelfConsistentPowerFitResult` | `.inner_fit`, `.final_realization`, `.candidate_diagnostics` | existing final objects |
+| `SelfConsistentPowerFitResult` | `.inner_fit`, `.final_realization`, `.candidate_diagnostics` | final fit and optional weights-dependent final objects |
 | `SelfConsistentPowerFitResult` | `.outer_termination`, `.path` | `ActiveSetTerminationView`, `ActiveSetPathView` |
+
+The experimental active result keeps its existing stored field names.
+`realized`, `diagnostics`, `rms_residual_all`, and `max_residual_all` are
+optional and are simultaneously unavailable when the final fit has no usable
+weights. In that state `final_realization`, `candidate_diagnostics`, and
+`to_records()` also return `None`. The computed properties
+`final_state_available`, `final_state_unavailable_reason`, and
+`final_refit_converged` distinguish coherent final-layer availability, the
+existing final fit status, and final inner-fit convergence. Outer `converged`
+continues to mean `termination == 'self_consistent'`.
 
 `observation_view(...)` uses the shared exact origin policy before combining
 observation-owned arrays with fit-owned predictions. Two unbound objects match
@@ -296,10 +306,12 @@ comes from the result or diagnostic's authoritative origin, never from an
 arbitrary same-length supplied object.
 
 Report builders return JSON-native values. `dumps_report_json(...)` rejects
-NaN and infinity. Finite fit, realized, and active reports therefore round-trip
-exactly through JSON. An existing active failure state that contains
-non-finite placeholders fails closed during serialization; null/unavailable
-active-state semantics belong to R7.
+NaN and infinity. Fit, realized, and active reports round-trip exactly through
+JSON, including active no-weights failures. Active reports add an
+`availability` block with `weights`, `realization`, `records`, and `reason`.
+Unavailable weights-dependent sections and final realization/residual summary
+values are JSON null, while the nested final fit and outer path/termination
+metadata remain present.
 
 ::: pyvoro2.inverse.separator
 :::

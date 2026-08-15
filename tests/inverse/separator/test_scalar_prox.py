@@ -2342,7 +2342,10 @@ def test_scalar_failure_forwards_to_result_report_json_and_active_set(
     assert active.fit.status == 'numerical_failure'
     assert 'last_candidate=0.25' in active.fit.status_detail
     assert 'fallback_count=2' in active.fit.status_detail
-    assert active.diagnostics.status == ('numerical_failure',)
+    assert active.final_state_available is False
+    assert active.final_state_unavailable_reason == 'numerical_failure'
+    assert active.realized is None
+    assert active.diagnostics is None
 
 
 def test_later_scalar_failure_counts_only_completed_admm_iterations(

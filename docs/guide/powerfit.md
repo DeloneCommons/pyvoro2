@@ -894,9 +894,9 @@ Useful fields include:
 
 - `result.constraints`: the resolved pair set used throughout the solve,
 - `result.active_mask`: final active-set membership,
-- `result.realized`: realized-face matching diagnostics, including
+- `result.realized`: optional realized-face matching diagnostics, including
   `unaccounted_pairs` when the final tessellation realizes candidate-absent
-  pairs,
+  pairs; it is `None` when the final fit has no usable weights,
 - `result.connectivity`: final candidate-graph and active-graph connectivity
   diagnostics plus the component-alignment policy used for disconnected
   components,
@@ -909,11 +909,11 @@ Useful fields include:
   fit-active mask (`n_active_fit`) from the post-toggle mask used for the next
   iteration (`n_active`), and also records fit-active component counts and the
   number of realized pairs absent from the candidate set on that iteration,
-- `result.diagnostics`: per-constraint targets, predictions, residuals,
+- `result.diagnostics`: optional per-constraint targets, predictions, residuals,
   endpoint-empty flags, boundary measure, toggle counts, and generic status
   labels,
 - `result.rms_residual_all` / `result.max_residual_all`: summaries over **all**
-  candidate constraints,
+  candidate constraints, or `None` when final weights are unavailable,
 - `result.tessellation_diagnostics`: final tessellation-wide checks,
 - `result.marginal_constraints`: indices of toggling / cycle / wrong-shift
   pairs.
@@ -931,7 +931,23 @@ path = result.path
 `path.active_mask`, `path.marginal_constraint_indices`, `path.history`, and
 `path.summary` share the existing active-set result data. The outer termination
 is experimental and does not change the exact fixed-observation meaning of
-`final_inner_fit`.
+`final_inner_fit`. In particular, outer and inner convergence are distinct:
+
+```python
+assert result.converged == (result.termination == 'self_consistent')
+final_state_available = result.final_state_available
+unavailable_reason = result.final_state_unavailable_reason
+final_inner_converged = result.final_refit_converged
+```
+
+A final `optimal` or `max_iter` fit with complete finite weights has an
+available state; all final geometry, predictions, residuals, and candidate
+records are recomputed from those exact weights. A weighted `max_iter` result
+remains non-converged at the inner layer. If a final fit has no usable weights,
+`final_realization`, `candidate_diagnostics`, the candidate residual summaries,
+and optional tessellation diagnostics are `None`. Historical path data,
+connectivity, warnings, cycle metadata, and path-derived marginal indices
+remain inspectable. No preceding realization is presented as the final one.
 
 Transient path diagnostics are intentionally **inspectable** rather than
 noisy: final-state `connectivity_check=` / `unaccounted_pair_check=` policies
@@ -957,7 +973,11 @@ objects. The power-fitting package now exposes lightweight record exporters:
 ```python
 rows = result.to_records(use_ids=True)
 fit_rows = result.fit.to_records(result.constraints, use_ids=True)
-realized_rows = result.realized.to_records(result.constraints, use_ids=True)
+realized_rows = (
+    None
+    if result.realized is None
+    else result.realized.to_records(result.constraints, use_ids=True)
+)
 if result.fit.conflict is not None:
     conflict_rows = result.fit.conflict.to_records(ids=result.constraints.ids)
 ```
@@ -1038,7 +1058,7 @@ Report sections map to the same scientific layers:
 | fit `summary`, `conflict`, and `warnings` | fixed solver termination |
 | realized `records`, `unrealized` | requested-image matching |
 | realized `unaccounted_pairs`, `tessellation_diagnostics`, and optional values in `records` | realized geometry |
-| active-set `fit`, `realized`, `diagnostics`, `summary`, `history`, and `path_summary` | final inner fit, final realization, candidate diagnostics, outer termination, and active-set path |
+| active-set `availability`, `fit`, `realized`, `diagnostics`, `summary`, `history`, and `path_summary` | final-layer availability, final inner fit, optional final realization/candidate diagnostics, outer termination, and active-set path |
 
 The exact fit `objective_breakdown` fields are `total`, `mismatch`,
 `penalties_total`, `penalty_terms`, `regularization`,
@@ -1054,10 +1074,13 @@ text = separator.dumps_report_json(solve_report, sort_keys=True)
 separator.write_report_json(solve_report, 'solve_report.json', sort_keys=True)
 ```
 
-`dumps_report_json(...)` rejects NaN and infinity. Finite fit, realized, and
-active reports round-trip exactly through JSON. An active failure that still
-contains non-finite final-state placeholders fails closed during serialization;
-R7 owns any future null/unavailable representation for that state.
+`dumps_report_json(...)` rejects NaN and infinity. Fit, realized, and active
+reports round-trip exactly through JSON, including active no-weights failures.
+The active report's `availability` block records `weights`, `realization`,
+`records`, and `reason`. When unavailable, all three flags are false, `reason`
+is the final fit status, and weights-dependent report sections and summary
+values are JSON null. The nested fit still reports its own status and
+convergence while the active summary retains the outer stop reason.
 
 ## Native Huber fit on sparse outliers
 

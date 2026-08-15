@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import InitVar, KW_ONLY, dataclass, fields
+from dataclasses import InitVar, KW_ONLY, dataclass, fields, replace
 import inspect
 import sys
 from typing import Literal, Sequence
@@ -26,6 +26,8 @@ from ..._internal.weight_transforms import (
     weights_to_radii,
 )
 from ._numerics import (
+    _stable_norm,
+    _stable_rms,
     _stable_sum,
     _stable_sum_products_sign,
     _stable_sum_scalar,
@@ -70,6 +72,14 @@ from ._identity import (
 )
 
 ShiftTuple = tuple[int, ...]
+_ActiveTermination = Literal[
+    'self_consistent',
+    'cycle_detected',
+    'max_outer_iter',
+    'infeasible_active_set',
+    'numerical_failure',
+]
+_ActiveStateGeneration = Literal['outer_failure', 'final_refit']
 
 
 def _label_value(
@@ -392,11 +402,409 @@ class ActiveSetPathView:
 
 
 @dataclass(frozen=True, slots=True)
+class _ActiveStateOrigin:
+    """R6 observation identity plus private active-state generation data."""
+
+    candidate_observations: SeparatorObservations
+    active_observations: SeparatorObservations
+    active_mask: np.ndarray
+    candidate_row_ids: tuple[str, ...]
+    active_row_ids: tuple[str, ...]
+    accepted_outer_iteration: int
+    generation: _ActiveStateGeneration
+
+    def __post_init__(self) -> None:
+        active_mask = require_bool_mask(
+            self.active_mask,
+            name='accepted active-state mask',
+            length=self.candidate_observations.n_constraints,
+        ).copy()
+        object.__setattr__(self, 'active_mask', active_mask)
+        object.__setattr__(
+            self,
+            'accepted_outer_iteration',
+            require_nonnegative_index(
+                self.accepted_outer_iteration,
+                name='accepted active-state outer iteration',
+                maximum=sys.maxsize,
+            ),
+        )
+        object.__setattr__(
+            self,
+            'generation',
+            require_string_choice(
+                self.generation,
+                name='accepted active-state generation',
+                choices=('outer_failure', 'final_refit'),
+            ),
+        )
+
+        expected_active = self.candidate_observations.subset(active_mask)
+        _require_observation_association(
+            expected_active,
+            self.active_observations,
+            context='accepted active-state subset',
+        )
+        expected_candidate_row_ids = _row_ids(self.candidate_observations)
+        expected_active_row_ids = tuple(
+            row_id
+            for row_id, is_active in zip(
+                expected_candidate_row_ids,
+                active_mask,
+            )
+            if bool(is_active)
+        )
+        if self.candidate_row_ids != expected_candidate_row_ids:
+            raise ValueError(
+                'accepted active-state candidate row IDs do not match its '
+                'candidate observations'
+            )
+        if self.active_row_ids != expected_active_row_ids:
+            raise ValueError(
+                'accepted active-state row IDs do not match its active mask'
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class _AcceptedActiveSetState:
+    """One atomic active-set state accepted for public result assembly."""
+
+    origin: _ActiveStateOrigin
+    fit: SeparatorFitResult
+    accepted_weights: np.ndarray | None
+    realized: RealizedPairDiagnostics | None
+    diagnostics: PairConstraintDiagnostics | None
+    n_outer_iter: int
+    converged: bool
+    termination: _ActiveTermination
+    cycle_length: int | None
+    marginal_constraints: tuple[int, ...]
+    rms_residual_all: float | None
+    max_residual_all: float | None
+    tessellation_diagnostics: (
+        TessellationDiagnostics2D | TessellationDiagnostics3D | None
+    )
+    history: tuple[ActiveSetIteration, ...] | None
+    path_summary: ActiveSetPathSummary | None
+    warnings: tuple[str, ...]
+    connectivity: ConnectivityDiagnostics | None
+
+    def __post_init__(self) -> None:
+        termination = require_string_choice(
+            self.termination,
+            name='accepted active-state termination',
+            choices=(
+                'self_consistent',
+                'cycle_detected',
+                'max_outer_iter',
+                'infeasible_active_set',
+                'numerical_failure',
+            ),
+        )
+        object.__setattr__(self, 'termination', termination)
+        object.__setattr__(
+            self,
+            'warnings',
+            require_string_tuple(self.warnings, name='warnings'),
+        )
+        if bool(self.converged) != (termination == 'self_consistent'):
+            raise ValueError(
+                'active result converged must be true exactly for '
+                "termination='self_consistent'"
+            )
+
+        fit_origin = _originating_observations(
+            self.fit,
+            context='accepted active-state fit',
+        )
+        _require_observation_association(
+            self.origin.active_observations,
+            fit_origin,
+            context='accepted active-state fit',
+        )
+        if _row_ids(fit_origin) != self.origin.active_row_ids:
+            raise ValueError(
+                'accepted active-state fit row IDs do not match the active '
+                'mask'
+            )
+        self.fit.observation_view(self.origin.active_observations)
+
+        if self.accepted_weights is None:
+            self._require_unavailable_mode()
+        else:
+            self._require_available_mode()
+
+    def _require_unavailable_mode(self) -> None:
+        if self.fit.status in ('optimal', 'max_iter'):
+            raise ValueError(
+                'a weighted final fit status cannot be represented without '
+                'complete finite weights and radii'
+            )
+        if self.fit.weights is not None or self.fit.radii is not None:
+            raise ValueError(
+                'unavailable active state cannot retain fitted weights or radii'
+            )
+        if self.fit.converged:
+            raise ValueError(
+                'an unavailable final fit cannot claim inner convergence'
+            )
+        if any(
+            value is not None
+            for value in (
+                self.realized,
+                self.diagnostics,
+                self.rms_residual_all,
+                self.max_residual_all,
+                self.tessellation_diagnostics,
+            )
+        ):
+            raise ValueError(
+                'unavailable active state cannot retain weights-dependent '
+                'final layers'
+            )
+
+    def _require_available_mode(self) -> None:
+        weights = np.asarray(self.accepted_weights, dtype=np.float64)
+        fit_weights = self.fit.weights
+        fit_radii = self.fit.radii
+        n_points = self.origin.candidate_observations.n_points
+        if self.fit.status not in ('optimal', 'max_iter'):
+            raise ValueError(
+                'available active state requires a weighted optimal or '
+                'max_iter final fit'
+            )
+        if self.fit.converged != (self.fit.status == 'optimal'):
+            raise ValueError(
+                'weighted active final fit convergence does not match its '
+                'optimal/max_iter status'
+            )
+        if (
+            fit_weights is None
+            or fit_radii is None
+            or weights.shape != (n_points,)
+            or np.asarray(fit_weights).shape != (n_points,)
+            or np.asarray(fit_radii).shape != (n_points,)
+            or not np.all(np.isfinite(weights))
+            or not np.all(np.isfinite(fit_weights))
+            or not np.all(np.isfinite(fit_radii))
+            or not np.array_equal(weights, fit_weights)
+            or self.fit.weight_shift is None
+            or not np.isfinite(self.fit.weight_shift)
+        ):
+            raise ValueError(
+                'available active state requires one complete finite final '
+                'weight/radius vector'
+            )
+        try:
+            expected_radii, expected_shift = weights_to_radii(
+                weights,
+                weight_shift=float(self.fit.weight_shift),
+            )
+        except ValueError as exc:
+            raise ValueError(
+                'available active state has an inconsistent final '
+                'weight/radius representation'
+            ) from exc
+        if expected_shift != self.fit.weight_shift or not np.array_equal(
+            expected_radii,
+            fit_radii,
+        ):
+            raise ValueError(
+                'available active state realization radii do not represent '
+                'the final weights'
+            )
+        if (
+            self.realized is None
+            or self.diagnostics is None
+            or self.rms_residual_all is None
+            or self.max_residual_all is None
+        ):
+            raise ValueError(
+                'available active state requires realization, diagnostics, '
+                'and residual summaries'
+            )
+        if not np.isfinite(self.rms_residual_all) or not np.isfinite(
+            self.max_residual_all
+        ):
+            raise ValueError(
+                'available active-state residual summaries must be finite'
+            )
+
+        candidate = self.origin.candidate_observations
+        realized_origin = _originating_observations(
+            self.realized,
+            context='accepted active-state realization',
+        )
+        _require_observation_association(
+            candidate,
+            realized_origin,
+            context='accepted active-state realization',
+        )
+        diagnostics_origin = _originating_observations(
+            self.diagnostics,
+            context='accepted active-state diagnostics',
+        )
+        _require_observation_association(
+            candidate,
+            diagnostics_origin,
+            context='accepted active-state diagnostics',
+        )
+        _require_observation_row_data(
+            diagnostics_origin,
+            i=self.diagnostics.site_i,
+            j=self.diagnostics.site_j,
+            shifts=self.diagnostics.shift,
+            target=self.diagnostics.target,
+            confidence=self.diagnostics.confidence,
+            context='accepted active-state diagnostics',
+        )
+        if _row_ids(diagnostics_origin) != self.origin.candidate_row_ids:
+            raise ValueError(
+                'accepted active-state diagnostic row IDs do not match the '
+                'candidate observations'
+            )
+        if not np.array_equal(
+            self.diagnostics.active,
+            self.origin.active_mask,
+        ):
+            raise ValueError(
+                'accepted active-state diagnostics do not match the active mask'
+            )
+        for name in (
+            'realized',
+            'realized_same_shift',
+            'realized_other_shift',
+            'endpoint_i_empty',
+            'endpoint_j_empty',
+        ):
+            if not np.array_equal(
+                getattr(self.diagnostics, name),
+                getattr(self.realized, name),
+            ):
+                raise ValueError(
+                    'accepted active-state diagnostics and realization differ '
+                    f'for {name}'
+                )
+        if self.diagnostics.realized_shifts != self.realized.realized_shifts:
+            raise ValueError(
+                'accepted active-state diagnostics and realization use '
+                'different realized shifts'
+            )
+        diagnostic_boundary = self.diagnostics.boundary_measure
+        realized_boundary = self.realized.boundary_measure
+        if (diagnostic_boundary is None) != (realized_boundary is None) or (
+            diagnostic_boundary is not None
+            and realized_boundary is not None
+            and not np.array_equal(
+                diagnostic_boundary,
+                realized_boundary,
+                equal_nan=True,
+            )
+        ):
+            raise ValueError(
+                'accepted active-state diagnostics and realization use '
+                'different boundary measures'
+            )
+        if self.tessellation_diagnostics is not self.realized.tessellation_diagnostics:
+            raise ValueError(
+                'accepted active-state tessellation diagnostics do not match '
+                'the final realization'
+            )
+        expected_prediction = build_power_fit_problem(candidate).predict(weights)
+        expected_target = (
+            candidate.target_fraction
+            if candidate.measurement == 'fraction'
+            else candidate.target_position
+        )
+        expected_residuals = expected_prediction.measurement - expected_target
+        for name, actual, expected in (
+            ('predicted', self.diagnostics.predicted, expected_prediction.measurement),
+            (
+                'predicted_fraction',
+                self.diagnostics.predicted_fraction,
+                expected_prediction.fraction,
+            ),
+            (
+                'predicted_position',
+                self.diagnostics.predicted_position,
+                expected_prediction.position,
+            ),
+            ('residuals', self.diagnostics.residuals, expected_residuals),
+        ):
+            if not np.array_equal(actual, expected):
+                raise ValueError(
+                    'accepted active-state diagnostics were not derived from '
+                    f'the final weights ({name})'
+                )
+        active_mask = self.origin.active_mask
+        for name, actual, expected in (
+            ('predicted', self.fit.predicted, expected_prediction.measurement),
+            (
+                'predicted_fraction',
+                self.fit.predicted_fraction,
+                expected_prediction.fraction,
+            ),
+            (
+                'predicted_position',
+                self.fit.predicted_position,
+                expected_prediction.position,
+            ),
+        ):
+            if actual is None or not np.array_equal(actual, expected[active_mask]):
+                raise ValueError(
+                    'accepted active-state final fit was not rebuilt from '
+                    f'the final weights ({name})'
+                )
+        expected_rms = _stable_rms(expected_residuals)
+        expected_max = (
+            float(np.max(np.abs(expected_residuals)))
+            if expected_residuals.size
+            else 0.0
+        )
+        if (
+            self.rms_residual_all != expected_rms
+            or self.max_residual_all != expected_max
+        ):
+            raise ValueError(
+                'accepted active-state residual summaries were not derived '
+                'from the final weights'
+            )
+        if tuple(np.flatnonzero(self.diagnostics.marginal).tolist()) != (
+            self.marginal_constraints
+        ):
+            raise ValueError(
+                'accepted active-state marginal indices do not match final '
+                'candidate diagnostics'
+            )
+
+    def to_result(self) -> SelfConsistentPowerFitResult:
+        return SelfConsistentPowerFitResult(
+            constraints=self.origin.candidate_observations,
+            fit=self.fit,
+            realized=self.realized,
+            diagnostics=self.diagnostics,
+            active_mask=self.origin.active_mask.copy(),
+            n_outer_iter=self.n_outer_iter,
+            converged=self.converged,
+            termination=self.termination,
+            cycle_length=self.cycle_length,
+            marginal_constraints=self.marginal_constraints,
+            rms_residual_all=self.rms_residual_all,
+            max_residual_all=self.max_residual_all,
+            tessellation_diagnostics=self.tessellation_diagnostics,
+            history=self.history,
+            path_summary=self.path_summary,
+            warnings=self.warnings,
+            connectivity=self.connectivity,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class SelfConsistentPowerFitResult:
     constraints: SeparatorObservations
     fit: SeparatorFitResult
-    realized: RealizedPairDiagnostics
-    diagnostics: PairConstraintDiagnostics
+    realized: RealizedPairDiagnostics | None
+    diagnostics: PairConstraintDiagnostics | None
     active_mask: np.ndarray
     n_outer_iter: int
     converged: bool
@@ -409,8 +817,8 @@ class SelfConsistentPowerFitResult:
     ]
     cycle_length: int | None
     marginal_constraints: tuple[int, ...]
-    rms_residual_all: float
-    max_residual_all: float
+    rms_residual_all: float | None
+    max_residual_all: float | None
     tessellation_diagnostics: (
         TessellationDiagnostics2D | TessellationDiagnostics3D | None
     )
@@ -440,43 +848,7 @@ class SelfConsistentPowerFitResult:
             'warnings',
             require_string_tuple(self.warnings, name='warnings'),
         )
-        realized_origin = _originating_observations(
-            self.realized,
-            context='active result realization',
-        )
-        _require_observation_association(
-            self.constraints,
-            realized_origin,
-            context='active result realization',
-        )
-        diagnostics_origin = _originating_observations(
-            self.diagnostics,
-            context='active result diagnostics',
-        )
-        _require_observation_association(
-            self.constraints,
-            diagnostics_origin,
-            context='active result diagnostics',
-        )
-        _require_observation_row_data(
-            diagnostics_origin,
-            i=self.diagnostics.site_i,
-            j=self.diagnostics.site_j,
-            shifts=self.diagnostics.shift,
-            target=self.diagnostics.target,
-            confidence=self.diagnostics.confidence,
-            context='active result diagnostics',
-        )
-        fit_origin = _originating_observations(
-            self.fit,
-            context='active result fit',
-        )
-        expected_fit_origin = self.constraints.subset(self.active_mask)
-        _require_observation_association(
-            expected_fit_origin,
-            fit_origin,
-            context='active result fit',
-        )
+        _accepted_state_from_result(self)
 
     @property
     def inner_fit(self) -> SeparatorFitResult:
@@ -485,14 +857,14 @@ class SelfConsistentPowerFitResult:
         return self.fit
 
     @property
-    def final_realization(self) -> RealizedPairDiagnostics:
-        """Return realization diagnostics for the final fitted state."""
+    def final_realization(self) -> RealizedPairDiagnostics | None:
+        """Return final realization diagnostics when weights are available."""
 
         return self.realized
 
     @property
-    def candidate_diagnostics(self) -> PairConstraintDiagnostics:
-        """Return final diagnostics over every candidate observation."""
+    def candidate_diagnostics(self) -> PairConstraintDiagnostics | None:
+        """Return final candidate diagnostics when weights are available."""
 
         return self.diagnostics
 
@@ -519,10 +891,34 @@ class SelfConsistentPowerFitResult:
             summary=self.path_summary,
         )
 
-    def to_records(self, *, use_ids: bool = False) -> tuple[dict[str, object], ...]:
-        """Return one plain-Python record per candidate pair."""
+    @property
+    def final_state_available(self) -> bool:
+        """Whether all required weights-dependent final layers are available."""
+
+        return self.fit.weights is not None
+
+    @property
+    def final_state_unavailable_reason(self) -> str | None:
+        """Return the final fit status when final layers are unavailable."""
+
+        return None if self.final_state_available else self.fit.status
+
+    @property
+    def final_refit_converged(self) -> bool:
+        """Return convergence of the final accepted inner fit/refit."""
+
+        return bool(self.fit.converged)
+
+    def to_records(
+        self,
+        *,
+        use_ids: bool = False,
+    ) -> tuple[dict[str, object], ...] | None:
+        """Return candidate records, or ``None`` without final weights."""
 
         use_ids_value = require_bool(use_ids, name='use_ids')
+        if self.diagnostics is None:
+            return None
         ids = self.constraints.ids if use_ids_value else None
         return self.diagnostics.to_records(ids=ids)
 
@@ -533,6 +929,329 @@ class SelfConsistentPowerFitResult:
 
         use_ids_value = require_bool(use_ids, name='use_ids')
         return build_active_set_report(self, use_ids=use_ids_value)
+
+
+def _active_state_origin(
+    constraints: SeparatorObservations,
+    active_constraints: SeparatorObservations,
+    active_mask: np.ndarray,
+    *,
+    accepted_outer_iteration: int,
+    generation: _ActiveStateGeneration,
+) -> _ActiveStateOrigin:
+    candidate_row_ids = _row_ids(constraints)
+    return _ActiveStateOrigin(
+        candidate_observations=constraints,
+        active_observations=active_constraints,
+        active_mask=active_mask,
+        candidate_row_ids=candidate_row_ids,
+        active_row_ids=tuple(
+            row_id
+            for row_id, is_active in zip(candidate_row_ids, active_mask)
+            if bool(is_active)
+        ),
+        accepted_outer_iteration=accepted_outer_iteration,
+        generation=generation,
+    )
+
+
+def _accepted_state_from_result(
+    result: SelfConsistentPowerFitResult,
+) -> _AcceptedActiveSetState:
+    """Reconstitute and validate the private accepted state for public views."""
+
+    active_constraints = result.constraints.subset(result.active_mask)
+    generation: _ActiveStateGeneration = (
+        'outer_failure'
+        if result.termination in ('infeasible_active_set', 'numerical_failure')
+        else 'final_refit'
+    )
+    origin = _active_state_origin(
+        result.constraints,
+        active_constraints,
+        result.active_mask,
+        accepted_outer_iteration=result.n_outer_iter,
+        generation=generation,
+    )
+    return _AcceptedActiveSetState(
+        origin=origin,
+        fit=result.fit,
+        accepted_weights=(
+            None
+            if result.fit.weights is None
+            else np.asarray(result.fit.weights, dtype=np.float64).copy()
+        ),
+        realized=result.realized,
+        diagnostics=result.diagnostics,
+        n_outer_iter=result.n_outer_iter,
+        converged=result.converged,
+        termination=result.termination,
+        cycle_length=result.cycle_length,
+        marginal_constraints=result.marginal_constraints,
+        rms_residual_all=result.rms_residual_all,
+        max_residual_all=result.max_residual_all,
+        tessellation_diagnostics=result.tessellation_diagnostics,
+        history=result.history,
+        path_summary=result.path_summary,
+        warnings=result.warnings,
+        connectivity=result.connectivity,
+    )
+
+
+def _normalize_fit_for_accepted_state(
+    fit: SeparatorFitResult,
+    constraints: SeparatorObservations,
+) -> SeparatorFitResult:
+    """Normalize a malformed claimed weighted fit to structured failure."""
+
+    _bind_originating_observations(fit, constraints)
+    n_points = constraints.n_points
+    weights = fit.weights
+    radii = fit.radii
+    weighted_status = fit.status in ('optimal', 'max_iter')
+    usable = False
+    if weights is not None and radii is not None:
+        try:
+            weight_values = np.asarray(weights, dtype=np.float64)
+            radius_values = np.asarray(radii, dtype=np.float64)
+            usable = bool(
+                weight_values.shape == (n_points,)
+                and radius_values.shape == (n_points,)
+                and np.all(np.isfinite(weight_values))
+                and np.all(np.isfinite(radius_values))
+                and fit.weight_shift is not None
+                and np.isfinite(fit.weight_shift)
+            )
+            if usable:
+                expected_radii, expected_shift = weights_to_radii(
+                    weight_values,
+                    weight_shift=float(fit.weight_shift),
+                )
+                usable = bool(
+                    expected_shift == fit.weight_shift
+                    and np.array_equal(expected_radii, radius_values)
+                )
+        except (TypeError, ValueError):
+            usable = False
+
+    if weighted_status and not usable:
+        message = (
+            f"final fit status {fit.status!r} did not provide one complete "
+            'finite weight/radius vector'
+        )
+        normalized = replace(
+            fit,
+            status='numerical_failure',
+            status_detail=message,
+            weights=None,
+            radii=None,
+            weight_shift=None,
+            predicted=None,
+            predicted_fraction=None,
+            predicted_position=None,
+            residuals=None,
+            rms_residual=None,
+            max_residual=None,
+            converged=False,
+            warnings=fit.warnings + (message,),
+            edge_diagnostics=None,
+            objective_breakdown=None,
+        )
+        return _bind_originating_observations(normalized, constraints)
+
+    if not weighted_status and (weights is not None or radii is not None):
+        raise ValueError(
+            'a non-weighted final fit status cannot retain weights or radii'
+        )
+    if not weighted_status and fit.weight_shift is not None:
+        raise ValueError(
+            'a no-weights final fit cannot retain a backend weight shift'
+        )
+    return fit
+
+
+def _assemble_accepted_active_set_state(
+    *,
+    points: np.ndarray,
+    domain: Box2D | RectangularCell | Box3D | OrthorhombicCell | PeriodicCell,
+    constraints: SeparatorObservations,
+    active_constraints: SeparatorObservations,
+    active_mask: np.ndarray,
+    fit: SeparatorFitResult,
+    full_problem: object,
+    toggle_count: np.ndarray,
+    realized_toggle_count: np.ndarray,
+    first_realized_iter: np.ndarray,
+    last_realized_iter: np.ndarray,
+    n_outer_iter: int,
+    accepted_outer_iteration: int,
+    generation: _ActiveStateGeneration,
+    converged: bool,
+    termination: _ActiveTermination,
+    cycle_length: int | None,
+    history_rows: list[ActiveSetIteration],
+    path_acc: _ActiveSetPathAccumulator,
+    return_history: bool,
+    return_boundary_measure: bool,
+    return_cells: bool,
+    return_tessellation_diagnostics: bool,
+    tessellation_check: str,
+    connectivity_check: str,
+    unaccounted_pair_check: str,
+    gauge_policy: str,
+    model: FitModel,
+    warnings_list: list[str],
+) -> _AcceptedActiveSetState:
+    """Assemble the sole state from which an active public result is built."""
+
+    fit = _normalize_fit_for_accepted_state(fit, active_constraints)
+    warnings = list(warnings_list)
+    warnings.extend(fit.warnings)
+    origin = _active_state_origin(
+        constraints,
+        active_constraints,
+        active_mask,
+        accepted_outer_iteration=accepted_outer_iteration,
+        generation=generation,
+    )
+
+    realized: RealizedPairDiagnostics | None = None
+    diagnostics: PairConstraintDiagnostics | None = None
+    rms_residual_all: float | None = None
+    max_residual_all: float | None = None
+    tessellation_diagnostics = None
+    accepted_weights: np.ndarray | None = None
+
+    path_marginal = toggle_count > 0
+    if termination == 'cycle_detected':
+        path_marginal = path_marginal | (realized_toggle_count > 0)
+
+    if fit.weights is not None:
+        accepted_weights = np.asarray(fit.weights, dtype=np.float64).copy()
+        realized = match_realized_pairs(
+            points,
+            domain=domain,
+            radii=fit.radii,
+            constraints=constraints,
+            return_boundary_measure=return_boundary_measure,
+            return_cells=return_cells,
+            return_tessellation_diagnostics=return_tessellation_diagnostics,
+            tessellation_check=tessellation_check,
+            unaccounted_pair_check=unaccounted_pair_check,
+        )
+        _bind_originating_observations(realized, constraints)
+        warnings.extend(realized.warnings)
+
+        prediction = full_problem.predict(accepted_weights)
+        predicted_fraction = np.asarray(
+            prediction.fraction,
+            dtype=np.float64,
+        )
+        predicted_position = np.asarray(
+            prediction.position,
+            dtype=np.float64,
+        )
+        predicted = np.asarray(prediction.measurement, dtype=np.float64)
+        target = (
+            constraints.target_fraction
+            if constraints.measurement == 'fraction'
+            else constraints.target_position
+        )
+        residuals = predicted - target
+        if not all(
+            np.all(np.isfinite(values))
+            for values in (
+                predicted,
+                predicted_fraction,
+                predicted_position,
+                residuals,
+            )
+        ):
+            raise ValueError(
+                'finite final weights produced non-finite active candidate '
+                'diagnostics'
+            )
+        rms_residual_all = _stable_rms(residuals)
+        max_residual_all = (
+            float(np.max(np.abs(residuals))) if residuals.size else 0.0
+        )
+
+        marginal = path_marginal | realized.realized_other_shift
+        status = _build_constraint_statuses(
+            active=active_mask,
+            realized=realized,
+            toggle_count=toggle_count,
+            realized_toggle_count=realized_toggle_count,
+            termination=termination,
+        )
+        diagnostics = PairConstraintDiagnostics(
+            site_i=constraints.i.copy(),
+            site_j=constraints.j.copy(),
+            shift=constraints.shifts.copy(),
+            target=constraints.target.copy(),
+            confidence=constraints.confidence.copy(),
+            predicted=predicted,
+            predicted_fraction=predicted_fraction,
+            predicted_position=predicted_position,
+            residuals=residuals,
+            active=active_mask.copy(),
+            realized=realized.realized.copy(),
+            realized_same_shift=realized.realized_same_shift.copy(),
+            realized_other_shift=realized.realized_other_shift.copy(),
+            realized_shifts=realized.realized_shifts,
+            endpoint_i_empty=realized.endpoint_i_empty.copy(),
+            endpoint_j_empty=realized.endpoint_j_empty.copy(),
+            boundary_measure=(
+                None
+                if realized.boundary_measure is None
+                else realized.boundary_measure.copy()
+            ),
+            toggle_count=toggle_count.copy(),
+            realized_toggle_count=realized_toggle_count.copy(),
+            first_realized_iter=first_realized_iter.copy(),
+            last_realized_iter=last_realized_iter.copy(),
+            marginal=marginal.copy(),
+            status=status,
+        )
+        _bind_originating_observations(diagnostics, constraints)
+        tessellation_diagnostics = realized.tessellation_diagnostics
+    else:
+        marginal = path_marginal
+
+    marginal_constraints = tuple(np.flatnonzero(marginal).tolist())
+    connectivity = None
+    if connectivity_check != 'none':
+        connectivity = _build_active_set_connectivity_diagnostics(
+            constraints,
+            active_mask,
+            model=model,
+            gauge_policy=gauge_policy,
+        )
+        _apply_connectivity_policy(
+            connectivity_check,
+            connectivity,
+            warnings,
+        )
+
+    return _AcceptedActiveSetState(
+        origin=origin,
+        fit=fit,
+        accepted_weights=accepted_weights,
+        realized=realized,
+        diagnostics=diagnostics,
+        n_outer_iter=n_outer_iter,
+        converged=converged,
+        termination=termination,
+        cycle_length=cycle_length,
+        marginal_constraints=marginal_constraints,
+        rms_residual_all=rms_residual_all,
+        max_residual_all=max_residual_all,
+        tessellation_diagnostics=tessellation_diagnostics,
+        history=tuple(history_rows) if return_history else None,
+        path_summary=_finalize_path_summary(path_acc),
+        warnings=tuple(warnings),
+        connectivity=connectivity,
+    )
 
 
 def solve_self_consistent_power_weights(
@@ -714,16 +1433,9 @@ def solve_self_consistent_power_weights(
     prev_realized_same: np.ndarray | None = None
     seen_masks: dict[bytes, int] = {active.tobytes(): 0}
 
-    termination: Literal[
-        'self_consistent',
-        'cycle_detected',
-        'max_outer_iter',
-        'infeasible_active_set',
-        'numerical_failure',
-    ] = 'max_outer_iter'
+    termination: _ActiveTermination = 'max_outer_iter'
     cycle_length: int | None = None
     converged = False
-    last_diag: RealizedPairDiagnostics | None = None
 
     for outer_iter in range(1, options.max_iter + 1):
         active_constraints = resolved.subset(active)
@@ -742,79 +1454,47 @@ def solve_self_consistent_power_weights(
             connectivity_check='diagnose',
         )
         _bind_originating_observations(fit, active_constraints)
+        fit = _normalize_fit_for_accepted_state(fit, active_constraints)
         if fit.weights is None:
-            warnings_list.extend(fit.warnings)
             termination = (
                 'numerical_failure'
                 if fit.status == 'numerical_failure'
                 else 'infeasible_active_set'
             )
-            final_realized = _empty_realized_pair_diagnostics(
-                resolved,
-                return_boundary_measure=return_boundary_measure_value,
-            )
-            diag_all = PairConstraintDiagnostics(
-                site_i=resolved.i.copy(),
-                site_j=resolved.j.copy(),
-                shift=resolved.shifts.copy(),
-                target=resolved.target.copy(),
-                confidence=resolved.confidence.copy(),
-                predicted=np.full(m, np.nan, dtype=np.float64),
-                predicted_fraction=np.full(m, np.nan, dtype=np.float64),
-                predicted_position=np.full(m, np.nan, dtype=np.float64),
-                residuals=np.full(m, np.nan, dtype=np.float64),
-                active=active.copy(),
-                realized=final_realized.realized.copy(),
-                realized_same_shift=final_realized.realized_same_shift.copy(),
-                realized_other_shift=final_realized.realized_other_shift.copy(),
-                realized_shifts=final_realized.realized_shifts,
-                endpoint_i_empty=final_realized.endpoint_i_empty.copy(),
-                endpoint_j_empty=final_realized.endpoint_j_empty.copy(),
-                boundary_measure=(
-                    None
-                    if final_realized.boundary_measure is None
-                    else final_realized.boundary_measure.copy()
-                ),
-                toggle_count=toggle_count.copy(),
-                realized_toggle_count=realized_toggle_count.copy(),
-                first_realized_iter=first_realized_iter.copy(),
-                last_realized_iter=last_realized_iter.copy(),
-                marginal=np.zeros(m, dtype=bool),
-                status=tuple(termination for _ in range(m)),
-            )
-            _bind_originating_observations(diag_all, resolved)
-            connectivity = None
-            if connectivity_check != 'none':
-                connectivity = _build_active_set_connectivity_diagnostics(
-                    resolved,
-                    active,
-                    model=model,
-                    gauge_policy=gauge_policy,
-                )
-                _apply_connectivity_policy(
-                    connectivity_check,
-                    connectivity,
-                    warnings_list,
-                )
-            return SelfConsistentPowerFitResult(
+            state = _assemble_accepted_active_set_state(
+                points=pts,
+                domain=domain,
                 constraints=resolved,
+                active_constraints=active_constraints,
+                active_mask=active,
                 fit=fit,
-                realized=final_realized,
-                diagnostics=diag_all,
-                active_mask=active.copy(),
+                full_problem=full_problem,
+                toggle_count=toggle_count,
+                realized_toggle_count=realized_toggle_count,
+                first_realized_iter=first_realized_iter,
+                last_realized_iter=last_realized_iter,
                 n_outer_iter=outer_iter,
+                accepted_outer_iteration=outer_iter,
+                generation='outer_failure',
                 converged=False,
                 termination=termination,
                 cycle_length=None,
-                marginal_constraints=tuple(),
-                rms_residual_all=float('nan'),
-                max_residual_all=float('nan'),
-                tessellation_diagnostics=None,
-                history=tuple(history_rows) if return_history_value else None,
-                path_summary=_finalize_path_summary(path_acc),
-                warnings=tuple(warnings_list),
-                connectivity=connectivity,
+                history_rows=history_rows,
+                path_acc=path_acc,
+                return_history=return_history_value,
+                return_boundary_measure=return_boundary_measure_value,
+                return_cells=return_cells_value,
+                return_tessellation_diagnostics=(
+                    return_tessellation_diagnostics_value
+                ),
+                tessellation_check=tessellation_check,
+                connectivity_check=connectivity_check,
+                unaccounted_pair_check=unaccounted_pair_check,
+                gauge_policy=gauge_policy,
+                model=model,
+                warnings_list=warnings_list,
             )
+            return state.to_result()
 
         weights_exact = fit.weights.copy()
         if prev_weights_eval is not None:
@@ -827,7 +1507,8 @@ def solve_self_consistent_power_weights(
                 (1.0 - float(options.relax)) * prev_weights_eval
                 + float(options.relax) * weights_exact
             )
-            step_norm = float(np.linalg.norm(weights_eval - prev_weights_eval))
+            weight_step = _stable_sum(weights_eval, -prev_weights_eval)
+            step_norm = _stable_norm(weight_step)
         else:
             weights_eval = weights_exact
             step_norm = 0.0
@@ -855,7 +1536,6 @@ def solve_self_consistent_power_weights(
             unaccounted_pair_check='diagnose',
         )
         _bind_originating_observations(diag, resolved)
-        last_diag = diag
         n_unaccounted_pairs = len(diag.unaccounted_pairs)
         _record_path_iteration(
             path_acc,
@@ -892,8 +1572,6 @@ def solve_self_consistent_power_weights(
         n_removed = int(np.count_nonzero(active & (~new_active)))
 
         pred_all = full_problem.predict(weights_eval)
-        pred_fraction = np.asarray(pred_all.fraction, dtype=np.float64)
-        pred_position = np.asarray(pred_all.position, dtype=np.float64)
         pred = np.asarray(pred_all.measurement, dtype=np.float64)
         target = (
             resolved.target_fraction
@@ -908,9 +1586,7 @@ def solve_self_consistent_power_weights(
                 n_realized=int(np.count_nonzero(realized_same)),
                 n_added=n_added,
                 n_removed=n_removed,
-                rms_residual_all=float(np.sqrt(np.mean(residuals * residuals)))
-                if residuals.size
-                else 0.0,
+                rms_residual_all=_stable_rms(residuals),
                 max_residual_all=float(np.max(np.abs(residuals)))
                 if residuals.size
                 else 0.0,
@@ -982,11 +1658,10 @@ def solve_self_consistent_power_weights(
         connectivity_check='diagnose',
     )
     _bind_originating_observations(final_fit, active_constraints)
-    warnings_list.extend(final_fit.warnings)
-
-    if final_fit.status == 'numerical_failure':
-        termination = 'numerical_failure'
-        converged = False
+    final_fit = _normalize_fit_for_accepted_state(
+        final_fit,
+        active_constraints,
+    )
 
     if final_fit.weights is not None:
         final_weights = final_fit.weights.copy()
@@ -1004,123 +1679,40 @@ def solve_self_consistent_power_weights(
             r_min=r_min_value,
             weight_shift=weight_shift_value,
         )
-        final_realized = match_realized_pairs(
-            pts,
-            domain=domain,
-            radii=final_fit.radii,
-            constraints=resolved,
-            return_boundary_measure=return_boundary_measure_value,
-            return_cells=return_cells_value,
-            return_tessellation_diagnostics=(
-                return_tessellation_diagnostics_value
-            ),
-            tessellation_check=tessellation_check,
-            unaccounted_pair_check=unaccounted_pair_check,
-        )
-        _bind_originating_observations(final_realized, resolved)
-        warnings_list.extend(final_realized.warnings)
-        pred_all = full_problem.predict(final_fit.weights)
-        pred_fraction = np.asarray(pred_all.fraction, dtype=np.float64)
-        pred_position = np.asarray(pred_all.position, dtype=np.float64)
-        pred = np.asarray(pred_all.measurement, dtype=np.float64)
-    else:
-        final_realized = last_diag
-        pred_fraction = np.full(m, np.nan, dtype=np.float64)
-        pred_position = np.full(m, np.nan, dtype=np.float64)
-        pred = np.full(m, np.nan, dtype=np.float64)
-        if final_realized is None:
-            final_realized = _empty_realized_pair_diagnostics(
-                resolved,
-                return_boundary_measure=return_boundary_measure_value,
-            )
+        _bind_originating_observations(final_fit, active_constraints)
 
-    target = (
-        resolved.target_fraction
-        if resolved.measurement == 'fraction'
-        else resolved.target_position
-    )
-    residuals = pred - target
-    rms_residual_all = (
-        float(np.sqrt(np.mean(residuals * residuals))) if residuals.size else 0.0
-    )
-    max_residual_all = float(np.max(np.abs(residuals))) if residuals.size else 0.0
-
-    marginal = (toggle_count > 0) | final_realized.realized_other_shift
-    if termination == 'cycle_detected':
-        marginal = marginal | (realized_toggle_count > 0)
-    marginal_constraints = tuple(np.flatnonzero(marginal).tolist())
-    status = _build_constraint_statuses(
-        active=active,
-        realized=final_realized,
+    state = _assemble_accepted_active_set_state(
+        points=pts,
+        domain=domain,
+        constraints=resolved,
+        active_constraints=active_constraints,
+        active_mask=active,
+        fit=final_fit,
+        full_problem=full_problem,
         toggle_count=toggle_count,
         realized_toggle_count=realized_toggle_count,
-        termination=termination,
-    )
-
-    diag_all = PairConstraintDiagnostics(
-        site_i=resolved.i.copy(),
-        site_j=resolved.j.copy(),
-        shift=resolved.shifts.copy(),
-        target=resolved.target.copy(),
-        confidence=resolved.confidence.copy(),
-        predicted=pred,
-        predicted_fraction=pred_fraction,
-        predicted_position=pred_position,
-        residuals=residuals,
-        active=active.copy(),
-        realized=final_realized.realized.copy(),
-        realized_same_shift=final_realized.realized_same_shift.copy(),
-        realized_other_shift=final_realized.realized_other_shift.copy(),
-        realized_shifts=final_realized.realized_shifts,
-        endpoint_i_empty=final_realized.endpoint_i_empty.copy(),
-        endpoint_j_empty=final_realized.endpoint_j_empty.copy(),
-        boundary_measure=(
-            None
-            if final_realized.boundary_measure is None
-            else final_realized.boundary_measure.copy()
-        ),
-        toggle_count=toggle_count.copy(),
-        realized_toggle_count=realized_toggle_count.copy(),
-        first_realized_iter=first_realized_iter.copy(),
-        last_realized_iter=last_realized_iter.copy(),
-        marginal=marginal.copy(),
-        status=status,
-    )
-    _bind_originating_observations(diag_all, resolved)
-
-    connectivity = None
-    if connectivity_check != 'none':
-        connectivity = _build_active_set_connectivity_diagnostics(
-            resolved,
-            active,
-            model=model,
-            gauge_policy=gauge_policy,
-        )
-        _apply_connectivity_policy(
-            connectivity_check,
-            connectivity,
-            warnings_list,
-        )
-
-    return SelfConsistentPowerFitResult(
-        constraints=resolved,
-        fit=final_fit,
-        realized=final_realized,
-        diagnostics=diag_all,
-        active_mask=active.copy(),
+        first_realized_iter=first_realized_iter,
+        last_realized_iter=last_realized_iter,
         n_outer_iter=len(history_rows),
+        accepted_outer_iteration=len(history_rows),
+        generation='final_refit',
         converged=converged,
         termination=termination,
         cycle_length=cycle_length,
-        marginal_constraints=marginal_constraints,
-        rms_residual_all=rms_residual_all,
-        max_residual_all=max_residual_all,
-        tessellation_diagnostics=final_realized.tessellation_diagnostics,
-        history=tuple(history_rows) if return_history_value else None,
-        path_summary=_finalize_path_summary(path_acc),
-        warnings=tuple(warnings_list),
-        connectivity=connectivity,
+        history_rows=history_rows,
+        path_acc=path_acc,
+        return_history=return_history_value,
+        return_boundary_measure=return_boundary_measure_value,
+        return_cells=return_cells_value,
+        return_tessellation_diagnostics=return_tessellation_diagnostics_value,
+        tessellation_check=tessellation_check,
+        connectivity_check=connectivity_check,
+        unaccounted_pair_check=unaccounted_pair_check,
+        gauge_policy=gauge_policy,
+        model=model,
+        warnings_list=warnings_list,
     )
+    return state.to_result()
 
 
 def _align_weights_to_reference(
@@ -1305,29 +1897,6 @@ def _rebuild_fit_with_weights(
         r_min=r_min,
         weight_shift=weight_shift,
     )
-
-
-def _empty_realized_pair_diagnostics(
-    constraints: SeparatorObservations, *, return_boundary_measure: bool
-) -> RealizedPairDiagnostics:
-    m = constraints.n_constraints
-    diagnostics = RealizedPairDiagnostics(
-        realized=np.zeros(m, dtype=bool),
-        unrealized=tuple(range(m)),
-        realized_same_shift=np.zeros(m, dtype=bool),
-        realized_other_shift=np.zeros(m, dtype=bool),
-        realized_shifts=tuple(() for _ in range(m)),
-        endpoint_i_empty=np.zeros(m, dtype=bool),
-        endpoint_j_empty=np.zeros(m, dtype=bool),
-        boundary_measure=(
-            np.full(m, np.nan, dtype=np.float64) if return_boundary_measure else None
-        ),
-        cells=None,
-        tessellation_diagnostics=None,
-        unaccounted_pairs=tuple(),
-        warnings=tuple(),
-    )
-    return _bind_originating_observations(diagnostics, constraints)
 
 
 def _build_constraint_statuses(

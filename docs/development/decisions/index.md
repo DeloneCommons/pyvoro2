@@ -28,6 +28,7 @@ Each record has a status:
 12. [Certified periodic nearest-image geometry](0012-certified-periodic-image-geometry.md)
 13. [Central generator preparation and mandatory backend safety](0013-central-generator-preparation-and-backend-safety.md)
 14. [Two-layer separator observation and source identity](0014-separator-observation-and-source-identity.md)
+15. [Atomic separator active-set final state](0015-atomic-separator-active-state.md)
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the

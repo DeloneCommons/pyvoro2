@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import fields
 import inspect
+from typing import get_args, get_type_hints
 
 import numpy as np
 import pytest
@@ -1055,6 +1056,24 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
         assert _field_names(dataclass_type) == expected
 
 
+def test_active_final_weight_dependent_types_are_optional() -> None:
+    result_hints = get_type_hints(separator.SelfConsistentPowerFitResult)
+    for name in (
+        'realized',
+        'diagnostics',
+        'rms_residual_all',
+        'max_residual_all',
+    ):
+        assert type(None) in get_args(result_hints[name])
+
+    for accessor in (
+        separator.SelfConsistentPowerFitResult.final_realization.fget,
+        separator.SelfConsistentPowerFitResult.candidate_diagnostics.fget,
+        separator.SelfConsistentPowerFitResult.to_records,
+    ):
+        assert type(None) in get_args(get_type_hints(accessor)['return'])
+
+
 def test_inverse_record_and_report_schemas_are_characterized() -> None:
     points = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
     domain = pv.Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
@@ -1233,6 +1252,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
         'source',
         'observation_set',
         'kind',
+        'availability',
         'summary',
         'constraints',
         'fit',
@@ -1256,6 +1276,12 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
         'rms_residual_all',
         'max_residual_all',
         'marginal_constraint_indices',
+    }
+    assert active_report['availability'] == {
+        'weights': True,
+        'realization': True,
+        'records': True,
+        'reason': None,
     }
 
     for report in (

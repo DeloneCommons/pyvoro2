@@ -163,10 +163,22 @@ a compatibility-only route and was not removed.
   common schema-1 `schema`, `producer`, `source`, and `observation_set` blocks.
   An unbound source reports null fingerprint, points, domain, and IDs; this is
   distinct from a bound `{"kind": "none"}` domain. Finite reports round-trip
-  exactly through strict JSON. Existing active failure states with non-finite
-  placeholders fail closed pending the separate R7 availability design.
+  exactly through strict JSON. Existing active failure placeholders are
+  replaced by the R7 availability design described below.
   Exact-key report consumers must accept these additive keys; no public source
   argument, dependency, or native behavior is added.
+- Experimental active-set result assembly is now atomic. Weighted final
+  `optimal` and `max_iter` fits recompute realization, full-candidate
+  diagnostics, residual summaries, and requested tessellation diagnostics from
+  the exact accepted weights. No-weights fits retain the final inner status and
+  accepted active subset while realization, candidate diagnostics, residual
+  summaries, records, and tessellation diagnostics are `None`; an earlier
+  realization is never reused. Outer termination remains separate from final
+  inner-fit status and convergence. Computed result properties expose final
+  availability, its existing fit-status reason, and final-refit convergence.
+  Active reports preserve the schema-1 identity envelope, add an
+  `availability` block, use JSON null for unavailable weights-dependent
+  sections, and round-trip exactly through strict JSON for success and failure.
 
 The first four corrections above are API-contract consistency work from issue
 #31 and do not change forward tessellation algorithms. The separator objective
@@ -177,6 +189,9 @@ The certified periodic-image correction is the issue #40 implementation and
 adds no public result schema, lattice API, or dependency.
 The separator identity and report-schema correction is the issue #42 R6
 implementation; valid fitted weights and realization geometry are unchanged.
+The atomic active-state correction is the issue #43 R7 implementation; it does
+not change active-set hysteresis, relaxation, cycle detection, solver
+mathematics, or successful ordinary final-state geometry.
 These changes add no legacy scaling mode. ADMM results can change where the
 earlier mismatch/L2 relative scaling was inconsistent or the former scalar
 loop returned an uncertified iterate.

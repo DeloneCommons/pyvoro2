@@ -458,18 +458,22 @@ def build_active_set_report(
     use_ids_value = require_bool(use_ids, name='use_ids')
 
     # Import lazily to avoid a module cycle during package initialization.
-    from .active import SelfConsistentPowerFitResult
+    from .active import (
+        _accepted_state_from_result,
+        SelfConsistentPowerFitResult,
+    )
 
     if not isinstance(result, SelfConsistentPowerFitResult):
         raise TypeError(
             'build_active_set_report expects a SelfConsistentPowerFitResult'
         )
 
-    inner_fit = result.inner_fit
-    final_realization = result.final_realization
+    state = _accepted_state_from_result(result)
+    inner_fit = state.fit
+    final_realization = state.realized
     outer_termination = result.outer_termination
     path = result.path
-    originating = result.constraints
+    originating = state.origin.candidate_observations
     fit_origin = _originating_observations(
         inner_fit,
         context='active report fit',
@@ -479,15 +483,16 @@ def build_active_set_report(
         fit_origin,
         context='active report fit',
     )
-    realized_origin = _originating_observations(
-        final_realization,
-        context='active report realization',
-    )
-    _require_observation_association(
-        originating,
-        realized_origin,
-        context='active report realization',
-    )
+    if final_realization is not None:
+        realized_origin = _originating_observations(
+            final_realization,
+            context='active report realization',
+        )
+        _require_observation_association(
+            originating,
+            realized_origin,
+            context='active report realization',
+        )
 
     history_rows: list[dict[str, object]] | None = None
     if path.history is not None:
@@ -531,14 +536,29 @@ def build_active_set_report(
                 }
             )
 
-    diagnostic_rows = list(result.to_records(use_ids=use_ids_value))
-    marginal_rows = [
-        diagnostic_rows[int(idx)] for idx in path.marginal_constraint_indices
-    ]
+    result_records = result.to_records(use_ids=use_ids_value)
+    diagnostic_rows = (
+        None if result_records is None else list(result_records)
+    )
+    marginal_rows = (
+        None
+        if diagnostic_rows is None
+        else [
+            diagnostic_rows[int(idx)]
+            for idx in path.marginal_constraint_indices
+        ]
+    )
+    available = result.final_state_available
 
     report = {
         **_report_envelope(originating),
         'kind': 'self_consistent_power_fit',
+        'availability': {
+            'weights': available,
+            'realization': available,
+            'records': available,
+            'reason': result.final_state_unavailable_reason,
+        },
         'summary': {
             'termination': outer_termination.status,
             'converged': bool(outer_termination.converged),
@@ -550,13 +570,25 @@ def build_active_set_report(
             ),
             'n_constraints': int(result.constraints.n_constraints),
             'n_active_final': int(np.count_nonzero(path.active_mask)),
-            'n_realized_final': int(
-                np.count_nonzero(
-                    final_realization.requested_image_matching.any_realization
+            'n_realized_final': (
+                None
+                if final_realization is None
+                else int(
+                    np.count_nonzero(
+                        final_realization.requested_image_matching.any_realization
+                    )
                 )
             ),
-            'rms_residual_all': float(result.rms_residual_all),
-            'max_residual_all': float(result.max_residual_all),
+            'rms_residual_all': (
+                None
+                if state.rms_residual_all is None
+                else float(state.rms_residual_all)
+            ),
+            'max_residual_all': (
+                None
+                if state.max_residual_all is None
+                else float(state.max_residual_all)
+            ),
             'marginal_constraint_indices': [
                 int(idx) for idx in path.marginal_constraint_indices
             ],
@@ -569,10 +601,14 @@ def build_active_set_report(
             result.constraints.subset(path.active_mask),
             use_ids=use_ids_value,
         ),
-        'realized': build_realized_report(
-            final_realization,
-            result.constraints,
-            use_ids=use_ids_value,
+        'realized': (
+            None
+            if final_realization is None
+            else build_realized_report(
+                final_realization,
+                originating,
+                use_ids=use_ids_value,
+            )
         ),
         'diagnostics': diagnostic_rows,
         'marginal_records': marginal_rows,

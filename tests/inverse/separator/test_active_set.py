@@ -143,6 +143,7 @@ def test_self_consistent_solver_under_relaxation_records_nonzero_weight_step():
     assert res.history is not None
     assert any(row.weight_step_norm > 0.0 for row in res.history)
     assert res.fit.weights is not None
+    assert res.final_state_available is True
     assert bool(res.active_mask[0]) is True
     assert res.termination == 'self_consistent'
 
@@ -666,6 +667,7 @@ def test_self_consistent_final_refit_does_not_align_positive_l2_components(
         np.array([True, True, False]),
     )
     assert result.fit.status == 'optimal'
+    assert result.final_state_available is True
     assert result.fit.objective_breakdown is not None
     assert result.fit.objective_breakdown.total == 0.0
     np.testing.assert_array_equal(result.fit.weights, np.zeros(4))

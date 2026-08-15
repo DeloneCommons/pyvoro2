@@ -570,6 +570,17 @@ the v0.8 namespace:
 | `PairConstraintDiagnostics` | `site_i`, `site_j`, `shift`, `target`, `confidence`, `predicted`, `predicted_fraction`, `predicted_position`, `residuals`, `active`, `realized`, `realized_same_shift`, `realized_other_shift`, `realized_shifts`, `endpoint_i_empty`, `endpoint_j_empty`, `boundary_measure`, `toggle_count`, `realized_toggle_count`, `first_realized_iter`, `last_realized_iter`, `marginal`, `status` |
 | `SelfConsistentPowerFitResult` | `constraints`, `fit`, `realized`, `diagnostics`, `active_mask`, `n_outer_iter`, `converged`, `termination`, `cycle_length`, `marginal_constraints`, `rms_residual_all`, `max_residual_all`, `tessellation_diagnostics`, `history`, `path_summary`, `warnings`, `connectivity` |
 
+For the experimental active-set result, `realized`, `diagnostics`,
+`rms_residual_all`, and `max_residual_all` are optional. They are all present
+for one coherent final weighted state and all `None` when the final accepted
+fit has no usable weights. `tessellation_diagnostics` remains optional even for
+an available state because its analysis is requested separately. The additive
+computed properties `final_state_available`,
+`final_state_unavailable_reason`, and `final_refit_converged` expose final-layer
+availability and final inner-fit convergence without adding stored dataclass
+fields. Outer `converged` remains true exactly for
+`termination == 'self_consistent'`.
+
 `SeparatorFitProblem.offset_identifying_constraint_mask` retains its historical
 field name. It is the model-coupling mask used to decompose solver subproblems:
 positive-confidence rows are
@@ -628,7 +639,7 @@ provisional, non-copying access paths:
 | Fixed solver termination | `SeparatorFitResult.solver_termination` | status/detail, solver method, linear backend, iterations, convergence, hard feasibility, conflict, and warnings |
 | Requested-image matching | `RealizedPairDiagnostics.requested_image_matching` | any/same-shift/other-shift realization, realized shifts, and unrealized indices |
 | Realized geometry | `RealizedPairDiagnostics.geometry` | empty endpoints, optional boundary measure/cells/tessellation diagnostics, unaccounted pairs, and warnings |
-| Active-set organization | `SelfConsistentPowerFitResult.inner_fit`, `.final_realization`, `.candidate_diagnostics`, `.outer_termination`, `.path` | existing final objects, outer termination, active mask, marginals, history, and path summary |
+| Active-set organization | `SelfConsistentPowerFitResult.inner_fit`, `.final_realization`, `.candidate_diagnostics`, `.outer_termination`, `.path` | final objects when available, outer termination, active mask, marginals, history, and path summary |
 
 Issue #14 preserves the exact `SeparatorFitProblem` dataclass fields and adds
 two provisional computed properties:
@@ -723,6 +734,9 @@ SelfConsistentPowerFitResult.to_report(*, use_ids=False)
 UnaccountedRealizedPair.to_record(*, ids=None)
 ```
 
+The active result's `to_records(...)`, `final_realization`, and
+`candidate_diagnostics` return `None` when its final fit has no usable weights.
+
 ### Inverse record schemas retained under canonical v0.8 names
 
 Record order follows constraint order. `use_ids=True` substitutes the stable
@@ -762,7 +776,7 @@ is exactly `{"name": "pyvoro2", "version": pyvoro2.__version__}`.
 |---|---|---|
 | fit | `schema`, `producer`, `source`, `observation_set`, `kind`, `summary`, `constraints`, `fit_records`, `edge_diagnostics`, `objective_breakdown`, `weights`, `radii`, `weight_shift`, `used_shifts`, `warnings`, `conflict`, `connectivity` | `status`, `is_optimal`, `is_infeasible`, `hard_feasible`, `solver`, `linear_backend`, `measurement`, `n_constraints`, `n_points`, `converged`, `status_detail`, `n_iter`, `rms_residual`, `max_residual`, `conflicting_constraint_indices` |
 | realized | `schema`, `producer`, `source`, `observation_set`, `kind`, `summary`, `records`, `unrealized`, `unaccounted_pairs`, `warnings`, `tessellation_diagnostics` | `n_constraints`, `n_realized`, `n_same_shift`, `n_other_shift`, `n_unrealized`, `n_unaccounted_pairs` |
-| active set | `schema`, `producer`, `source`, `observation_set`, `kind`, `summary`, `constraints`, `fit`, `realized`, `diagnostics`, `marginal_records`, `history`, `path_summary`, `tessellation_diagnostics`, `warnings`, `connectivity` | `termination`, `converged`, `n_outer_iter`, `cycle_length`, `n_constraints`, `n_active_final`, `n_realized_final`, `rms_residual_all`, `max_residual_all`, `marginal_constraint_indices` |
+| active set | `schema`, `producer`, `source`, `observation_set`, `kind`, `availability`, `summary`, `constraints`, `fit`, `realized`, `diagnostics`, `marginal_records`, `history`, `path_summary`, `tessellation_diagnostics`, `warnings`, `connectivity` | `termination`, `converged`, `n_outer_iter`, `cycle_length`, `n_constraints`, `n_active_final`, `n_realized_final`, `rms_residual_all`, `max_residual_all`, `marginal_constraint_indices` |
 
 `source` has exactly `binding`, `fingerprint`, `dimension`, `n_points`,
 `points`, `domain`, and `ids`. An unbound source reports
@@ -808,8 +822,16 @@ Issue #36 subsequently adds the approved nested
 envelope and `row_id` values above without renaming or removing those existing
 fields. Report builders return JSON-native values. Finite fit, realized, and
 active reports round-trip exactly; JSON serialization rejects NaN and infinity.
-Existing non-finite active failure placeholders therefore fail closed pending
-the separate R7 final-state availability design.
+ADR 0015 makes active final-state assembly atomic. Its `availability` block has
+exactly `weights`, `realization`, `records`, and `reason`. All flags are true
+and `reason` is null for an available final state. All flags are false and
+`reason` is the final fit status when weights are unavailable. In that mode,
+`realized`, `diagnostics`, `marginal_records`, and
+`tessellation_diagnostics` are null, as are `summary.n_realized_final`,
+`summary.rms_residual_all`, and `summary.max_residual_all`. The nested fit
+report remains present; the active summary retains outer termination while the
+nested fit retains final inner status and convergence. Every active report
+round-trips exactly through strict JSON.
 
 ### Historical calls exercised by repository examples
 

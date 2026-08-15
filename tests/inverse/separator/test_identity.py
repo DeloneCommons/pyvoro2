@@ -1427,6 +1427,13 @@ def test_finite_active_report_roundtrips_and_nonfinite_failure_fails_closed() ->
         options=ActiveSetOptions(max_iter=2),
     )
     assert failure.termination == 'infeasible_active_set'
-    assert not np.isfinite(failure.rms_residual_all)
-    with pytest.raises(ValueError, match='NaN or infinite'):
-        build_active_set_report(failure)
+    assert failure.rms_residual_all is None
+    assert failure.realized is None
+    assert failure.diagnostics is None
+    failure_report = build_active_set_report(failure)
+    assert failure_report['availability']['reason'] == (
+        'infeasible_hard_constraints'
+    )
+    assert failure_report['realized'] is None
+    assert failure_report['diagnostics'] is None
+    _assert_json_roundtrip(failure_report)

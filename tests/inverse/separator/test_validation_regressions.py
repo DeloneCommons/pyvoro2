@@ -333,7 +333,11 @@ def test_active_set_propagates_numerical_failure(monkeypatch):
     assert res.termination == 'numerical_failure'
     assert res.converged is False
     assert res.fit.status == 'numerical_failure'
-    assert res.diagnostics.status == ('numerical_failure',)
+    assert res.final_state_available is False
+    assert res.final_state_unavailable_reason == 'numerical_failure'
+    assert res.realized is None
+    assert res.diagnostics is None
+    assert res.to_records() is None
     assert any('synthetic fit failure' in msg for msg in res.warnings)
 
 
