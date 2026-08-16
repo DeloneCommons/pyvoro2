@@ -5,10 +5,11 @@ an expected partition of the domain (e.g. due to numerical issues or missing
 cells in the output when empty cells are omitted).
 
 Key ideas:
-  - A *cell* returned by Voro++ is always a closed convex polyhedron (if it
-    exists).
-  - For periodic domains, faces should generally be reciprocal: if cell i has a
-    face to (j, s), then cell j should have a face to (i, -s).
+  - Required invariant failures are explicit error-severity issues and make
+    ``diagnostics.ok`` false.
+  - Warning- and info-only findings do not fail ``diagnostics.ok``.
+  - For periodic domains, faces should be reciprocal: if cell i has a face to
+    (j, s), then cell j should have a face to (i, -s).
 
 The public entry point is :func:`analyze_tessellation`.
 """
@@ -24,6 +25,14 @@ import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.inputs import coerce_external_id_array
+from ._internal.tessellation_diagnostics import (
+    classify_expected_ids,
+    diagnostics_ok,
+    reciprocity_issue_severity,
+    reset_owned_annotations,
+    stable_measure_sum,
+    validate_cell_measure,
+)
 from ._internal.validation import (
     require_bool,
     require_nonnegative_finite_real,
@@ -196,21 +205,59 @@ def analyze_tessellation(
         domain: Domain used for computation.
         expected_ids: Optional list of expected cell ids (useful when ids were
             remapped by the user). If provided, missing ids are reported.
-        mode: Optional mode string ('standard'|'power') used only for messaging.
+        mode: Optional mode string ('standard'|'power') selecting expected-ID
+            semantics. Missing standard IDs are errors, missing power IDs are
+            informational hidden cells, and ``None`` leaves them as warnings.
         volume_tol_rel: Relative tolerance for domain volume comparison.
         volume_tol_abs: Absolute tolerance for domain volume comparison.
-        check_reciprocity: Whether to check face reciprocity (periodic domains only).
+        check_reciprocity: Whether to check face reciprocity (periodic domains
+            only). An explicitly requested public check is required, so missing
+            shifts, reciprocals, or geometric agreement are errors.
         check_plane_mismatch: Whether to check that reciprocal faces represent the
             same geometric plane (periodic domains only).
         plane_offset_tol: Absolute tolerance for reciprocal plane offset mismatch.
             If None, a conservative default based on domain length is used.
         plane_angle_tol: Tolerance for reciprocal plane normal mismatch (radians).
             If None, a conservative default is used.
-        mark_faces: If True, annotate faces in-place with local flags.
+        mark_faces: If True, reset and then annotate the analyzer-owned face
+            flags in place. If False, existing caller annotations are untouched.
 
     Returns:
         TessellationDiagnostics
     """
+    return _analyze_tessellation(
+        cells,
+        domain,
+        expected_ids=expected_ids,
+        mode=mode,
+        volume_tol_rel=volume_tol_rel,
+        volume_tol_abs=volume_tol_abs,
+        check_reciprocity=check_reciprocity,
+        reciprocity_required=True,
+        check_plane_mismatch=check_plane_mismatch,
+        plane_offset_tol=plane_offset_tol,
+        plane_angle_tol=plane_angle_tol,
+        mark_faces=mark_faces,
+    )
+
+
+def _analyze_tessellation(
+    cells: Sequence[dict[str, Any]],
+    domain: Box | OrthorhombicCell | PeriodicCell,
+    *,
+    expected_ids: Sequence[int] | None = None,
+    mode: str | None = None,
+    volume_tol_rel: float = 1e-8,
+    volume_tol_abs: float = 1e-12,
+    check_reciprocity: bool = True,
+    reciprocity_required: bool,
+    check_plane_mismatch: bool = True,
+    plane_offset_tol: float | None = None,
+    plane_angle_tol: float | None = None,
+    mark_faces: bool = True,
+) -> TessellationDiagnostics:
+    """Private analyzer with an explicit required/optional reciprocity policy."""
+
     if mode is not None:
         mode = require_string_choice(
             mode,
@@ -252,23 +299,47 @@ def analyze_tessellation(
 
     # --- Volume sanity ---
     dom_vol = _domain_volume(domain)
-    sum_vol = 0.0
+    valid_volumes: list[float] = []
+    measures_valid = True
     empty_ids: list[int] = []
     present_ids: list[int] = []
     for c in cells:
         cid = int(c.get('id', -1))
         if cid >= 0:
             present_ids.append(cid)
-        if bool(c.get('empty', False)):
+        empty = bool(c.get('empty', False))
+        if empty:
             if cid >= 0:
                 empty_ids.append(cid)
-            continue
-        try:
-            sum_vol += float(c.get('volume', 0.0))
-        except Exception:
-            pass
+        measure = validate_cell_measure(c, field='volume', empty=empty)
+        if not measure.valid:
+            measures_valid = False
+            for code in measure.issue_codes:
+                if code == 'MISSING_CELL_MEASURE':
+                    message = f'Non-empty cell {cid} is missing its volume'
+                elif code == 'INVALID_CELL_MEASURE':
+                    message = f'Cell {cid} has an invalid non-real volume'
+                elif code == 'NONFINITE_CELL_MEASURE':
+                    message = f'Cell {cid} has a non-finite volume'
+                elif code == 'NEGATIVE_CELL_MEASURE':
+                    message = f'Cell {cid} has a negative volume'
+                else:
+                    message = f'Empty cell {cid} has a nonzero volume'
+                issues.append(
+                    TessellationIssue(
+                        code,
+                        'error',
+                        message,
+                        examples=((cid,) if cid >= 0 else ()),
+                    )
+                )
+        elif not empty:
+            assert measure.value is not None
+            valid_volumes.append(measure.value)
 
-    if dom_vol <= 0.0:
+    sum_vol = stable_measure_sum(valid_volumes)
+    domain_volume_valid = bool(np.isfinite(dom_vol) and dom_vol > 0.0)
+    if not domain_volume_valid:
         # Degenerate domain; treat as error.
         issues.append(
             TessellationIssue('DOMAIN_VOLUME', 'error', 'Domain volume is non-positive')
@@ -277,42 +348,76 @@ def analyze_tessellation(
 
     vol_tol = max(float(volume_tol_abs), float(volume_tol_rel) * dom_vol)
     diff = sum_vol - dom_vol
-    ok_volume = abs(diff) <= vol_tol
+    aggregate_overflow = bool(np.isposinf(sum_vol))
+    ok_volume = bool(
+        measures_valid
+        and domain_volume_valid
+        and not aggregate_overflow
+        and abs(diff) <= vol_tol
+    )
     gap = max(0.0, dom_vol - sum_vol)
     overlap = max(0.0, sum_vol - dom_vol)
-    if not ok_volume:
-        if gap > vol_tol:
-            issues.append(
-                TessellationIssue(
-                    'GAP',
-                    'warning',
-                    f'Sum of cell volumes is smaller than domain volume by {gap:g}',
-                )
-            )
-        if overlap > vol_tol:
+    if measures_valid and domain_volume_valid:
+        if aggregate_overflow:
             issues.append(
                 TessellationIssue(
                     'OVERLAP',
-                    'warning',
-                    f'Sum of cell volumes exceeds domain volume by {overlap:g}',
+                    'error',
+                    'Sum of cell volumes exceeds the finite representable range',
                 )
             )
+        elif not ok_volume:
+            if gap > vol_tol:
+                issues.append(
+                    TessellationIssue(
+                        'GAP',
+                        'error',
+                        f'Sum of cell volumes is smaller than domain volume by {gap:g}',
+                    )
+                )
+            if overlap > vol_tol:
+                issues.append(
+                    TessellationIssue(
+                        'OVERLAP',
+                        'error',
+                        f'Sum of cell volumes exceeds domain volume by {overlap:g}',
+                    )
+                )
 
     # --- Missing ids (optional) ---
     missing_ids: list[int] = []
     if expected_ids_array is not None:
-        exp = set(expected_ids_array.tolist())
-        present = set(present_ids)
-        missing_ids = sorted(exp - present)
-        if missing_ids:
+        classification = classify_expected_ids(
+            expected_ids_array.tolist(),
+            present_ids,
+            mode=mode,
+        )
+        missing_ids = list(classification.missing_ids)
+        empty_ids.extend(classification.hidden_ids)
+        if classification.issue_code is not None:
+            subject = (
+                'hidden power'
+                if classification.issue_code == 'HIDDEN_IDS'
+                else 'expected'
+            )
             issues.append(
                 TessellationIssue(
-                    'MISSING_IDS',
-                    'warning',
-                    f'{len(missing_ids)} expected ids are missing from output',
+                    classification.issue_code,
+                    classification.severity,
+                    f'{len(missing_ids)} {subject} ids are absent from output',
                     examples=tuple(missing_ids[:10]),
                 )
             )
+
+    if mark_faces:
+        reset_owned_annotations(
+            (
+                face
+                for cell in cells
+                for face in (cell.get('faces') or [])
+            ),
+            fields=('orphan', 'reciprocal_missing', 'reciprocal_mismatch'),
+        )
 
     # --- Reciprocity + plane mismatch (Periodic only) ---
     face_shift_available = False
@@ -322,21 +427,34 @@ def analyze_tessellation(
     n_mismatch = 0
 
     if _is_periodic_domain(domain) and check_reciprocity:
-        # Do we have shifts?
-        for c in cells:
-            faces = c.get('faces') or []
-            for f in faces:
-                if 'adjacent_shift' in f:
-                    face_shift_available = True
-                    break
-            if face_shift_available:
-                break
+        all_faces = [
+            face
+            for cell in cells
+            for face in (cell.get('faces') or [])
+        ]
+        relevant_faces = [
+            face
+            for face in all_faces
+            if int(face.get('adjacent_cell', -999999)) >= 0
+        ]
+        if relevant_faces:
+            face_shift_available = all(
+                'adjacent_shift' in face for face in relevant_faces
+            )
+        else:
+            # Preserve the historical no-relevant-boundary behavior.
+            face_shift_available = any(
+                'adjacent_shift' in face for face in all_faces
+            )
 
         if not face_shift_available:
             issues.append(
                 TessellationIssue(
                     'NO_FACE_SHIFTS',
-                    'info',
+                    reciprocity_issue_severity(
+                        required=reciprocity_required,
+                        missing_shifts=True,
+                    ),
                     'Face shifts are not available; '
                     'set return_face_shifts=True to enable reciprocity diagnostics',
                 )
@@ -406,7 +524,7 @@ def analyze_tessellation(
                     j = int(f.get('adjacent_cell', -999999))
                     if j < 0:
                         continue
-                    s = _skey(f.get('adjacent_shift', (0, 0, 0)))
+                    s = _skey(f['adjacent_shift'])
                     n_faces_total += 1
 
                     idx = np.asarray(f.get('vertices', []), dtype=np.int64)
@@ -430,11 +548,6 @@ def analyze_tessellation(
                         )
                     else:
                         face_map[key] = (i, fi)
-
-                    if mark_faces:
-                        f.setdefault('orphan', False)
-                        f.setdefault('reciprocal_mismatch', False)
-                        f.setdefault('reciprocal_missing', False)
 
             def _face_plane(
                 cell_id: int,
@@ -525,7 +638,9 @@ def analyze_tessellation(
                 issues.append(
                     TessellationIssue(
                         'MISSING_RECIPROCAL',
-                        'warning',
+                        reciprocity_issue_severity(
+                            required=reciprocity_required,
+                        ),
                         f'{n_orphan} faces are missing a reciprocal',
                         examples=tuple(examples_missing),
                     )
@@ -534,19 +649,25 @@ def analyze_tessellation(
                 issues.append(
                     TessellationIssue(
                         'RECIPROCAL_MISMATCH',
-                        'warning',
+                        reciprocity_issue_severity(
+                            required=reciprocity_required,
+                        ),
                         f'{n_mismatch} reciprocal face pairs disagree geometrically',
                         examples=tuple(examples_mismatch),
                     )
                 )
 
-    ok_recip = True
-    if reciprocity_checked:
-        # Missing reciprocals or mismatches are local indicators of non-tessellating
-        # configurations; treat as "not ok".
-        ok_recip = (n_orphan == 0) and (n_mismatch == 0)
+    reciprocity_requested = bool(_is_periodic_domain(domain) and check_reciprocity)
+    ok_recip = bool(
+        not reciprocity_requested
+        or (
+            reciprocity_checked
+            and n_orphan == 0
+            and n_mismatch == 0
+        )
+    )
 
-    ok = ok_volume and (ok_recip if reciprocity_checked else True)
+    ok = diagnostics_ok(issues)
     if not ok and mode is not None:
         issues.append(
             TessellationIssue('MODE', 'info', f'Diagnostics produced for mode={mode!r}')
@@ -602,12 +723,13 @@ def validate_tessellation(
         cells: Output of :func:`pyvoro2.compute`.
         domain: Domain used for computation.
         expected_ids: Optional list of expected ids.
-        mode: Optional mode label (used for messaging).
+        mode: Optional mode selecting standard, power, or undeclared expected-ID
+            semantics.
         level: 'basic' returns diagnostics; 'strict' raises
             :class:`TessellationError` when validation fails.
-        require_reciprocity: If True, require that periodic face reciprocity
-            checks pass. If None, defaults to True for periodic domains and
-            False otherwise.
+        require_reciprocity: If True, periodic reciprocity findings are errors.
+            If False, they are inspected as warning/info findings. If None,
+            defaults to True for periodic domains and False otherwise.
         volume_tol_rel: Relative tolerance for volume closure.
         volume_tol_abs: Absolute tolerance for volume closure.
         plane_offset_tol: Absolute tolerance for reciprocal plane offset mismatch.
@@ -642,7 +764,7 @@ def validate_tessellation(
     if mark_faces is None:
         mark_faces = bool(periodic)
 
-    diag = analyze_tessellation(
+    diag = _analyze_tessellation(
         cells,
         domain,
         expected_ids=expected_ids,
@@ -650,25 +772,25 @@ def validate_tessellation(
         volume_tol_rel=volume_tol_rel,
         volume_tol_abs=volume_tol_abs,
         check_reciprocity=bool(periodic),
+        reciprocity_required=bool(require_reciprocity),
         check_plane_mismatch=bool(periodic),
         plane_offset_tol=plane_offset_tol,
         plane_angle_tol=plane_angle_tol,
         mark_faces=mark_faces,
     )
 
-    if level == 'strict':
-        ok = bool(diag.ok_volume) and (
-            bool(diag.ok_reciprocity)
-            if bool(require_reciprocity) and bool(diag.reciprocity_checked)
-            else True
+    if level == 'strict' and not diag.ok:
+        error = next(
+            (issue for issue in diag.issues if issue.severity == 'error'),
+            None,
         )
-        if not ok:
-            msg = (
-                'Tessellation validation failed: '
-                f'volume_ratio={diag.volume_ratio:g}, '
-                f'orphan_faces={diag.n_faces_orphan}, '
-                f'mismatched_faces={diag.n_faces_mismatched}'
+        if error is None:  # pragma: no cover - guarded by severity-complete policy
+            message = 'Tessellation validation failed'
+        else:
+            message = (
+                f'Tessellation validation failed ({error.code}): '
+                f'{error.message}'
             )
-            raise TessellationError(msg, diag)
+        raise TessellationError(message, diag)
 
     return diag

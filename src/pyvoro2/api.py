@@ -41,7 +41,7 @@ from ._internal.validation import (
 from .diagnostics import (
     TessellationDiagnostics,
     TessellationError,
-    analyze_tessellation,
+    _analyze_tessellation,
 )
 from .result import TessellationResult, _build_tessellation_result
 
@@ -353,6 +353,16 @@ def compute(
         face_shift_tol: Optional absolute tolerance (in container distance units) for
             the face-shift plane residual check. If None, a conservative default is
             used.
+        tessellation_check: ``"none"`` disables diagnostic analysis;
+            ``"diagnose"`` attaches it without acting on failure; ``"warn"``
+            emits one summary warning when the final diagnostic is not okay;
+            and ``"raise"`` raises :class:`~pyvoro2.TessellationError` in the
+            same case.
+        tessellation_require_reciprocity: Whether periodic reciprocity is a
+            required invariant. ``None`` preserves the default requirement for
+            periodic standard and power tessellations. Optional inspection still
+            records missing-shift, orphan, and mismatch findings without making
+            them fatal.
 
         output: ``"result"`` (the default) returns one
             :class:`~pyvoro2.TessellationResult`. ``"cells"`` selects the
@@ -585,7 +595,12 @@ def compute(
         do_diag = return_diagnostics_value or tessellation_check != 'none'
         if do_diag:
             expected = ids_user.tolist() if ids_user is not None else list(range(n))
-            diag = analyze_tessellation(
+            if tessellation_require_reciprocity_value is None:
+                tessellation_require_reciprocity_value = bool(is_periodic) and mode in (
+                    'standard',
+                    'power',
+                )
+            diag = _analyze_tessellation(
                 cells,
                 domain,
                 expected_ids=expected,
@@ -593,25 +608,17 @@ def compute(
                 volume_tol_rel=volume_tol_rel_value,
                 volume_tol_abs=volume_tol_abs_value,
                 check_reciprocity=bool(is_periodic),
+                reciprocity_required=bool(
+                    tessellation_require_reciprocity_value
+                ),
                 check_plane_mismatch=bool(is_periodic),
                 plane_offset_tol=plane_offset_tol_value,
                 plane_angle_tol=plane_angle_tol_value,
                 mark_faces=bool(is_periodic),
             )
 
-            if tessellation_require_reciprocity_value is None:
-                tessellation_require_reciprocity_value = bool(is_periodic) and mode in (
-                    'standard',
-                    'power',
-                )
-
             if tessellation_check in ('warn', 'raise'):
-                ok = bool(diag.ok_volume) and (
-                    bool(diag.ok_reciprocity)
-                    if tessellation_require_reciprocity_value
-                    else True
-                )
-                if not ok:
+                if not diag.ok:
                     msg = (
                         f'tessellation_check failed (mode={mode!r}): '
                         f'volume_ratio={diag.volume_ratio:g}, '
@@ -724,7 +731,11 @@ def compute(
     do_diag = return_diagnostics_value or tessellation_check != 'none'
     if do_diag:
         expected = ids_user.tolist() if ids_user is not None else list(range(n))
-        diag = analyze_tessellation(
+        if tessellation_require_reciprocity_value is None:
+            # Standard Voronoi and power diagrams are true tessellations; missing
+            # reciprocity/mismatch indicates a bug or numerical issue.
+            tessellation_require_reciprocity_value = mode in ('standard', 'power')
+        diag = _analyze_tessellation(
             cells,
             domain,
             expected_ids=expected,
@@ -732,24 +743,15 @@ def compute(
             volume_tol_rel=volume_tol_rel_value,
             volume_tol_abs=volume_tol_abs_value,
             check_reciprocity=True,
+            reciprocity_required=bool(tessellation_require_reciprocity_value),
             check_plane_mismatch=True,
             plane_offset_tol=plane_offset_tol_value,
             plane_angle_tol=plane_angle_tol_value,
             mark_faces=True,
         )
 
-        if tessellation_require_reciprocity_value is None:
-            # Standard Voronoi and power diagrams are true tessellations; missing
-            # reciprocity/mismatch indicates a bug or numerical issue.
-            tessellation_require_reciprocity_value = mode in ('standard', 'power')
-
         if tessellation_check in ('warn', 'raise'):
-            ok = bool(diag.ok_volume) and (
-                bool(diag.ok_reciprocity)
-                if tessellation_require_reciprocity_value
-                else True
-            )
-            if not ok:
+            if not diag.ok:
                 msg = (
                     f'tessellation_check failed (mode={mode!r}): '
                     f'volume_ratio={diag.volume_ratio:g}, '

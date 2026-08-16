@@ -7,6 +7,7 @@ import sys
 from typing import Any, Literal
 
 from .._internal.planar.domain_geometry import geometry2d
+from .._internal.tessellation_diagnostics import diagnostics_ok
 from .._internal.validation import (
     require_bool,
     require_nonnegative_index,
@@ -410,7 +411,7 @@ def validate_normalized_topology(
     ok_edge_vertex_sets = n_evt_mismatch == 0
     ok_incidence = n_vertices_low_incidence == 0
     ok_polygon = n_cells_bad_polygon == 0
-    ok = ok_vertex_edge_shift and ok_edge_vertex_sets and ok_incidence and ok_polygon
+    ok = diagnostics_ok(issues)
 
     diag = NormalizationDiagnostics(
         n_cells=int(n_cells),

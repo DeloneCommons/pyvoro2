@@ -510,6 +510,32 @@ cells)`. Planar fields are `NormalizedVertices(global_vertices, cells)` and
 | spatial `NormalizationDiagnostics` | `n_cells`, `n_global_vertices`, `n_global_edges`, `n_global_faces`, `is_periodic_domain`, `fully_periodic_domain`, `has_wall_faces`, `n_vertex_face_shift_mismatch`, `n_face_vertex_set_mismatch`, `n_vertices_low_incidence`, `n_edges_low_incidence`, `n_cells_bad_euler`, `issues`, `ok_vertex_face_shift`, `ok_face_vertex_sets`, `ok_incidence`, `ok_euler`, `ok` |
 | planar `NormalizationDiagnostics` | `n_cells`, `n_global_vertices`, `n_global_edges`, `is_periodic_domain`, `fully_periodic_domain`, `has_wall_edges`, `n_vertex_edge_shift_mismatch`, `n_edge_vertex_set_mismatch`, `n_vertices_low_incidence`, `n_cells_bad_polygon`, `issues`, `ok_vertex_edge_shift`, `ok_edge_vertex_sets`, `ok_incidence`, `ok_polygon`, `ok` |
 
+The v0.8 diagnostic meaning is fixed by
+[ADR 0016](decisions/0016-severity-complete-tessellation-diagnostics.md).
+For both dimensions, overall tessellation and normalized-topology `ok` is true
+exactly when no error-severity issue exists and every call-/mode-required
+invariant passes. Warning/info-only findings do not fail overall `ok`, although
+a descriptive subcheck such as `ok_reciprocity`, `ok_polygon`, or `ok_euler`
+may remain false.
+
+With `expected_ids`, standard-mode absence is `MISSING_IDS/error`; power-mode
+absence is `HIDDEN_IDS/info` and the ID appears in both `missing_ids` and
+`empty_ids`; absence with `mode=None` is `MISSING_IDS/warning`. Invalid raw cell
+measures use `MISSING_CELL_MEASURE`, `INVALID_CELL_MEASURE`,
+`NONFINITE_CELL_MEASURE`, `NEGATIVE_CELL_MEASURE`, or
+`EMPTY_CELL_NONZERO_MEASURE`, all at error severity. Validated measures use a
+stable finite sum, and valid-measure closure failures retain `GAP`/`OVERLAP` as
+errors.
+
+Public `analyze_tessellation(..., check_reciprocity=True)` requires the
+requested periodic reciprocity check. The existing validation/compute
+reciprocity switches choose required errors versus optional info/warnings
+privately; no public severity-policy object is added. Strict validation,
+compute warning, and compute raising consume the final `diag.ok` without
+reconstructing it from subchecks. Marked analyses reset all analyzer-owned
+boundary flags before each pass; disabled marking leaves caller records
+untouched.
+
 ### v0.6.3 inverse signatures and constructor defaults
 
 The high-level and advanced call defaults are:

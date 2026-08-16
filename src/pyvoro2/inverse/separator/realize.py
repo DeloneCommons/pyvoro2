@@ -617,17 +617,13 @@ def _compute_planar_cells(
             cells,
             domain,
             expected_ids=expected,
+            mode='power',
             check_reciprocity=bool(periodic),
             check_line_mismatch=bool(periodic),
             mark_edges=bool(periodic),
         )
         if tessellation_check in ('warn', 'raise'):
-            ok = bool(tessellation_diagnostics.ok_area) and (
-                bool(tessellation_diagnostics.ok_reciprocity)
-                if bool(periodic)
-                else True
-            )
-            if not ok:
+            if not tessellation_diagnostics.ok:
                 msg = (
                     "tessellation_check failed (mode='power'): "
                     f'area_ratio={tessellation_diagnostics.area_ratio:g}, '

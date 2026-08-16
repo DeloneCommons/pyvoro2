@@ -42,7 +42,7 @@ from .._internal.planar.edge_shifts import _add_periodic_edge_shifts_inplace
 from .diagnostics import (
     TessellationDiagnostics,
     TessellationError,
-    analyze_tessellation,
+    _analyze_tessellation,
 )
 from .domains import Box, RectangularCell
 from .normalize import normalize_edges, normalize_vertices
@@ -285,6 +285,14 @@ def compute(
     even when those fields were not requested by the caller. Any such
     temporary fields are stripped from the raw returned cells unless they were
     explicitly requested.
+
+    ``tessellation_check='diagnose'`` attaches the completed diagnostics without
+    acting on failure. ``'warn'`` emits one summary warning when the final
+    diagnostic is not okay, and ``'raise'`` raises
+    :class:`~pyvoro2.planar.TessellationError` in the same case.
+    ``tessellation_require_reciprocity=None`` preserves the default requirement
+    for periodic standard and power tessellations; ``False`` retains optional
+    reciprocity findings without making them fatal.
 
     In ``mode='power'``, supply exactly one of ``weights`` or ``radii``.
     Mathematical weights follow the power convention
@@ -549,7 +557,12 @@ def compute(
     diag: TessellationDiagnostics | None = None
     if need_diag:
         expected = ids_user.tolist() if ids_user is not None else list(range(n))
-        diag = analyze_tessellation(
+        if tessellation_require_reciprocity_value is None:
+            tessellation_require_reciprocity_value = bool(periodic) and mode in (
+                'standard',
+                'power',
+            )
+        diag = _analyze_tessellation(
             cells,
             domain,
             expected_ids=expected,
@@ -557,25 +570,17 @@ def compute(
             area_tol_rel=area_tol_rel_value,
             area_tol_abs=area_tol_abs_value,
             check_reciprocity=bool(periodic),
+            reciprocity_required=bool(
+                tessellation_require_reciprocity_value
+            ),
             check_line_mismatch=bool(periodic),
             line_offset_tol=line_offset_tol_value,
             line_angle_tol=line_angle_tol_value,
             mark_edges=bool(periodic),
         )
 
-        if tessellation_require_reciprocity_value is None:
-            tessellation_require_reciprocity_value = bool(periodic) and mode in (
-                'standard',
-                'power',
-            )
-
         if tessellation_check in ('warn', 'raise'):
-            ok = bool(diag.ok_area) and (
-                bool(diag.ok_reciprocity)
-                if tessellation_require_reciprocity_value
-                else True
-            )
-            if not ok:
+            if not diag.ok:
                 msg = (
                     f'tessellation_check failed (mode={mode!r}): '
                     f'area_ratio={diag.area_ratio:g}, '

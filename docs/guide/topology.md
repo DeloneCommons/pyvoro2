@@ -85,8 +85,27 @@ returned `TessellationResult`.
 
 Diagnostics can check, for example:
 
-- whether cell volumes sum to the domain volume (within tolerance),
-- whether periodic face reciprocity holds (if face shifts are enabled).
+- whether every non-empty cell has a finite non-negative area or volume,
+- whether cell measures sum to the domain measure (within tolerance),
+- whether expected IDs have the meaning declared by `mode`, and
+- whether periodic face or edge reciprocity holds.
+
+The overall `diagnostics.ok` value has one meaning in both dimensions: it is
+false when an error issue exists, and warning/info-only findings are nonfatal.
+Strict validation and `compute(..., tessellation_check='warn'|'raise')` use
+that final value directly.
+
+Expected IDs are mode-sensitive. A missing standard ID is an error. A missing
+power ID is an informational hidden/empty site and appears in both
+`missing_ids` and `empty_ids`. With `mode=None`, a missing expected ID is a
+warning because the analyzer cannot infer whether hidden cells are valid.
+
+On periodic data, public `analyze_tessellation(..., check_reciprocity=True)`
+treats the requested reciprocity check as required. The validation and compute
+wrappers can inspect it optionally through their existing
+`require_reciprocity` options. When face/edge marking is enabled, a new pass
+clears the analyzer-owned `orphan`, `reciprocal_missing`, and
+`reciprocal_mismatch` flags before recording current failures.
 
 This is not “proving correctness”, but it is extremely effective at catching mistakes
 in downstream graph code.

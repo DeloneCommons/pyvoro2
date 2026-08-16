@@ -43,6 +43,15 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Made spatial and planar tessellation diagnostics severity-complete. Missing
+  expected standard IDs, malformed/non-finite/negative cell measures, valid-
+  measure closure gaps/overlaps, and required reciprocity defects now produce
+  explicit errors and fail one final `diagnostics.ok`; hidden power IDs and
+  optional reciprocity remain informative and nonfatal. Strict validation and
+  public compute warning/raising now consume that final policy, marked
+  reanalysis clears stale boundary flags, stable measure sums replace broad
+  conversion swallowing, and warning-only planar normalized-topology findings
+  no longer fail strict validation.
 - Made the experimental separator active-set final state atomic. Final
   `optimal` and weighted `max_iter` refits now recompute realization,
   candidate diagnostics, residual summaries, and requested tessellation

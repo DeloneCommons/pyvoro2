@@ -103,6 +103,7 @@ nav:
           - Central generator preparation and backend safety: development/decisions/0013-central-generator-preparation-and-backend-safety.md
           - Two-layer separator observation and source identity: development/decisions/0014-separator-observation-and-source-identity.md
           - Atomic separator active-set final state: development/decisions/0015-atomic-separator-active-state.md
+          - Severity-complete tessellation diagnostics: development/decisions/0016-severity-complete-tessellation-diagnostics.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

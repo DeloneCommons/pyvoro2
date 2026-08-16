@@ -1,4 +1,4 @@
-"""Planar tessellation diagnostics and sanity checks."""
+"""Severity-complete planar tessellation diagnostics and sanity checks."""
 
 from __future__ import annotations
 
@@ -11,6 +11,14 @@ import numpy as np
 
 from .._internal.inputs import coerce_external_id_array
 from .._internal.planar.domain_geometry import geometry2d
+from .._internal.tessellation_diagnostics import (
+    classify_expected_ids,
+    diagnostics_ok,
+    reciprocity_issue_severity,
+    reset_owned_annotations,
+    stable_measure_sum,
+    validate_cell_measure,
+)
 from .._internal.validation import (
     require_bool,
     require_nonnegative_finite_real,
@@ -129,7 +137,47 @@ def analyze_tessellation(
     line_angle_tol: float | None = None,
     mark_edges: bool = True,
 ) -> TessellationDiagnostics:
-    """Analyze planar tessellation sanity and optionally annotate edges."""
+    """Analyze planar tessellation sanity and optionally annotate edges.
+
+    Missing expected IDs are errors in standard mode, informational hidden
+    cells in power mode, and warnings when ``mode=None``. Requested periodic
+    reciprocity is required. Invalid cell areas and closure failures are
+    explicit errors. When marking is enabled, analyzer-owned edge flags are
+    reset before current findings are marked.
+    """
+
+    return _analyze_tessellation(
+        cells,
+        domain,
+        expected_ids=expected_ids,
+        mode=mode,
+        area_tol_rel=area_tol_rel,
+        area_tol_abs=area_tol_abs,
+        check_reciprocity=check_reciprocity,
+        reciprocity_required=True,
+        check_line_mismatch=check_line_mismatch,
+        line_offset_tol=line_offset_tol,
+        line_angle_tol=line_angle_tol,
+        mark_edges=mark_edges,
+    )
+
+
+def _analyze_tessellation(
+    cells: Sequence[dict[str, Any]],
+    domain: Domain2D,
+    *,
+    expected_ids: Sequence[int] | None = None,
+    mode: str | None = None,
+    area_tol_rel: float = 1e-8,
+    area_tol_abs: float = 1e-12,
+    check_reciprocity: bool = True,
+    reciprocity_required: bool,
+    check_line_mismatch: bool = True,
+    line_offset_tol: float | None = None,
+    line_angle_tol: float | None = None,
+    mark_edges: bool = True,
+) -> TessellationDiagnostics:
+    """Private analyzer with an explicit required/optional reciprocity policy."""
 
     if mode is not None:
         mode = require_string_choice(
@@ -171,23 +219,47 @@ def analyze_tessellation(
     issues: list[TessellationIssue] = []
 
     dom_area = _domain_area(domain)
-    sum_area = 0.0
+    valid_areas: list[float] = []
+    measures_valid = True
     empty_ids: list[int] = []
     present_ids: list[int] = []
     for cell in cells:
         cid = int(cell.get('id', -1))
         if cid >= 0:
             present_ids.append(cid)
-        if bool(cell.get('empty', False)):
+        empty = bool(cell.get('empty', False))
+        if empty:
             if cid >= 0:
                 empty_ids.append(cid)
-            continue
-        try:
-            sum_area += float(cell.get('area', 0.0))
-        except Exception:
-            pass
+        measure = validate_cell_measure(cell, field='area', empty=empty)
+        if not measure.valid:
+            measures_valid = False
+            for code in measure.issue_codes:
+                if code == 'MISSING_CELL_MEASURE':
+                    message = f'Non-empty cell {cid} is missing its area'
+                elif code == 'INVALID_CELL_MEASURE':
+                    message = f'Cell {cid} has an invalid non-real area'
+                elif code == 'NONFINITE_CELL_MEASURE':
+                    message = f'Cell {cid} has a non-finite area'
+                elif code == 'NEGATIVE_CELL_MEASURE':
+                    message = f'Cell {cid} has a negative area'
+                else:
+                    message = f'Empty cell {cid} has a nonzero area'
+                issues.append(
+                    TessellationIssue(
+                        code,
+                        'error',
+                        message,
+                        examples=((cid,) if cid >= 0 else ()),
+                    )
+                )
+        elif not empty:
+            assert measure.value is not None
+            valid_areas.append(measure.value)
 
-    if dom_area <= 0.0:
+    sum_area = stable_measure_sum(valid_areas)
+    domain_area_valid = bool(np.isfinite(dom_area) and dom_area > 0.0)
+    if not domain_area_valid:
         issues.append(
             TessellationIssue('DOMAIN_AREA', 'error', 'Domain area is non-positive')
         )
@@ -195,40 +267,75 @@ def analyze_tessellation(
 
     area_tol = max(float(area_tol_abs), float(area_tol_rel) * dom_area)
     diff = sum_area - dom_area
-    ok_area = abs(diff) <= area_tol
+    aggregate_overflow = bool(np.isposinf(sum_area))
+    ok_area = bool(
+        measures_valid
+        and domain_area_valid
+        and not aggregate_overflow
+        and abs(diff) <= area_tol
+    )
     gap = max(0.0, dom_area - sum_area)
     overlap = max(0.0, sum_area - dom_area)
-    if not ok_area:
-        if gap > area_tol:
-            issues.append(
-                TessellationIssue(
-                    'GAP',
-                    'warning',
-                    f'Sum of cell areas is smaller than domain area by {gap:g}',
-                )
-            )
-        if overlap > area_tol:
+    if measures_valid and domain_area_valid:
+        if aggregate_overflow:
             issues.append(
                 TessellationIssue(
                     'OVERLAP',
-                    'warning',
-                    f'Sum of cell areas exceeds domain area by {overlap:g}',
+                    'error',
+                    'Sum of cell areas exceeds the finite representable range',
                 )
             )
+        elif not ok_area:
+            if gap > area_tol:
+                issues.append(
+                    TessellationIssue(
+                        'GAP',
+                        'error',
+                        f'Sum of cell areas is smaller than domain area by {gap:g}',
+                    )
+                )
+            if overlap > area_tol:
+                issues.append(
+                    TessellationIssue(
+                        'OVERLAP',
+                        'error',
+                        f'Sum of cell areas exceeds domain area by {overlap:g}',
+                    )
+                )
 
     missing_ids: list[int] = []
     if expected_ids_array is not None:
-        exp = set(expected_ids_array.tolist())
-        missing_ids = sorted(exp - set(present_ids))
-        if missing_ids:
+        classification = classify_expected_ids(
+            expected_ids_array.tolist(),
+            present_ids,
+            mode=mode,
+        )
+        missing_ids = list(classification.missing_ids)
+        empty_ids.extend(classification.hidden_ids)
+        if classification.issue_code is not None:
+            subject = (
+                'hidden power'
+                if classification.issue_code == 'HIDDEN_IDS'
+                else 'expected'
+            )
             issues.append(
                 TessellationIssue(
-                    'MISSING_IDS',
-                    'warning',
-                    f'{len(missing_ids)} expected ids are missing from output',
+                    classification.issue_code,
+                    classification.severity,
+                    f'{len(missing_ids)} {subject} ids are absent from output',
                     examples=tuple(missing_ids[:10]),
                 )
             )
+
+    if mark_edges:
+        reset_owned_annotations(
+            (
+                edge
+                for cell in cells
+                for edge in (cell.get('edges') or [])
+            ),
+            fields=('orphan', 'reciprocal_missing', 'reciprocal_mismatch'),
+        )
 
     edge_shift_available = False
     reciprocity_checked = False
@@ -237,22 +344,25 @@ def analyze_tessellation(
     n_mismatch = 0
 
     if _is_periodic_domain(domain) and check_reciprocity:
-        for cell in cells:
-            for edge in cell.get('edges') or []:
-                if (
-                    int(edge.get('adjacent_cell', -999999)) >= 0
-                    and 'adjacent_shift' in edge
-                ):
-                    edge_shift_available = True
-                    break
-            if edge_shift_available:
-                break
+        relevant_edges = [
+            edge
+            for cell in cells
+            for edge in (cell.get('edges') or [])
+            if int(edge.get('adjacent_cell', -999999)) >= 0
+        ]
+        if relevant_edges:
+            edge_shift_available = all(
+                'adjacent_shift' in edge for edge in relevant_edges
+            )
 
         if not edge_shift_available:
             issues.append(
                 TessellationIssue(
                     'NO_EDGE_SHIFTS',
-                    'info',
+                    reciprocity_issue_severity(
+                        required=reciprocity_required,
+                        missing_shifts=True,
+                    ),
                     'Edge shifts are not available; set return_edge_shifts=True '
                     'to enable reciprocity diagnostics',
                 )
@@ -304,7 +414,7 @@ def analyze_tessellation(
                     j = int(edge.get('adjacent_cell', -999999))
                     if j < 0:
                         continue
-                    s = _skey(edge.get('adjacent_shift', (0, 0)))
+                    s = _skey(edge['adjacent_shift'])
                     n_edges_total += 1
 
                     idx = np.asarray(edge.get('vertices', []), dtype=np.int64)
@@ -326,11 +436,6 @@ def analyze_tessellation(
                         )
                     else:
                         edge_map[key] = (i, ei)
-
-                    if mark_edges:
-                        edge.setdefault('orphan', False)
-                        edge.setdefault('reciprocal_mismatch', False)
-                        edge.setdefault('reciprocal_missing', False)
 
             def _edge_segment(
                 cell_id: int,
@@ -428,7 +533,9 @@ def analyze_tessellation(
                 issues.append(
                     TessellationIssue(
                         'MISSING_RECIPROCAL',
-                        'warning',
+                        reciprocity_issue_severity(
+                            required=reciprocity_required,
+                        ),
                         f'{n_orphan} edges are missing a reciprocal',
                         examples=tuple(examples_missing),
                     )
@@ -437,17 +544,25 @@ def analyze_tessellation(
                 issues.append(
                     TessellationIssue(
                         'RECIPROCAL_MISMATCH',
-                        'warning',
+                        reciprocity_issue_severity(
+                            required=reciprocity_required,
+                        ),
                         f'{n_mismatch} reciprocal edge pairs disagree geometrically',
                         examples=tuple(examples_mismatch),
                     )
                 )
 
-    ok_recip = True
-    if reciprocity_checked:
-        ok_recip = (n_orphan == 0) and (n_mismatch == 0)
+    reciprocity_requested = bool(_is_periodic_domain(domain) and check_reciprocity)
+    ok_recip = bool(
+        not reciprocity_requested
+        or (
+            reciprocity_checked
+            and n_orphan == 0
+            and n_mismatch == 0
+        )
+    )
 
-    ok = ok_area and (ok_recip if reciprocity_checked else True)
+    ok = diagnostics_ok(issues)
     if not ok and mode is not None:
         issues.append(
             TessellationIssue('MODE', 'info', f'Diagnostics produced for mode={mode!r}')
@@ -493,7 +608,12 @@ def validate_tessellation(
     line_angle_tol: float | None = None,
     mark_edges: bool | None = None,
 ) -> TessellationDiagnostics:
-    """Validate planar tessellation sanity, optionally raising in strict mode."""
+    """Validate planar tessellation sanity using the final diagnostic policy.
+
+    Optional reciprocity inspection emits warning/info findings, while required
+    reciprocity emits errors. Strict validation raises exactly when the returned
+    diagnostics have ``ok=False``.
+    """
 
     level = require_string_choice(
         level,
@@ -519,7 +639,7 @@ def validate_tessellation(
     if mark_edges is None:
         mark_edges = bool(periodic)
 
-    diag = analyze_tessellation(
+    diag = _analyze_tessellation(
         cells,
         domain,
         expected_ids=expected_ids,
@@ -527,25 +647,25 @@ def validate_tessellation(
         area_tol_rel=area_tol_rel,
         area_tol_abs=area_tol_abs,
         check_reciprocity=bool(periodic),
+        reciprocity_required=bool(require_reciprocity),
         check_line_mismatch=bool(periodic),
         line_offset_tol=line_offset_tol,
         line_angle_tol=line_angle_tol,
         mark_edges=mark_edges,
     )
 
-    if level == 'strict':
-        ok = bool(diag.ok_area) and (
-            bool(diag.ok_reciprocity)
-            if bool(require_reciprocity) and bool(diag.reciprocity_checked)
-            else True
+    if level == 'strict' and not diag.ok:
+        error = next(
+            (issue for issue in diag.issues if issue.severity == 'error'),
+            None,
         )
-        if not ok:
-            raise TessellationError(
-                'Tessellation validation failed: '
-                f'area_ratio={diag.area_ratio:g}, '
-                f'orphan_edges={diag.n_edges_orphan}, '
-                f'mismatched_edges={diag.n_edges_mismatched}',
-                diag,
+        if error is None:  # pragma: no cover - guarded by severity-complete policy
+            message = 'Tessellation validation failed'
+        else:
+            message = (
+                f'Tessellation validation failed ({error.code}): '
+                f'{error.message}'
             )
+        raise TessellationError(message, diag)
 
     return diag

@@ -18,6 +18,7 @@ from typing import Any, Literal
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.spatial.domain_utils import is_periodic_domain
+from ._internal.tessellation_diagnostics import diagnostics_ok
 from ._internal.validation import (
     require_bool,
     require_nonnegative_index,
@@ -614,7 +615,7 @@ def validate_normalized_topology(
         for i in issues
     )
     ok_euler = n_bad_euler == 0
-    ok = not any(i.severity == 'error' for i in issues)
+    ok = diagnostics_ok(issues)
 
     diag = NormalizationDiagnostics(
         n_cells=int(n_cells),

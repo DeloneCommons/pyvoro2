@@ -81,6 +81,17 @@ a compatibility-only route and was not removed.
   These are invalid-input and ownership corrections: valid forward/inverse
   results, public signatures/defaults/schemas, objective formulas, and native
   resource policy are unchanged.
+- Spatial and planar tessellation diagnostics now use one severity-complete
+  policy. Missing standard IDs are errors, missing power IDs are informational
+  hidden/empty sites, and undeclared-mode absence remains a warning. Malformed,
+  non-finite, negative, missing, or impossible empty-cell areas/volumes produce
+  explicit measure errors; valid measures use a stable sum and closure gaps or
+  overlaps are errors. Required reciprocity failures are errors, while optional
+  inspection remains informational/warning-level. Strict validation and
+  compute warn/raise consume final `diagnostics.ok`, repeated marked analyses
+  clear stale boundary flags, and warning-only planar normalized-topology
+  findings no longer fail strict validation. Public names, signatures,
+  defaults, result fields, forward geometry, and native safety are unchanged.
 - Separator external IDs now consistently require unique non-negative integer
   values. Python integers and NumPy integer scalars are accepted; floats,
   strings, booleans, and other lossy conversions are rejected. Raw observation
