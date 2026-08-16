@@ -8,6 +8,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Added
 
+- A complete installed-distribution license payload: project `LICENSE`,
+  `NOTICE.md`, and a root `LICENSE.voro++` byte-identical to the vendored
+  upstream Voro++ license. Distribution and installed-package checks now reject
+  missing or mutated license content.
 - Standard GIL-enabled CPython 3.14 source-build and package-metadata support,
   while retaining Python 3.10–3.13 support. The isolated build toolchain now
   uses Python-3.14-compatible pybind11 3 and scikit-build-core releases.
@@ -22,6 +26,11 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Synchronized current API/lifecycle, R1–R8 correctness, capability-boundary,
+  ADR-0017 roadmap, release-note traceability, fuzz-execution, and qualification
+  handoff documentation for the final v0.8 source-contract review. The
+  OS-independent package classifier was removed; supported platforms remain the
+  explicit release wheel matrix pending qualification.
 - Reorganized tests by forward, inverse, integration, tooling, and fuzz
   responsibility, and moved private pure-Python helpers under
   `pyvoro2._internal` with explicit shared, spatial, and planar ownership.

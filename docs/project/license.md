@@ -15,8 +15,10 @@ See the repository files `LICENSE` and `COPYING` for the full texts.
 pyvoro2 vendors the Voro++ source code as its computational core, including the
 legacy 2D Voro++ sources used for the planar backend work.
 
-Voro++ is distributed under its original upstream license (see
-`vendor/voro++/LICENSE`).
+Voro++ is distributed under its original upstream license. The complete text is
+packaged as `LICENSE.voro++` for source and installed-distribution users; the
+source tree also retains the byte-identical upstream file at
+`vendor/voro++/LICENSE`.
 
 ## Notices
 

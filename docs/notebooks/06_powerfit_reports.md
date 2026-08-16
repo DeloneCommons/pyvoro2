@@ -1,7 +1,7 @@
 <!-- This file is generated from the matching notebook. -->
 <!-- Regenerate with: python tools/export_notebooks.py -->
 [Open the original notebook on GitHub](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/06_powerfit_reports.ipynb)
-# Powerfit reports and record exports
+# Separator-fit reports and record exports
 
 This notebook focuses on the plain-record and nested-report helpers
 around low-level fits, realized-pair matching, and the self-consistent

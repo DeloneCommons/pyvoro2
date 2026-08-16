@@ -89,7 +89,7 @@ It is experimental and is not part of the exact fixed-observation theory.
 
 The dimension-neutral term for cell area in 2D or cell volume in 3D.
 `TessellationResult.cell_measures` is an input-aligned forward result. Fitting
-weights from prescribed cell measures is planned for v0.9 and is not implemented
+weights from prescribed cell measures is planned for v1.1 and is not implemented
 in v0.8.
 
 ## Static sparse observation graph

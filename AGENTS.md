@@ -78,7 +78,8 @@ inconsistent.
 - `tests/inverse/separator/`: canonical separator inverse tests.
 - `tests/integration/`: end-to-end and cross-subsystem public contracts.
 - `tests/tooling/`: notebook, generation, distribution, and release tooling.
-- `tests/fuzz/`: opt-in randomized and independent-wrapper cross-checks.
+- `tests/fuzz/`: seeded randomized tests included in the default suite, plus
+  optional independent-wrapper cross-checks.
 - `examples/`: repository-owned preferred-API workflows and deterministic
   public regression inputs.
 - `notebooks/`: source notebooks.
@@ -143,7 +144,9 @@ Before a release or a broad refactor, run:
 python tools/release_check.py
 ```
 
-Fuzz and optional `pyvoro` cross-checks are opt-in:
+The default `pytest -q` run includes seeded fuzz/property tests with
+`--fuzz-n=10`. Select them explicitly to increase the iteration count; the
+independent `pyvoro` cross-checks remain optional and dependency-gated:
 
 ```bash
 pytest -m fuzz --fuzz-n 100

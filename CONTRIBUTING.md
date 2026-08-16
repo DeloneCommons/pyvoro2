@@ -6,9 +6,10 @@ welcome when they are focused, testable, and consistent with the documented
 architecture.
 
 The active v0.8 plan is a feature-free maintenance and release-qualification
-workstream. Keep contributions on `dev` scoped to its linked issues; prescribed
-cell measures and mixed-observation fitting belong to v0.9 and v0.10 rather
-than the v0.8 release.
+workstream. Keep contributions on `dev` scoped to its linked issues. v0.9 is
+reserved for functional/API stabilization and downstream readiness, 1.0
+stabilizes the existing core, prescribed cell measures begin in v1.1, and
+mixed-observation fitting begins in v1.2.
 
 ## Before starting
 
@@ -276,7 +277,8 @@ Root `tests/conftest.py` is reserved for pytest hooks, options, and fixtures
 that apply across the suite. Imported helper code belongs to an explicitly
 owned support module such as `tests/fuzz/_support.py`.
 
-Run the deterministic suite for ordinary changes:
+Run the default suite for ordinary changes. It includes deterministic tests and
+seeded fuzz/property tests with the default `--fuzz-n=10`:
 
 ```bash
 pytest -q
@@ -316,8 +318,9 @@ python tools/export_notebooks.py
 python tools/export_notebooks.py --check
 ```
 
-Optional randomized and cross-wrapper checks are available for geometry-heavy
-changes:
+For geometry-heavy changes, explicitly select the fuzz group and raise its
+iteration count. The independent-wrapper group remains optional and requires a
+separate `pyvoro` installation:
 
 ```bash
 pytest -m fuzz --fuzz-n 100

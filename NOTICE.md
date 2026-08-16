@@ -12,11 +12,12 @@ This repository also vendors third-party code under separate licenses.
 
 ## Vendored code
 
-### Voro++ (vendored in `vendor/voro++`)
+### Voro++ (packaged as `LICENSE.voro++`)
 
 - Upstream: Voro++ (Chris Rycroft)
 - Purpose: 3D Voronoi / radical Voronoi (Laguerre) cell computations, plus the
   legacy 2D Voro++ sources used for the planar backend work
-- License: See `vendor/voro++/LICENSE`
+- License: See `LICENSE.voro++` in source and binary distributions. The source
+  tree also retains the byte-identical upstream file at `vendor/voro++/LICENSE`.
 
 The vendored Voro++ snapshot remains under its original upstream license.

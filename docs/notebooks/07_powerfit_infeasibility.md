@@ -1,7 +1,7 @@
 <!-- This file is generated from the matching notebook. -->
 <!-- Regenerate with: python tools/export_notebooks.py -->
 [Open the original notebook on GitHub](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/07_powerfit_infeasibility.ipynb)
-# Hard infeasibility witnesses in power fitting
+# Hard infeasibility witnesses in separator fitting
 
 This notebook shows how the low-level inverse solver reports hard
 infeasibility when the requested equalities or bounds cannot all be

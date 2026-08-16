@@ -19,16 +19,21 @@ Main entry points:
 - `python tools/build_wheel_from_sdist.py dist` — select exactly one generated
   sdist and rebuild its wheel with pip build isolation.
 - `python tools/check_installed_package.py --require-scipy` — verify installed
-  module provenance, the private `_internal` layout, lazy and explicit native
-  loading, public transforms, periodic behavior, and representative 2D, 3D,
-  and canonical inverse workflows. Use `--forbid-scipy` for a base
-  installation.
+  module provenance, installed license/metadata payload, the private `_internal`
+  layout, lazy and explicit native loading, public transforms, periodic
+  behavior, and representative 2D, 3D, canonical inverse, and schema-1 report
+  workflows. `--require-scipy` also exercises an explicit sparse fit; use
+  `--forbid-scipy` for a base installation.
 - `python tools/check_dist.py dist` — verify that built sdists and wheels
-  contain the expected `_internal` hierarchy and other key files while omitting
-  obsolete private and compatibility paths.
+  contain the complete project/notice/Voro++ license payload, matching vendored
+  Voro++ license bytes, current platform metadata, exact package paths and
+  native-module identities, one archive root, and other key files while
+  rejecting duplicate/unsafe members and obsolete private and compatibility
+  paths. Explicit artifact paths are also accepted.
 - `python tools/check_dist_metadata.py dist` — discover `.whl` and `.tar.gz`
   artifacts in deterministic order and run Twine metadata validation without
-  shell-dependent glob expansion.
+  shell-dependent glob expansion. Explicit artifact paths are also accepted;
+  equivalent resolved paths are checked only once.
 - `python tools/check_wheel_matrix.py release-dist` — require the complete
   CPython 3.10–3.14 release matrix (20 supported native wheels and one matching
   sdist), validate wheel tags, Python/runtime dependency metadata, and project

@@ -27,7 +27,6 @@ classifiers = [
   'Topic :: Scientific/Engineering :: Mathematics',
   'Topic :: Scientific/Engineering :: Physics',
   'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
-  'Operating System :: OS Independent',
   'Programming Language :: Python :: 3',
   'Programming Language :: Python :: 3 :: Only',
   'Programming Language :: Python :: 3.10',
@@ -99,6 +98,13 @@ all = [
 [tool.scikit-build]
 minimum-version = 'build-system.requires'
 wheel.packages = ['src/pyvoro2']
+wheel.license-files = ['LICENSE', 'NOTICE.md', 'LICENSE.voro++']
+sdist.include = [
+  'LICENSE',
+  'NOTICE.md',
+  'LICENSE.voro++',
+  'vendor/voro++/LICENSE',
+]
 cmake.version = '>=3.20'
 cmake.build-type = 'Release'
 build.verbose = true
@@ -111,7 +117,7 @@ regex = "^__version__\\s+=\\s+['\"](?P<value>.*)['\"]"
 [tool.pytest.ini_options]
 testpaths = ['tests']
 markers = [
-  'fuzz: randomized fuzz/property tests (opt-in)',
+  'fuzz: seeded randomized fuzz/property tests included in the default suite',
   'pyvoro: cross-check tests requiring the optional pyvoro dependency (opt-in)',
   'slow: slow tests (opt-in)',
 ]

@@ -484,8 +484,10 @@ def resolve_separator_observations(
         points: Site coordinates with shape ``(n, d)`` where ``d`` is currently
             supported for planar (2D) and spatial (3D) workflows.
         constraints: Raw constraint tuples ``(i, j, value[, shift])``.
-        measurement: Whether ``value`` is interpreted as a normalized fraction
-            in ``[0, 1]`` or as an absolute position along the connector.
+        measurement: Whether ``value`` is interpreted as a normalized coordinate
+            on the connector line or as an absolute position from the first
+            site. Fractions outside ``[0, 1]`` are valid unless the fitting model
+            adds a separate between-sites restriction.
         domain: Optional non-periodic or periodic domain.
         ids: Unique non-negative integer external IDs aligned with ``points``.
             Python integers and NumPy integer scalars are accepted.

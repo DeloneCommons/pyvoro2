@@ -288,15 +288,28 @@ def _assert_project_identity(
         )
 
 
-def _native_module_members(names: list[str], module_name: str) -> list[str]:
+def native_module_members(names: list[str], module_name: str) -> list[str]:
+    """Return exact top-level package members for one native module."""
+
     prefix = f'{module_name}.'
-    return [
-        name
-        for name in names
-        if PurePosixPath(name).parent == PurePosixPath(EXPECTED_PROJECT_NAME)
-        and PurePosixPath(name).name.startswith(prefix)
-        and PurePosixPath(name).suffix in {'.so', '.pyd'}
-    ]
+    matches: list[str] = []
+    for name in names:
+        if '\\' in name:
+            continue
+        parts = name.split('/')
+        if (
+            len(parts) != 2
+            or any(not part for part in parts)
+            or parts[0] != EXPECTED_PROJECT_NAME
+        ):
+            continue
+        basename = parts[1]
+        if (
+            basename.startswith(prefix)
+            and PurePosixPath(basename).suffix in {'.so', '.pyd'}
+        ):
+            matches.append(name)
+    return matches
 
 
 def _expanded_filename_tags(filename: WheelFilename) -> set[str]:
@@ -320,14 +333,17 @@ def check_wheel(path: Path) -> WheelFilename:
 
     try:
         with zipfile.ZipFile(path) as zf:
-            names = zf.namelist()
+            entries = zf.infolist()
+            file_names = [
+                entry.filename for entry in entries if not entry.is_dir()
+            ]
             metadata_member = _only_archive_member(
-                names,
+                file_names,
                 suffix='.dist-info/METADATA',
                 label=path.name,
             )
             wheel_member = _only_archive_member(
-                names,
+                file_names,
                 suffix='.dist-info/WHEEL',
                 label=path.name,
             )
@@ -384,10 +400,11 @@ def check_wheel(path: Path) -> WheelFilename:
         )
 
     for module_name in ('_core', '_core2d'):
-        members = _native_module_members(names, module_name)
-        if not members:
+        members = native_module_members(file_names, module_name)
+        if len(members) != 1:
             raise WheelMatrixError(
-                f'{path.name} does not contain pyvoro2/{module_name}'
+                f'{path.name} expected exactly one pyvoro2/{module_name} '
+                f'native module, found {len(members)}'
             )
 
     return filename

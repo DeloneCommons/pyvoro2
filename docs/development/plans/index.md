@@ -15,6 +15,10 @@ milestones.
 | [v0.8 pre-release audit remediation](v0.8-remediation.md) | Active | v0.8.0 | Correctness, native-safety, geometry, result-integrity, diagnostics, public-contract synchronization, and handoff to clean qualification. |
 
 The plans are linked to [milestone 2](https://github.com/DeloneCommons/pyvoro2/milestone/2). The remediation work is tracked by [issue #35](https://github.com/DeloneCommons/pyvoro2/issues/35), which blocks final qualification in [issue #33](https://github.com/DeloneCommons/pyvoro2/issues/33).
+R1–R8 are complete. R9 ([issue #45](https://github.com/DeloneCommons/pyvoro2/issues/45))
+is the active final source-contract cleanup. Issue #35 closes only after
+independent R9 acceptance; issue #33 then begins from that exact clean accepted
+commit.
 v0.8.0 is intended to receive the next GitHub Release and Zenodo archive.
 The roadmap now reserves v0.9 for functional/API stabilization and downstream
 readiness, followed by the stable 1.0 core; prescribed cell measures move to

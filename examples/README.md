@@ -1,6 +1,6 @@
 # Preferred-API integration and regression examples
 
-These repository-owned scripts exercise the v0.7 public API the way a
+These repository-owned scripts exercise the current v0.8 public API the way a
 downstream scientific package can use it. They are chemistry-neutral and make
 no interpretation of backend radii as fitted scientific quantities.
 

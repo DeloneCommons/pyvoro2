@@ -17,8 +17,9 @@ Its implemented inverse layer fits power weights from selected pairwise
 separator observations, reports compatibility, identifiability, and
 hard-constraint feasibility, and separates algebraic fitting from
 realized-boundary checks.
-Prescribed cell measures are planned for v0.9 and mixed separator-plus-measure
-problems for v0.10; neither is part of the current v0.8 implementation.
+v0.9 is reserved for functional/API stabilization and downstream readiness,
+1.0 stabilizes the existing core, prescribed cell measures begin in v1.1, and
+mixed separator-plus-measure problems begin in v1.2.
 
 ## What is Voro++?
 
@@ -72,9 +73,9 @@ layer to compute cells, measures, boundaries, or periodic neighbor graphs.
 
 The inverse layer answers a different question: given fixed sites and partial
 geometric observations, which power weights reconcile those observations?
-The current method uses pairwise separator positions. The v0.9
-prescribed-measure work and v0.10 mixed work are intended to reuse the same
-geometry and result contract.
+The current method uses pairwise separator positions. The v1.1
+prescribed-measure work and v1.2 mixed work are intended to reuse the geometry
+and result contract stabilized through v0.9 and 1.0.
 
 The mathematical distinction between weights, backend radii, global gauge,
 disconnected observation offsets, and realized boundaries is described in the
@@ -104,7 +105,8 @@ is not a near-term architectural requirement.
 Numerical geometry needs layered validation. pyvoro2 uses:
 
 - deterministic unit and regression tests in the default `pytest` run;
-- opt-in fuzz/property tests for random geometries;
+- seeded fuzz/property tests in that default run, with an explicit higher-count
+  mode for broader random coverage;
 - optional cross-checks against the older `pyvoro` wrapper;
 - notebook execution and export checks;
 - strict documentation and README synchronization checks;
@@ -132,10 +134,10 @@ for the development workflow.
   records the delivered release scope, accepted decisions, work packages,
   qualification evidence, and deferrals.
 - [Architecture](../development/architecture.md) describes the historical
-  baselines, implemented v0.8 architecture, and accepted v0.9–v0.10 extension
-  sequence.
+  baselines, implemented v0.8 architecture, and accepted post-v0.8 sequence.
 - [API lifecycle](../development/api-lifecycle.md) defines stability and
   compatibility.
 - [Decision records](../development/decisions/index.md) explain durable choices.
-- [Roadmap](roadmap.md) records v0.8 cleanup, v0.9 prescribed measures, v0.10
-  mixed problems, 1.0, and future research.
+- [Roadmap](roadmap.md) records v0.8 cleanup, v0.9 functional stabilization,
+  the stable 1.0 core, v1.1 prescribed measures, v1.2 mixed problems, and
+  future research.

@@ -1,7 +1,7 @@
 <!-- This file is generated from the matching notebook. -->
 <!-- Regenerate with: python tools/export_notebooks.py -->
 [Open the original notebook on GitHub](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/04_powerfit.ipynb)
-# Power fitting from separator observations
+# Separator-inverse fitting from separator observations
 
 This notebook shows the new math-oriented inverse API in `pyvoro2`:
 

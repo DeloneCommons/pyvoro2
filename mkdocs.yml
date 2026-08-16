@@ -54,6 +54,7 @@ nav:
   - Home: index.md
   - User guide:
       - Choosing an API: guide/choosing-api.md
+      - Capabilities and limitations: guide/capabilities.md
       - Concepts: guide/concepts.md
       - Glossary: guide/glossary.md
       - Domains (3D): guide/domains.md
@@ -104,6 +105,7 @@ nav:
           - Two-layer separator observation and source identity: development/decisions/0014-separator-observation-and-source-identity.md
           - Atomic separator active-set final state: development/decisions/0015-atomic-separator-active-state.md
           - Severity-complete tessellation diagnostics: development/decisions/0016-severity-complete-tessellation-diagnostics.md
+          - Post-v0.8 stabilization before 1.0: development/decisions/0017-v0.9-functional-stabilization-before-1.0.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

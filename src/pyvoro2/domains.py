@@ -1,7 +1,7 @@
 """Domain specifications for Voronoi tessellation.
 
 pyvoro2 currently supports:
-- Box: orthogonal bounding box (non-periodic, for 0D systems)
+- Box: orthogonal bounding box (non-periodic, for finite systems)
 - OrthorhombicCell: orthogonal cell with optional per-axis periodicity
   (1D/2D/3D periodic)
 - PeriodicCell: fully periodic triclinic cell (3D crystals), implemented via

@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import importlib
+from importlib import metadata as importlib_metadata
 import importlib.util
+import json
 from pathlib import Path
 import sys
 from types import ModuleType
@@ -38,6 +40,61 @@ OBSOLETE_PRIVATE_MODULES = (
 
 class InstalledPackageCheckError(RuntimeError):
     """Raised when installed-package provenance or a smoke workflow is invalid."""
+
+
+def _check_distribution_metadata(repository_root: Path) -> None:
+    """Verify installed license payload and platform metadata."""
+
+    distribution = importlib_metadata.distribution('pyvoro2')
+    files = tuple(distribution.files or ())
+    required = ('LICENSE', 'NOTICE.md', 'LICENSE.voro++')
+    located: dict[str, Path] = {}
+    for filename in required:
+        matches = [
+            file
+            for file in files
+            if str(file).replace('\\', '/').endswith(
+                f'.dist-info/licenses/{filename}'
+            )
+        ]
+        if len(matches) != 1:
+            raise InstalledPackageCheckError(
+                f'installed distribution expected one {filename} license '
+                f'member, found {len(matches)}'
+            )
+        path = Path(distribution.locate_file(matches[0])).resolve()
+        if not path.is_file():
+            raise InstalledPackageCheckError(
+                f'installed distribution license member is missing: {path}'
+            )
+        located[filename] = path
+
+    expected_paths = {
+        'LICENSE': repository_root / 'LICENSE',
+        'NOTICE.md': repository_root / 'NOTICE.md',
+        'LICENSE.voro++': repository_root / 'vendor' / 'voro++' / 'LICENSE',
+    }
+    notice_data = located['NOTICE.md'].read_bytes()
+    if b'LICENSE.voro++' not in notice_data:
+        raise InstalledPackageCheckError(
+            'installed NOTICE.md does not point to LICENSE.voro++'
+        )
+    for filename, expected_path in expected_paths.items():
+        if located[filename].read_bytes() != expected_path.read_bytes():
+            raise InstalledPackageCheckError(
+                f'installed {filename} does not match {expected_path} '
+                'byte-for-byte'
+            )
+    classifiers = distribution.metadata.get_all('Classifier') or ()
+    if 'Operating System :: OS Independent' in classifiers:
+        raise InstalledPackageCheckError(
+            'installed metadata contains the unsupported OS Independent classifier'
+        )
+
+    for filename in required:
+        print(f'installed license {filename}: {located[filename]}')
+    print('installed licensing payload: byte-identical to repository sources')
+    print('installed metadata: OS Independent classifier absent')
 
 
 def module_location(module: ModuleType, module_name: str) -> Path:
@@ -163,10 +220,15 @@ def _check_private_helper_layout() -> None:
     print('private helper imports: native extensions remained lazy')
 
 
-def _run_workflows(repository_root: Path) -> None:
+def _run_workflows(
+    repository_root: Path,
+    *,
+    require_scipy: bool,
+) -> None:
     import numpy as np
     import pyvoro2 as pv
     import pyvoro2.inverse as inverse
+    import pyvoro2.inverse.separator as separator
     import pyvoro2.planar as pv2
 
     modules = (
@@ -251,9 +313,13 @@ def _run_workflows(repository_root: Path) -> None:
             'the public transform routes do not share one implementation'
         )
 
-    fit = inverse.fit_weights_from_separators(
+    observations = inverse.resolve_separator_observations(
         points2,
         [(0, 1, 0.25)],
+    )
+    fit = inverse.fit_weights_from_separators(
+        points2,
+        observations,
         solver='direct',
         linear_backend='dense',
         connectivity_check='diagnose',
@@ -278,11 +344,46 @@ def _run_workflows(repository_root: Path) -> None:
                 f'the inverse smoke workflow returned non-finite {field_name}'
             )
 
+    report = fit.to_report(observations)
+    payload = separator.dumps_report_json(report, sort_keys=True)
+    if json.loads(payload) != report:
+        raise InstalledPackageCheckError(
+            'the installed fit report did not round-trip through strict JSON'
+        )
+    if report.get('schema') != {
+        'name': 'pyvoro2.inverse.separator.report',
+        'version': 1,
+    }:
+        raise InstalledPackageCheckError(
+            'the installed fit report has the wrong schema identity'
+        )
+    if report.get('kind') != 'power_weight_fit':
+        raise InstalledPackageCheckError(
+            'the installed fit report has the wrong retained kind'
+        )
+
+    if require_scipy:
+        sparse_fit = inverse.fit_weights_from_separators(
+            points2,
+            observations,
+            solver='direct',
+            linear_backend='sparse',
+            connectivity_check='diagnose',
+        )
+        if sparse_fit.status != 'optimal' or sparse_fit.linear_backend != 'sparse':
+            raise InstalledPackageCheckError(
+                'the SciPy-enabled sparse inverse workflow did not use the '
+                'requested backend successfully'
+            )
+
     print('spatial workflow: TessellationResult with 2 cells')
     print('planar workflow: TessellationResult with 2 cells')
     print('periodic workflow: planar unit-cell coverage with image shifts')
     print('weight/radius transforms: public routes round-trip finite values')
     print('inverse workflow: optimal direct+dense fit with finite values')
+    print('report workflow: schema 1 power_weight_fit strict JSON round trip')
+    if require_scipy:
+        print('sparse inverse workflow: optimal direct+SciPy fit')
 
 
 def main() -> int:
@@ -308,10 +409,11 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    _check_distribution_metadata(args.repo_root)
     _check_scipy(require_scipy=args.require_scipy)
     _check_removed_compatibility()
     _check_private_helper_layout()
-    _run_workflows(args.repo_root)
+    _run_workflows(args.repo_root, require_scipy=args.require_scipy)
     return 0
 
 

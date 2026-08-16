@@ -1,7 +1,7 @@
 # v0.8 public API inventory
 
-- **Status:** Finalized against the v0.8 tree on 2026-07-24; release
-  qualification remains in issue #33
+- **Status:** Synchronized through R9 on 2026-08-16; independent R9 acceptance
+  and release qualification remain pending
 - **Historical baseline:** v0.6.3
 - **Previous contract:** v0.7.0
 - **Target:** v0.8.0
@@ -17,8 +17,11 @@
   [ADR 0010](decisions/0010-native-construction-preconditions.md),
   [ADR 0011](decisions/0011-strict-input-and-ownership-contract.md),
   [ADR 0012](decisions/0012-certified-periodic-image-geometry.md),
-  [ADR 0013](decisions/0013-central-generator-preparation-and-backend-safety.md), and
-  [ADR 0014](decisions/0014-separator-observation-and-source-identity.md)
+  [ADR 0013](decisions/0013-central-generator-preparation-and-backend-safety.md),
+  [ADR 0014](decisions/0014-separator-observation-and-source-identity.md),
+  [ADR 0015](decisions/0015-atomic-separator-active-state.md),
+  [ADR 0016](decisions/0016-severity-complete-tessellation-diagnostics.md), and
+  [ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md)
 
 This inventory is the authoritative v0.8 lifecycle contract for public imports,
 return routes, record schemas, defaults, and scientific semantics. It has been
@@ -1086,6 +1089,15 @@ Cartesian check is preserved. R5 still owns complete seam scanning and
 mandatory native-safety policy independent of `duplicate_wrap`. ADR 0012
 records this contract.
 
+All generators inserted on non-periodic axes must lie in the half-open interval
+`[lo, hi)`; periodic axes are remapped. This is the supported native storage
+contract, including temporary ghost generators, rather than a theorem about
+which external mathematical sites can influence a clipped diagram. The
+mandatory duplicate floor is always enforced and cannot be disabled; the
+user-configurable duplicate policy remains a separate diagnostic layer. Native
+preflight and postconditions prevent invalid or omitted construction from being
+packaged as a successful result. ADR 0013 records this contract.
+
 ### Exact current inverse signatures and defaults
 
 The stable high-level calls are:
@@ -1175,6 +1187,33 @@ Degenerate fits that need no component solve, including empty observation sets
 and models with only singleton components, report `solver='none'`,
 `linear_backend=None`, and `n_iter=0`.
 
+### Current retained names and report schema
+
+`PowerFitBounds`, `PowerFitPredictions`, `PowerFitObjectiveBreakdown`, and
+`SelfConsistentPowerFitResult` remain current public names in the provisional or
+experimental advanced `pyvoro2.inverse.separator` surface. Their spelling is
+not evidence that the removed `pyvoro2.powerfit` package survives, and R9 does
+not cosmetically rename them.
+
+Separator reports use the frozen schema name
+`pyvoro2.inverse.separator.report`, schema version `1`, and these retained
+report kinds:
+
+```text
+power_weight_fit
+realized_pair_diagnostics
+self_consistent_power_fit
+```
+
+Report payloads are strict JSON-native round trips. Row-aligned records carry
+stable row IDs and explicit bound/unbound provenance. Active results expose
+`final_state_available`, `final_state_unavailable_reason`, and
+`final_refit_converged` properties to distinguish outer termination from the
+final inner fit. Their report `availability` block has exactly `weights`,
+`realization`, `records`, and `reason`. Unavailable final realization and
+diagnostic layers serialize as JSON `null`; they are never stale objects from a
+different iterate. ADR 0014 and ADR 0015 record these contracts.
+
 ## Accepted v0.8 contract decisions
 
 The following boundaries are already accepted:
@@ -1198,10 +1237,18 @@ The following boundaries are already accepted:
   while an uncertified attempt maps to the existing `numerical_failure` schema;
 - inferred periodic nearest images are exact-certified, explicit image shifts
   remain authoritative, and `image_search` is a correctness-neutral seed hint;
+- non-periodic generators use the half-open storage-domain contract, periodic
+  generators are remapped, and mandatory duplicate safety cannot be disabled;
 - source-independent row and observation-set identity is always available,
   while exact geometry-source provenance is optional and monotonic;
 - row-aligned records carry stable row IDs and report schema version 1 carries
-  authoritative source and observation-set provenance.
+  authoritative source and observation-set provenance;
+- active results separate outer termination from final inner status and expose
+  optional final geometry only when one coherent final state exists;
+- `TessellationDiagnostics.ok` is false for every error-severity issue; standard
+  missing IDs are errors, power hidden IDs are informational, undeclared-mode
+  missing IDs are warnings, and strict/warn/raise paths consume that final
+  severity-complete value.
 
 See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 [ADR 0005](decisions/0005-tessellation-result-contract.md), as refined by
@@ -1212,8 +1259,10 @@ See [ADR 0004](decisions/0004-canonical-inverse-namespace.md) and
 [ADR 0010](decisions/0010-native-construction-preconditions.md),
 [ADR 0011](decisions/0011-strict-input-and-ownership-contract.md),
 [ADR 0012](decisions/0012-certified-periodic-image-geometry.md),
-[ADR 0013](decisions/0013-central-generator-preparation-and-backend-safety.md),
-and [ADR 0014](decisions/0014-separator-observation-and-source-identity.md).
+  [ADR 0013](decisions/0013-central-generator-preparation-and-backend-safety.md),
+  [ADR 0014](decisions/0014-separator-observation-and-source-identity.md),
+  [ADR 0015](decisions/0015-atomic-separator-active-state.md), and
+  [ADR 0016](decisions/0016-severity-complete-tessellation-diagnostics.md).
 
 ## Lifecycle summary for the v0.8 API
 
@@ -1682,12 +1731,13 @@ and `tools/check_wheel_matrix.py`:
 
 | Layer | Exact v0.8 contract |
 |---|---|
-| Package metadata | `Requires-Python: >=3.10`; classifiers list Python 3.10, 3.11, 3.12, 3.13, and 3.14 |
+| Package metadata | `Requires-Python: >=3.10`; classifiers list Python 3.10, 3.11, 3.12, 3.13, and 3.14; no blanket OS-independent classifier |
 | Supported source builds | Standard GIL-enabled CPython 3.10–3.14 |
 | Source-install CI | All five supported versions on Linux, macOS, and Windows |
 | Wheel interpreters | CPython tags `cp310`, `cp311`, `cp312`, `cp313`, `cp314` |
 | Wheel platforms | manylinux x86_64, Windows AMD64, macOS arm64, macOS x86_64 |
-| Release artifact count | Exactly 20 wheels and one matching source distribution |
+| Release artifact target | Exactly 20 wheels and one matching source distribution; qualification remains issue #33 work |
+| License payload | Wheel metadata licenses contain `LICENSE`, `NOTICE.md`, and byte-identical `LICENSE.voro++`; the sdist also contains root and vendored Voro++ copies |
 | Optional SciPy | Not a runtime dependency; installed for wheel tests and imported only by explicit sparse paths |
 
 The open-ended metadata lower bound allows installation tooling to evaluate a
@@ -1703,6 +1753,10 @@ and is installed and exercised on a compatible runner. The source distribution
 is validated separately, rebuilt into one wheel under build isolation, and
 installed in a fresh no-SciPy environment. These distribution checks do not
 turn the internal native module names into public API.
+
+R9 builds representative local artifacts to validate the source contract. That
+does not qualify the complete 20-wheel plus one-sdist release matrix; issue #33
+must do so from the exact clean commit accepted after issue #35 closes.
 
 ## Scientifically meaningful semantics to inventory explicitly
 

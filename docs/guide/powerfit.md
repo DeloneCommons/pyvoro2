@@ -2,7 +2,9 @@
 
 `pyvoro2` can solve a fixed-site inverse problem for **power/Laguerre
 tessellations**: fit power weights so that selected pairwise separators land at
-desired locations along the connectors between sites.
+desired locations along the connector lines between sites. A normalized
+connector fraction may be any finite real value; restricting it to the segment
+between the two sites is a separate model constraint.
 
 New code should begin with the concise fixed-observation surface in
 `pyvoro2.inverse`. Advanced objective models, realization checks, reports, and
@@ -162,6 +164,10 @@ $$
 $$
 
 for absolute position measured from site `i`.
+
+The connector line extends beyond both sites, so neither the geometry nor the
+measurement type inherently restricts `t` to `[0, 1]`. Add an explicit
+between-sites restriction when that is part of the observation model.
 
 This is why `pyvoro2` exposes the measurement type explicitly: a loss in
 fraction-space and a loss in position-space are **different optimization

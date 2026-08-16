@@ -128,11 +128,14 @@ replacements.
 | Realization-aware active-set refinement | Experimental | Opt-in diagnostic outer algorithm |
 | v0.7-only inverse and planar compatibility routes | Removed in v0.8 | Follow the migration guide |
 | v0.8 cleanup and compatibility removal | Implemented maintenance scope | No new numerical features |
-| Prescribed cell areas/volumes | Planned for v0.9 | Not implemented |
-| Mixed separator and cell-measure fitting | Planned for v0.10 | Not implemented |
+| v0.9 functional/API stabilization | Planned before 1.0 | Refines existing forward, periodic, and separator workflows |
+| Prescribed cell areas/volumes | Planned for v1.1 | Not implemented |
+| Mixed separator and cell-measure fitting | Planned for v1.2 | Not implemented |
 
 The complete name-by-name contract is in the
-[v0.8 API inventory](../development/api-inventory.md).
+[v0.8 API inventory](../development/api-inventory.md). The
+[capabilities and limitations page](capabilities.md) separates supported
+behavior from removable wrapper restrictions and backend limitations.
 
 ## Static scalability contract
 

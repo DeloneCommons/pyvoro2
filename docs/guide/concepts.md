@@ -161,7 +161,7 @@ It uses **boundary measure** for:
 - face area in 3D.
 
 This shared vocabulary is useful for code that supports both dimensions and for
-prescribed-measure inverse fitting planned for v0.9.
+prescribed-measure inverse fitting planned for v1.1.
 
 ## Algebraic separators and realized boundaries
 

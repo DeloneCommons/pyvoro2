@@ -690,6 +690,30 @@ The current result vocabulary keeps these concerns distinct:
 Not every inverse method has every layer. Missing concepts should be absent or
 explicitly unsupported rather than filled with misleading placeholders.
 
+ADR 0014 fixes the two-layer observation model used by those results: every row
+and ordered observation set has stable source-independent identity, while exact
+points/domain/ID source binding is optional, monotonic provenance. Version 1 of
+the `pyvoro2.inverse.separator.report` schema preserves that provenance and the
+existing `power_weight_fit`, `realized_pair_diagnostics`, and
+`self_consistent_power_fit` kinds as strict JSON-native data.
+
+ADR 0015 makes active-set final state atomic. Outer termination and final-inner-
+fit status are distinct. Final realization/diagnostic layers are present only
+when they belong to the accepted final weighted state; otherwise availability,
+reason, final-refit convergence, and JSON nulls make their absence explicit.
+
+### Severity-complete forward diagnostics
+
+ADR 0016 defines overall tessellation and normalized-topology `ok` from the
+complete issue severities plus required invariants. Standard missing IDs are
+errors, hidden power IDs are informational empty cells, and missing IDs with
+undeclared mode are warnings. Malformed, non-finite, negative, missing, and
+nonzero-empty cell measures have explicit error codes. Required reciprocity
+fails while optional inspection remains nonfatal; annotation flags are reset on
+each marked analysis. Strict validation and compute warn/raise paths consume the
+final diagnostic `ok`, while warning-only normalized-topology findings remain
+nonfatal.
+
 ### Current compatibility boundary
 
 The v0.8 implementation does the following:
@@ -705,6 +729,9 @@ The v0.8 implementation does the following:
   refactors.
 
 See [API lifecycle](api-lifecycle.md) for the compatibility policy.
+The user-facing [capabilities and limitations](../guide/capabilities.md) page
+separates supported contracts, removable wrapper restrictions, backend/binary64
+limits, unsupported geometry, and open architecture policy.
 
 ## Downstream contract for chemvoro
 
@@ -798,6 +825,14 @@ weights only.
 Site motion, centroids, sections, and other research extensions should enter as
 new explicit unknown or observation families. They must not be hidden options
 inside the stable weights-only solver.
+
+### Open package and backend policy
+
+The current v0.8 tree is one repository and one distribution with vendored
+Voro++ sources. ADR 0017 deliberately does not turn those current facts into a
+permanent policy. Pre-1.0 planning must still decide whether to require one
+repository/distribution through 1.0 and whether to adopt a formal
+no-persistent-functional-Voro++-fork rule.
 
 ## Dependency rules
 

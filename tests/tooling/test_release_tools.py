@@ -7,11 +7,134 @@ import subprocess
 import sys
 import tarfile
 from types import ModuleType
+import warnings
 import zipfile
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_LICENSE_BYTES = (REPO_ROOT / 'LICENSE').read_bytes()
+NOTICE_BYTES = (REPO_ROOT / 'NOTICE.md').read_bytes()
+VORO_LICENSE_BYTES = (
+    REPO_ROOT / 'vendor' / 'voro++' / 'LICENSE'
+).read_bytes()
+TEST_DIST_INFO_ROOT = 'pyvoro2-0.8.0.dev0.dist-info'
+TEST_WHEEL_LICENSE = f'{TEST_DIST_INFO_ROOT}/licenses/LICENSE'
+TEST_WHEEL_NOTICE = f'{TEST_DIST_INFO_ROOT}/licenses/NOTICE.md'
+TEST_WHEEL_VORO_LICENSE = f'{TEST_DIST_INFO_ROOT}/licenses/LICENSE.voro++'
+TEST_WHEEL_METADATA = f'{TEST_DIST_INFO_ROOT}/METADATA'
+TEST_WHEEL_FILES = (
+    'pyvoro2/__init__.py',
+    'pyvoro2/__about__.py',
+    'pyvoro2/_internal/__init__.py',
+    'pyvoro2/_internal/cell_output.py',
+    'pyvoro2/_internal/inputs.py',
+    'pyvoro2/_internal/power_input.py',
+    'pyvoro2/_internal/weight_transforms.py',
+    'pyvoro2/_internal/spatial/__init__.py',
+    'pyvoro2/_internal/spatial/domain_geometry.py',
+    'pyvoro2/_internal/spatial/domain_utils.py',
+    'pyvoro2/_internal/spatial/face_shifts.py',
+    'pyvoro2/_internal/planar/__init__.py',
+    'pyvoro2/_internal/planar/domain_geometry.py',
+    'pyvoro2/_internal/planar/edge_shifts.py',
+    'pyvoro2/inverse/__init__.py',
+    'pyvoro2/inverse/separator/__init__.py',
+    'pyvoro2/inverse/separator/solver.py',
+    'pyvoro2/planar/__init__.py',
+    'pyvoro2/viz2d.py',
+    'pyvoro2/viz3d.py',
+    'pyvoro2/_core.test.so',
+    'pyvoro2/_core2d.test.so',
+    TEST_WHEEL_METADATA,
+    TEST_WHEEL_LICENSE,
+    TEST_WHEEL_NOTICE,
+    TEST_WHEEL_VORO_LICENSE,
+)
+TEST_SDIST_FILES = tuple(
+    """
+README.md
+CHANGELOG.md
+AGENTS.md
+CONTRIBUTING.md
+LICENSE
+NOTICE.md
+LICENSE.voro++
+vendor/voro++/LICENSE
+pyproject.toml
+PKG-INFO
+src/pyvoro2/_internal/__init__.py
+src/pyvoro2/_internal/cell_output.py
+src/pyvoro2/_internal/inputs.py
+src/pyvoro2/_internal/power_input.py
+src/pyvoro2/_internal/weight_transforms.py
+src/pyvoro2/_internal/spatial/__init__.py
+src/pyvoro2/_internal/spatial/domain_geometry.py
+src/pyvoro2/_internal/spatial/domain_utils.py
+src/pyvoro2/_internal/spatial/face_shifts.py
+src/pyvoro2/_internal/planar/__init__.py
+src/pyvoro2/_internal/planar/domain_geometry.py
+src/pyvoro2/_internal/planar/edge_shifts.py
+src/pyvoro2/inverse/__init__.py
+src/pyvoro2/inverse/separator/__init__.py
+src/pyvoro2/inverse/separator/solver.py
+benchmarks/README.md
+benchmarks/benchmark_sparse_separator.py
+examples/README.md
+examples/__init__.py
+examples/chemvoro_workflow.py
+examples/paper_regressions.py
+examples/static_separator_cases.py
+notebooks/01_basic_compute.ipynb
+notebooks/02_periodic_graph.ipynb
+notebooks/03_locate_and_ghost.ipynb
+notebooks/04_powerfit.ipynb
+notebooks/05_visualization.ipynb
+notebooks/06_powerfit_reports.ipynb
+notebooks/07_powerfit_infeasibility.ipynb
+notebooks/08_powerfit_active_path.ipynb
+docs/notebooks/01_basic_compute.md
+docs/notebooks/02_periodic_graph.md
+docs/notebooks/03_locate_and_ghost.md
+docs/notebooks/04_powerfit.md
+docs/notebooks/05_visualization.md
+docs/notebooks/06_powerfit_reports.md
+docs/notebooks/07_powerfit_infeasibility.md
+docs/notebooks/08_powerfit_active_path.md
+docs/theory/power-diagrams.md
+docs/guide/choosing-api.md
+docs/guide/glossary.md
+docs/guide/migration-v0.7.md
+docs/theory/separator-inverse.md
+docs/reference/index.md
+docs/development/architecture.md
+docs/development/api-lifecycle.md
+docs/development/api-inventory.md
+docs/development/documentation-conventions.md
+docs/development/development-workflow.md
+docs/development/release-checklist-v0.7.md
+docs/development/decisions/0004-canonical-inverse-namespace.md
+docs/development/decisions/0005-tessellation-result-contract.md
+docs/development/decisions/0006-v0.8-cleanup-release.md
+docs/development/plans/index.md
+docs/development/plans/v0.8.md
+docs/development/plans/template.md
+docs/development/plans/archive/index.md
+docs/project/roadmap.md
+tools/build_wheel_from_sdist.py
+tools/check_installed_package.py
+tools/check_dist.py
+tools/check_dist_metadata.py
+tools/check_wheel_matrix.py
+tools/_notebook_tools.py
+tools/check_notebooks.py
+tools/execute_notebooks.py
+tools/export_notebooks.py
+tools/gen_readme.py
+tools/release_check.py
+tools/README.md
+""".split()
+)
 
 
 def _load_tool_module(script_name: str) -> ModuleType:
@@ -37,6 +160,10 @@ DistributionMetadataCheckError = (
     dist_metadata_tool.DistributionMetadataCheckError
 )
 distribution_artifacts = dist_metadata_tool.distribution_artifacts
+select_distribution_artifacts = (
+    dist_metadata_tool.select_distribution_artifacts
+)
+run_twine_check_artifacts = dist_metadata_tool.run_twine_check_artifacts
 run_twine_check = dist_metadata_tool.run_twine_check
 
 installed_package_tool = _load_tool_module('check_installed_package')
@@ -47,6 +174,7 @@ dist_tool = _load_tool_module('check_dist')
 DistCheckError = dist_tool.DistCheckError
 check_sdist = dist_tool.check_sdist
 check_wheel = dist_tool.check_wheel
+select_content_artifacts = dist_tool.distribution_artifacts
 
 overlay_tool = _load_tool_module('install_wheel_overlay')
 
@@ -118,30 +246,87 @@ def _write_content_wheel(
     path: Path,
     *,
     extra_members: tuple[str, ...] = (),
+    omitted_members: tuple[str, ...] = (),
+    member_data: dict[str, bytes] | None = None,
+) -> None:
+    overrides = {} if member_data is None else member_data
+    defaults = {
+        TEST_WHEEL_LICENSE: PROJECT_LICENSE_BYTES,
+        TEST_WHEEL_NOTICE: NOTICE_BYTES,
+        TEST_WHEEL_VORO_LICENSE: VORO_LICENSE_BYTES,
+    }
+    entries = [
+        (member, overrides.get(member, defaults.get(member, b'')))
+        for member in TEST_WHEEL_FILES
+        if member not in omitted_members
+    ]
+    entries.extend((member, b'') for member in extra_members)
+    _write_wheel_entries(path, entries)
+
+
+def _write_wheel_entries(
+    path: Path,
+    entries: list[tuple[str, bytes]],
 ) -> None:
     with zipfile.ZipFile(path, 'w') as zf:
-        for suffix in sorted(dist_tool.REQUIRED_WHEEL_SUFFIXES):
-            member = (
-                f'{suffix}.test.so'
-                if suffix in {'pyvoro2/_core', 'pyvoro2/_core2d'}
-                else suffix
-            )
-            zf.writestr(member, b'')
-        for member in extra_members:
-            zf.writestr(member, b'')
+        for member, data in entries:
+            zf.writestr(member, data)
 
 
 def _write_content_sdist(
     path: Path,
     *,
     extra_members: tuple[str, ...] = (),
+    omitted_members: tuple[str, ...] = (),
+    member_data: dict[str, bytes] | None = None,
 ) -> None:
     prefix = 'pyvoro2-0.8.0.dev0'
+    overrides = {} if member_data is None else member_data
+    defaults = {
+        'LICENSE': PROJECT_LICENSE_BYTES,
+        'NOTICE.md': NOTICE_BYTES,
+        'LICENSE.voro++': VORO_LICENSE_BYTES,
+        'vendor/voro++/LICENSE': VORO_LICENSE_BYTES,
+    }
+    entries = [
+        (
+            f'{prefix}/{suffix}',
+            overrides.get(suffix, defaults.get(suffix, b'')),
+        )
+        for suffix in TEST_SDIST_FILES
+        if suffix not in omitted_members
+    ]
+    entries.extend((f'{prefix}/{member}', b'') for member in extra_members)
+    _write_sdist_entries(path, entries)
+
+
+def _write_sdist_entries(
+    path: Path,
+    entries: list[tuple[str, bytes]],
+) -> None:
     with tarfile.open(path, 'w:gz') as tf:
-        for suffix in sorted(dist_tool.REQUIRED_SDIST_SUFFIXES):
-            tf.addfile(tarfile.TarInfo(f'{prefix}/{suffix}'), io.BytesIO())
-        for member in extra_members:
-            tf.addfile(tarfile.TarInfo(f'{prefix}/{member}'), io.BytesIO())
+        for name, data in entries:
+            member = tarfile.TarInfo(name)
+            member.size = len(data)
+            tf.addfile(member, io.BytesIO(data))
+
+
+def _read_wheel_entries(path: Path) -> list[tuple[str, bytes]]:
+    with zipfile.ZipFile(path) as zf:
+        return [
+            (entry.filename, zf.read(entry))
+            for entry in zf.infolist()
+            if not entry.is_dir()
+        ]
+
+
+def _read_sdist_entries(path: Path) -> list[tuple[str, bytes]]:
+    with tarfile.open(path, 'r:gz') as tf:
+        return [
+            (member.name, tf.extractfile(member).read())
+            for member in tf.getmembers()
+            if member.isfile()
+        ]
 
 
 def test_distribution_content_checks_require_internal_hierarchy(
@@ -161,11 +346,11 @@ def test_distribution_content_checks_require_internal_hierarchy(
         'pyvoro2/_internal/planar/domain_geometry.py',
         'pyvoro2/_internal/planar/edge_shifts.py',
     }
-    assert required_internal <= dist_tool.REQUIRED_WHEEL_SUFFIXES
+    assert required_internal <= dist_tool.REQUIRED_WHEEL_FILES
     assert {
         f'src/{member}'
         for member in required_internal
-    } <= dist_tool.REQUIRED_SDIST_SUFFIXES
+    } <= dist_tool.REQUIRED_SDIST_FILES
 
     wheel = tmp_path / 'pyvoro2-test.whl'
     sdist = tmp_path / 'pyvoro2-test.tar.gz'
@@ -176,8 +361,390 @@ def test_distribution_content_checks_require_internal_hierarchy(
     check_sdist(sdist)
 
 
+def test_wheel_content_check_does_not_treat_core2d_as_core(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(
+        wheel,
+        omitted_members=('pyvoro2/_core.test.so',),
+    )
+
+    with pytest.raises(DistCheckError, match=r'pyvoro2/_core native.*found 0'):
+        check_wheel(wheel)
+
+
+def test_wheel_content_check_requires_core2d(tmp_path: Path) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(
+        wheel,
+        omitted_members=('pyvoro2/_core2d.test.so',),
+    )
+
+    with pytest.raises(DistCheckError, match=r'pyvoro2/_core2d native.*found 0'):
+        check_wheel(wheel)
+
+
+def test_wheel_content_check_rejects_misleading_core_name(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(
+        wheel,
+        omitted_members=('pyvoro2/_core.test.so',),
+        extra_members=('pyvoro2/_coreevil.test.so',),
+    )
+
+    with pytest.raises(DistCheckError, match=r'pyvoro2/_core native.*found 0'):
+        check_wheel(wheel)
+
+
+@pytest.mark.parametrize('module_name', ['_core', '_core2d'])
+def test_wheel_content_check_rejects_ambiguous_native_modules(
+    tmp_path: Path,
+    module_name: str,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(
+        wheel,
+        extra_members=(f'pyvoro2/{module_name}.other.so',),
+    )
+
+    with pytest.raises(
+        DistCheckError,
+        match=rf'pyvoro2/{module_name} native.*found 2',
+    ):
+        check_wheel(wheel)
+
+
+def test_wheel_content_check_rejects_prefixed_required_python_files(
+    tmp_path: Path,
+) -> None:
+    valid = tmp_path / 'valid.whl'
+    malformed = tmp_path / 'prefixed.whl'
+    _write_content_wheel(valid)
+    entries = [
+        (f'evil/{name}' if name.endswith('.py') else name, data)
+        for name, data in _read_wheel_entries(valid)
+    ]
+    _write_wheel_entries(malformed, entries)
+
+    with pytest.raises(DistCheckError, match='missing required members'):
+        check_wheel(malformed)
+
+
+def test_wheel_content_check_rejects_duplicate_license_before_valid_copy(
+    tmp_path: Path,
+) -> None:
+    valid = tmp_path / 'valid.whl'
+    malformed = tmp_path / 'duplicate-license.whl'
+    _write_content_wheel(valid)
+    entries: list[tuple[str, bytes]] = []
+    for name, data in _read_wheel_entries(valid):
+        if name == TEST_WHEEL_VORO_LICENSE:
+            entries.append((name, b'corrupt'))
+        entries.append((name, data))
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', UserWarning)
+        _write_wheel_entries(malformed, entries)
+
+    with pytest.raises(DistCheckError, match='duplicate file members'):
+        check_wheel(malformed)
+
+
+def test_sdist_content_check_rejects_duplicate_license_before_valid_copy(
+    tmp_path: Path,
+) -> None:
+    valid = tmp_path / 'valid.tar.gz'
+    malformed = tmp_path / 'duplicate-license.tar.gz'
+    _write_content_sdist(valid)
+    target = 'pyvoro2-0.8.0.dev0/LICENSE.voro++'
+    entries: list[tuple[str, bytes]] = []
+    for name, data in _read_sdist_entries(valid):
+        if name == target:
+            entries.append((name, b'corrupt'))
+        entries.append((name, data))
+    _write_sdist_entries(malformed, entries)
+
+    with pytest.raises(DistCheckError, match='duplicate file members'):
+        check_sdist(malformed)
+
+
+def test_sdist_content_check_rejects_required_files_split_between_roots(
+    tmp_path: Path,
+) -> None:
+    valid = tmp_path / 'valid.tar.gz'
+    malformed = tmp_path / 'split-roots.tar.gz'
+    _write_content_sdist(valid)
+    entries = []
+    for index, (name, data) in enumerate(_read_sdist_entries(valid)):
+        relative = name.split('/', 1)[1]
+        root = 'root-A' if index % 2 else 'root-B'
+        entries.append((f'{root}/{relative}', data))
+    _write_sdist_entries(malformed, entries)
+
+    with pytest.raises(DistCheckError, match='exactly one top-level root'):
+        check_sdist(malformed)
+
+
+def test_wheel_content_check_rejects_drive_relative_member(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(
+        wheel,
+        extra_members=('C:evil/payload.txt',),
+    )
+
+    with pytest.raises(DistCheckError, match='unsafe archive member name'):
+        check_wheel(wheel)
+
+
+def test_sdist_content_check_rejects_drive_relative_root(
+    tmp_path: Path,
+) -> None:
+    valid = tmp_path / 'valid.tar.gz'
+    malformed = tmp_path / 'drive-relative.tar.gz'
+    _write_content_sdist(valid)
+    entries = [
+        (f'C:root/{name.split("/", 1)[1]}', data)
+        for name, data in _read_sdist_entries(valid)
+    ]
+    _write_sdist_entries(malformed, entries)
+
+    with pytest.raises(DistCheckError, match='unsafe archive member name'):
+        check_sdist(malformed)
+
+
+@pytest.mark.parametrize(
+    ('artifact_kind', 'original', 'alias'),
+    [
+        ('wheel', 'pyvoro2/__init__.py', '/pyvoro2/__init__.py'),
+        ('wheel', 'pyvoro2/__init__.py', 'pyvoro2\\__init__.py'),
+        ('wheel', 'pyvoro2/__init__.py', 'pyvoro2/./__init__.py'),
+        ('wheel', 'pyvoro2/__init__.py', 'evil/../pyvoro2/__init__.py'),
+        (
+            'sdist',
+            'pyvoro2-0.8.0.dev0/README.md',
+            '/pyvoro2-0.8.0.dev0/README.md',
+        ),
+        (
+            'sdist',
+            'pyvoro2-0.8.0.dev0/README.md',
+            'pyvoro2-0.8.0.dev0\\README.md',
+        ),
+        (
+            'sdist',
+            'pyvoro2-0.8.0.dev0/README.md',
+            'pyvoro2-0.8.0.dev0/./README.md',
+        ),
+        (
+            'sdist',
+            'pyvoro2-0.8.0.dev0/README.md',
+            'evil/../pyvoro2-0.8.0.dev0/README.md',
+        ),
+    ],
+)
+def test_distribution_content_checks_reject_unsafe_required_path_aliases(
+    tmp_path: Path,
+    artifact_kind: str,
+    original: str,
+    alias: str,
+) -> None:
+    if artifact_kind == 'wheel':
+        valid = tmp_path / 'valid.whl'
+        malformed = tmp_path / 'unsafe.whl'
+        _write_content_wheel(valid)
+        entries = _read_wheel_entries(valid)
+        writer = _write_wheel_entries
+        checker = check_wheel
+    else:
+        valid = tmp_path / 'valid.tar.gz'
+        malformed = tmp_path / 'unsafe.tar.gz'
+        _write_content_sdist(valid)
+        entries = _read_sdist_entries(valid)
+        writer = _write_sdist_entries
+        checker = check_sdist
+    writer(
+        malformed,
+        [(alias if name == original else name, data) for name, data in entries],
+    )
+
+    with pytest.raises(DistCheckError, match='unsafe archive member name'):
+        checker(malformed)
+
+
+def test_wheel_content_check_requires_one_dist_info_root(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(
+        wheel,
+        extra_members=('other-0.dist-info/METADATA',),
+    )
+
+    with pytest.raises(DistCheckError, match='exactly one .dist-info root'):
+        check_wheel(wheel)
+
+
 def test_distribution_content_checks_require_metadata_tool() -> None:
-    assert 'tools/check_dist_metadata.py' in dist_tool.REQUIRED_SDIST_SUFFIXES
+    assert 'tools/check_dist_metadata.py' in dist_tool.REQUIRED_SDIST_FILES
+
+
+@pytest.mark.parametrize(
+    'suffix',
+    [
+        TEST_WHEEL_LICENSE,
+        TEST_WHEEL_NOTICE,
+        TEST_WHEEL_VORO_LICENSE,
+    ],
+)
+def test_wheel_content_check_requires_complete_license_payload(
+    tmp_path: Path,
+    suffix: str,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(wheel, omitted_members=(suffix,))
+
+    with pytest.raises(DistCheckError, match='missing required members'):
+        check_wheel(wheel)
+
+
+@pytest.mark.parametrize(
+    'member',
+    ['LICENSE', 'NOTICE.md', 'LICENSE.voro++', 'vendor/voro++/LICENSE'],
+)
+def test_sdist_content_check_requires_complete_license_payload(
+    tmp_path: Path,
+    member: str,
+) -> None:
+    sdist = tmp_path / 'pyvoro2-test.tar.gz'
+    _write_content_sdist(sdist, omitted_members=(member,))
+
+    with pytest.raises(DistCheckError, match='missing required members'):
+        check_sdist(sdist)
+
+
+@pytest.mark.parametrize(
+    ('artifact_kind', 'member'),
+    [
+        ('wheel', TEST_WHEEL_LICENSE),
+        ('wheel', TEST_WHEEL_NOTICE),
+        ('wheel', TEST_WHEEL_VORO_LICENSE),
+        ('sdist', 'LICENSE'),
+        ('sdist', 'NOTICE.md'),
+        ('sdist', 'LICENSE.voro++'),
+        ('sdist', 'vendor/voro++/LICENSE'),
+    ],
+)
+def test_distribution_content_checks_reject_mutated_license_payload(
+    tmp_path: Path,
+    artifact_kind: str,
+    member: str,
+) -> None:
+    artifact = tmp_path / (
+        'pyvoro2-test.whl'
+        if artifact_kind == 'wheel'
+        else 'pyvoro2-test.tar.gz'
+    )
+    mutation = (
+        NOTICE_BYTES + b'\nmutated\n'
+        if member.endswith('NOTICE.md')
+        else b'mutated'
+    )
+    if artifact_kind == 'wheel':
+        _write_content_wheel(artifact, member_data={member: mutation})
+        checker = check_wheel
+    else:
+        _write_content_sdist(artifact, member_data={member: mutation})
+        checker = check_sdist
+
+    with pytest.raises(DistCheckError, match='does not match'):
+        checker(artifact)
+
+
+@pytest.mark.parametrize('artifact_kind', ['wheel', 'sdist'])
+def test_distribution_content_checks_reject_stale_notice_target(
+    tmp_path: Path,
+    artifact_kind: str,
+) -> None:
+    artifact = tmp_path / (
+        'pyvoro2-test.whl'
+        if artifact_kind == 'wheel'
+        else 'pyvoro2-test.tar.gz'
+    )
+    if artifact_kind == 'wheel':
+        _write_content_wheel(
+            artifact,
+            member_data={TEST_WHEEL_NOTICE: b'vendored path only'},
+        )
+        checker = check_wheel
+    else:
+        _write_content_sdist(
+            artifact,
+            member_data={'NOTICE.md': b'vendored path only'},
+        )
+        checker = check_sdist
+
+    with pytest.raises(DistCheckError, match='LICENSE.voro'):
+        checker(artifact)
+
+
+def test_distribution_content_checks_reject_os_independent_metadata(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    sdist = tmp_path / 'pyvoro2-test.tar.gz'
+    _write_content_wheel(
+        wheel,
+        member_data={
+            TEST_WHEEL_METADATA: (
+                b'Classifier: Operating System :: OS Independent\n'
+            )
+        },
+    )
+    _write_content_sdist(
+        sdist,
+        member_data={
+            'PKG-INFO': b'Classifier: Operating System :: OS Independent\n'
+        },
+    )
+
+    with pytest.raises(DistCheckError, match='OS Independent'):
+        check_wheel(wheel)
+    with pytest.raises(DistCheckError, match='OS Independent'):
+        check_sdist(sdist)
+
+
+def test_r9_source_metadata_and_api_inventory_are_current() -> None:
+    pyproject = (REPO_ROOT / 'pyproject.toml').read_text(encoding='utf-8')
+    conftest = (REPO_ROOT / 'tests' / 'conftest.py').read_text(encoding='utf-8')
+    assert 'Operating System :: OS Independent' not in pyproject
+    assert (
+        'fuzz: seeded randomized fuzz/property tests included in the default suite'
+        in pyproject
+    )
+    assert 'default=10' in conftest
+    assert 'pytest_collection_modifyitems' not in conftest
+
+    inventory = (
+        REPO_ROOT / 'docs' / 'development' / 'api-inventory.md'
+    ).read_text(encoding='utf-8')
+    current = inventory.split('## Current v0.8 contract', 1)[1]
+    assert 'There is no current `pyvoro2.powerfit`' in current
+    for retained_name in (
+        'PowerFitBounds',
+        'PowerFitPredictions',
+        'PowerFitObjectiveBreakdown',
+        'SelfConsistentPowerFitResult',
+    ):
+        assert retained_name in current
+    for report_kind in (
+        'power_weight_fit',
+        'realized_pair_diagnostics',
+        'self_consistent_power_fit',
+    ):
+        assert report_kind in current
 
 
 def test_distribution_content_checks_reject_obsolete_private_paths(
@@ -292,7 +859,74 @@ def test_distribution_metadata_artifacts_are_filtered_and_sorted(
     sdist.touch()
     ignored.touch()
 
-    assert distribution_artifacts(tmp_path) == (sdist, wheel)
+    assert distribution_artifacts(tmp_path) == (
+        sdist.resolve(),
+        wheel.resolve(),
+    )
+
+
+def test_distribution_artifact_selection_canonicalizes_equivalent_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-2.whl'
+    sdist = tmp_path / 'pyvoro2-1.tar.gz'
+    wheel.touch()
+    sdist.touch()
+    monkeypatch.chdir(tmp_path.parent)
+    relative_dir = Path(tmp_path.name)
+    relative_wheel = relative_dir / wheel.name
+    inputs = [relative_dir, relative_wheel, wheel.resolve()]
+    expected = (sdist.resolve(), wheel.resolve())
+
+    assert select_content_artifacts(inputs) == expected
+    assert select_distribution_artifacts(inputs) == expected
+
+
+def test_twine_artifact_selection_is_unique_and_deterministic(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-2.whl'
+    sdist = tmp_path / 'pyvoro2-1.tar.gz'
+    wheel.touch()
+    sdist.touch()
+    monkeypatch.chdir(tmp_path.parent)
+    relative_dir = Path(tmp_path.name)
+    selected = select_distribution_artifacts(
+        [relative_dir, relative_dir / wheel.name, wheel.resolve()]
+    )
+    observed: dict[str, object] = {}
+
+    def fake_run(
+        command: list[str],
+        *,
+        cwd: Path,
+        check: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        observed['command'] = command
+        observed['cwd'] = cwd
+        observed['check'] = check
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(dist_metadata_tool.subprocess, 'run', fake_run)
+
+    assert run_twine_check_artifacts(
+        (*selected, wheel.resolve()),
+        python_executable='python-for-test',
+    ) == (sdist.resolve(), wheel.resolve())
+    assert observed == {
+        'command': [
+            'python-for-test',
+            '-m',
+            'twine',
+            'check',
+            str(sdist.resolve()),
+            str(wheel.resolve()),
+        ],
+        'cwd': REPO_ROOT,
+        'check': True,
+    }
 
 
 def test_distribution_metadata_requires_artifacts(tmp_path: Path) -> None:
@@ -386,6 +1020,7 @@ def _write_fake_wheel(
     optional_requirements: tuple[str, ...] = WHEEL_MATRIX_OPTIONAL_REQUIREMENTS,
     include_core: bool = True,
     include_core2d: bool = True,
+    extra_native_members: tuple[str, ...] = (),
 ) -> Path:
     abi = python_tag if abi_tag is None else abi_tag
     filename = (
@@ -427,6 +1062,8 @@ def _write_fake_wheel(
             zf.writestr('pyvoro2/_core.test.so', b'native-core')
         if include_core2d:
             zf.writestr('pyvoro2/_core2d.test.so', b'native-core2d')
+        for member in extra_native_members:
+            zf.writestr(member, b'extra-native')
     return path
 
 
@@ -632,6 +1269,95 @@ def test_wheel_matrix_requires_both_native_modules(tmp_path: Path) -> None:
     )
 
     with pytest.raises(WheelMatrixError, match=r'pyvoro2/_core2d'):
+        validate_wheel_matrix(tmp_path)
+
+
+@pytest.mark.parametrize('module_name', ['_core', '_core2d'])
+@pytest.mark.parametrize(
+    'member_template',
+    [
+        'pyvoro2/{module}.test.so/',
+        'pyvoro2/./{module}.test.so',
+        'pyvoro2//{module}.test.so',
+    ],
+)
+def test_wheel_matrix_rejects_non_file_or_aliased_native_members(
+    tmp_path: Path,
+    module_name: str,
+    member_template: str,
+) -> None:
+    _write_complete_wheel_matrix(tmp_path)
+    _write_fake_wheel(
+        tmp_path,
+        'cp310',
+        'win_amd64',
+        include_core=module_name != '_core',
+        include_core2d=module_name != '_core2d',
+        extra_native_members=(
+            member_template.format(module=module_name),
+        ),
+    )
+
+    with pytest.raises(
+        WheelMatrixError,
+        match=rf'pyvoro2/{module_name} native module, found 0',
+    ):
+        validate_wheel_matrix(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ('module_name', 'malformed_member'),
+    [
+        ('_core', 'pyvoro2/_core.evil\\payload.so'),
+        ('_core2d', 'pyvoro2/_core2d.evil\\payload.pyd'),
+    ],
+)
+def test_wheel_matrix_rejects_backslash_native_aliases(
+    tmp_path: Path,
+    module_name: str,
+    malformed_member: str,
+) -> None:
+    _write_complete_wheel_matrix(tmp_path)
+    _write_fake_wheel(
+        tmp_path,
+        'cp310',
+        'win_amd64',
+        include_core=module_name != '_core',
+        include_core2d=module_name != '_core2d',
+        extra_native_members=(malformed_member,),
+    )
+
+    with pytest.raises(
+        WheelMatrixError,
+        match=rf'pyvoro2/{module_name} native module, found 0',
+    ):
+        validate_wheel_matrix(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ('module_name', 'extra_member'),
+    [
+        ('_core', 'pyvoro2/_core.extra.so'),
+        ('_core2d', 'pyvoro2/_core2d.extra.so'),
+    ],
+)
+def test_wheel_matrix_rejects_ambiguous_native_modules(
+    tmp_path: Path,
+    module_name: str,
+    extra_member: str,
+) -> None:
+    _write_complete_wheel_matrix(tmp_path)
+    _write_fake_wheel(
+        tmp_path,
+        'cp310',
+        'win_amd64',
+        extra_native_members=(extra_member,),
+    )
+
+    with pytest.raises(
+        WheelMatrixError,
+        match=rf'exactly one pyvoro2/{module_name} native module, found 2',
+    ):
         validate_wheel_matrix(tmp_path)
 
 
