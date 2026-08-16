@@ -334,9 +334,16 @@ def check_wheel(path: Path) -> WheelFilename:
     try:
         with zipfile.ZipFile(path) as zf:
             entries = zf.infolist()
-            file_names = [
-                entry.filename for entry in entries if not entry.is_dir()
+            file_entries = [
+                entry for entry in entries if not entry.is_dir()
             ]
+            # Match identities before ``zipfile`` applies platform separators.
+            file_names = [
+                entry.orig_filename for entry in file_entries
+            ]
+            entries_by_name = {
+                entry.orig_filename: entry for entry in file_entries
+            }
             metadata_member = _only_archive_member(
                 file_names,
                 suffix='.dist-info/METADATA',
@@ -348,11 +355,11 @@ def check_wheel(path: Path) -> WheelFilename:
                 label=path.name,
             )
             metadata = _parse_metadata(
-                zf.read(metadata_member),
+                zf.read(entries_by_name[metadata_member]),
                 label=f'{path.name}:{metadata_member}',
             )
             wheel_metadata = _parse_metadata(
-                zf.read(wheel_member),
+                zf.read(entries_by_name[wheel_member]),
                 label=f'{path.name}:{wheel_member}',
             )
     except (OSError, KeyError, zipfile.BadZipFile) as exc:

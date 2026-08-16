@@ -270,7 +270,19 @@ def _write_wheel_entries(
 ) -> None:
     with zipfile.ZipFile(path, 'w') as zf:
         for member, data in entries:
-            zf.writestr(member, data)
+            _writestr_exact(zf, member, data)
+
+
+def _writestr_exact(
+    zf: zipfile.ZipFile,
+    member: str,
+    data: str | bytes,
+) -> None:
+    """Write an exact member spelling, including deliberately unsafe names."""
+
+    entry = zipfile.ZipInfo(member)
+    entry.filename = member
+    zf.writestr(entry, data)
 
 
 def _write_content_sdist(
@@ -314,7 +326,7 @@ def _write_sdist_entries(
 def _read_wheel_entries(path: Path) -> list[tuple[str, bytes]]:
     with zipfile.ZipFile(path) as zf:
         return [
-            (entry.filename, zf.read(entry))
+            (entry.orig_filename, zf.read(entry))
             for entry in zf.infolist()
             if not entry.is_dir()
         ]
@@ -521,6 +533,11 @@ def test_sdist_content_check_rejects_drive_relative_root(
     [
         ('wheel', 'pyvoro2/__init__.py', '/pyvoro2/__init__.py'),
         ('wheel', 'pyvoro2/__init__.py', 'pyvoro2\\__init__.py'),
+        (
+            'wheel',
+            'pyvoro2/__init__.py',
+            'pyvoro2/__init__.py\x00ignored',
+        ),
         ('wheel', 'pyvoro2/__init__.py', 'pyvoro2/./__init__.py'),
         ('wheel', 'pyvoro2/__init__.py', 'evil/../pyvoro2/__init__.py'),
         (
@@ -572,6 +589,19 @@ def test_distribution_content_checks_reject_unsafe_required_path_aliases(
 
     with pytest.raises(DistCheckError, match='unsafe archive member name'):
         checker(malformed)
+
+
+def test_wheel_content_check_rejects_raw_normalized_name_collision(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'normalized-collision.whl'
+    _write_content_wheel(
+        wheel,
+        extra_members=('pyvoro2\\__init__.py',),
+    )
+
+    with pytest.raises(DistCheckError, match='unsafe archive member name'):
+        check_wheel(wheel)
 
 
 def test_wheel_content_check_requires_one_dist_info_root(
@@ -1040,7 +1070,8 @@ def _write_fake_wheel(
     )
 
     with zipfile.ZipFile(path, 'w') as zf:
-        zf.writestr(
+        _writestr_exact(
+            zf,
             f'{dist_info}/METADATA',
             (
                 'Metadata-Version: 2.2\n'
@@ -1049,7 +1080,8 @@ def _write_fake_wheel(
                 f'{runtime_metadata}'
             ),
         )
-        zf.writestr(
+        _writestr_exact(
+            zf,
             f'{dist_info}/WHEEL',
             (
                 'Wheel-Version: 1.0\n'
@@ -1059,11 +1091,19 @@ def _write_fake_wheel(
             ),
         )
         if include_core:
-            zf.writestr('pyvoro2/_core.test.so', b'native-core')
+            _writestr_exact(
+                zf,
+                'pyvoro2/_core.test.so',
+                b'native-core',
+            )
         if include_core2d:
-            zf.writestr('pyvoro2/_core2d.test.so', b'native-core2d')
+            _writestr_exact(
+                zf,
+                'pyvoro2/_core2d.test.so',
+                b'native-core2d',
+            )
         for member in extra_native_members:
-            zf.writestr(member, b'extra-native')
+            _writestr_exact(zf, member, b'extra-native')
     return path
 
 
@@ -1308,8 +1348,8 @@ def test_wheel_matrix_rejects_non_file_or_aliased_native_members(
 @pytest.mark.parametrize(
     ('module_name', 'malformed_member'),
     [
-        ('_core', 'pyvoro2/_core.evil\\payload.so'),
-        ('_core2d', 'pyvoro2/_core2d.evil\\payload.pyd'),
+        ('_core', 'pyvoro2\\_core.test.so'),
+        ('_core2d', 'pyvoro2\\_core2d.test.pyd'),
     ],
 )
 def test_wheel_matrix_rejects_backslash_native_aliases(

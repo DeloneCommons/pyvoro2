@@ -226,6 +226,7 @@ def _assert_safe_archive_names(names: list[str], *, label: str) -> None:
         first = path_parts[0] if path_parts else ''
         if (
             not name
+            or '\x00' in name
             or '\\' in name
             or PurePosixPath(name).is_absolute()
             or bool(PureWindowsPath(name).drive)
@@ -315,15 +316,26 @@ def check_wheel(path: Path) -> None:
 
     with zipfile.ZipFile(path) as zf:
         entries = zf.infolist()
+        # ``filename`` is platform-normalized; safety depends on raw spelling.
+        raw_names = [entry.orig_filename for entry in entries]
         _assert_safe_archive_names(
-            [entry.filename for entry in entries],
+            raw_names,
             label=path.name,
         )
-        file_names = [
-            entry.filename for entry in entries if not entry.is_dir()
-        ]
+        for entry in entries:
+            if entry.orig_filename != entry.filename:
+                raise DistCheckError(
+                    f'{path.name} contains unsafe archive member name '
+                    f'{entry.orig_filename!r}'
+                )
+
+        file_entries = [entry for entry in entries if not entry.is_dir()]
+        file_names = [entry.orig_filename for entry in file_entries]
         _assert_unique_file_names(file_names, label=path.name)
         files = set(file_names)
+        entries_by_name = {
+            entry.orig_filename: entry for entry in file_entries
+        }
         _assert_members_present(files, REQUIRED_WHEEL_FILES, label=path.name)
         _assert_members_absent(files, FORBIDDEN_WHEEL_MARKERS, label=path.name)
 
@@ -348,7 +360,7 @@ def check_wheel(path: Path) -> None:
         )
         expected_licenses = _expected_license_payload()
         packaged_licenses = {
-            kind: zf.read(member)
+            kind: zf.read(entries_by_name[member])
             for kind, member in license_members.items()
         }
         _assert_notice_points_to_packaged_license(
@@ -363,7 +375,7 @@ def check_wheel(path: Path) -> None:
                 source_label=LICENSE_SOURCE_LABELS[kind],
             )
         _assert_platform_metadata(
-            zf.read(metadata_member),
+            zf.read(entries_by_name[metadata_member]),
             label=f'{path.name} METADATA',
         )
 
