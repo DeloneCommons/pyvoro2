@@ -712,46 +712,86 @@ chemvoro is intended to be a thin chemistry-facing layer. It supplies atomic
 information and proposed interatomic separator positions; pyvoro2 supplies the
 weighted geometry and inverse mathematics.
 
-The current v0.8 contract lets chemvoro rely on:
+The current v0.8 architecture already provides most of the intended boundary:
 
 1. stable association of coordinates, external atom IDs, and output cells;
 2. direct forward computation from power weights;
-3. stable access to cell measures, boundaries, and periodic image labels;
-4. a preferred separator-fitting entry point independent of chemistry;
+3. structured access to cell measures, boundaries, and periodic image labels;
+4. a preferred fixed-observation separator-fitting entry point independent of
+   chemistry;
 5. explicit global gauge and disconnected-component-offset metadata;
 6. separate algebraic-fit and realized-geometry diagnostics;
 7. JSON-/record-friendly outputs for caching and reporting;
 8. no dependency on private backend radius shifts, solver internals, or record
    ordering accidents.
 
-A repository-owned chemvoro-shaped integration workflow validates the preferred
-public boundary without private imports.
+v0.9 is now responsible for qualifying this boundary under realistic molecule,
+crystal, and independent-frame workflows and for removing remaining wrapper/API
+restrictions that would force chemistry-facing callers to use private data,
+manual radius conversion, or representation-dependent periodic search tuning.
+The realization-aware separator workflow must also become an ordinary supported
+inverse route rather than remain experimental solely because its outer algorithm
+has no universal convergence theorem.
+
+A repository-owned chemvoro-shaped integration suite is the preferred early
+oracle for this downstream boundary while keeping chemistry-specific models out
+of pyvoro2.
 
 ## Release sequence from v0.8
+
+[ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md)
+supersedes the provisional post-v0.8 feature ordering in ADR 0006 without
+changing v0.8 itself.
 
 ### v0.8 cleanup and compatibility removal
 
 ADR 0006 makes v0.8 a feature-free maintenance release. It removes the bounded
 v0.7 compatibility layer, organizes tests by responsibility, moves root private
-Python helpers under `pyvoro2._internal`, and resolves non-critical audit
-findings. The helper move is complete in the current tree: shared code is
-dimension-neutral, while genuine 3D and 2D behavior has explicit `spatial` and
-`planar` ownership. Compiled `_core` and `_core2d` names remain private native
-extension names; no public `pyvoro2.core` namespace is introduced.
+Python helpers under `pyvoro2._internal`, and resolves accepted pre-release
+correctness and maintenance findings. The helper move is complete in the
+current tree: shared code is dimension-neutral, while genuine 3D and 2D
+behavior has explicit `spatial` and `planar` ownership. Compiled `_core` and
+`_core2d` names remain private native extension names; no public
+`pyvoro2.core` namespace is introduced.
 
-### v0.9 prescribed cell measures
+### v0.9 functional stabilization and downstream readiness
 
-The second inverse family reuses the same geometry and result contracts: fixed
+v0.9 is the last planned broad pre-1.0 refinement release. It may make deliberate
+documented API changes to remove artificial forward/periodic restrictions,
+complete weight-first and periodic-query semantics, and qualify the public
+contract against real downstream use.
+
+The normal "points + separator observations -> fitted weighted tessellation"
+workflow should be promoted to a supported public inverse contract. The
+fixed-observation inner solve remains mathematically separate from the empirical
+realization-aware outer refinement. Stable status means stable input, result,
+provenance, and structured termination semantics; it does not promise that the
+outer algorithm converges on every input.
+
+Documentation work follows the same stabilization in three passes: factual
+alignment, content/information-architecture improvement, then presentation and
+possible documentation-stack redesign.
+
+### 1.0 stable main contract
+
+1.0 stabilizes the forward, periodic, and separator-inverse workflows after
+v0.9 downstream qualification. It does not depend on adding a second inverse
+observation family first.
+
+### v1.1 prescribed cell measures
+
+The second inverse family reuses the stable geometry and result contracts: fixed
 sites and domain, unknown weights, and target areas/volumes. Its first steps are
 measure extraction, target validation, residual evaluation, and a validated
 sensitivity operator before a nonlinear solver is exposed.
 
-### v0.10 mixed observations
+### v1.2 mixed observations
 
-Only after separator and measure workflows both exist should a generic public
-observation-block protocol be frozen. The first mixed solver uses fixed sites
-and unknown weights only, with explicit scaling between separator and measure
-residuals.
+Only after separator and measure workflows both exist should the project decide
+whether a generic public observation-block protocol is warranted. Built-in
+per-row/per-site controls and explicit block scaling should be designed before
+freezing that boundary. The first mixed solver uses fixed sites and unknown
+weights only.
 
 ### Additional unknowns and observations
 
@@ -786,8 +826,8 @@ The current release line does not commit to:
 - a general computational-geometry framework competing with CGAL;
 - guaranteed convergence of the realization-aware active-set loop;
 - planar oblique-periodic support solely for symmetry with 3D;
-- prescribed-measure work in the v0.8 release;
-- mixed-observation work before the prescribed-measure family exists.
+- prescribed-measure or mixed-observation work before the stable 1.0 core;
+- site motion as part of the stable 1.0 inverse workflow.
 
 ## Keeping this document current
 

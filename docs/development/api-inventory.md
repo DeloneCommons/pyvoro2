@@ -1225,7 +1225,7 @@ and [ADR 0014](decisions/0014-separator-observation-and-source-identity.md).
 | `pyvoro2.TessellationResult` core contract | Stable | The shared class and both public compute integrations are stable; direct construction is classified separately as provisional. |
 | Detailed optional result conveniences and raw geometry views | Provisional | Refine through implementation and chemvoro-shaped validation. |
 | `pyvoro2.inverse` preferred high-level separator workflow | Stable | Validated normal observations/fit entry point for applications and chemvoro-shaped workflows. |
-| `pyvoro2.inverse.separator` advanced problem and operator views | Provisional | Public for research use, but may evolve before v0.9 prescribed measures and v0.10 mixed problems. |
+| `pyvoro2.inverse.separator` advanced problem and operator views | Provisional | Public for research use; may evolve during v0.9 functional stabilization before the 1.0 contract is frozen. |
 | Realization-aware active-set API | Experimental | Practical outer algorithm; no universal convergence claim. |
 | Optional sparse linear backend | Provisional | Explicit `linear_backend='sparse'` supports direct quadratic solving and ADMM weight systems; it requires SciPy and is never selected by site count. |
 | v0.7-only inverse and planar transition routes | Removed | Ordinary import, attribute, or argument failure; replacements are in the migration guide. |

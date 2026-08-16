@@ -22,12 +22,15 @@ tessellations:
 - the implemented inverse layer fits power weights from pairwise separator
   observations;
 - v0.8 is a feature-free cleanup and compatibility-removal release;
-- prescribed cell measures begin in v0.9 and mixed separator-plus-measure
-  problems in v0.10, not as unrelated one-off solvers.
+- v0.9 is the functional/API-stabilization and downstream-readiness release;
+- 1.0 stabilizes the existing forward and separator-inverse core before new
+  inverse observation families;
+- prescribed cell measures begin in v1.1 and mixed separator-plus-measure
+  problems in v1.2, not as unrelated one-off solvers.
 
 v0.7.0 finalized the forward/result contract and separator inverse API. ADR
 0004 and ADR 0005 fix the canonical inverse namespace and common result
-direction. The completed
+direction; ADR 0017 fixes the post-v0.8 release sequence. The completed
 [v0.7 development plan](docs/development/plans/archive/v0.7.md) records that
 release. The [v0.8 API inventory](docs/development/api-inventory.md) records the
 current public contract and retains the historical migration baseline. The
@@ -284,7 +287,8 @@ In brief:
   responsibility;
 - release plans define scope and gates; issues track progress;
 - the roadmap uses version-level outcomes, not private “Stage 0/1” labels;
-- v0.8 is cleanup-only, v0.9 is prescribed measures, and v0.10 is mixed
+- v0.8 is cleanup-only, v0.9 is functional/downstream stabilization, 1.0 is
+  the stable main release, v1.1 is prescribed measures, and v1.2 is mixed
   separator-plus-measure fitting;
 - the changelog records completed user-visible changes;
 - use `separator observation` in explanatory prose and historical API names

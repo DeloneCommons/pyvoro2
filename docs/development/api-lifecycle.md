@@ -84,14 +84,16 @@ names, return routes, record schemas, defaults, and scientific semantics in the
 current tree. The v0.8 cleanup removes the bounded compatibility layer and
 retains the v0.7 stable/provisional boundary for canonical APIs. No
 compatibility-only or deprecated route remains in the current v0.8 public
-namespace. Prescribed cell measures move to v0.9 and mixed
-separator-plus-measure fitting to v0.10;
-those solvers may remain experimental without weakening the stable forward and
-separator core.
+namespace.
 
-The v0.8 contract is not the same promise as 1.0. It supports real downstream
-integration while keeping explicitly provisional and experimental surfaces
-available for evidence-driven refinement before the stronger 1.0 commitment.
+The v0.8 contract is not the same promise as 1.0. As recorded in
+[ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md), v0.9 is
+the planned functional-stabilization release: it may deliberately refine public API where
+real downstream molecule/crystal workflows expose artificial restrictions, and
+it should promote the normal realization-aware separator workflow from an
+experimental branch to a supported public inverse contract. Version 1.0 then
+stabilizes the existing forward and separator-inverse core. Prescribed cell
+measures move to v1.1 and mixed separator-plus-measure fitting to v1.2.
 
 ## What counts as a breaking change
 
@@ -197,10 +199,26 @@ However, the following are semantic and require explicit review:
 - residual and measure definitions;
 - active-set termination/status vocabulary.
 
-## Experimental inverse methods
+## Empirical algorithms and later inverse methods
 
-A prescribed-measure solver in v0.9 or mixed solver in v0.10 can be released
-experimentally when:
+An algorithm may be part of a stable public API without carrying a universal
+convergence theorem. Stability promises supported inputs, meanings, return
+schemas, status/failure semantics, and compatibility; it does not promise that
+an iterative empirical method succeeds for every admissible problem.
+
+The current realization-aware separator active-set workflow remains
+**experimental in v0.8**. The v0.9 stabilization target is different: ordinary
+downstream callers should have a supported high-level route for the package's
+main realization-aware separator inverse workflow. Promotion requires
+representative downstream use, regression/benchmark coverage, stable source and
+row provenance, atomic final-state semantics, and structured outer termination.
+Cycles, iteration limits, infeasibility, or numerical failure may remain normal
+reported outcomes. The promotion does not require every advanced active-set
+option, iteration record, or research diagnostic to become stable if the normal
+high-level contract does not depend on them.
+
+Prescribed-measure fitting in v1.1 and mixed fitting in v1.2 may initially be
+experimental when:
 
 - supported domains are explicit;
 - target validation is implemented;
@@ -209,23 +227,31 @@ experimentally when:
 - non-convergence returns structured diagnostics;
 - no stable API is forced to depend on the experimental solver.
 
-Promotion from experimental to provisional or stable requires downstream use,
-benchmark coverage, and a public API audit.
+Promotion of those later inverse families from experimental to provisional or
+stable requires downstream use, benchmark coverage, and a public API audit.
 
 ## Downstream validation
 
 chemvoro is an intended early downstream consumer. Downstream evidence for
-promoting provisional surfaces or making the stronger 1.0 commitment should
-verify that a chemistry-facing package can:
+v0.9 stabilization and the stronger 1.0 commitment should verify that a
+chemistry-facing package can:
 
 - preserve atom IDs through forward and inverse workflows;
-- compute directly from weights;
-- consume cells, measures, boundaries, and shifts without private imports;
+- compute directly from weights across the forward/query operations it needs;
+- consume cells, measures, boundaries, and periodic shifts without private
+  imports or representation-dependent correctness tuning;
+- use ordinary nonperiodic, orthorhombic, and triclinic periodic geometries,
+  including the accepted final orientation convention;
 - interpret gauge and disconnected-component ambiguity correctly;
-- serialize fit and realization diagnostics.
+- run the supported realization-aware separator inverse workflow and interpret
+  all structured termination outcomes;
+- serialize fit and realization diagnostics;
+- process repeated independent frames without relying on undocumented native
+  state, while not implying a persistent trajectory API.
 
-A downstream workaround based on private fields is evidence that the core API is
-not yet stable.
+A downstream workaround based on private fields, manual backend-radius shifts,
+or correctness-sensitive search tuning is evidence that the core API is not yet
+stable.
 
 ## Reproducibility of archived research
 

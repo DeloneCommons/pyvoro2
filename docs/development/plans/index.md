@@ -16,8 +16,9 @@ milestones.
 
 The plans are linked to [milestone 2](https://github.com/DeloneCommons/pyvoro2/milestone/2). The remediation work is tracked by [issue #35](https://github.com/DeloneCommons/pyvoro2/issues/35), which blocks final qualification in [issue #33](https://github.com/DeloneCommons/pyvoro2/issues/33).
 v0.8.0 is intended to receive the next GitHub Release and Zenodo archive.
-Prescribed cell measures remain in v0.9 and mixed separator-plus-measure work
-remains in v0.10.
+The roadmap now reserves v0.9 for functional/API stabilization and downstream
+readiness, followed by the stable 1.0 core; prescribed cell measures move to
+v1.1 and mixed separator-plus-measure work to v1.2.
 
 The completed [v0.7 forward and separator API stabilization plan](archive/v0.7.md)
 is preserved in the archive.

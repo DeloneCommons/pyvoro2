@@ -30,6 +30,7 @@ Each record has a status:
 14. [Two-layer separator observation and source identity](0014-separator-observation-and-source-identity.md)
 15. [Atomic separator active-set final state](0015-atomic-separator-active-state.md)
 16. [Severity-complete tessellation diagnostics](0016-severity-complete-tessellation-diagnostics.md)
+17. [Functional stabilization precedes 1.0 and later inverse families](0017-v0.9-functional-stabilization-before-1.0.md)
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the

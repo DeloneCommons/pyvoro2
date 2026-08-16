@@ -84,7 +84,7 @@ For example:
 
 > The current API accepts direct mathematical `weights=` and does not expose
 > the removed v0.7 compatibility routes. Prescribed-measure fitting is targeted
-> for v0.9 rather than described as current behavior.
+> for v1.1 rather than described as current behavior.
 
 Avoid words such as “soon,” “eventually,” or “later” when a more precise status
 is available.
