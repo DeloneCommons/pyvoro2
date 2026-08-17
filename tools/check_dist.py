@@ -29,19 +29,27 @@ except ModuleNotFoundError:  # Imported as ``tools.check_dist`` in tests.
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_LICENSE_PATH = REPO_ROOT / 'LICENSE'
+COPYING_PATH = REPO_ROOT / 'COPYING'
 NOTICE_PATH = REPO_ROOT / 'NOTICE.md'
 VORO_LICENSE_PATH = REPO_ROOT / 'vendor' / 'voro++' / 'LICENSE'
 PACKAGED_VORO_LICENSE_PATH = REPO_ROOT / 'LICENSE.voro++'
 OS_INDEPENDENT_CLASSIFIER = b'Classifier: Operating System :: OS Independent'
-WHEEL_LICENSE_RELATIVE_PATHS = {
-    'project': 'licenses/LICENSE',
-    'notice': 'licenses/NOTICE.md',
-    'voro': 'licenses/LICENSE.voro++',
+LICENSE_SOURCE_PATHS = {
+    'LICENSE': PROJECT_LICENSE_PATH,
+    'COPYING': COPYING_PATH,
+    'NOTICE.md': NOTICE_PATH,
+    'LICENSE.voro++': VORO_LICENSE_PATH,
 }
 LICENSE_SOURCE_LABELS = {
-    'project': 'repository root LICENSE',
-    'notice': 'repository root NOTICE.md',
-    'voro': 'vendor/voro++/LICENSE',
+    'LICENSE': 'repository root LICENSE',
+    'COPYING': 'repository root COPYING',
+    'NOTICE.md': 'repository root NOTICE.md',
+    'LICENSE.voro++': 'vendor/voro++/LICENSE',
+}
+REQUIRED_LICENSE_FILES = tuple(LICENSE_SOURCE_PATHS)
+WHEEL_LICENSE_RELATIVE_PATHS = {
+    filename: f'licenses/{filename}'
+    for filename in REQUIRED_LICENSE_FILES
 }
 
 
@@ -73,9 +81,7 @@ REQUIRED_SDIST_FILES = {
     'CHANGELOG.md',
     'AGENTS.md',
     'CONTRIBUTING.md',
-    'LICENSE',
-    'NOTICE.md',
-    'LICENSE.voro++',
+    *REQUIRED_LICENSE_FILES,
     'vendor/voro++/LICENSE',
     'pyproject.toml',
     'PKG-INFO',
@@ -189,16 +195,15 @@ def _expected_license_payload() -> dict[str, bytes]:
 
     try:
         expected = {
-            'project': PROJECT_LICENSE_PATH.read_bytes(),
-            'notice': NOTICE_PATH.read_bytes(),
-            'voro': VORO_LICENSE_PATH.read_bytes(),
+            filename: path.read_bytes()
+            for filename, path in LICENSE_SOURCE_PATHS.items()
         }
         packaged_voro = PACKAGED_VORO_LICENSE_PATH.read_bytes()
     except OSError as exc:
         raise DistCheckError(
             f'cannot read repository licensing files: {exc}'
         ) from exc
-    if packaged_voro != expected['voro']:
+    if packaged_voro != expected['LICENSE.voro++']:
         raise DistCheckError(
             'LICENSE.voro++ does not match vendor/voro++/LICENSE byte-for-byte'
         )
@@ -360,19 +365,19 @@ def check_wheel(path: Path) -> None:
         )
         expected_licenses = _expected_license_payload()
         packaged_licenses = {
-            kind: zf.read(entries_by_name[member])
-            for kind, member in license_members.items()
+            filename: zf.read(entries_by_name[member])
+            for filename, member in license_members.items()
         }
         _assert_notice_points_to_packaged_license(
-            packaged_licenses['notice'],
+            packaged_licenses['NOTICE.md'],
             label=f'{path.name} NOTICE.md',
         )
-        for kind, data in packaged_licenses.items():
+        for filename, data in packaged_licenses.items():
             _assert_matches_repository(
                 data,
-                expected_licenses[kind],
-                label=f'{path.name} packaged {license_members[kind]}',
-                source_label=LICENSE_SOURCE_LABELS[kind],
+                expected_licenses[filename],
+                label=f'{path.name} packaged {license_members[filename]}',
+                source_label=LICENSE_SOURCE_LABELS[filename],
             )
         _assert_platform_metadata(
             zf.read(entries_by_name[metadata_member]),
@@ -441,21 +446,28 @@ def check_sdist(path: Path) -> None:
             label=f'{path.name} NOTICE.md',
         )
         packaged_licenses = (
-            ('LICENSE', read_member('LICENSE'), 'project'),
-            ('NOTICE.md', packaged_notice, 'notice'),
-            ('LICENSE.voro++', read_member('LICENSE.voro++'), 'voro'),
+            *(
+                (
+                    filename,
+                    packaged_notice
+                    if filename == 'NOTICE.md'
+                    else read_member(filename),
+                    filename,
+                )
+                for filename in REQUIRED_LICENSE_FILES
+            ),
             (
                 'vendor/voro++/LICENSE',
                 read_member('vendor/voro++/LICENSE'),
-                'voro',
+                'LICENSE.voro++',
             ),
         )
-        for relative_name, data, kind in packaged_licenses:
+        for relative_name, data, source_filename in packaged_licenses:
             _assert_matches_repository(
                 data,
-                expected_licenses[kind],
+                expected_licenses[source_filename],
                 label=f'{path.name} {relative_name}',
-                source_label=LICENSE_SOURCE_LABELS[kind],
+                source_label=LICENSE_SOURCE_LABELS[source_filename],
             )
         _assert_platform_metadata(
             read_member('PKG-INFO'),

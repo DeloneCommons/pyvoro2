@@ -249,13 +249,13 @@ source distribution is built separately, checked for required content and
 metadata, rebuilt into a wheel in build isolation, and smoke-tested from a
 fresh no-SciPy environment.
 
-Every wheel also carries `LICENSE`, `NOTICE.md`, and the complete upstream
-Voro++ license as `LICENSE.voro++` in its standards-compatible metadata license
-directory. The sdist carries those three root files plus the byte-identical
-`vendor/voro++/LICENSE`. Distribution and installed-package checks compare the
-Voro++ bytes and reject missing/mutated payloads. Package metadata intentionally
-does not claim `Operating System :: OS Independent`; the supported wheel matrix
-above is the platform claim.
+Every wheel also carries `LICENSE`, `COPYING`, `NOTICE.md`, and the complete
+upstream Voro++ license as `LICENSE.voro++` in its standards-compatible metadata
+license directory. The sdist carries those four root files plus the
+byte-identical `vendor/voro++/LICENSE`. Distribution and installed-package
+checks require and byte-compare the complete payload. Package metadata
+intentionally does not claim `Operating System :: OS Independent`; the
+supported wheel matrix above is the platform claim.
 
 There are no v0.8 wheels for free-threaded CPython, PyPy, GraalPy, musllinux,
 Linux architectures other than x86_64, 32-bit Windows, Windows arm64, or macOS

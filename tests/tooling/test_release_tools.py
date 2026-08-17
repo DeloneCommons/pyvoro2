@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from email.message import Message
 import importlib.util
 import io
 from pathlib import Path
 import subprocess
 import sys
 import tarfile
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 import warnings
 import zipfile
 
@@ -14,12 +15,14 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROJECT_LICENSE_BYTES = (REPO_ROOT / 'LICENSE').read_bytes()
+COPYING_BYTES = (REPO_ROOT / 'COPYING').read_bytes()
 NOTICE_BYTES = (REPO_ROOT / 'NOTICE.md').read_bytes()
 VORO_LICENSE_BYTES = (
     REPO_ROOT / 'vendor' / 'voro++' / 'LICENSE'
 ).read_bytes()
 TEST_DIST_INFO_ROOT = 'pyvoro2-0.8.0.dev0.dist-info'
 TEST_WHEEL_LICENSE = f'{TEST_DIST_INFO_ROOT}/licenses/LICENSE'
+TEST_WHEEL_COPYING = f'{TEST_DIST_INFO_ROOT}/licenses/COPYING'
 TEST_WHEEL_NOTICE = f'{TEST_DIST_INFO_ROOT}/licenses/NOTICE.md'
 TEST_WHEEL_VORO_LICENSE = f'{TEST_DIST_INFO_ROOT}/licenses/LICENSE.voro++'
 TEST_WHEEL_METADATA = f'{TEST_DIST_INFO_ROOT}/METADATA'
@@ -48,6 +51,7 @@ TEST_WHEEL_FILES = (
     'pyvoro2/_core2d.test.so',
     TEST_WHEEL_METADATA,
     TEST_WHEEL_LICENSE,
+    TEST_WHEEL_COPYING,
     TEST_WHEEL_NOTICE,
     TEST_WHEEL_VORO_LICENSE,
 )
@@ -58,6 +62,7 @@ CHANGELOG.md
 AGENTS.md
 CONTRIBUTING.md
 LICENSE
+COPYING
 NOTICE.md
 LICENSE.voro++
 vendor/voro++/LICENSE
@@ -252,6 +257,7 @@ def _write_content_wheel(
     overrides = {} if member_data is None else member_data
     defaults = {
         TEST_WHEEL_LICENSE: PROJECT_LICENSE_BYTES,
+        TEST_WHEEL_COPYING: COPYING_BYTES,
         TEST_WHEEL_NOTICE: NOTICE_BYTES,
         TEST_WHEEL_VORO_LICENSE: VORO_LICENSE_BYTES,
     }
@@ -296,6 +302,7 @@ def _write_content_sdist(
     overrides = {} if member_data is None else member_data
     defaults = {
         'LICENSE': PROJECT_LICENSE_BYTES,
+        'COPYING': COPYING_BYTES,
         'NOTICE.md': NOTICE_BYTES,
         'LICENSE.voro++': VORO_LICENSE_BYTES,
         'vendor/voro++/LICENSE': VORO_LICENSE_BYTES,
@@ -445,15 +452,20 @@ def test_wheel_content_check_rejects_prefixed_required_python_files(
         check_wheel(malformed)
 
 
+@pytest.mark.parametrize(
+    'target',
+    [TEST_WHEEL_COPYING, TEST_WHEEL_VORO_LICENSE],
+)
 def test_wheel_content_check_rejects_duplicate_license_before_valid_copy(
     tmp_path: Path,
+    target: str,
 ) -> None:
     valid = tmp_path / 'valid.whl'
     malformed = tmp_path / 'duplicate-license.whl'
     _write_content_wheel(valid)
     entries: list[tuple[str, bytes]] = []
     for name, data in _read_wheel_entries(valid):
-        if name == TEST_WHEEL_VORO_LICENSE:
+        if name == target:
             entries.append((name, b'corrupt'))
         entries.append((name, data))
     with warnings.catch_warnings():
@@ -464,13 +476,15 @@ def test_wheel_content_check_rejects_duplicate_license_before_valid_copy(
         check_wheel(malformed)
 
 
+@pytest.mark.parametrize('target_suffix', ['COPYING', 'LICENSE.voro++'])
 def test_sdist_content_check_rejects_duplicate_license_before_valid_copy(
     tmp_path: Path,
+    target_suffix: str,
 ) -> None:
     valid = tmp_path / 'valid.tar.gz'
     malformed = tmp_path / 'duplicate-license.tar.gz'
     _write_content_sdist(valid)
-    target = 'pyvoro2-0.8.0.dev0/LICENSE.voro++'
+    target = f'pyvoro2-0.8.0.dev0/{target_suffix}'
     entries: list[tuple[str, bytes]] = []
     for name, data in _read_sdist_entries(valid):
         if name == target:
@@ -541,6 +555,11 @@ def test_sdist_content_check_rejects_drive_relative_root(
         ('wheel', 'pyvoro2/__init__.py', 'pyvoro2/./__init__.py'),
         ('wheel', 'pyvoro2/__init__.py', 'evil/../pyvoro2/__init__.py'),
         (
+            'wheel',
+            TEST_WHEEL_COPYING,
+            f'{TEST_DIST_INFO_ROOT}/licenses/./COPYING',
+        ),
+        (
             'sdist',
             'pyvoro2-0.8.0.dev0/README.md',
             '/pyvoro2-0.8.0.dev0/README.md',
@@ -559,6 +578,11 @@ def test_sdist_content_check_rejects_drive_relative_root(
             'sdist',
             'pyvoro2-0.8.0.dev0/README.md',
             'evil/../pyvoro2-0.8.0.dev0/README.md',
+        ),
+        (
+            'sdist',
+            'pyvoro2-0.8.0.dev0/COPYING',
+            'pyvoro2-0.8.0.dev0/./COPYING',
         ),
     ],
 )
@@ -621,10 +645,23 @@ def test_distribution_content_checks_require_metadata_tool() -> None:
     assert 'tools/check_dist_metadata.py' in dist_tool.REQUIRED_SDIST_FILES
 
 
+def test_distribution_content_checks_accept_complete_license_payload(
+    tmp_path: Path,
+) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    sdist = tmp_path / 'pyvoro2-test.tar.gz'
+    _write_content_wheel(wheel)
+    _write_content_sdist(sdist)
+
+    check_wheel(wheel)
+    check_sdist(sdist)
+
+
 @pytest.mark.parametrize(
     'suffix',
     [
         TEST_WHEEL_LICENSE,
+        TEST_WHEEL_COPYING,
         TEST_WHEEL_NOTICE,
         TEST_WHEEL_VORO_LICENSE,
     ],
@@ -642,7 +679,13 @@ def test_wheel_content_check_requires_complete_license_payload(
 
 @pytest.mark.parametrize(
     'member',
-    ['LICENSE', 'NOTICE.md', 'LICENSE.voro++', 'vendor/voro++/LICENSE'],
+    [
+        'LICENSE',
+        'COPYING',
+        'NOTICE.md',
+        'LICENSE.voro++',
+        'vendor/voro++/LICENSE',
+    ],
 )
 def test_sdist_content_check_requires_complete_license_payload(
     tmp_path: Path,
@@ -659,9 +702,11 @@ def test_sdist_content_check_requires_complete_license_payload(
     ('artifact_kind', 'member'),
     [
         ('wheel', TEST_WHEEL_LICENSE),
+        ('wheel', TEST_WHEEL_COPYING),
         ('wheel', TEST_WHEEL_NOTICE),
         ('wheel', TEST_WHEEL_VORO_LICENSE),
         ('sdist', 'LICENSE'),
+        ('sdist', 'COPYING'),
         ('sdist', 'NOTICE.md'),
         ('sdist', 'LICENSE.voro++'),
         ('sdist', 'vendor/voro++/LICENSE'),
@@ -833,6 +878,78 @@ def test_overlay_verification_imports_extensions_explicitly(
     assert "import_module('pyvoro2._core2d')" in observed['code']
     assert 'api._core.__file__' not in observed['code']
     assert 'api2._core2d' not in observed['code']
+
+
+def _mock_installed_license_distribution(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    *,
+    omitted_members: tuple[str, ...] = (),
+    member_data: dict[str, bytes] | None = None,
+) -> None:
+    site_packages = tmp_path / 'site-packages'
+    overrides = {} if member_data is None else member_data
+    defaults = {
+        'LICENSE': PROJECT_LICENSE_BYTES,
+        'COPYING': COPYING_BYTES,
+        'NOTICE.md': NOTICE_BYTES,
+        'LICENSE.voro++': VORO_LICENSE_BYTES,
+    }
+    files: list[str] = []
+    for filename in installed_package_tool.REQUIRED_LICENSE_FILES:
+        if filename in omitted_members:
+            continue
+        relative = f'{TEST_DIST_INFO_ROOT}/licenses/{filename}'
+        path = site_packages / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(overrides.get(filename, defaults[filename]))
+        files.append(relative)
+
+    distribution = SimpleNamespace(
+        files=tuple(files),
+        metadata=Message(),
+        locate_file=lambda member: site_packages / str(member),
+    )
+    monkeypatch.setattr(
+        installed_package_tool.importlib_metadata,
+        'distribution',
+        lambda name: distribution,
+    )
+
+
+def test_installed_license_contract_matches_artifact_contract() -> None:
+    assert (
+        installed_package_tool.REQUIRED_LICENSE_FILES
+        == dist_tool.REQUIRED_LICENSE_FILES
+    )
+
+
+def test_installed_distribution_accepts_complete_license_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _mock_installed_license_distribution(monkeypatch, tmp_path)
+
+    installed_package_tool._check_distribution_metadata(REPO_ROOT)
+
+
+@pytest.mark.parametrize('failure', ['missing', 'mutated'])
+def test_installed_distribution_rejects_invalid_copying(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    failure: str,
+) -> None:
+    omitted = ('COPYING',) if failure == 'missing' else ()
+    overrides = {'COPYING': b'mutated'} if failure == 'mutated' else None
+    _mock_installed_license_distribution(
+        monkeypatch,
+        tmp_path,
+        omitted_members=omitted,
+        member_data=overrides,
+    )
+
+    with pytest.raises(InstalledPackageCheckError, match='COPYING'):
+        installed_package_tool._check_distribution_metadata(REPO_ROOT)
 
 
 def test_installed_provenance_rejects_repository_import(tmp_path: Path) -> None:

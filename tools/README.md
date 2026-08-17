@@ -25,8 +25,8 @@ Main entry points:
   workflows. `--require-scipy` also exercises an explicit sparse fit; use
   `--forbid-scipy` for a base installation.
 - `python tools/check_dist.py dist` — verify that built sdists and wheels
-  contain the complete project/notice/Voro++ license payload, matching vendored
-  Voro++ license bytes, current platform metadata, exact package paths and
+  contain byte-identical project `LICENSE` and `COPYING`, `NOTICE.md`, and
+  Voro++ license payloads, current platform metadata, exact package paths and
   native-module identities, one archive root, and other key files while
   rejecting duplicate/unsafe members and obsolete private and compatibility
   paths. Explicit artifact paths are also accepted.

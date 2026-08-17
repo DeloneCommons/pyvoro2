@@ -14,6 +14,7 @@ from types import ModuleType
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+REQUIRED_LICENSE_FILES = ('LICENSE', 'COPYING', 'NOTICE.md', 'LICENSE.voro++')
 INTERNAL_HELPER_MODULES = (
     'pyvoro2._internal.cell_output',
     'pyvoro2._internal.inputs',
@@ -47,9 +48,8 @@ def _check_distribution_metadata(repository_root: Path) -> None:
 
     distribution = importlib_metadata.distribution('pyvoro2')
     files = tuple(distribution.files or ())
-    required = ('LICENSE', 'NOTICE.md', 'LICENSE.voro++')
     located: dict[str, Path] = {}
-    for filename in required:
+    for filename in REQUIRED_LICENSE_FILES:
         matches = [
             file
             for file in files
@@ -71,6 +71,7 @@ def _check_distribution_metadata(repository_root: Path) -> None:
 
     expected_paths = {
         'LICENSE': repository_root / 'LICENSE',
+        'COPYING': repository_root / 'COPYING',
         'NOTICE.md': repository_root / 'NOTICE.md',
         'LICENSE.voro++': repository_root / 'vendor' / 'voro++' / 'LICENSE',
     }
@@ -91,7 +92,7 @@ def _check_distribution_metadata(repository_root: Path) -> None:
             'installed metadata contains the unsupported OS Independent classifier'
         )
 
-    for filename in required:
+    for filename in REQUIRED_LICENSE_FILES:
         print(f'installed license {filename}: {located[filename]}')
     print('installed licensing payload: byte-identical to repository sources')
     print('installed metadata: OS Independent classifier absent')

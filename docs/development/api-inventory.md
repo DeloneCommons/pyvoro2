@@ -1737,7 +1737,7 @@ and `tools/check_wheel_matrix.py`:
 | Wheel interpreters | CPython tags `cp310`, `cp311`, `cp312`, `cp313`, `cp314` |
 | Wheel platforms | manylinux x86_64, Windows AMD64, macOS arm64, macOS x86_64 |
 | Release artifact target | Exactly 20 wheels and one matching source distribution; qualification remains issue #33 work |
-| License payload | Wheel metadata licenses contain `LICENSE`, `NOTICE.md`, and byte-identical `LICENSE.voro++`; the sdist also contains root and vendored Voro++ copies |
+| License payload | Wheel metadata licenses contain byte-identical `LICENSE`, `COPYING`, `NOTICE.md`, and `LICENSE.voro++`; the sdist also contains those root files and the vendored Voro++ copy |
 | Optional SciPy | Not a runtime dependency; installed for wheel tests and imported only by explicit sparse paths |
 
 The open-ended metadata lower bound allows installation tooling to evaluate a

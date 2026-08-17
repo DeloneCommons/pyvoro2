@@ -98,9 +98,10 @@ all = [
 [tool.scikit-build]
 minimum-version = 'build-system.requires'
 wheel.packages = ['src/pyvoro2']
-wheel.license-files = ['LICENSE', 'NOTICE.md', 'LICENSE.voro++']
+wheel.license-files = ['LICENSE', 'COPYING', 'NOTICE.md', 'LICENSE.voro++']
 sdist.include = [
   'LICENSE',
+  'COPYING',
   'NOTICE.md',
   'LICENSE.voro++',
   'vendor/voro++/LICENSE',

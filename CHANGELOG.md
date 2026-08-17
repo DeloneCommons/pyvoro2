@@ -8,10 +8,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Added
 
-- A complete installed-distribution license payload: project `LICENSE`,
-  `NOTICE.md`, and a root `LICENSE.voro++` byte-identical to the vendored
-  upstream Voro++ license. Distribution and installed-package checks now reject
-  missing or mutated license content.
+- A complete installed-distribution license payload: project `LICENSE` and
+  `COPYING`, `NOTICE.md`, and a root `LICENSE.voro++` byte-identical to the
+  vendored upstream Voro++ license. Distribution and installed-package checks
+  now reject missing or mutated license content.
 - Standard GIL-enabled CPython 3.14 source-build and package-metadata support,
   while retaining Python 3.10–3.13 support. The isolated build toolchain now
   uses Python-3.14-compatible pybind11 3 and scikit-build-core releases.
