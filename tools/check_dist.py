@@ -139,7 +139,7 @@ REQUIRED_SDIST_FILES = {
     'docs/development/decisions/0005-tessellation-result-contract.md',
     'docs/development/decisions/0006-v0.8-cleanup-release.md',
     'docs/development/plans/index.md',
-    'docs/development/plans/v0.8.md',
+    'docs/development/plans/archive/v0.8.md',
     'docs/development/plans/template.md',
     'docs/development/plans/archive/index.md',
     'docs/project/roadmap.md',

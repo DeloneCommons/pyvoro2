@@ -4,7 +4,7 @@
 - **Date:** 2026-08-09
 - **Related issue:** [#41 — v0.8 R5: centralize generator preparation and make native safety non-optional](https://github.com/DeloneCommons/pyvoro2/issues/41)
 - **Related decisions:** [ADR 0010](0010-native-construction-preconditions.md), [ADR 0011](0011-strict-input-and-ownership-contract.md), [ADR 0012](0012-certified-periodic-image-geometry.md)
-- **Related plan:** [v0.8 remediation execution plan](../plans/v0.8-remediation.md)
+- **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
 
 ## Context
 

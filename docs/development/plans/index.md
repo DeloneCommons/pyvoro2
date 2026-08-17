@@ -7,25 +7,26 @@ validation, and release gates for one release or substantial workstream.
 Plans are not daily task trackers. Current progress belongs in GitHub issues and
 milestones.
 
-## Current plan
+## Current plans
 
-| Plan | Status | Target | Purpose |
-|---|---|---|---|
-| [v0.8 technical maintenance and Python 3.14](v0.8.md) | Active | v0.8.0 | Original technical-maintenance scope and release contract. |
-| [v0.8 pre-release audit remediation](v0.8-remediation.md) | Active | v0.8.0 | Correctness, native-safety, geometry, result-integrity, diagnostics, public-contract synchronization, and handoff to clean qualification. |
+No post-v0.8 plan is currently active. Future substantial work requires a
+separately reviewed and activated plan; a v0.9 plan is not implied merely by
+completion of v0.8.
 
-The plans are linked to [milestone 2](https://github.com/DeloneCommons/pyvoro2/milestone/2). The remediation work is tracked by [issue #35](https://github.com/DeloneCommons/pyvoro2/issues/35), which blocks final qualification in [issue #33](https://github.com/DeloneCommons/pyvoro2/issues/33).
-R1–R8 are complete. R9 ([issue #45](https://github.com/DeloneCommons/pyvoro2/issues/45))
-is the active final source-contract cleanup. Issue #35 closes only after
-independent R9 acceptance; issue #33 then begins from that exact clean accepted
-commit.
-v0.8.0 is intended to receive the next GitHub Release and Zenodo archive.
-The roadmap now reserves v0.9 for functional/API stabilization and downstream
+The completed [v0.8 technical-maintenance plan](archive/v0.8.md) and
+[v0.8 remediation plan](archive/v0.8-remediation.md) are preserved in the
+archive. R1–R9 and the post-R9 `COPYING` distribution correction are complete.
+After source finalization and independent review, issue #33 qualifies the exact
+frozen source commit and its artifacts before the public tag is created.
+v0.8.0 uses Git tag, GitHub Release, and PyPI distribution without a new
+pyvoro2 Zenodo software-version record.
+
+The roadmap reserves v0.9 for functional/API stabilization and downstream
 readiness, followed by the stable 1.0 core; prescribed cell measures move to
 v1.1 and mixed separator-plus-measure work to v1.2.
 
 The completed [v0.7 forward and separator API stabilization plan](archive/v0.7.md)
-is preserved in the archive.
+is also preserved in the archive.
 
 ## Plan lifecycle
 

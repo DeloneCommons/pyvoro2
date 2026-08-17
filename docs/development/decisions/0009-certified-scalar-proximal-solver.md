@@ -4,7 +4,7 @@
 - **Date:** 2026-08-01
 - **Related issue:** [#37 — Replace the scalar proximal loop with a certified bounded solver](https://github.com/DeloneCommons/pyvoro2/issues/37)
 - **Related decisions:** [ADR 0007](0007-separator-objective-contract.md), [ADR 0008](0008-separator-solver-and-linear-backend.md)
-- **Related plan:** [v0.8 remediation execution plan](../plans/v0.8-remediation.md)
+- **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
 
 ## Context
 

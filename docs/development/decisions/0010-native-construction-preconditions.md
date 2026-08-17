@@ -4,7 +4,7 @@
 - **Date:** 2026-08-05
 - **Related issue:** [#38 — v0.8 R3-A: add strict shared validators and guard every native container construction](https://github.com/DeloneCommons/pyvoro2/issues/38)
 - **Related decisions:** [ADR 0005](0005-tessellation-result-contract.md), [ADR 0006](0006-v0.8-cleanup-release.md)
-- **Related plan:** [v0.8 remediation execution plan](../plans/v0.8-remediation.md)
+- **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
 
 ## Context
 

@@ -46,13 +46,14 @@ Delivered outcomes include:
 
 See the [archived v0.7 development plan](../development/plans/archive/v0.7.md).
 
-## v0.8 — Technical maintenance and Python 3.14
+## v0.8 — Technical maintenance and Python 3.14 (source finalized)
 
 v0.8 is intentionally a **technical-maintenance release without new numerical
-functionality**. It cleans and qualifies the v0.7 foundation before the
-functional-stabilization release.
+functionality**. Its R1–R9 remediation and post-R9 `COPYING` distribution
+correction are complete in the finalized source. Issue #33 qualifies the exact
+source commit frozen after independent review before the public tag is created.
 
-Target outcomes include:
+Delivered outcomes include:
 
 - remove compatibility-only inverse/planar routes retained for v0.7;
 - reorganize tests and private Python helpers without changing the public
@@ -64,8 +65,8 @@ Target outcomes include:
 - preserve stable numerical behavior except for separately approved correctness
   fixes.
 
-See the active [v0.8 plan](../development/plans/v0.8.md),
-[remediation plan](../development/plans/v0.8-remediation.md),
+See the completed [v0.8 plan](../development/plans/archive/v0.8.md),
+[remediation plan](../development/plans/archive/v0.8-remediation.md),
 [pre-release audit](../development/audits/v0.8-pre-release.md), and
 [ADR 0006](../development/decisions/0006-v0.8-cleanup-release.md).
 

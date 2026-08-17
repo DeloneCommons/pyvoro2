@@ -4,7 +4,7 @@
 - **Date:** 2026-08-07
 - **Related issue:** [#39 — v0.8 R3-B: complete package-wide strict input adoption and immutable ownership](https://github.com/DeloneCommons/pyvoro2/issues/39)
 - **Related decisions:** [ADR 0005](0005-tessellation-result-contract.md), [ADR 0010](0010-native-construction-preconditions.md)
-- **Related plan:** [v0.8 remediation execution plan](../plans/v0.8-remediation.md)
+- **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
 
 ## Context
 

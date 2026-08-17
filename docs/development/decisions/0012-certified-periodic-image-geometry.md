@@ -4,7 +4,7 @@
 - **Date:** 2026-08-09
 - **Related issue:** [#40 — v0.8 R4: certify periodic nearest-image and minimum-image geometry](https://github.com/DeloneCommons/pyvoro2/issues/40)
 - **Related decisions:** [ADR 0011](0011-strict-input-and-ownership-contract.md)
-- **Related plan:** [v0.8 remediation execution plan](../plans/v0.8-remediation.md)
+- **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
 
 ## Context
 

@@ -4,7 +4,7 @@
 - **Date:** 2026-08-16
 - **Related issue:** [#44 — v0.8 R8: make tessellation diagnostics and strict validation severity-complete](https://github.com/DeloneCommons/pyvoro2/issues/44)
 - **Related decisions:** [ADR 0011](0011-strict-input-and-ownership-contract.md), [ADR 0013](0013-central-generator-preparation-and-backend-safety.md)
-- **Related plan:** [v0.8 remediation execution plan](../plans/v0.8-remediation.md)
+- **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
 
 ## Context
 

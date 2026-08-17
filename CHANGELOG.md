@@ -6,6 +6,8 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-17
+
 ### Added
 
 - A complete installed-distribution license payload: project `LICENSE` and
@@ -26,11 +28,11 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
-- Synchronized current API/lifecycle, R1–R8 correctness, capability-boundary,
+- Synchronized current API/lifecycle, R1–R9 correctness, capability-boundary,
   ADR-0017 roadmap, release-note traceability, fuzz-execution, and qualification
   handoff documentation for the final v0.8 source-contract review. The
-  OS-independent package classifier was removed; supported platforms remain the
-  explicit release wheel matrix pending qualification.
+  OS-independent package classifier was removed; supported platforms are the
+  explicit v0.8 release wheel matrix.
 - Reorganized tests by forward, inverse, integration, tooling, and fuzz
   responsibility, and moved private pure-Python helpers under
   `pyvoro2._internal` with explicit shared, spatial, and planar ownership.
@@ -172,8 +174,9 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   fit-report JSON record `solver` and `linear_backend` separately; no-work fits
   report `solver='none'` and `linear_backend=None`. ADMM numerical failures
   retain completed iteration counts, including failures raised during final
-  quadratic certification. The prerelease values `auto`, `analytic`, and
-  solver value `sparse`, along with the old ADMM keyword names, are removed.
+  quadratic certification. The earlier development-only values `auto`,
+  `analytic`, and solver value `sparse`, along with the old ADMM keyword names,
+  are removed.
 - Replaced the unbracketed scalar ADMM proximal Newton loop with a certified
   private bounded solver. One compiled term kernel now gives private solving,
   public evaluation, objective breakdowns, reports, and JSON the same complete-

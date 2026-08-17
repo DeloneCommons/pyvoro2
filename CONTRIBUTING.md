@@ -5,11 +5,12 @@ code, and a developing inverse weighted-tessellation API. Contributions are
 welcome when they are focused, testable, and consistent with the documented
 architecture.
 
-The active v0.8 plan is a feature-free maintenance and release-qualification
-workstream. Keep contributions on `dev` scoped to its linked issues. v0.9 is
-reserved for functional/API stabilization and downstream readiness, 1.0
-stabilizes the existing core, prescribed cell measures begin in v1.1, and
-mixed-observation fitting begins in v1.2.
+The feature-free v0.8 maintenance and compatibility-removal plans are complete
+and archived. No post-v0.8 plan is currently active; substantial future work
+requires separate plan activation and issue scope. v0.9 is reserved for
+functional/API stabilization and downstream readiness, 1.0 stabilizes the
+existing core, prescribed cell measures begin in v1.1, and mixed-observation
+fitting begins in v1.2.
 
 ## Before starting
 

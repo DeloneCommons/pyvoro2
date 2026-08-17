@@ -4,7 +4,7 @@
 - **Date:** 2026-08-15
 - **Related issue:** [#42 — v0.8 R6: bind separator observations, results, realizations, and reports to canonical source data](https://github.com/DeloneCommons/pyvoro2/issues/42)
 - **Related decisions:** [ADR 0007](0007-separator-objective-contract.md), [ADR 0011](0011-strict-input-and-ownership-contract.md), [ADR 0012](0012-certified-periodic-image-geometry.md), [ADR 0013](0013-central-generator-preparation-and-backend-safety.md)
-- **Related plan:** [v0.8 remediation execution plan](../plans/v0.8-remediation.md)
+- **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
 
 ## Context
 

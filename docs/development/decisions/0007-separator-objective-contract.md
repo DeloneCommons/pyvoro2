@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-07-28
 - **Related issue:** [#36 — Correct and freeze the separator inverse objective contract](https://github.com/DeloneCommons/pyvoro2/issues/36)
-- **Related plan:** [v0.8 remediation execution plan](../plans/v0.8-remediation.md)
+- **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
 
 ## Context
 

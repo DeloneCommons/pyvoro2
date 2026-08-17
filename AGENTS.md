@@ -34,8 +34,12 @@ direction; ADR 0017 fixes the post-v0.8 release sequence. The completed
 [v0.7 development plan](docs/development/plans/archive/v0.7.md) records that
 release. The [v0.8 API inventory](docs/development/api-inventory.md) records the
 current public contract and retains the historical migration baseline. The
-[v0.8 cleanup plan](docs/development/plans/v0.8.md) is Active. Implement only
-its linked issue scope and keep the release feature-free.
+v0.8 R1–R9 source remediation is complete, and the
+[cleanup plan](docs/development/plans/archive/v0.8.md) and
+[remediation plan](docs/development/plans/archive/v0.8-remediation.md) are
+archived. The v0.8.0 source is finalized before exact-commit qualification
+under issue #33; any tracked correction changes that candidate. Future
+substantial work requires a separately activated post-v0.8 plan.
 
 ## Authoritative sources
 

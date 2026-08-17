@@ -1,17 +1,18 @@
 # v0.8.0 release notes
 
-- **Release status:** pre-release / qualification pending; R1–R8 are complete,
-  R9 is active in [issue #45](https://github.com/DeloneCommons/pyvoro2/issues/45)
-  under [issue #35](https://github.com/DeloneCommons/pyvoro2/issues/35), and
-  final qualification in issue #33 has not begun
+- **Release status:** source finalized with R1–R9 and the accepted post-R9
+  `COPYING` distribution correction complete
 - **Release type:** feature-free technical maintenance
 - **Previous release:** v0.7.0
 
-v0.8.0 is intended to complete the compatibility removals announced for v0.7, qualify
-standard CPython 3.14 and the full binary distribution matrix, and make the
-documented public contract match the reorganized source tree. These claims remain
-pending until the audit remediation and final qualification are complete. It does not add a
-new public inverse method, inverse observation family, domain type, or solver.
+v0.8.0 completes the compatibility removals announced for v0.7, adds standard
+CPython 3.14 support to the documented release matrix, and makes the documented
+public contract match the reorganized source tree. The exact final source
+commit is frozen after source finalization and independent review; issue #33
+qualifies that exact commit and its artifacts before the public tag is created.
+This document does not claim that qualification has already succeeded. The
+release does not add a new public inverse method, inverse observation family,
+domain type, or solver.
 v0.9 is reserved for functional/API stabilization and downstream readiness,
 1.0 stabilizes the existing forward, periodic, and separator-inverse core,
 prescribed cell measures begin in v1.1, and mixed separator-plus-measure fitting
@@ -149,8 +150,8 @@ a compatibility-only route and was not removed.
   `linear_backend=None`. Active-set fitting forwards both selections, and
   results and reports record them separately. Structured ADMM failures retain
   completed iteration counts, including failure of final quadratic
-  certification. The prerelease values `auto`, `analytic`, and solver value
-  `sparse` and the old unprefixed ADMM keyword names are removed.
+  certification. The earlier development-only values `auto`, `analytic`, and
+  solver value `sparse` and the old unprefixed ADMM keyword names are removed.
 - Scalar ADMM proximal coordinates with positive-strength penalties now use a
   certified private bounded solver. It preserves the approved objective,
   handles exact branch breakpoints and raw exponential overflow, and succeeds
@@ -197,24 +198,24 @@ a compatibility-only route and was not removed.
   sections, and round-trip exactly through strict JSON for success and failure.
 
 The external-ID, direct-result-construction, pickle, and Twine-discovery
-corrections came from issue #31. The R1–R8 work is tracked explicitly below:
+corrections came from issue #31. The R1–R9 work is tracked explicitly below:
 objective (#36), certified scalar proximal solving (#37), strict/native inputs
 (#38–#39), periodic images (#40), generator safety (#41), source/report identity
-(#42), atomic active state (#43), and diagnostics (#44). These changes add no
-legacy scaling mode. ADMM results can change where the earlier mismatch/L2
-relative scaling was inconsistent or the former scalar loop returned an
-uncertified iterate.
+(#42), atomic active state (#43), diagnostics (#44), and public/distribution
+contract synchronization (#45). These changes add no legacy scaling mode.
+ADMM results can change where the earlier mismatch/L2 relative scaling was
+inconsistent or the former scalar loop returned an uncertified iterate.
 
 ## Correctness-remediation traceability
 
 This compact ledger points to the accepted implementation history and its
 independent regression basis. The detailed contracts remain in the
 [audit](../development/audits/v0.8-pre-release.md),
-[remediation plan](../development/plans/v0.8-remediation.md), and ADRs.
+[remediation plan](../development/plans/archive/v0.8-remediation.md), and ADRs.
 
 | Workstream / issue | Implementation reference | User-visible effect | Migration impact | Independent regression oracle |
 |---|---|---|---|---|
-| R1 / [#36](https://github.com/DeloneCommons/pyvoro2/issues/36) | [`49a06cf`](https://github.com/DeloneCommons/pyvoro2/commit/49a06cf7a65361d309728588e0073f24f7f673b7) | Correct objective scaling, hard tolerance, finite success packaging, quadratic certification, and solver/backend vocabulary | Corrected prerelease values/status; no compatibility mode | Direct objective recomputation, finite differences, KKT/gap bounds, dense/sparse parity |
+| R1 / [#36](https://github.com/DeloneCommons/pyvoro2/issues/36) | [`49a06cf`](https://github.com/DeloneCommons/pyvoro2/commit/49a06cf7a65361d309728588e0073f24f7f673b7) | Correct objective scaling, hard tolerance, finite success packaging, quadratic certification, and solver/backend vocabulary | Corrected earlier development values/status; no compatibility mode | Direct objective recomputation, finite differences, KKT/gap bounds, dense/sparse parity |
 | R2 / [#37](https://github.com/DeloneCommons/pyvoro2/issues/37) | [`6aec60d`](https://github.com/DeloneCommons/pyvoro2/commit/6aec60dbf54dc193faa4920e1b79d30e6e2e5912) | Certified scalar proximal results or structured `numerical_failure` | No public tolerance or dependency added | Exact/interval derivative signs, adjacent-float objective comparison, scalar KKT cases |
 | R3 / [#38](https://github.com/DeloneCommons/pyvoro2/issues/38), [#39](https://github.com/DeloneCommons/pyvoro2/issues/39) | [`e816570`](https://github.com/DeloneCommons/pyvoro2/commit/e816570), [`76a58ec`](https://github.com/DeloneCommons/pyvoro2/commit/76a58ec), [`d24e0ed`](https://github.com/DeloneCommons/pyvoro2/commit/d24e0ed), [`8baf037`](https://github.com/DeloneCommons/pyvoro2/commit/8baf037), [`555228c`](https://github.com/DeloneCommons/pyvoro2/commit/555228c) | Exact input categories, finite checks, owned values, and safe native construction | Invalid coercions now fail early; valid results unchanged | Strict type matrix, caller-mutation isolation, subprocess exception/survival and resource-bound probes |
 | R4 / [#40](https://github.com/DeloneCommons/pyvoro2/issues/40) | [`817e222`](https://github.com/DeloneCommons/pyvoro2/commit/817e222) | Certified nearest/minimum image; explicit shifts stay authoritative; no approximate fallback | `image_search` no longer changes correctness | Exhaustive bounded lattice enumeration plus translation/pair-reversal invariants |
@@ -222,6 +223,34 @@ independent regression basis. The detailed contracts remain in the
 | R6 / [#42](https://github.com/DeloneCommons/pyvoro2/issues/42) | [`4c2b074`](https://github.com/DeloneCommons/pyvoro2/commit/4c2b074) | Stable row/set identity, optional source binding, schema-1 provenance and strict JSON | Additive row/schema provenance; retained report kinds | Mismatch/equivalent-copy matrices, recomputed fingerprints, exact JSON round trips |
 | R7 / [#43](https://github.com/DeloneCommons/pyvoro2/issues/43) | [`721e84f`](https://github.com/DeloneCommons/pyvoro2/commit/721e84f) | Atomic final state and explicit unavailable final layers | Additive availability block/properties; null replaces stale/fabricated data | Forced final-refit status matrix and cross-layer state-origin invariants |
 | R8 / [#44](https://github.com/DeloneCommons/pyvoro2/issues/44) | [`d34fd11`](https://github.com/DeloneCommons/pyvoro2/commit/d34fd11) | Severity-complete diagnostics and strict/warn/raise behavior | Corrected erroneous success and warning-only planar failure | Explicit 2D/3D issue-severity/mode matrix over independently constructed raw cells |
+| R9 / [#45](https://github.com/DeloneCommons/pyvoro2/issues/45) | [`400137c`](https://github.com/DeloneCommons/pyvoro2/commit/400137c9ba3a71b5cad3b87070a48854474bfb88), [`ea3be52`](https://github.com/DeloneCommons/pyvoro2/commit/ea3be52567b3e0156ad12da6e16f780f735aadf3), [`b410b47`](https://github.com/DeloneCommons/pyvoro2/commit/b410b47ad3b2e6c6ab00b1369947b6f449a9b02d) | Synchronized the public API, documentation, platform, licensing, and distribution contract; made raw wheel-member validation portable | Removed stale development claims without adding a compatibility surface | API/search audits, generated-state checks, distribution fixtures, archive inspection, and cross-platform path cases |
+| Post-R9 distribution correction | [`a9a66f4`](https://github.com/DeloneCommons/pyvoro2/commit/a9a66f43df20f002ca6435472f224a3cca739f4c) | Wheel and sdist distributions carry and verify the mandatory canonical `COPYING` payload | No API change; completes the accepted license payload | Byte-for-byte wheel, sdist, and installed-package license checks |
+
+The post-R9 reference identifies the accepted baseline for this source-
+finalization pass, not the eventual final release commit.
+
+## Known limitations and named deferrals
+
+- Weight-first `locate`/`ghost_cells`, orientation-neutral `PeriodicCell`, and
+  explicit fractional and geometric-parallelepiped helpers are post-v0.8 work;
+  they are v0.9 candidates rather than v0.8 promises.
+- Representation-robust certified minimum-image basis reduction remains later
+  work before broad triclinic measure claims. Certified face/edge image labels
+  and complete periodic query/ghost metadata remain pre-1.0 work.
+- Prescribed cell measures begin in v1.1, followed by mixed separator-plus-
+  measure fitting in v1.2.
+- Unsupported wheel platforms and free-threaded interpreters are outside the
+  v0.8 matrix. Outside-generator clipping/walls, automatic normalization,
+  dominated coincident-site preprocessing, backend-basis canonicalization, and
+  persistent containers remain later or demand-driven work.
+- Binary64/backend limitations and features requiring substantive local Voro++
+  source changes are not claimed solved by v0.8.
+
+## Zenodo
+
+pyvoro2 v0.8.0 creates no new pyvoro2 Zenodo software-version record. Existing
+historical pyvoro2 records and project/reproducibility Zenodo records remain
+valid.
 
 ## Packaging and platform support
 
@@ -231,9 +260,10 @@ do not impose an artificial upper bound, but versions newer than 3.14 are not
 part of the v0.8 tested support contract. Source-install CI exercises all five
 supported versions on Linux, macOS, and Windows.
 
-The release artifact target is exactly 21 distributions. R9's representative
-local wheel and sdist do not qualify this matrix; issue #33 must build and test
-it from the exact clean accepted R9 commit:
+The release artifact target is exactly 21 distributions. Representative local
+wheel and sdist checks do not qualify this matrix; issue #33 must build and test
+it from the exact frozen v0.8.0 final source commit accepted after source
+finalization and independent review:
 
 | Artifact | Python versions | Platform / architecture | Count |
 |---|---|---|---:|

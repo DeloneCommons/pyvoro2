@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-15
 - **Related issue:** [#43 — Make the separator active-set final state atomic and self-consistent](https://github.com/DeloneCommons/pyvoro2/issues/43)
-- **Related plan:** [v0.8 remediation execution plan](../plans/v0.8-remediation.md)
+- **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
 - **Depends on:** [ADR 0014](0014-separator-observation-and-source-identity.md)
 
 ## Context

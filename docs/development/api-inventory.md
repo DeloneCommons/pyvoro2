@@ -1,13 +1,13 @@
 # v0.8 public API inventory
 
-- **Status:** Synchronized through R9 on 2026-08-16; independent R9 acceptance
-  and release qualification remain pending
+- **Status:** Source-finalized on 2026-08-17 with R1–R9 and the post-R9
+  `COPYING` distribution correction complete and accepted
 - **Historical baseline:** v0.6.3
 - **Previous contract:** v0.7.0
 - **Target:** v0.8.0
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
 - **Policy:** [API lifecycle and compatibility](api-lifecycle.md)
-- **Plan:** [active v0.8 development plan](plans/v0.8.md)
+- **Plan:** [completed v0.8 development plan](plans/archive/v0.8.md)
 - **Decisions:** [ADR 0004](decisions/0004-canonical-inverse-namespace.md),
   [ADR 0005](decisions/0005-tessellation-result-contract.md),
   [ADR 0006](decisions/0006-v0.8-cleanup-release.md),
@@ -27,8 +27,9 @@ This inventory is the authoritative v0.8 lifecycle contract for public imports,
 return routes, record schemas, defaults, and scientific semantics. It has been
 checked against the current source, tests, documentation, executed notebooks,
 distribution configuration, GitHub Actions workflows, and downstream-shaped
-regression assets. Release qualification must verify that packaged artifacts
-preserve this contract.
+regression assets. The exact final source commit is frozen after release
+finalization and independent review; issue #33 must verify that artifacts built
+from that exact commit preserve this contract before the public tag is created.
 
 The historical v0.6.3 baseline is retained below because it explains the v0.7
 migration. It is not a list of current imports. Current v0.8 exports,
@@ -1754,9 +1755,11 @@ is validated separately, rebuilt into one wheel under build isolation, and
 installed in a fresh no-SciPy environment. These distribution checks do not
 turn the internal native module names into public API.
 
-R9 builds representative local artifacts to validate the source contract. That
-does not qualify the complete 20-wheel plus one-sdist release matrix; issue #33
-must do so from the exact clean commit accepted after issue #35 closes.
+R9 built representative local artifacts to validate the source contract, and
+the accepted post-R9 correction made the mandatory `COPYING` payload part of
+the checked wheel and sdist contract. That does not qualify the complete
+20-wheel plus one-sdist release matrix. #33 qualifies the exact frozen v0.8.0
+final source commit accepted after release finalization and independent review.
 
 ## Scientifically meaningful semantics to inventory explicitly
 
