@@ -81,17 +81,17 @@ moving-site optimization are also not v0.8 capabilities. They are separate
 future inverse families or unknown types, with prescribed measures planned for
 v1.1 and mixed problems for v1.2.
 
-## Open architecture decisions
+## Architecture policy
 
-The v0.8 repository currently builds one distribution containing both forward
-native extensions and the inverse Python layer, and it vendors the upstream
-Voro++ sources with a bounded accepted robustness fix. Those are current facts,
-not permanent governance decisions.
+The repository builds one distribution containing both forward native extensions
+and the inverse Python layer, and it vendors the upstream Voro++ sources with a
+bounded accepted robustness fix.
 
 [ADR 0017](../development/decisions/0017-v0.9-functional-stabilization-before-1.0.md)
-leaves two policies for explicit pre-1.0 planning: whether to require one
-repository/one distribution through 1.0, and whether to adopt a formal
-no-persistent-functional-Voro++-fork policy. v0.8 does not decide either one.
+now fixes one repository and one distribution through 1.0, with post-1.0
+reassessment only under a concrete trigger. The remaining pre-1.0 policy question
+is whether to adopt a formal no-persistent-functional-Voro++-fork rule and how to
+treat narrowly carried correctness/upstream-backport patches.
 
 For exact callable behavior, see [Choosing an API](choosing-api.md), the
 [API reference](../reference/index.md), and the

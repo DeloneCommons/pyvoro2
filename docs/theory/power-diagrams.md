@@ -180,10 +180,11 @@ target from collapse of a cell with a positive target.
 In a periodic domain, a site represents the translated images
 
 \[
-p_j + A s, \qquad s\in\mathbb{Z}^d,
+p_j + s A, \qquad s\in\mathbb{Z}^d,
 \]
 
-where the columns of \(A\) are the lattice vectors. A realized periodic boundary
+where \(s\) is a row vector and the rows of \(A\) are the lattice vectors;
+in code this is `p_j + s @ A`. A realized periodic boundary
 is therefore identified by both the neighbor site \(j\) and the integer image
 shift \(s\).
 

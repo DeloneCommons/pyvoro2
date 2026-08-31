@@ -87,13 +87,16 @@ compatibility-only or deprecated route remains in the current v0.8 public
 namespace.
 
 The v0.8 contract is not the same promise as 1.0. As recorded in
-[ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md), v0.9 is
-the planned functional-stabilization release: it may deliberately refine public API where
-real downstream molecule/crystal workflows expose artificial restrictions, and
-it should promote the normal realization-aware separator workflow from an
-experimental branch to a supported public inverse contract. Version 1.0 then
-stabilizes the existing forward and separator-inverse core. Prescribed cell
-measures move to v1.1 and mixed separator-plus-measure fitting to v1.2.
+[ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md),
+development through v0.9.0 is the planned functional-stabilization phase: it may
+deliberately refine public API where downstream-shaped molecule/crystal workflows
+expose artificial restrictions, and it should promote the normal realization-
+aware separator workflow from an experimental branch to a supported public
+inverse contract. Released v0.9.x is the external downstream-readiness/soak
+phase. Version 1.0 then stabilizes the existing forward and separator-inverse
+core if that soak finds no critical hole requiring another incompatible redesign.
+Prescribed cell measures move to v1.1 and mixed separator-plus-measure fitting to
+v1.2.
 
 ## What counts as a breaking change
 
@@ -209,9 +212,13 @@ an iterative empirical method succeeds for every admissible problem.
 The current realization-aware separator active-set workflow remains
 **experimental in v0.8**. The v0.9 stabilization target is different: ordinary
 downstream callers should have a supported high-level route for the package's
-main realization-aware separator inverse workflow. Promotion requires
-representative downstream use, regression/benchmark coverage, stable source and
-row provenance, atomic final-state semantics, and structured outer termination.
+main realization-aware separator inverse workflow. Promotion for v0.9.0 requires
+representative downstream-shaped public-workflow qualification, regression and
+benchmark coverage, stable source and row provenance, atomic final-state
+semantics, and structured outer termination. It does not require completion of
+the later external v0.9.x soak. Real downstream use during that soak is evidence
+for the stronger 1.0 commitment.
+
 Cycles, iteration limits, infeasibility, or numerical failure may remain normal
 reported outcomes. The promotion does not require every advanced active-set
 option, iteration record, or research diagnostic to become stable if the normal
@@ -232,8 +239,10 @@ stable requires downstream use, benchmark coverage, and a public API audit.
 
 ## Downstream validation
 
-chemvoro is an intended early downstream consumer. Downstream evidence for
-v0.9 stabilization and the stronger 1.0 commitment should verify that a
+chemvoro is an intended early downstream consumer. Before v0.9.0, a
+repository-owned chemvoro-shaped suite provides representative public-contract
+qualification. During released v0.9.x, actual downstream use supplies the
+external soak evidence for 1.0. Together those stages should verify that a
 chemistry-facing package can:
 
 - preserve atom IDs through forward and inverse workflows;
@@ -251,7 +260,9 @@ chemistry-facing package can:
 
 A downstream workaround based on private fields, manual backend-radius shifts,
 or correctness-sensitive search tuning is evidence that the core API is not yet
-stable.
+ready for the 1.0 commitment. A newly discovered critical hole may require a
+v0.9.x correction; the existence of the soak does not retroactively make its
+completion a v0.9.0 release gate.
 
 ## Reproducibility of archived research
 

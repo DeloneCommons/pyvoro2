@@ -12,7 +12,7 @@ contributors, reviewers, coding agents, and downstream package authors.
 | How do I use the current package? | [User guide](../guide/concepts.md) and [API reference](../reference/index.md) |
 | What mathematics does it implement? | [Theory](../theory/index.md) |
 | How does work move from proposal to release? | [Development workflow](development-workflow.md) |
-| What work is planned next? | [Development plans](plans/index.md); no post-v0.8 plan is currently active, and the completed [v0.8 cleanup plan](plans/archive/v0.8.md) and [audit remediation plan](plans/archive/v0.8-remediation.md) are archived |
+| What work is planned next? | [Draft v0.9.0 functional/API stabilization plan](plans/v0.9.md) and [development plans](plans/index.md); no post-v0.8 plan is currently active until that draft is approved and linked to a milestone |
 | Which concrete APIs are stable, provisional, experimental, removed, or internal? | [v0.8 API inventory](api-inventory.md) and [API lifecycle](api-lifecycle.md) |
 | How should repository documentation be written? | [Documentation conventions](documentation-conventions.md) |
 | How are modules and layers organized? | [Architecture](architecture.md) |
@@ -30,8 +30,10 @@ behavior. User guides and reference pages describe that behavior for callers.
 
 Accepted decision records and architecture documentation define durable
 boundaries. An **active** development plan defines approved release scope and
-gates. The v0.7 and v0.8 plans are **Completed** and archived; no post-v0.8
-plan is currently active. v0.8 R1–R9 and the post-R9 `COPYING` distribution
+gates. The v0.7 and v0.8 plans are **Completed** and archived. The
+[v0.9.0 plan](plans/v0.9.md) is **Draft** and is not implementation authority
+until activation; no post-v0.8 plan is currently active. v0.8 R1–R9 and the
+post-R9 `COPYING` distribution
 correction are complete. After source finalization and independent review,
 issue #33 qualifies the exact frozen source commit and its artifacts before the
 public tag is created. The roadmap describes version-level direction rather

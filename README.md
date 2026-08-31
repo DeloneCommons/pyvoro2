@@ -32,10 +32,10 @@ The v0.8 tree provides:
 
 The package is evolving toward a stable architecture for **forward and inverse
 weighted tessellations**. v0.8 is a feature-free maintenance and
-compatibility-removal release. v0.9 is reserved for functional/API
-stabilization and downstream readiness, 1.0 stabilizes the existing core,
-prescribed cell measures begin in v1.1, and mixed separator-plus-measure fitting
-begins in v1.2.
+compatibility-removal release. Development through v0.9.0 is reserved for
+functional/API stabilization, released v0.9.x is the downstream-readiness soak,
+and 1.0 stabilizes the existing core. Prescribed cell measures begin in v1.1,
+and mixed separator-plus-measure fitting begins in v1.2.
 
 pyvoro2 is designed to be explicit and predictable:
 

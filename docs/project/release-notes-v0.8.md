@@ -13,10 +13,10 @@ qualifies that exact commit and its artifacts before the public tag is created.
 This document does not claim that qualification has already succeeded. The
 release does not add a new public inverse method, inverse observation family,
 domain type, or solver.
-v0.9 is reserved for functional/API stabilization and downstream readiness,
-1.0 stabilizes the existing forward, periodic, and separator-inverse core,
-prescribed cell measures begin in v1.1, and mixed separator-plus-measure fitting
-begins in v1.2.
+Development through v0.9.0 is reserved for functional/API stabilization,
+released v0.9.x is the downstream-readiness soak, and 1.0 stabilizes the existing
+forward, periodic, and separator-inverse core. Prescribed cell measures begin in
+v1.1, and mixed separator-plus-measure fitting begins in v1.2.
 
 ## Removed
 

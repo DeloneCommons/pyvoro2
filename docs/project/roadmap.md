@@ -16,9 +16,10 @@ first-class separator-based inverse layer.
 
 The sequencing rule is:
 
-> Complete technical cleanup in v0.8, use v0.9 for functional/API stabilization
-> and downstream readiness, stabilize the existing forward and separator inverse
-> workflows in 1.0, then add new inverse observation families after 1.0.
+> Complete technical cleanup in v0.8, use development through v0.9.0 for
+> functional/API stabilization, use released v0.9.x for downstream-readiness
+> soak, stabilize the existing forward and separator inverse workflows in 1.0,
+> then add new inverse observation families after 1.0.
 
 The roadmap preserves potentially valuable workstreams so they are not lost.
 Exact issue grouping, implementation order within a release, and acceptance
@@ -70,12 +71,14 @@ See the completed [v0.8 plan](../development/plans/archive/v0.8.md),
 [pre-release audit](../development/audits/v0.8-pre-release.md), and
 [ADR 0006](../development/decisions/0006-v0.8-cleanup-release.md).
 
-## v0.9 — Functional stabilization and downstream readiness
+## v0.9 — v0.9.0 functional stabilization and v0.9.x downstream soak
 
-v0.9 is the last planned broad pre-1.0 functional/API refinement release. Its
+v0.9.0 is the last planned broad pre-1.0 functional/API refinement release. Its
 purpose is to make the existing package a clean substrate for downstream
 molecule, crystal, and independent MD-frame workflows while deliberate
-pre-1.0 API changes are still inexpensive.
+pre-1.0 API changes are still inexpensive. Releasing v0.9.0 starts the v0.9.x
+downstream-readiness/soak phase; it does not assert that the external soak has
+already occurred.
 
 ### Required release outcomes
 
@@ -88,10 +91,10 @@ pre-1.0 API changes are still inexpensive.
 - Promote the normal realization-aware separator workflow from experimental to
   a **supported primary inverse contract**.
 - Perform a final broad API refinement pass before the stronger 1.0 promise.
-- Improve documentation in three ordered passes: **alignment**, then **content
-  and information architecture**, then **visual/navigation design**. Evaluate a
-  replacement for MkDocs Material only in the final pass rather than assuming
-  one in advance.
+- Complete factual API/capability documentation alignment as a v0.9.0 gate.
+  Run **content and information architecture**, then **visual/navigation design**
+  or possible engine replacement as separately activated v0.9.x soak-period
+  work, not as conditions for releasing v0.9.0.
 
 The separator promotion does not turn the empirical outer active-set algorithm
 into a convergence theorem. The fixed-observation inner problem remains the
@@ -114,10 +117,10 @@ These are candidates for later issue design, not a frozen issue list:
 |---|---|
 | Weight-first query parity | Add mathematically consistent `weights=` support to `locate` and `ghost_cells`, including common generator/ghost gauge conversion. |
 | Orientation-neutral `PeriodicCell` | Accept meaningful left- and right-handed user bases while preserving user vectors and integer shift labels. |
-| Fractional/geometric cell helpers | Add Cartesian↔fractional conversion and user-parallelepiped wrapping without changing backend-primary `remap_cart` semantics. |
+| Fractional/geometric cell helpers | Add Cartesian↔fractional conversion and exact half-open user-parallelepiped wrapping without changing backend-primary `remap_cart` semantics. |
 | Representation-robust minimum images | Use exact private unimodular basis reduction in certified minimum-image geometry and map shifts back to the user basis. |
-| Certified boundary image labels | Remove bounded-search correctness from face/edge image reconstruction. |
-| Periodic query/ghost metadata | Make original/wrapped query coordinates, owner/query shifts, and 2D/3D ghost boundary shifts coherent. |
+| Certified boundary image labels | Remove bounded-search correctness from face/edge reconstruction; require positive-measure semantic records, exact provenance handling, and backend-effective power-plane compatibility. |
+| Periodic query/ghost metadata | Make original/user-wrapped/backend-site coordinates and owner/query shifts coherent; certify approximate-native translations and prevent indeterminate 3D ghost-ID reads. |
 | Shift metadata without visible vertices | Permit internal temporary geometry for shift reconstruction without forcing detailed vertices into public output. |
 | Search/tolerance/repair API lifecycle | Reassess controls such as face/edge search windows once they no longer determine correctness. |
 | Separator inverse promotion | Stabilize the supported realization-aware high-level workflow while keeping empirical termination semantics explicit. |
@@ -130,8 +133,11 @@ chemvoro/downstream use promotes them.
 
 ## 1.0 — Stable main release and JOSS-ready core
 
-Version 1.0 follows v0.9 and stabilizes the functionality pyvoro2 already has.
-It does **not** wait for prescribed-measure or mixed inverse solvers.
+Version 1.0 follows a successful released-v0.9.x soak and stabilizes the
+functionality pyvoro2 already has. The soak must reveal no critical correctness
+or API hole requiring another incompatible redesign, and downstream callers
+should not need private APIs or manual workarounds. It does **not** wait for
+prescribed-measure or mixed inverse solvers.
 
 Expected gates:
 
@@ -235,20 +241,18 @@ pyvoro2 should expose structured failures and adopt useful upstream Voro++
 improvements when practical, but informational limitations are not scheduled
 features.
 
-## Pre-1.0 decisions still to confirm
+## Pre-1.0 decision still to confirm
 
-Two package-boundary policies remain explicit maintainer decisions rather than
-assumptions in this roadmap:
+ADR 0017 settles **one repository and one distribution through 1.0**, with
+strong internal forward/inverse boundaries and post-1.0 reassessment only under
+a concrete trigger. One backend policy remains open:
 
-1. whether to commit to **one repository and one distribution through 1.0**,
-   with strong internal forward/inverse boundaries and post-1.0 reassessment
-   under concrete triggers;
-2. whether to adopt a formal **no persistent pyvoro2-specific functional
+1. whether to adopt a formal **no persistent pyvoro2-specific functional
    Voro++ fork** policy, including the treatment of narrowly carried
    correctness/upstream-backport patches.
 
-The v0.9/1.0 planning pass should settle these before they become release
-policy.
+The policy must be settled before accepting any v0.9 vendored Voro++ source
+patch; a binding-only correction does not itself constitute a functional fork.
 
 ## Explicit near-term non-goals
 

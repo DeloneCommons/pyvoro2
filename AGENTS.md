@@ -22,9 +22,11 @@ tessellations:
 - the implemented inverse layer fits power weights from pairwise separator
   observations;
 - v0.8 is a feature-free cleanup and compatibility-removal release;
-- v0.9 is the functional/API-stabilization and downstream-readiness release;
-- 1.0 stabilizes the existing forward and separator-inverse core before new
-  inverse observation families;
+- development through v0.9.0 is functional/API stabilization, and released
+  v0.9.x is the downstream-readiness/soak phase;
+- one repository/distribution is retained through 1.0;
+- 1.0 stabilizes the existing forward and separator-inverse core after the soak,
+  before new inverse observation families;
 - prescribed cell measures begin in v1.1 and mixed separator-plus-measure
   problems in v1.2, not as unrelated one-off solvers.
 
@@ -294,8 +296,9 @@ In brief:
   responsibility;
 - release plans define scope and gates; issues track progress;
 - the roadmap uses version-level outcomes, not private “Stage 0/1” labels;
-- v0.8 is cleanup-only, v0.9 is functional/downstream stabilization, 1.0 is
-  the stable main release, v1.1 is prescribed measures, and v1.2 is mixed
+- v0.8 is cleanup-only, v0.9.0 is functional/API stabilization, released
+  v0.9.x is the downstream soak, 1.0 is the stable main release, v1.1 is
+  prescribed measures, and v1.2 is mixed
   separator-plus-measure fitting;
 - the changelog records completed user-visible changes;
 - use `separator observation` in explanatory prose and historical API names

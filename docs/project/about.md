@@ -17,9 +17,11 @@ Its implemented inverse layer fits power weights from selected pairwise
 separator observations, reports compatibility, identifiability, and
 hard-constraint feasibility, and separates algebraic fitting from
 realized-boundary checks.
-v0.9 is reserved for functional/API stabilization and downstream readiness,
-1.0 stabilizes the existing core, prescribed cell measures begin in v1.1, and
-mixed separator-plus-measure problems begin in v1.2.
+
+Development through v0.9.0 is reserved for functional/API stabilization.
+Released v0.9.x is the downstream-readiness soak; 1.0 stabilizes the existing
+core, prescribed cell measures begin in v1.1, and mixed separator-plus-measure
+problems begin in v1.2.
 
 ## What is Voro++?
 

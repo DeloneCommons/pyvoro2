@@ -752,11 +752,13 @@ The current v0.8 architecture already provides most of the intended boundary:
 8. no dependency on private backend radius shifts, solver internals, or record
    ordering accidents.
 
-v0.9 is now responsible for qualifying this boundary under realistic molecule,
-crystal, and independent-frame workflows and for removing remaining wrapper/API
-restrictions that would force chemistry-facing callers to use private data,
-manual radius conversion, or representation-dependent periodic search tuning.
-The realization-aware separator workflow must also become an ordinary supported
+Development through v0.9.0 is responsible for qualifying this boundary with
+repository-owned molecule-, crystal-, and independent-frame-shaped workflows and
+for removing remaining wrapper/API restrictions that would force chemistry-facing
+callers to use private data, manual radius conversion, or
+representation-dependent periodic search tuning. The released v0.9.x series then
+provides the real downstream-readiness/soak evidence before 1.0. The
+realization-aware separator workflow must also become an ordinary supported
 inverse route rather than remain experimental solely because its outer algorithm
 has no universal convergence theorem.
 
@@ -781,12 +783,34 @@ behavior has explicit `spatial` and `planar` ownership. Compiled `_core` and
 `_core2d` names remain private native extension names; no public
 `pyvoro2.core` namespace is introduced.
 
-### v0.9 functional stabilization and downstream readiness
+### v0.9.0 functional/API stabilization and v0.9.x downstream soak
 
-v0.9 is the last planned broad pre-1.0 refinement release. It may make deliberate
-documented API changes to remove artificial forward/periodic restrictions,
-complete weight-first and periodic-query semantics, and qualify the public
-contract against real downstream use.
+v0.9.0 is the last planned broad pre-1.0 refinement release. It may make
+deliberate documented API changes to remove artificial forward/periodic
+restrictions, complete weight-first and periodic-query semantics, and qualify
+representative public workflows. Releasing v0.9.0 begins rather than completes
+the real downstream-readiness/soak phase; external v0.9.x use supplies the
+stronger evidence required for 1.0.
+
+The target periodic architecture separates: (1) the user row-basis lattice and
+exact half-open wrapping shifts; (2) an orientation-neutral Voro++ backend frame;
+and (3) private exact proof/reduction arithmetic. For a QR factorization
+`A.T = Q @ R`, the lower-triangular backend basis is `L = R.T = A @ Q`; row
+points transform by `(x - origin) @ Q` and return by `origin + x_backend @ Q.T`.
+A left-handed user basis is valid and may induce an improper orthogonal backend
+transform without reordering user lattice vectors.
+
+Discrete user-wrap shifts are decided from exact dyadic input arithmetic, not a
+rounded inverse/floor heuristic. Approximate native Cartesian image positions
+yield a public integer shift only after unique compatibility is certified within
+a declared envelope. Semantic periodic boundary identity is attached only to
+certified-positive-measure records; zero-measure raw artifacts and unresolved or
+coincident provenance follow explicit normalization/ambiguity rules. In power
+mode, native-boundary compatibility uses the exact binary64 radii passed to
+Voro++ plus an envelope for native arithmetic, while mathematical weights remain
+the public scientific representation. Ghost semantics do not trust native integer
+sign/value alone, and the 3D bridge must prevent uninitialized temporary ghost IDs
+from being read.
 
 The normal "points + separator observations -> fitted weighted tessellation"
 workflow should be promoted to a supported public inverse contract. The
@@ -795,15 +819,17 @@ realization-aware outer refinement. Stable status means stable input, result,
 provenance, and structured termination semantics; it does not promise that the
 outer algorithm converges on every input.
 
-Documentation work follows the same stabilization in three passes: factual
-alignment, content/information-architecture improvement, then presentation and
-possible documentation-stack redesign.
+Factual API/capability alignment is a v0.9.0 gate. Content/information-
+architecture improvement and then presentation/navigation or documentation-stack
+redesign are separately activated v0.9.x soak-period projects.
 
 ### 1.0 stable main contract
 
-1.0 stabilizes the forward, periodic, and separator-inverse workflows after
-v0.9 downstream qualification. It does not depend on adding a second inverse
-observation family first.
+1.0 stabilizes the forward, periodic, and separator-inverse workflows after the
+released v0.9.x soak finds no critical correctness/API hole requiring another
+incompatible redesign and downstream callers no longer need private APIs or
+manual workarounds. It does not depend on adding a second inverse observation
+family first.
 
 ### v1.1 prescribed cell measures
 
@@ -826,13 +852,16 @@ Site motion, centroids, sections, and other research extensions should enter as
 new explicit unknown or observation families. They must not be hidden options
 inside the stable weights-only solver.
 
-### Open package and backend policy
+### Package and backend policy
 
-The current v0.8 tree is one repository and one distribution with vendored
-Voro++ sources. ADR 0017 deliberately does not turn those current facts into a
-permanent policy. Pre-1.0 planning must still decide whether to require one
-repository/distribution through 1.0 and whether to adopt a formal
-no-persistent-functional-Voro++-fork rule.
+pyvoro2 remains one repository and one distribution through 1.0. A split may be
+reconsidered after 1.0 only under a concrete trigger, especially a credible
+alternative Voronoi backend with an existing Python interface. The remaining
+pre-1.0 backend-policy question is whether to adopt a formal
+no-persistent-functional-Voro++-fork rule and how to classify narrowly carried
+correctness or upstream-backport patches. A narrow binding correction is not by
+itself a functional fork; a vendored source patch requires the policy decision
+before acceptance.
 
 ## Dependency rules
 
@@ -849,6 +878,8 @@ no-persistent-functional-Voro++-fork rule.
 - Visualization remains optional and outside solver requirements.
 - Chemistry-specific data and models remain downstream.
 - Optional performance backends must not define the only public data format.
+- Forward/native and inverse functionality remain in one repository/distribution
+  through 1.0, with strong internal ownership boundaries.
 
 ## Near-term non-goals
 

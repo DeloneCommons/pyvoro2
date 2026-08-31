@@ -5,6 +5,7 @@
 - **Related issue:** [#40 — v0.8 R4: certify periodic nearest-image and minimum-image geometry](https://github.com/DeloneCommons/pyvoro2/issues/40)
 - **Related decisions:** [ADR 0011](0011-strict-input-and-ownership-contract.md)
 - **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
+- **Target amendment:** [v0.9.0 development plan, D1/WP0](../plans/v0.9.md#d1--exact-periodic-ties-are-selected-in-physical-space)
 
 ## Context
 
@@ -132,6 +133,25 @@ preserves the distance. Translating `pj` by `t @ A` changes the selected shift
 by `-t`, while translating `pi` changes it by `+t`; both preserve the physical
 displacement. The rule does not introduce a point-array permutation invariant
 or a public tie mode.
+
+### v0.9 target amendment — physical-space exact ties
+
+The coefficient-space rule above is the accepted and implemented v0.8
+behavior. It remains factual until the v0.9 WP0 amendment is accepted and the
+corresponding implementation lands. The v0.9 target replaces only the tie
+selector, not the certified minimization problem or shift sign convention.
+
+For all exact minimizers, compare the exact Cartesian displacement tuples in
+fixed caller Cartesian axes: orientation `+1` selects the lexicographically
+smallest tuple and orientation `-1` the largest. The selected displacement is
+then expressed as a shift in the user basis. This rule is invariant under exact
+unimodular changes of lattice basis, reverses by negation with the ordered pair,
+and is covariant under lattice translation of either endpoint. It does not claim
+invariance under arbitrary global rotation.
+
+WP0 must amend or supersede this ADR when the target becomes active so the
+decision record does not conflate current v0.8 behavior with implemented v0.9
+behavior.
 
 ### Resource failure and cache policy
 

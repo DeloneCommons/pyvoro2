@@ -75,11 +75,13 @@ nav:
       - v0.7 release checklist: development/release-checklist-v0.7.md
       - Development plans:
           - Overview: development/plans/index.md
-          - v0.7 archived plan: development/plans/archive/v0.7.md
-          - v0.8 completed cleanup plan: development/plans/archive/v0.8.md
-          - v0.8 completed audit remediation: development/plans/archive/v0.8-remediation.md
+          - v0.9.0 draft stabilization plan: development/plans/v0.9.md
           - Plan template: development/plans/template.md
-          - Archive: development/plans/archive/index.md
+          - Archive:
+              - Overview: development/plans/archive/index.md
+              - v0.8 completed cleanup plan: development/plans/archive/v0.8.md
+              - v0.8 completed audit remediation: development/plans/archive/v0.8-remediation.md
+              - v0.7 archived plan: development/plans/archive/v0.7.md
       - Documentation conventions: development/documentation-conventions.md
       - Architecture: development/architecture.md
       - API lifecycle: development/api-lifecycle.md
