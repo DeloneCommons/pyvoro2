@@ -1,13 +1,18 @@
-# v0.8 public API inventory
+# Public API inventory — v0.8 implemented baseline and active v0.9 target
 
-- **Status:** Source-finalized on 2026-08-17 with R1–R9 and the post-R9
-  `COPYING` distribution correction complete and accepted
+- **Implemented status:** v0.8 source-finalized on 2026-08-17 with R1–R9 and
+  the post-R9 `COPYING` distribution correction complete and accepted
 - **Historical baseline:** v0.6.3
 - **Previous contract:** v0.7.0
-- **Target:** v0.8.0
+- **Implemented release:** v0.8.0
+- **Active target:** v0.9.0 — WP0 contract activated 2026-09-01; feature work
+  remains unimplemented until its owning work package lands
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
+- **v0.9 activation:** [issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46)
+- **v0.9 execution tracker:** [issue #47](https://github.com/DeloneCommons/pyvoro2/issues/47)
 - **Policy:** [API lifecycle and compatibility](api-lifecycle.md)
-- **Plan:** [completed v0.8 development plan](plans/archive/v0.8.md)
+- **Plans:** [completed v0.8 development plan](plans/archive/v0.8.md),
+  [active v0.9 development plan](plans/v0.9.md)
 - **Decisions:** [ADR 0004](decisions/0004-canonical-inverse-namespace.md),
   [ADR 0005](decisions/0005-tessellation-result-contract.md),
   [ADR 0006](decisions/0006-v0.8-cleanup-release.md),
@@ -20,16 +25,17 @@
   [ADR 0013](decisions/0013-central-generator-preparation-and-backend-safety.md),
   [ADR 0014](decisions/0014-separator-observation-and-source-identity.md),
   [ADR 0015](decisions/0015-atomic-separator-active-state.md),
-  [ADR 0016](decisions/0016-severity-complete-tessellation-diagnostics.md), and
-  [ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md)
+  [ADR 0016](decisions/0016-severity-complete-tessellation-diagnostics.md),
+  [ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md),
+  [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md), and
+  [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md)
 
-This inventory is the authoritative v0.8 lifecycle contract for public imports,
-return routes, record schemas, defaults, and scientific semantics. It has been
-checked against the current source, tests, documentation, executed notebooks,
-distribution configuration, GitHub Actions workflows, and downstream-shaped
-regression assets. The exact final source commit is frozen after release
-finalization and independent review; issue #33 must verify that artifacts built
-from that exact commit preserve this contract before the public tag is created.
+This inventory has two explicit authority layers. The v0.8 sections are the
+factual implemented lifecycle contract for the attached/current source. The
+active v0.9 target section freezes pre-implementation public names, removals,
+result/report semantics, and lifecycle classifications that the corresponding
+work packages must implement. A target entry never overrides factual v0.8
+behavior before its owning implementation is accepted.
 
 The historical v0.6.3 baseline is retained below because it explains the v0.7
 migration. It is not a list of current imports. Current v0.8 exports,
@@ -49,9 +55,354 @@ For every issue that changes public behavior:
 6. do not mark a surface **stable** until its tests and documentation define the
    contract clearly.
 
-Issue #32 finalizes the v0.8 classifications below. Release review must verify that
-`__all__`, docstrings, guides, reference pages, migration notes, and this
-inventory remain synchronized.
+Issue #32 finalizes the implemented v0.8 classifications below. During v0.9,
+each owning work package moves its accepted target rows into factual implemented
+state and updates signatures/reference/migration text in the same change. WP13
+performs the final pre-1.0 audit rather than reconstructing the API after the
+fact.
+
+## Active v0.9 target contract (WP0)
+
+This section is the pre-implementation target ledger activated by issue
+[#46](https://github.com/DeloneCommons/pyvoro2/issues/46). It freezes the public
+contract choices needed by WP1–WP11. It is **not** a claim that those names or
+behaviors already exist in the unchanged v0.8 source: until an owning work
+package is accepted, [Current v0.8 contract](#current-v08-contract) remains the
+factual implementation authority. Issue
+[#47](https://github.com/DeloneCommons/pyvoro2/issues/47) tracks substantive
+WP1–WP13 execution.
+
+The target follows [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md)
+and [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md).
+D9 in the active plan remains unresolved by design; nothing in this ledger
+adopts a backend-fork policy.
+
+### v0.9 target lifecycle summary
+
+| Surface | Target lifecycle when implemented | Contract boundary |
+|---|---|---|
+| Existing `compute`, `locate`, `ghost_cells`, domain classes, fixed separator fit | Stable | Existing stable operations remain stable; accepted v0.9 semantic corrections are deliberate pre-1.0 contract changes. |
+| Weight-first `locate`; complete weight/radius `ghost_cells` families | Stable | Same mathematical-weight versus backend-radius representation model as stable weight-first `compute`. |
+| New `PeriodicCell` user-coordinate/wrap helpers | Provisional | Public convenience names may receive soak feedback; exact wrap-shift authority and reconstruction equations are fixed by ADR 0018. |
+| New periodic query/owner/ghost metadata and `boundary_reference` | Provisional | Field spellings below are the v0.9 target; user-basis shift meaning and kind/payload invariants are fixed. |
+| Separator objective/constraint/penalty `space` selectors and effective-space views | Provisional | Advanced model objects remain provisional; observation/source identity remains stable. |
+| `fit_self_consistent_weights_from_separators` and preferred-namespace `SelfConsistentPowerFitResult` | Provisional | Supported normal public workflow during v0.9.x soak; no Experimental import is required. |
+| Advanced active-set options/path/history and `solve_self_consistent_power_weights` | Experimental | Remain under `pyvoro2.inverse.separator`; not promoted by WP11. |
+| `ghost_radius`; finite face/edge reconstruction search/validation/repair/matching-tolerance keywords | Removed | Immediate pre-1.0 removal at the owning work package; no deprecated alias period. |
+
+WP13 performs the final pre-1.0 lifecycle audit after implementation and public
+qualification. The facade/result row is ordinary supported public API with the existing
+**Provisional** lifecycle category, not Experimental research API.
+
+### Target periodic coordinate API
+
+`PeriodicCell` keeps its existing backend-frame methods
+`cart_to_internal()`, `internal_to_cart()`, `remap_internal()`,
+`remap_cart()`, and compatibility `wrap_internal()` with their backend-primary
+meaning. v0.9 adds the distinct user-lattice operations:
+
+```text
+PeriodicCell.cart_to_fractional(points)
+PeriodicCell.fractional_to_cart(fractional)
+PeriodicCell.wrap_fractional(fractional, *, return_shifts=False)
+PeriodicCell.wrap_cart(points, *, return_shifts=False)
+```
+
+For lattice rows `A` and origin `o`, conversion uses `x = o + f @ A`. User
+wrapping satisfies
+
+```text
+fractional = fractional_wrapped + shift
+points = points_wrapped + shift @ A.
+```
+
+The integer `shift` is the exact dyadic half-open decision described by ADR
+0018. A binary64 wrapped coordinate that rounds to an upper endpoint does not
+change that shift. `return_shifts=True` returns a signed-int64 array in the
+user basis. A finite exact non-zero determinant is the mathematical validity
+criterion; determinant sign is not. Conditioning/backend/proof-resource
+failures are separate operation-level outcomes.
+
+All other public periodic shift fields use the same user-basis sign convention:
+
+```text
+minimum-image displacement = p_j - p_i + image_shift @ A
+owner_pos = owner_site + owner_shift @ A
+boundary_image = generator_site + shift @ A
+boundary_image = ghost_site + shift @ A      # ghost_self, shift != 0
+```
+
+An approximate native Cartesian image produces a public integer shift only
+when exactly one shift is compatible within the declared native envelope.
+Ambiguous/inconsistent recovery is structured failure, never nearest-residual
+selection. Exact periodic ties use ADR 0012's amended physical Cartesian
+displacement order.
+
+### Target forward input signatures and removals
+
+WP1 changes the power-input portion of both spatial and planar `locate` to:
+
+```text
+..., mode='standard', weights=None, radii=None,
+    return_owner_position=False,
+```
+
+`mode='power'` requires exactly one of `weights` and `radii`; standard mode
+rejects both. Weight input uses the same mathematical-weight/common-gauge
+semantics as `compute`.
+
+WP1 changes the power-input portion of both spatial and planar `ghost_cells` to:
+
+```text
+..., mode='standard', weights=None, radii=None,
+    ghost_weights=None, ghost_radii=None, ...
+```
+
+Power mode accepts exactly one complete family:
+`weights` + `ghost_weights` or `radii` + `ghost_radii`. Mixed or incomplete
+families are rejected. One weight call computes a single common gauge across
+persistent and temporary ghost weights. `ghost_radius` is removed with no
+alias.
+
+After certified boundary reconstruction lands, the following exact public
+keywords are removed rather than deprecated:
+
+| Operation | Removed v0.9 keywords |
+|---|---|
+| `pyvoro2.compute` | `face_shift_search`, `validate_face_shifts`, `repair_face_shifts`, `face_shift_tol` |
+| `pyvoro2.planar.compute` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` |
+| `pyvoro2.planar.ghost_cells` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` |
+
+Output-selection switches such as `return_face_shifts`/`return_edge_shifts`,
+general tessellation diagnostic tolerances, and separator `image_search` are
+not reconstruction-correctness knobs and are not removed by this decision.
+
+### Target periodic query/owner metadata
+
+For periodic spatial or planar `locate`, the base keys remain `found` and
+`owner_id`. The target additionally returns these periodic query arrays:
+
+| Key | Semantics |
+|---|---|
+| `query` | Original caller query coordinates. |
+| `query_wrapped` | Query coordinates wrapped into the user fundamental cell. |
+| `query_shift` | User-basis signed-int64 shift satisfying `query = query_wrapped + query_shift @ A`. |
+
+When `return_owner_position=True`, periodic locate also returns:
+
+| Key | Semantics |
+|---|---|
+| `owner_site` | Original caller-supplied Cartesian coordinate of the persistent owner. |
+| `owner_pos` | Actual owner-image Cartesian position used for the located image; existing key retained. |
+| `owner_shift` | User-basis signed-int64 shift satisfying `owner_pos = owner_site + owner_shift @ A`. |
+
+For `found=False`, `owner_id` remains `-1`; `owner_site` and `owner_pos` use
+all-NaN rows and `owner_shift` uses the all-zero integer sentinel. Those owner
+fields are semantically valid only where `found` is true. External `ids` change
+labels, not geometric shift calculation.
+
+### Target ghost metadata and boundary identity
+
+Spatial and planar ghost cell records both retain/add `query_index` and the
+original Cartesian `query`. For a periodic domain they additionally carry:
+
+| Key | Semantics |
+|---|---|
+| `query_wrapped` | User-cell wrapped query. |
+| `query_shift` | User-basis shift satisfying `query = query_wrapped + query_shift @ A`. |
+| `site` | Active backend-primary/cell-site Cartesian ghost representative anchoring returned geometry; never the original unwrapped query by definition. |
+
+`TessellationResult.sites` remains the original persistent input array. A raw
+periodic cell record's `site` is a geometry anchor and must not be substituted
+for that original-input contract.
+
+Every ghost face/edge for which certified semantic boundary identity is
+returned uses the exact nested key `boundary_reference`:
+
+```text
+{
+    "kind": "generator" | "ghost_self" | "wall",
+    "generator_id": int | None,
+    "shift": tuple[int, ...] | None,
+    "wall_id": int | None,
+}
+```
+
+The valid payload combinations are:
+
+| Kind | Generator ID | User-basis shift | Wall ID |
+|---|---|---|---|
+| `generator` | required | required for a periodic domain; otherwise `None` | `None` |
+| `ghost_self` | `None` | required and non-zero | `None` |
+| `wall` | `None` | `None` | required where the domain exposes wall identity |
+
+No public `BoundaryReference` class is added. Existing ordinary `compute`
+`adjacent_cell`/`adjacent_shift` fields remain their operation-specific
+contract. A ghost `adjacent_cell` may be retained only when it has a defined
+persistent-generator or wall compatibility meaning and must never expose a
+temporary/undefined native ghost ID.
+
+Semantic identity is assigned only to certified positive-measure boundaries.
+A native face/edge certified to have zero measure is removed from the packaged
+public boundary list and from normalized semantic topology; there is no new
+public raw-zero artifact channel. Unresolved zero-versus-positive measure,
+multiple non-equivalent owner/shift/kind assignments, or inconsistent native
+translation recovery produce structured ambiguity/failure when certified
+metadata is requested. Candidate records are equivalent only for the same exact
+cut and the same semantic provenance.
+
+Power-mode boundary certification uses the exact binary64 backend radii sent to
+Voro++ (including an envelope for backend radius squaring/plane arithmetic),
+while original mathematical weights remain the public scientific values.
+
+### Target separator measurement-space model
+
+The following existing provisional model constructors gain a keyword-only
+`space=None`; `None` inherits `SeparatorObservations.measurement`:
+
+```text
+SquaredLoss(*, space=None)
+HuberLoss(delta=1.0, *, space=None)
+Interval(lower, upper, *, space=None)
+FixedValue(value, *, space=None)
+SoftIntervalPenalty(lower, upper, strength, *, space=None)
+ExponentialBoundaryPenalty(
+    lower=0.0, upper=1.0, margin=0.02,
+    strength=1.0, tau=0.01, *, space=None,
+)
+ReciprocalBoundaryPenalty(
+    lower=0.0, upper=1.0, margin=0.05,
+    strength=1.0, epsilon=1e-6, *, space=None,
+)
+```
+
+Accepted explicit values are `fraction` and `position`. `L2Regularization` and
+`FitModel` do not gain a global separator-space selector. There is no per-row
+space/strength/robust-scale/anchor API and no point-centered convenience type
+in the v0.9 target.
+
+Observation-facing `SeparatorFitResult.measurement`, `target`, `predicted`,
+`residuals`, `rms_residual`, and `max_residual` keep their observation-source
+meaning. The target adds these read-only effective model-space views:
+
+```text
+SeparatorFitProblem.mismatch_space
+SeparatorFitProblem.hard_constraint_space
+SeparatorFitProblem.penalty_spaces
+
+SeparatorFitResult.mismatch_space
+SeparatorFitResult.hard_constraint_space
+SeparatorFitResult.penalty_spaces
+SeparatorFitResult.mismatch_target
+SeparatorFitResult.mismatch_predicted
+SeparatorFitResult.mismatch_residuals
+```
+
+`hard_constraint_space` is `None` without a hard term; `penalty_spaces` follows
+penalty order. `PowerFitBounds` gains a `space` field identifying the effective
+hard-bound measurement space while retaining `measurement_lower`,
+`measurement_upper`, `difference_lower`, and `difference_upper`.
+`PowerFitPredictions.measurement` remains observation-space prediction.
+Observation row identity/fingerprints do not change when model spaces change.
+
+### Target separator report schema v2
+
+WP10 bumps `pyvoro2.inverse.separator.report` from schema version `1` to `2`
+rather than silently widening the exact-key contract. Existing fit-record
+`measurement`, `target`, `predicted`, and `residual` remain observation-facing;
+fit records and active per-constraint records add exactly:
+
+```text
+mismatch_space
+mismatch_target
+mismatch_predicted
+mismatch_residual
+```
+
+Fit summaries retain `measurement` as the observation space and add
+`mismatch_space`. Fit reports add the exact effective-space block:
+
+```text
+"model_spaces": {
+    "mismatch": "fraction" | "position",
+    "hard_constraint": "fraction" | "position" | null,
+    "penalties": ["fraction" | "position", ...]
+}
+```
+
+The active/self-consistent report's nested fit information follows the same
+v2 model-space contract. Observation-only records and `observation_set`
+identity remain model-independent.
+
+### Target supported realization-aware facade
+
+WP11 adds these two preferred-namespace exports to `pyvoro2.inverse`:
+
+```text
+SelfConsistentPowerFitResult
+fit_self_consistent_weights_from_separators
+```
+
+The target preferred `pyvoro2.inverse.__all__` therefore contains eight names:
+
+```text
+SeparatorObservations
+resolve_separator_observations
+SeparatorFitResult
+fit_weights_from_separators
+SelfConsistentPowerFitResult
+fit_self_consistent_weights_from_separators
+weights_to_radii
+radii_to_weights
+```
+
+`SelfConsistentPowerFitResult` is the same class object as the advanced result,
+not a wrapper. The supported facade target signature is:
+
+```text
+fit_self_consistent_weights_from_separators(
+    points, constraints, *, measurement='fraction', domain, ids=None,
+    index_mode='index', image='nearest', image_search=1, confidence=None,
+    model=None, r_min=0.0, weight_shift=None,
+    fit_solver='direct', fit_linear_backend='dense',
+    fit_admm_max_iter=2000, fit_admm_rho=1.0,
+    fit_admm_abs_tol=1e-6, fit_admm_rel_tol=1e-5,
+    max_outer_iter=25,
+    return_cells=False, return_boundary_measure=False,
+    return_tessellation_diagnostics=False,
+    tessellation_check='diagnose', connectivity_check='warn',
+    unaccounted_pair_check='warn',
+)
+```
+
+It reuses the current active engine and ADR 0015 final-state semantics. It does
+not expose `active0`, `ActiveSetOptions`, add/drop hysteresis, relaxation,
+cycle-window, weight-step tolerance, `return_history`, or path/research
+controls. Those remain Experimental under `pyvoro2.inverse.separator` together
+with `solve_self_consistent_power_weights`.
+
+The result keeps final inner fit, final realization/diagnostics when available,
+outer termination, and final-layer availability separate. Cycle and iteration
+limit outcomes may still contain a coherent final state; unavailable layers
+remain `None`. The fixed `fit_weights_from_separators` function remains a
+separate algorithm and accepts the same v0.9 mixed-space model terms.
+
+### Target removal/migration ledger
+
+| v0.8 surface | v0.9 target | Migration |
+|---|---|---|
+| `ghost_radius` | Removed | Use `ghost_radii` with `radii`, or `ghost_weights` with `weights`. |
+| Face/edge finite reconstruction search keywords listed above | Removed | No replacement correctness knob; certified reconstruction is authoritative. |
+| Face/edge validation/repair reconstruction keywords listed above | Removed | No mutation-based public repair path. |
+| Face/edge reconstruction matching tolerance keywords listed above | Removed | Private certification envelopes/resource policy replace user correctness tuning. |
+| Coefficient-lexicographic exact-tie selection | Replaced semantic rule | Exact physical Cartesian displacement order from amended ADR 0012. |
+| Right-handed-only `PeriodicCell` validity | Replaced semantic rule | Any finite exact non-degenerate basis is mathematically valid; later backend/resource failure is separate. |
+| Experimental-only ordinary realization-aware entry route | Preferred supported facade added | Use `pyvoro2.inverse.fit_self_consistent_weights_from_separators`; advanced controls remain available only in the advanced namespace. |
+
+No compatibility alias is added for the intentionally removed reconstruction or
+`ghost_radius` keywords. Release migration/changelog text is added by the owning
+implementation work packages, when the behavior actually changes.
+
 
 ## Factual v0.6.3 baseline
 

@@ -6,11 +6,12 @@ welcome when they are focused, testable, and consistent with the documented
 architecture.
 
 The feature-free v0.8 maintenance and compatibility-removal plans are complete
-and archived. No post-v0.8 plan is currently active; substantial future work
-requires separate plan activation and issue scope. v0.9 is reserved for
-functional/API stabilization and downstream readiness, 1.0 stabilizes the
-existing core, prescribed cell measures begin in v1.1, and mixed-observation
-fitting begins in v1.2.
+and archived. The [v0.9.0 development plan](docs/development/plans/v0.9.md) is
+Active; substantial v0.9 work must follow that plan and a linked issue under
+execution tracker [#47](https://github.com/DeloneCommons/pyvoro2/issues/47).
+v0.9 is reserved for functional/API stabilization and downstream readiness,
+1.0 stabilizes the existing core, prescribed cell measures begin in v1.1, and
+mixed-observation fitting begins in v1.2.
 
 ## Before starting
 

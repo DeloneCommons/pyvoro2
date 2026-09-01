@@ -98,6 +98,52 @@ core if that soak finds no critical hole requiring another incompatible redesign
 Prescribed cell measures move to v1.1 and mixed separator-plus-measure fitting to
 v1.2.
 
+## Active v0.9 target lifecycle boundary
+
+The [active v0.9 plan](plans/v0.9.md) and the v0.9 target ledger in the
+[API inventory](api-inventory.md) now fix the contracts that implementation may
+rely on. Until a work package lands, the v0.8 sections of the inventory remain
+the factual implemented behavior; target classification is not a claim that the
+new name already imports.
+
+The activation boundary is:
+
+- existing stable forward/domain operations remain **Stable**, including
+  deliberate v0.9 semantic corrections recorded by accepted ADRs; the accepted
+  user-basis shift convention, physical exact-tie rule, and weight/radius
+  representation meaning are scientific semantics rather than optional
+  provisional interpretations;
+- weight-first `locate()` and the complete weight/radius families for
+  `ghost_cells()` join the **Stable** forward operation contract when
+  implemented, matching the representation model already stable for
+  `compute()`;
+- new `PeriodicCell` user-fractional/user-parallelepiped convenience methods and
+  new periodic query/owner/ghost metadata fields are **Provisional** through the
+  v0.9.x soak, while their underlying reconstruction equations and user-basis
+  shift meaning are fixed by ADR 0018;
+- ghost `boundary_reference` is **Provisional** public metadata during the soak,
+  with its kind/payload invariants fixed by ADR 0018;
+- separator model classes remain **Provisional** advanced API. Their new
+  keyword-only `space` arguments and effective-space result/report views share
+  that classification; observation/source identity remains Stable;
+- `fit_self_consistent_weights_from_separators` and the preferred-namespace
+  `SelfConsistentPowerFitResult` become **Provisional** API in the supported preferred namespace: ordinary
+  callers may rely on them without entering an Experimental namespace, but the
+  released v0.9.x soak and the final pre-1.0 audit still precede the
+  stronger 1.0 commitment;
+- `solve_self_consistent_power_weights`, `ActiveSetOptions`, active-set
+  iteration/path objects, hysteresis/relaxation/cycle-window/weight-step
+  controls, and research history remain **Experimental** under
+  `pyvoro2.inverse.separator`;
+- `ghost_radius` and the face/edge reconstruction search, validation, repair,
+  and matching-tolerance keywords named in the target inventory are **Removed**
+  when their owning v0.9 work package lands. The active plan explicitly chooses
+  immediate pre-1.0 removal rather than a deprecated alias period.
+
+D9, the backend-fork policy, is not silently assigned a lifecycle category by
+WP0. It remains the explicit decision gate in the active plan and must be
+resolved by its stated trigger/deadline.
+
 ## What counts as a breaking change
 
 Examples include:

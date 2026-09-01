@@ -2,10 +2,13 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-09
-- **Related issue:** [#40 — v0.8 R4: certify periodic nearest-image and minimum-image geometry](https://github.com/DeloneCommons/pyvoro2/issues/40)
-- **Related decisions:** [ADR 0011](0011-strict-input-and-ownership-contract.md)
-- **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
-- **Target amendment:** [v0.9.0 development plan, D1/WP0](../plans/v0.9.md#d1--exact-periodic-ties-are-selected-in-physical-space)
+- **Amended:** 2026-09-01 for the v0.9 physical-space exact-tie rule
+- **Related issues:** [#40 — v0.8 R4: certify periodic nearest-image and minimum-image geometry](https://github.com/DeloneCommons/pyvoro2/issues/40),
+  [#46 — Activate the v0.9.0 functional/API stabilization plan](https://github.com/DeloneCommons/pyvoro2/issues/46)
+- **Related decisions:** [ADR 0011](0011-strict-input-and-ownership-contract.md),
+  [ADR 0018](0018-periodic-user-lattice-and-boundary-semantics.md)
+- **Related plans:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md),
+  [active v0.9.0 development plan](../plans/v0.9.md)
 
 ## Context
 
@@ -118,40 +121,30 @@ mode and no advice to increase `image_search` for correctness.
 Seed work is capped at 4,096 candidates per pair. A larger requested
 neighborhood is truncated deterministically and recorded in private metadata.
 
-### Deterministic exact ties
+### Deterministic exact ties — amended for v0.9
 
-Private callers supply an orientation token derived from stable ordered
-endpoint keys. For all exact minimizers, orientation `+1` selects the
-lexicographically smallest shift and orientation `-1` selects the largest.
-For separator inference, those stable keys are the resolved internal site
-indices within the fixed resolved problem. External ID values remain metadata
-and do not participate in geometric tie selection. Duplicate candidate pairs
-likewise use their internal point indices. Each caller uses `+1` when the first
-endpoint index is smaller and `-1` when it is larger. Reversing a pair therefore
-reverses the orientation, negates the selected shift and displacement, and
-preserves the distance. Translating `pj` by `t @ A` changes the selected shift
-by `-t`, while translating `pi` changes it by `+t`; both preserve the physical
-displacement. The rule does not introduce a point-array permutation invariant
-or a public tie mode.
+The certified minimization problem and shift sign convention above are
+unchanged. The v0.8 implementation selected an exact tie by lexicographic
+ordering of integer shift coefficients. As of the 2026-09-01 v0.9 activation,
+that coefficient-space selector is historical implemented v0.8 behavior and is
+no longer the accepted target semantics. WP4 implements the amended rule.
 
-### v0.9 target amendment — physical-space exact ties
+Private callers still supply an orientation token derived from stable ordered
+endpoint keys. For all exact minimizers, compare the **exact Cartesian
+displacement tuples** in fixed caller Cartesian axes: orientation `+1` selects
+the lexicographically smallest displacement and orientation `-1` the largest.
+The selected physical displacement is then expressed as an integer shift in the
+user-supplied lattice basis. External ID values remain metadata and do not
+participate in the geometric tie selector.
 
-The coefficient-space rule above is the accepted and implemented v0.8
-behavior. It remains factual until the v0.9 WP0 amendment is accepted and the
-corresponding implementation lands. The v0.9 target replaces only the tie
-selector, not the certified minimization problem or shift sign convention.
-
-For all exact minimizers, compare the exact Cartesian displacement tuples in
-fixed caller Cartesian axes: orientation `+1` selects the lexicographically
-smallest tuple and orientation `-1` the largest. The selected displacement is
-then expressed as a shift in the user basis. This rule is invariant under exact
-unimodular changes of lattice basis, reverses by negation with the ordered pair,
-and is covariant under lattice translation of either endpoint. It does not claim
-invariance under arbitrary global rotation.
-
-WP0 must amend or supersede this ADR when the target becomes active so the
-decision record does not conflate current v0.8 behavior with implemented v0.9
-behavior.
+Reversing an ordered pair reverses the orientation and negates the selected
+shift/displacement. Translating `pj` by `t @ A` changes the selected shift by
+`-t`, while translating `pi` changes it by `+t`; both preserve the selected
+physical displacement. An exact unimodular change of lattice basis preserves
+the selected physical member of the tie and transforms only its integer
+coefficients. The rule deliberately does not claim invariance under arbitrary
+global rotation: the deterministic tie order is defined in fixed caller
+Cartesian axes.
 
 ### Resource failure and cache policy
 
@@ -199,8 +192,8 @@ periodic seam. Candidate-generation and mandatory safety independent of
   binary64-input problem, including the known `(2, -1, -1)` regression.
 - `image_search` keeps its public signature and default while becoming
   correctness-neutral; only private work metadata and runtime may vary.
-- Exact tie behavior is reproducible and respects lattice translation and pair
-  reversal.
+- Exact tie behavior is reproducible, uses the representation-invariant physical
+  displacement order, and respects lattice translation and pair reversal.
 - Accepted highly skewed cells may fail structurally when the conservative
   proof box exceeds the frozen resource budget. They do not return a heuristic
   image.
@@ -227,6 +220,13 @@ prove completeness for the exact binary64 values supplied by the caller.
 
 Rejected. Keeping it as a bounded performance hint preserves the public
 signature and default without retaining its former correctness dependence.
+
+### Order exact ties by user-basis integer coefficients
+
+Rejected for the v0.9 target. Equivalent exact unimodular bases can assign
+different coefficient tuples to the same tied physical images. The amended
+physical-displacement order preserves the selected physical image across such
+representations.
 
 ### Replace explicit shifts with nearer images
 

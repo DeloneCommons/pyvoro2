@@ -75,7 +75,7 @@ nav:
       - v0.7 release checklist: development/release-checklist-v0.7.md
       - Development plans:
           - Overview: development/plans/index.md
-          - v0.9.0 draft stabilization plan: development/plans/v0.9.md
+          - v0.9.0 active stabilization plan: development/plans/v0.9.md
           - Plan template: development/plans/template.md
           - Archive:
               - Overview: development/plans/archive/index.md
@@ -85,7 +85,7 @@ nav:
       - Documentation conventions: development/documentation-conventions.md
       - Architecture: development/architecture.md
       - API lifecycle: development/api-lifecycle.md
-      - v0.8 API inventory: development/api-inventory.md
+      - v0.8 implemented / v0.9 target API inventory: development/api-inventory.md
       - Development audits:
           - Overview: development/audits/index.md
           - v0.8 historical audit/remediation record: development/audits/v0.8-pre-release.md
@@ -108,6 +108,8 @@ nav:
           - Atomic separator active-set final state: development/decisions/0015-atomic-separator-active-state.md
           - Severity-complete tessellation diagnostics: development/decisions/0016-severity-complete-tessellation-diagnostics.md
           - Post-v0.8 stabilization before 1.0: development/decisions/0017-v0.9-functional-stabilization-before-1.0.md
+          - User-lattice periodic semantics and boundary identity: development/decisions/0018-periodic-user-lattice-and-boundary-semantics.md
+          - Separator measurement spaces and supported realization-aware fitting: development/decisions/0019-separator-measurement-spaces-and-supported-realization.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

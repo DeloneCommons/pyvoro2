@@ -9,14 +9,17 @@ milestones.
 
 ## Current plan
 
-The [v0.9.0 functional/API stabilization plan](v0.9.md) is currently a **Draft**.
-It captures the reviewed implementation blueprint, accepted maintainer decisions,
-dependency graph, validation strategy, and release gates, but it is not active
-until the repository text is approved and a GitHub milestone is linked.
+The [v0.9.0 functional/API stabilization plan](v0.9.md) is **Active**. It is
+maintainer-approved and linked to the
+[`v0.9.0` milestone](https://github.com/DeloneCommons/pyvoro2/milestone/3),
+[activation issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46), and
+[substantive execution tracker #47](https://github.com/DeloneCommons/pyvoro2/issues/47).
+It is the source-controlled implementation authority for WP1–WP13; focused
+child issues are prepared just-in-time from the current `dev` state.
 
-No post-v0.8 plan is currently active. Future substantial work therefore still
-requires explicit plan activation; the existence of the draft does not authorize
-implementation of unresolved public or architectural choices.
+Implementation must remain inside the active plan and accepted decision/API
+contracts. The plan does not authorize unresolved scope expansion, and its D9
+backend-fork policy remains the explicit later decision gate described there.
 
 The roadmap reserves v0.9 for functional/API stabilization and downstream
 readiness, followed by the stable 1.0 core; prescribed cell measures move to
@@ -51,8 +54,9 @@ See [Development workflow](../development-workflow.md) for the complete process.
 2. Use a version or descriptive workstream name.
 3. Define outcome, scope, non-goals, decisions, work packages, validation, and
    release acceptance criteria.
-4. Review the draft before creating the full issue set.
-5. Activate it only after explicit maintainer approval and milestone linkage.
+4. Review the draft before creating substantive implementation child issues.
+5. Activate it only after explicit maintainer approval and milestone linkage;
+   prepare focused execution issues from the current implementation state.
 
 ## Archive
 

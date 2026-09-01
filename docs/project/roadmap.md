@@ -103,11 +103,11 @@ numerical failure may remain structured outcomes. Stable API means supported
 inputs, semantics, provenance, result/status vocabulary, and failure reporting;
 it does not mean every admissible problem converges.
 
-The exact high-level inverse entry-point shape should be decided during v0.9.
-Ordinary callers should not need an API labelled experimental merely to perform
-"points + separator observations -> fitted weighted tessellation". Advanced
-path/iteration internals may remain provisional if the normal workflow does not
-depend on them.
+The active v0.9 plan and target API inventory now fix the supported high-level
+realization-aware entry-point shape. Ordinary callers should not need an API
+labelled experimental merely to perform "points + separator observations ->
+fitted weighted tessellation". Advanced path/iteration internals may remain
+provisional or experimental if the normal workflow does not depend on them.
 
 ### Candidate v0.9 workstreams to preserve
 
