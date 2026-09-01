@@ -856,12 +856,22 @@ inside the stable weights-only solver.
 
 pyvoro2 remains one repository and one distribution through 1.0. A split may be
 reconsidered after 1.0 only under a concrete trigger, especially a credible
-alternative Voronoi backend with an existing Python interface. The remaining
-pre-1.0 backend-policy question is whether to adopt a formal
-no-persistent-functional-Voro++-fork rule and how to classify narrowly carried
-correctness or upstream-backport patches. A narrow binding correction is not by
-itself a functional fork; a vendored source patch requires the policy decision
-before acceptance.
+alternative Voronoi backend with an existing Python interface.
+
+The remaining pre-1.0 backend-source question is intentionally evidence-driven:
+whether pyvoro2 should require functionally unmodified upstream Voro++ source
+or permit a bounded, explicitly maintained downstream patchset without treating
+the vendored backend as an independently evolving pyvoro2 fork. WP7 is the
+intended decision point because it will first establish whether the required
+ghost-native correction can remain entirely in the pybind/binding layer. A
+binding-only correction does not settle the policy. If a vendored Voro++ source
+change is actually required, the minimum concrete diff must be reviewed under
+D9 before acceptance.
+
+Patch lifetime or upstream acceptance alone does not define the fork boundary.
+Substantive changes to Voro++ geometry algorithms, numerical behavior, or core
+backend architecture remain separate architecture decisions even if a bounded
+downstream-patchset policy is later adopted.
 
 ## Dependency rules
 

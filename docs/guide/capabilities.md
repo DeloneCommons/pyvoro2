@@ -89,9 +89,18 @@ bounded accepted robustness fix.
 
 [ADR 0017](../development/decisions/0017-v0.9-functional-stabilization-before-1.0.md)
 now fixes one repository and one distribution through 1.0, with post-1.0
-reassessment only under a concrete trigger. The remaining pre-1.0 policy question
-is whether to adopt a formal no-persistent-functional-Voro++-fork rule and how to
-treat narrowly carried correctness/upstream-backport patches.
+reassessment only under a concrete trigger. The remaining pre-1.0 backend-source
+question is whether pyvoro2 should require functionally unmodified upstream
+Voro++ source or permit a bounded, explicitly maintained downstream patchset
+without becoming an independently evolving backend fork.
+
+That policy is intentionally deferred until WP7 establishes the minimum native
+change required for correct ghost-boundary semantics. A clean binding-only fix
+does not settle it. If a vendored Voro++ source change is actually needed, the
+minimum concrete patch is reviewed under D9 before acceptance. The unresolved
+choice is about the scope and maintenance burden of downstream divergence, not
+about declaring every long-lived patch a functional fork merely because it is
+not temporary or upstream-accepted.
 
 For exact callable behavior, see [Choosing an API](choosing-api.md), the
 [API reference](../reference/index.md), and the

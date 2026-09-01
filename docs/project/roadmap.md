@@ -233,8 +233,8 @@ Record these accurately without implying a committed pyvoro2 implementation:
 - partial triclinic periodicity in 3D or oblique periodicity in 2D when correct
   support would require substantive backend work or a second periodic layer;
 - unbounded cells/domains, which require a different result geometry contract;
-- functionality requiring substantive Voro++ source changes rather than a
-  bounded wrapper correction;
+- functionality requiring substantive Voro++ source changes beyond a binding
+  correction or any future policy-approved bounded downstream patchset;
 - guarantees beyond binary64/backend numerical resolution.
 
 pyvoro2 should expose structured failures and adopt useful upstream Voro++
@@ -245,14 +245,28 @@ features.
 
 ADR 0017 settles **one repository and one distribution through 1.0**, with
 strong internal forward/inverse boundaries and post-1.0 reassessment only under
-a concrete trigger. One backend policy remains open:
+a concrete trigger. One backend-source policy remains intentionally open:
 
-1. whether to adopt a formal **no persistent pyvoro2-specific functional
-   Voro++ fork** policy, including the treatment of narrowly carried
-   correctness/upstream-backport patches.
+1. whether pyvoro2 should require functionally unmodified upstream Voro++
+   source, or permit a bounded, explicitly maintained downstream patchset that
+   does not constitute an independently evolving pyvoro2 backend fork.
 
-The policy must be settled before accepting any v0.9 vendored Voro++ source
-patch; a binding-only correction does not itself constitute a functional fork.
+Do not settle this question abstractly before WP7 establishes the minimum
+correct native solution. A clean binding-only correction is preferred when it
+satisfies the supported contract without fragile reconstruction or undocumented
+backend assumptions, and it does not itself settle D9.
+
+If WP7 shows that vendored Voro++ source must change, reduce the requirement to
+the minimum concrete diff and stop before accepting it. D9 is then decided from
+that evidence. The relevant boundary is the scope and maintenance divergence of
+the patchset, not temporary versus permanent lifetime alone: one possible policy
+may permit narrow long-lived downstream patches, including patches that upstream
+does not adopt, provided they are explicit, isolated, regression-tested, and
+reviewed during vendor updates. This paragraph does not authorize such patches
+before D9 is settled.
+
+Any proposal that materially changes Voro++ geometry algorithms, numerical
+behavior, or core backend architecture remains a separate maintainer decision.
 
 ## Explicit near-term non-goals
 
