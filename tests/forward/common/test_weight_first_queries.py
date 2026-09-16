@@ -134,6 +134,54 @@ def _sorted_vertices(cell: dict[str, Any]) -> np.ndarray:
     return vertices[np.lexsort(keys)]
 
 
+def _assert_same_unit_periodic_vertices(
+    left: np.ndarray,
+    right: np.ndarray,
+) -> None:
+    assert left.shape == right.shape
+    if not len(left):
+        return
+
+    delta = left[:, None, :] - right[None, :, :]
+    residual = delta - np.rint(delta)
+    equivalent = np.all(
+        np.isclose(residual, 0.0, rtol=0.0, atol=1e-12),
+        axis=2,
+    )
+    matched_left = np.full(len(right), -1, dtype=int)
+
+    def match(left_index: int, seen: np.ndarray) -> bool:
+        for right_index in np.flatnonzero(equivalent[left_index]):
+            if seen[right_index]:
+                continue
+            seen[right_index] = True
+            previous = matched_left[right_index]
+            if previous < 0 or match(int(previous), seen):
+                matched_left[right_index] = left_index
+                return True
+        return False
+
+    assert all(
+        match(index, np.zeros(len(right), dtype=bool))
+        for index in range(len(left))
+    )
+
+
+def test_unit_periodic_vertices_accept_lattice_image_representatives() -> None:
+    left = np.array([[0.25, 0.0, 0.5], [0.75, 0.5, 0.0]])
+    right = np.array([[0.75, 0.5, 1.0], [0.25, 1.0, 0.5]])
+
+    _assert_same_unit_periodic_vertices(left, right)
+
+
+def test_unit_periodic_vertices_reject_noninteger_displacement() -> None:
+    left = np.array([[0.25, 0.0, 0.5], [0.25, 1.0, 0.5]])
+    right = np.array([[0.25, 0.0, 0.5], [0.25, 0.75, 0.5]])
+
+    with pytest.raises(AssertionError):
+        _assert_same_unit_periodic_vertices(left, right)
+
+
 def _assert_same_ghost_geometry(
     left: list[dict[str, Any]],
     right: list[dict[str, Any]],
@@ -148,12 +196,17 @@ def _assert_same_ghost_geometry(
             rel=1e-12,
             abs=1e-12,
         )
-        np.testing.assert_allclose(
-            _sorted_vertices(left_cell),
-            _sorted_vertices(right_cell),
-            rtol=1e-12,
-            atol=1e-12,
-        )
+        left_vertices = _sorted_vertices(left_cell)
+        right_vertices = _sorted_vertices(right_cell)
+        if case.name == 'spatial-periodic-cell':
+            _assert_same_unit_periodic_vertices(left_vertices, right_vertices)
+        else:
+            np.testing.assert_allclose(
+                left_vertices,
+                right_vertices,
+                rtol=1e-12,
+                atol=1e-12,
+            )
 
 
 @pytest.mark.parametrize('case', CASES, ids=_case_id)
