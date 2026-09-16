@@ -181,7 +181,7 @@ def test_fuzz_planar_ghost_cells_periodic_power_smoke(fuzz_settings) -> None:
             domain=domain,
             mode='power',
             radii=radii,
-            ghost_radius=ghost_radii,
+            ghost_radii=ghost_radii,
             return_vertices=True,
             return_edges=True,
             return_edge_shifts=True,

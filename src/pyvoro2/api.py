@@ -12,8 +12,6 @@ from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.spatial.domain_utils import domain_length_scale
 from ._internal.inputs import (
     coerce_native_block_parameters,
-    coerce_nonnegative_scalar_or_vector,
-    coerce_nonnegative_vector,
     coerce_point_array,
     validate_forward_mode,
     validate_duplicate_check_mode,
@@ -26,7 +24,11 @@ from ._internal.generator_preparation import (
 )
 from ._internal.spatial.domain_geometry import geometry3d
 from ._internal.spatial.face_shifts import _add_periodic_face_shifts_inplace
-from ._internal.power_input import ResolvedPowerInput, resolve_power_input
+from ._internal.power_input import (
+    ResolvedPowerInput,
+    resolve_ghost_power_input,
+    resolve_power_input,
+)
 from ._internal.validation import (
     CPP_INT_MAX,
     PY_SSIZE_T_MAX,
@@ -792,6 +794,7 @@ def locate(
     blocks: tuple[int, int, int] | None = None,
     init_mem: int = 8,
     mode: Literal['standard', 'power'] = 'standard',
+    weights: Sequence[float] | np.ndarray | None = None,
     radii: Sequence[float] | np.ndarray | None = None,
     return_owner_position: bool = False,
 ) -> dict[str, Any]:
@@ -822,7 +825,11 @@ def locate(
             Voro++. Known eager native construction allocations are subject to
             an aggregate cap of exactly 1 GiB.
         mode: 'standard' or 'power'.
-        radii: Per-point radii for `mode='power'`.
+        weights: Mathematical per-point power weights for ``mode='power'``.
+            Exactly one of ``weights`` or ``radii`` is required in power mode.
+        radii: Explicit non-negative per-point backend radii for
+            ``mode='power'``. Exactly one of ``weights`` or ``radii`` is
+            required in power mode.
         return_owner_position: If True, also return the (possibly periodic-image)
             position of the owning generator as reported by Voro++.
 
@@ -866,11 +873,13 @@ def locate(
     q = coerce_point_array(queries, name='queries', dim=3)
 
     n = int(pts.shape[0])
-    rr: np.ndarray | None = None
-    if mode == 'power':
-        if radii is None:
-            raise ValueError('radii is required for mode="power"')
-        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
+    power_input = resolve_power_input(
+        mode=mode,
+        weights=weights,
+        radii=radii,
+        n=n,
+    )
+    rr = power_input.backend_radii
     geom = geometry3d(domain)
     if isinstance(domain, (Box, OrthorhombicCell)):
         native_bounds = geom.native_bounds
@@ -1017,8 +1026,10 @@ def ghost_cells(
     blocks: tuple[int, int, int] | None = None,
     init_mem: int = 8,
     mode: Literal['standard', 'power'] = 'standard',
+    weights: Sequence[float] | np.ndarray | None = None,
     radii: Sequence[float] | np.ndarray | None = None,
-    ghost_radius: float | Sequence[float] | np.ndarray | None = None,
+    ghost_weights: float | Sequence[float] | np.ndarray | None = None,
+    ghost_radii: float | Sequence[float] | np.ndarray | None = None,
     return_vertices: bool = True,
     return_adjacency: bool = True,
     return_faces: bool = True,
@@ -1063,9 +1074,14 @@ def ghost_cells(
             Voro++. Known eager native construction allocations are subject to
             an aggregate cap of exactly 1 GiB.
         mode: 'standard' or 'power'.
-        radii: Per-point radii for `mode='power'`.
-        ghost_radius: Radius (or array of radii) for each ghost query point in
-            `mode='power'`. Must be provided for power mode.
+        weights: Mathematical persistent-generator power weights for
+            ``mode='power'``. Supply together with ``ghost_weights``.
+        radii: Explicit non-negative persistent-generator backend radii for
+            ``mode='power'``. Supply together with ``ghost_radii``.
+        ghost_weights: Mathematical ghost power weight, or one value per query.
+            Persistent and ghost weights share one common conversion gauge.
+        ghost_radii: Explicit non-negative ghost backend radius, or one value
+            per query.
         return_vertices: Include vertex coordinates.
         return_adjacency: Include vertex adjacency.
         return_faces: Include faces with adjacent generator IDs.
@@ -1127,20 +1143,17 @@ def ghost_cells(
     n = int(pts.shape[0])
     m = int(q.shape[0])
 
-    rr: np.ndarray | None = None
-    gr: np.ndarray | None = None
-    if mode == 'power':
-        if radii is None:
-            raise ValueError('radii is required for mode="power"')
-        if ghost_radius is None:
-            raise ValueError('ghost_radius is required for mode="power"')
-        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
-        gr = coerce_nonnegative_scalar_or_vector(
-            ghost_radius,
-            name='ghost_radius',
-            n=m,
-            length_name='m',
-        )
+    power_input = resolve_ghost_power_input(
+        mode=mode,
+        weights=weights,
+        radii=radii,
+        ghost_weights=ghost_weights,
+        ghost_radii=ghost_radii,
+        n=n,
+        m=m,
+    )
+    rr = power_input.backend_radii
+    gr = power_input.backend_ghost_radii
 
     geom = geometry3d(domain)
     if isinstance(domain, (Box, OrthorhombicCell)):

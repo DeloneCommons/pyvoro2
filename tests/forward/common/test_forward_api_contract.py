@@ -221,6 +221,7 @@ def test_locate_and_ghost_signatures_are_characterized() -> None:
         ('blocks', None),
         ('init_mem', 8),
         ('mode', 'standard'),
+        ('weights', None),
         ('radii', None),
     )
     planar_dispatch = spatial_dispatch
@@ -237,7 +238,8 @@ def test_locate_and_ghost_signatures_are_characterized() -> None:
         common
         + spatial_dispatch
         + (
-            ('ghost_radius', None),
+            ('ghost_weights', None),
+            ('ghost_radii', None),
             ('return_vertices', True),
             ('return_adjacency', True),
             ('return_faces', True),
@@ -248,7 +250,8 @@ def test_locate_and_ghost_signatures_are_characterized() -> None:
         common
         + planar_dispatch
         + (
-            ('ghost_radius', None),
+            ('ghost_weights', None),
+            ('ghost_radii', None),
             ('return_vertices', True),
             ('return_adjacency', True),
             ('return_edges', True),

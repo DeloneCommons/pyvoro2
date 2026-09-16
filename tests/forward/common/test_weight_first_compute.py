@@ -817,14 +817,26 @@ def test_weight_input_preserves_hidden_cells_and_periodic_shifts(
     _assert_same_diagram(weighted, gauged, case)
 
 
-def test_weights_are_added_only_to_compute_signatures() -> None:
-    for compute in (pv.compute, pv2.compute):
-        parameters = inspect.signature(compute).parameters
+def test_weights_are_available_across_forward_power_signatures() -> None:
+    for operation in (
+        pv.compute,
+        pv2.compute,
+        pv.locate,
+        pv2.locate,
+        pv.ghost_cells,
+        pv2.ghost_cells,
+    ):
+        parameters = inspect.signature(operation).parameters
         names = tuple(parameters)
         assert names.index('weights') + 1 == names.index('radii')
         assert parameters['weights'].kind is inspect.Parameter.KEYWORD_ONLY
         assert parameters['weights'].default is None
-    assert 'weights' not in inspect.signature(pv.locate).parameters
-    assert 'weights' not in inspect.signature(pv2.locate).parameters
-    assert 'weights' not in inspect.signature(pv.ghost_cells).parameters
-    assert 'weights' not in inspect.signature(pv2.ghost_cells).parameters
+
+    for ghost_cells in (pv.ghost_cells, pv2.ghost_cells):
+        parameters = inspect.signature(ghost_cells).parameters
+        names = tuple(parameters)
+        assert names.index('ghost_weights') + 1 == names.index('ghost_radii')
+        assert parameters['ghost_weights'].kind is inspect.Parameter.KEYWORD_ONLY
+        assert parameters['ghost_weights'].default is None
+        assert parameters['ghost_radii'].kind is inspect.Parameter.KEYWORD_ONLY
+        assert parameters['ghost_radii'].default is None

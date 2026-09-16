@@ -51,7 +51,7 @@ def test_ghost_cells_box_power_volume_shift() -> None:
         domain=box,
         mode='power',
         radii=radii,
-        ghost_radius=0.0,
+        ghost_radii=0.0,
         return_vertices=False,
         return_adjacency=False,
         return_faces=False,

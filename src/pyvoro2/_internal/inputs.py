@@ -169,6 +169,26 @@ def coerce_nonnegative_scalar_or_vector(
     shape ``(n,)``.
     """
 
+    arr = coerce_finite_scalar_or_vector(
+        values,
+        name=name,
+        n=n,
+        length_name=length_name,
+    )
+    if np.any(arr < 0):
+        raise ValueError(f'{name} must be non-negative')
+    return arr
+
+
+def coerce_finite_scalar_or_vector(
+    values: float | Sequence[float] | np.ndarray,
+    *,
+    name: str,
+    n: int,
+    length_name: str,
+) -> np.ndarray:
+    """Return a finite real float64 vector, broadcasting scalar input."""
+
     arr = _as_original_array(values, name=name)
     if arr.ndim == 0:
         scalar = _finite_float64_array(arr, name=name)
@@ -179,8 +199,6 @@ def coerce_nonnegative_scalar_or_vector(
         raise ValueError(
             f'{name} must be a scalar or have shape ({length_name},)'
         )
-    if np.any(arr < 0):
-        raise ValueError(f'{name} must be non-negative')
     return arr
 
 
