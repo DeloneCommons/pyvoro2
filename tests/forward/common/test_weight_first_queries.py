@@ -74,6 +74,18 @@ CASES = (
         'volume',
         'return_faces',
     ),
+    QueryCase(
+        'spatial-periodic-cell',
+        pv,
+        api3d,
+        np.array([[0.25, 0.5, 0.5], [0.75, 0.5, 0.5]], dtype=float),
+        np.array([[0.2, 0.5, 0.5], [0.8, 0.5, 0.5]], dtype=float),
+        pv.PeriodicCell(
+            vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
+        ),
+        'volume',
+        'return_faces',
+    ),
 )
 
 
