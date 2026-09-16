@@ -50,19 +50,19 @@ def test_power_mode_rejects_negative_radii() -> None:
         )
 
 
-def test_ghost_cells_rejects_negative_ghost_radius() -> None:
+def test_ghost_cells_rejects_negative_ghost_radii() -> None:
     dom = _box()
     pts = np.array([[0.1, 0.2, 0.3], [0.7, 0.6, 0.5]], dtype=float)
     q = np.array([[0.2, 0.2, 0.2]], dtype=float)
     rr = np.array([0.1, 0.2], dtype=float)
-    with pytest.raises(ValueError, match='ghost_radius'):
+    with pytest.raises(ValueError, match='ghost_radii'):
         pyvoro2.ghost_cells(
             pts,
             q,
             domain=dom,
             mode='power',
             radii=rr,
-            ghost_radius=-1.0,
+            ghost_radii=-1.0,
             return_vertices=False,
             return_adjacency=False,
             return_faces=False,
@@ -223,7 +223,7 @@ def test_public_wrappers_reject_invalid_duplicate_check(func, kwargs) -> None:
             func(pts, queries, domain=dom, duplicate_check='bad', **kwargs)
 
 
-def test_power_mode_rejects_nonfinite_radii_and_ghost_radius() -> None:
+def test_power_mode_rejects_nonfinite_radii_and_ghost_radii() -> None:
     dom = _box()
     pts = np.array([[0.1, 0.2, 0.3], [0.7, 0.6, 0.5]], dtype=float)
     rr = np.array([0.1, np.inf], dtype=float)
@@ -247,7 +247,7 @@ def test_power_mode_rejects_nonfinite_radii_and_ghost_radius() -> None:
             domain=dom,
             mode='power',
             radii=np.array([0.1, 0.2], dtype=float),
-            ghost_radius=np.nan,
+            ghost_radii=np.nan,
             return_vertices=False,
             return_adjacency=False,
             return_faces=False,

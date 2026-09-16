@@ -403,7 +403,7 @@ def test_each_power_native_construction_rejects_boolean_radii_before_call(
         'radii': np.array([True, False]),
     }
     if operation == 'ghost_cells':
-        kwargs['ghost_radius'] = 0.0
+        kwargs['ghost_radii'] = 0.0
 
     with pytest.raises(ValueError, match='radii.*real numeric'):
         _invoke(dim, operation, **kwargs)
@@ -707,7 +707,7 @@ def test_valid_periodic_native_parameters_reach_spatial_core(
     if mode == 'power':
         kwargs['radii'] = np.array([0.0, 0.5])
         if operation == 'ghost_cells':
-            kwargs['ghost_radius'] = 0.25
+            kwargs['ghost_radii'] = 0.25
 
     _invoke(3, operation, domain=domain, **kwargs)
 

@@ -117,7 +117,7 @@ def _invoke(
     if operation == 'locate':
         return package.locate(points, queries, **common)
     if mode == 'power':
-        common['ghost_radius'] = 0.0
+        common['ghost_radii'] = 0.0
     return package.ghost_cells(
         points,
         queries,

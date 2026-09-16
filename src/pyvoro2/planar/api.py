@@ -11,8 +11,6 @@ import numpy as np
 from .._internal.cell_output import add_empty_cells_inplace, remap_ids_inplace
 from .._internal.inputs import (
     coerce_native_block_parameters,
-    coerce_nonnegative_scalar_or_vector,
-    coerce_nonnegative_vector,
     coerce_point_array,
     validate_forward_mode,
     validate_duplicate_check_mode,
@@ -23,7 +21,11 @@ from .._internal.generator_preparation import (
     prepare_temporary_generators,
     validate_compute_internal_ids,
 )
-from .._internal.power_input import ResolvedPowerInput, resolve_power_input
+from .._internal.power_input import (
+    ResolvedPowerInput,
+    resolve_ghost_power_input,
+    resolve_power_input,
+)
 from .._internal.validation import (
     CPP_INT_MAX,
     PY_SSIZE_T_MAX,
@@ -648,6 +650,7 @@ def locate(
     blocks: tuple[int, int] | None = None,
     init_mem: int = 8,
     mode: Literal['standard', 'power'] = 'standard',
+    weights: Sequence[float] | np.ndarray | None = None,
     radii: Sequence[float] | np.ndarray | None = None,
     return_owner_position: bool = False,
 ) -> dict[str, np.ndarray]:
@@ -655,8 +658,10 @@ def locate(
 
     ``init_mem`` and explicit length-2 ``blocks`` use positive exact-integer
     semantics; ``block_size`` is positive and finite. Malformed or non-finite
-    points, queries, radii, domains, and over-cap known eager native allocation
-    estimates raise ``ValueError`` before construction.
+    points, queries, weights, radii, domains, and over-cap known eager native
+    allocation estimates raise ``ValueError`` before construction. Power mode
+    requires exactly one of mathematical ``weights`` or explicit non-negative
+    backend ``radii``.
     Generator points use the same half-open containment and mandatory duplicate
     safety as :func:`compute`; locate queries themselves are not inserted and
     retain their existing query semantics.
@@ -691,11 +696,13 @@ def locate(
     q = coerce_point_array(queries, name='queries', dim=2)
 
     n = int(pts.shape[0])
-    rr: np.ndarray | None = None
-    if mode == 'power':
-        if radii is None:
-            raise ValueError('radii is required for mode="power"')
-        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
+    power_input = resolve_power_input(
+        mode=mode,
+        weights=weights,
+        radii=radii,
+        n=n,
+    )
+    rr = power_input.backend_radii
     geom = geometry2d(domain)
     bounds = geom.native_bounds
     prepared = prepare_generators(
@@ -781,8 +788,10 @@ def ghost_cells(
     blocks: tuple[int, int] | None = None,
     init_mem: int = 8,
     mode: Literal['standard', 'power'] = 'standard',
+    weights: Sequence[float] | np.ndarray | None = None,
     radii: Sequence[float] | np.ndarray | None = None,
-    ghost_radius: float | Sequence[float] | np.ndarray | None = None,
+    ghost_weights: float | Sequence[float] | np.ndarray | None = None,
+    ghost_radii: float | Sequence[float] | np.ndarray | None = None,
     return_vertices: bool = True,
     return_adjacency: bool = True,
     return_edges: bool = True,
@@ -797,8 +806,11 @@ def ghost_cells(
 
     ``init_mem`` and explicit length-2 ``blocks`` use positive exact-integer
     semantics; ``block_size`` is positive and finite. Malformed or non-finite
-    points, queries, radii, domains, and over-cap known eager native allocation
-    estimates raise ``ValueError`` before construction.
+    points, queries, weights, radii, domains, and over-cap known eager native
+    allocation estimates raise ``ValueError`` before construction. Power mode
+    accepts exactly one complete ``weights``/``ghost_weights`` or
+    ``radii``/``ghost_radii`` family. Persistent and ghost weights share one
+    common backend-radius conversion gauge.
     Both persistent sites and each temporary ghost generator use half-open
     containment and mandatory duplicate safety. Periodic axes are remapped;
     an outside non-periodic ghost query raises instead of producing an empty
@@ -865,20 +877,17 @@ def ghost_cells(
     n = int(pts.shape[0])
     m = int(q.shape[0])
 
-    rr: np.ndarray | None = None
-    gr: np.ndarray | None = None
-    if mode == 'power':
-        if radii is None:
-            raise ValueError('radii is required for mode="power"')
-        if ghost_radius is None:
-            raise ValueError('ghost_radius is required for mode="power"')
-        rr = coerce_nonnegative_vector(radii, name='radii', n=n)
-        gr = coerce_nonnegative_scalar_or_vector(
-            ghost_radius,
-            name='ghost_radius',
-            n=m,
-            length_name='m',
-        )
+    power_input = resolve_ghost_power_input(
+        mode=mode,
+        weights=weights,
+        radii=radii,
+        ghost_weights=ghost_weights,
+        ghost_radii=ghost_radii,
+        n=n,
+        m=m,
+    )
+    rr = power_input.backend_radii
+    gr = power_input.backend_ghost_radii
     geom = geometry2d(domain)
     bounds = geom.native_bounds
     prepared = prepare_generators(

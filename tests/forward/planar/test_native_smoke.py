@@ -93,7 +93,7 @@ def test_planar_ghost_cells_power_asymmetric_weights_smoke() -> None:
         domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
         mode='power',
         radii=radii,
-        ghost_radius=0.1,
+        ghost_radii=0.1,
         return_vertices=True,
         return_edges=True,
     )
@@ -183,7 +183,7 @@ def test_planar_locate_power_return_owner_position_smoke() -> None:
     assert out['owner_pos'].shape == (2, 2)
 
 
-def test_planar_ghost_cells_power_with_ghost_radius_smoke() -> None:
+def test_planar_ghost_cells_power_with_ghost_radii_smoke() -> None:
     pts = np.array([[0.25, 0.5], [0.75, 0.5]], dtype=float)
     radii = np.array([0.1, 0.1], dtype=float)
     queries = np.array([[0.5, 0.5]], dtype=float)
@@ -193,7 +193,7 @@ def test_planar_ghost_cells_power_with_ghost_radius_smoke() -> None:
         domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
         mode='power',
         radii=radii,
-        ghost_radius=0.08,
+        ghost_radii=0.08,
         return_vertices=True,
         return_edges=True,
         include_empty=True,
