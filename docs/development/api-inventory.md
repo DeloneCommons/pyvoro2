@@ -5,8 +5,9 @@
 - **Historical baseline:** v0.6.3
 - **Previous contract:** v0.7.0
 - **Implemented release:** v0.8.0
-- **Active target:** v0.9.0 — WP0 contract activated 2026-09-01; feature work
-  remains unimplemented until its owning work package lands
+- **Active target:** v0.9.0 — WP0 contract activated 2026-09-01; WP1 query-input
+  parity implemented 2026-09-16; later feature work remains target-only until
+  its owning work package lands
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
 - **v0.9 activation:** [issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **v0.9 execution tracker:** [issue #47](https://github.com/DeloneCommons/pyvoro2/issues/47)
@@ -31,17 +32,17 @@
   [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md), and
   [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md)
 
-This inventory has two explicit authority layers. The v0.8 sections are the
-factual implemented lifecycle contract for the attached/current source. The
-active v0.9 target section freezes pre-implementation public names, removals,
-result/report semantics, and lifecycle classifications that the corresponding
-work packages must implement. A target entry never overrides factual v0.8
-behavior before its owning implementation is accepted.
+This inventory has two explicit authority layers. The current implemented
+sections record accepted behavior in the tree, including completed v0.9 work
+packages. The active v0.9 ledger freezes remaining pre-implementation public
+names, removals, result/report semantics, and lifecycle classifications. A
+target entry never overrides factual implemented behavior before its owning
+implementation is accepted.
 
 The historical v0.6.3 baseline is retained below because it explains the v0.7
-migration. It is not a list of current imports. Current v0.8 exports,
-signatures, lifecycle classifications, internal boundaries, and removals begin
-at [Current v0.8 contract](#current-v08-contract).
+migration. It is not a list of current imports. Current exports, signatures,
+lifecycle classifications, internal boundaries, and removals begin at
+[Current implemented contract](#current-implemented-contract).
 
 ## How to maintain this inventory
 
@@ -62,14 +63,14 @@ state and updates signatures/reference/migration text in the same change. WP13
 performs the final pre-1.0 audit rather than reconstructing the API after the
 fact.
 
-## Active v0.9 target contract (WP0)
+## Active v0.9 implementation and target contract
 
-This section is the pre-implementation target ledger activated by issue
+This section is the implementation/target ledger activated by issue
 [#46](https://github.com/DeloneCommons/pyvoro2/issues/46). It freezes the public
-contract choices needed by WP1–WP11. It is **not** a claim that those names or
-behaviors already exist in the unchanged v0.8 source: until an owning work
-package is accepted, [Current v0.8 contract](#current-v08-contract) remains the
-factual implementation authority. Issue
+contract choices needed by WP1–WP11 and records WP1 as implemented. Entries for
+later work packages remain target-only until accepted; the
+[current implemented contract](#current-implemented-contract) remains factual
+authority. Issue
 [#47](https://github.com/DeloneCommons/pyvoro2/issues/47) tracks substantive
 WP1–WP13 execution.
 
@@ -78,18 +79,19 @@ and [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realiza
 D9 in the active plan remains unresolved by design; nothing in this ledger
 adopts a backend-fork policy.
 
-### v0.9 target lifecycle summary
+### v0.9 implementation and target lifecycle summary
 
-| Surface | Target lifecycle when implemented | Contract boundary |
+| Surface | Lifecycle | Contract boundary |
 |---|---|---|
 | Existing `compute`, `locate`, `ghost_cells`, domain classes, fixed separator fit | Stable | Existing stable operations remain stable; accepted v0.9 semantic corrections are deliberate pre-1.0 contract changes. |
-| Weight-first `locate`; complete weight/radius `ghost_cells` families | Stable | Same mathematical-weight versus backend-radius representation model as stable weight-first `compute`. |
+| Weight-first `locate`; complete weight/radius `ghost_cells` families | Stable — implemented by WP1 | Same mathematical-weight versus backend-radius representation model as stable weight-first `compute`. |
 | New `PeriodicCell` user-coordinate/wrap helpers | Provisional | Public convenience names may receive soak feedback; exact wrap-shift authority and reconstruction equations are fixed by ADR 0018. |
 | New periodic query/owner/ghost metadata and `boundary_reference` | Provisional | Field spellings below are the v0.9 target; user-basis shift meaning and kind/payload invariants are fixed. |
 | Separator objective/constraint/penalty `space` selectors and effective-space views | Provisional | Advanced model objects remain provisional; observation/source identity remains stable. |
 | `fit_self_consistent_weights_from_separators` and preferred-namespace `SelfConsistentPowerFitResult` | Provisional | Supported normal public workflow during v0.9.x soak; no Experimental import is required. |
 | Advanced active-set options/path/history and `solve_self_consistent_power_weights` | Experimental | Remain under `pyvoro2.inverse.separator`; not promoted by WP11. |
-| `ghost_radius`; finite face/edge reconstruction search/validation/repair/matching-tolerance keywords | Removed | Immediate pre-1.0 removal at the owning work package; no deprecated alias period. |
+| `ghost_radius` | Removed — implemented by WP1 | Immediate pre-1.0 removal; no deprecated alias period. |
+| Finite face/edge reconstruction search/validation/repair/matching-tolerance keywords | Removed when implemented | Immediate pre-1.0 removal at the later owning work package; no deprecated alias period. |
 
 WP13 performs the final pre-1.0 lifecycle audit after implementation and public
 qualification. The facade/result row is ordinary supported public API with the existing
@@ -139,9 +141,9 @@ Ambiguous/inconsistent recovery is structured failure, never nearest-residual
 selection. Exact periodic ties use ADR 0012's amended physical Cartesian
 displacement order.
 
-### Target forward input signatures and removals
+### Implemented WP1 forward input signatures and target removals
 
-WP1 changes the power-input portion of both spatial and planar `locate` to:
+WP1 changed the power-input portion of both spatial and planar `locate` to:
 
 ```text
 ..., mode='standard', weights=None, radii=None,
@@ -152,7 +154,7 @@ WP1 changes the power-input portion of both spatial and planar `locate` to:
 rejects both. Weight input uses the same mathematical-weight/common-gauge
 semantics as `compute`.
 
-WP1 changes the power-input portion of both spatial and planar `ghost_cells` to:
+WP1 changed the power-input portion of both spatial and planar `ghost_cells` to:
 
 ```text
 ..., mode='standard', weights=None, radii=None,
@@ -401,8 +403,9 @@ separate algorithm and accepts the same v0.9 mixed-space model terms.
 | Experimental-only ordinary realization-aware entry route | Preferred supported facade added | Use `pyvoro2.inverse.fit_self_consistent_weights_from_separators`; advanced controls remain available only in the advanced namespace. |
 
 No compatibility alias is added for the intentionally removed reconstruction or
-`ghost_radius` keywords. Release migration/changelog text is added by the owning
-implementation work packages, when the behavior actually changes.
+`ghost_radius` keywords. WP1 records the completed `ghost_radius` removal in
+the changelog; later owning work packages add their release migration text when
+the remaining behavior changes.
 
 
 ## Factual v0.6.3 baseline
@@ -1281,11 +1284,12 @@ WP-01 stop condition was triggered, and dependent implementation may preserve
 the recorded baseline through the compatibility policy without reopening an
 accepted decision.
 
-## Current v0.8 contract
+## Current implemented contract
 
-The current tree has one structured forward contract, one canonical high-level
-separator route, and one advanced separator namespace. Runtime inspection and
-the import/signature tests establish these exact package export counts:
+The current tree retains the v0.8 structured forward/result and separator
+contracts and includes accepted v0.9 work packages where stated. Runtime
+inspection and the import/signature tests establish these exact package export
+counts:
 
 | Namespace | Exact `__all__` size | Lifecycle boundary |
 |---|---:|---|
@@ -1353,18 +1357,61 @@ pyvoro2.planar.compute(
     tessellation_line_offset_tol=None,
     tessellation_line_angle_tol=None,
 )
+
+pyvoro2.locate(
+    points, queries, *, domain, ids=None,
+    duplicate_check='off', duplicate_threshold=1e-5,
+    duplicate_wrap=True, duplicate_max_pairs=10,
+    block_size=None, blocks=None, init_mem=8,
+    mode='standard', weights=None, radii=None,
+    return_owner_position=False,
+)
+
+pyvoro2.planar.locate(
+    points, queries, *, domain, ids=None,
+    duplicate_check='off', duplicate_threshold=1e-5,
+    duplicate_wrap=True, duplicate_max_pairs=10,
+    block_size=None, blocks=None, init_mem=8,
+    mode='standard', weights=None, radii=None,
+    return_owner_position=False,
+)
+
+pyvoro2.ghost_cells(
+    points, queries, *, domain, ids=None,
+    duplicate_check='off', duplicate_threshold=1e-5,
+    duplicate_wrap=True, duplicate_max_pairs=10,
+    block_size=None, blocks=None, init_mem=8,
+    mode='standard', weights=None, radii=None,
+    ghost_weights=None, ghost_radii=None,
+    return_vertices=True, return_adjacency=True, return_faces=True,
+    include_empty=True,
+)
+
+pyvoro2.planar.ghost_cells(
+    points, queries, *, domain, ids=None,
+    duplicate_check='off', duplicate_threshold=1e-5,
+    duplicate_wrap=True, duplicate_max_pairs=10,
+    block_size=None, blocks=None, init_mem=8,
+    mode='standard', weights=None, radii=None,
+    ghost_weights=None, ghost_radii=None,
+    return_vertices=True, return_adjacency=True, return_edges=True,
+    return_edge_shifts=False, edge_shift_search=2, include_empty=True,
+    validate_edge_shifts=True, repair_edge_shifts=False, edge_shift_tol=None,
+)
 ```
 
-The current `locate(...)`, `ghost_cells(...)`, domain, diagnostics,
-validation, duplicate, normalization, annotation, transform, and visualization
-signatures are exactly the retained signatures listed in the corresponding
-sections above. In particular, `locate(...)` and `ghost_cells(...)` remain
-radius-only in power mode; `weights=` belongs only to `compute(...)`.
-
-Power-mode `compute(...)` requires exactly one of `weights=` and `radii=`.
-Standard mode rejects both. Weight input must have shape `(n,)` and all
+The domain, diagnostics, validation, duplicate, normalization, annotation,
+transform, and visualization signatures remain as listed in their
+corresponding sections. Power-mode `compute(...)` and `locate(...)` require
+exactly one of `weights=` and `radii=`; standard mode rejects both.
+Power-mode `ghost_cells(...)` requires exactly one complete family:
+`weights=`/`ghost_weights=` or `radii=`/`ghost_radii=`. Standard mode rejects
+all four arguments. Persistent weights have shape `(n,)`; temporary ghost
+weights and radii accept a scalar or shape `(m,)`. One ghost weight call uses a
+single common conversion gauge across both sets. All weight input and
 conversion arithmetic must remain finite. Valid direct-radius behavior is
-unchanged. Finite representability does not promise geometric resolution when
+unchanged except for the intentional `ghost_radius` to `ghost_radii` spelling
+change. Finite representability does not promise geometric resolution when
 squared backend radii or genuine weight ranges overwhelm squared geometry
 scales.
 
@@ -2131,11 +2178,14 @@ The following are API even when no dedicated Python class represents them:
   sensitive;
 - backend radii have coordinate units;
 - one global additive weight shift leaves the complete power diagram unchanged;
-- power-mode `compute(...)` requires exactly one of `weights=` or `radii=`,
-  while standard mode rejects both arguments;
+- power-mode `compute(...)` and `locate(...)` require exactly one of
+  `weights=` or `radii=`, while standard mode rejects both arguments;
+- power-mode `ghost_cells(...)` requires one complete
+  `weights=`/`ghost_weights=` or `radii=`/`ghost_radii=` family and uses one
+  common weight gauge across persistent and temporary generators;
 - valid radius-based power computation remains numerically unchanged;
-- direct `weights=` input currently belongs to the two `compute(...)`
-  functions, not to every forward operation;
+- direct `weights=` input belongs to all six spatial and planar forward
+  operations;
 - backend radii are a shifted representation and are not unique physical
   radii;
 - disconnected separator-observation components have additional unidentified
