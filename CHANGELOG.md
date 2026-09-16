@@ -8,6 +8,12 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Added weight-first spatial and planar `locate()` and `ghost_cells()` parity.
+  Power-mode locate calls now require exactly one of mathematical `weights` or
+  explicit backend `radii`; ghost calls require one complete
+  `weights`/`ghost_weights` or `radii`/`ghost_radii` family and convert all
+  persistent and temporary weights with one common gauge. The singular
+  `ghost_radius` keyword is removed without an alias.
 - Reordered the v0.9.0 pre-release plan so WP1-WP13 are followed by a complete-
   code maintainer reread, a separate architectural/technical audit, remediation
   of findings accepted for pre-release work if any, and a Zensical-led

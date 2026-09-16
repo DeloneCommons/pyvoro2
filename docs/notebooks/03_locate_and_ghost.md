@@ -101,4 +101,4 @@ summary, outside_error
 ## Notes
 
 - In a periodic domain, persistent and ghost generators are wrapped into a primary domain. `locate` queries themselves keep query semantics.
-- In power mode (`mode='power'`), a ghost cell also needs a radius/weight for the query site (`ghost_radius`).
+- In power mode (`mode='power'`), `locate` accepts mathematical `weights` or explicit backend `radii`. `ghost_cells` accepts one complete family: `weights` with `ghost_weights`, or `radii` with `ghost_radii`. Persistent and ghost weights share one common conversion gauge.

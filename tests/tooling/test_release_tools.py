@@ -805,7 +805,7 @@ def test_r9_source_metadata_and_api_inventory_are_current() -> None:
     inventory = (
         REPO_ROOT / 'docs' / 'development' / 'api-inventory.md'
     ).read_text(encoding='utf-8')
-    current = inventory.split('## Current v0.8 contract', 1)[1]
+    current = inventory.split('## Current implemented contract', 1)[1]
     assert 'There is no current `pyvoro2.powerfit`' in current
     for retained_name in (
         'PowerFitBounds',

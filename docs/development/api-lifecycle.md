@@ -135,10 +135,11 @@ The activation boundary is:
   iteration/path objects, hysteresis/relaxation/cycle-window/weight-step
   controls, and research history remain **Experimental** under
   `pyvoro2.inverse.separator`;
-- `ghost_radius` and the face/edge reconstruction search, validation, repair,
-  and matching-tolerance keywords named in the target inventory are **Removed**
-  when their owning v0.9 work package lands. The active plan explicitly chooses
-  immediate pre-1.0 removal rather than a deprecated alias period.
+- `ghost_radius` is **Removed** by WP1. The face/edge reconstruction search,
+  validation, repair, and matching-tolerance keywords named in the target
+  inventory become **Removed** when their later owning v0.9 work packages land.
+  The active plan explicitly chooses immediate pre-1.0 removal rather than a
+  deprecated alias period for these surfaces.
 
 D9, the backend-fork policy, is not silently assigned a lifecycle category by
 WP0. It remains the explicit decision gate in the active plan and must be
