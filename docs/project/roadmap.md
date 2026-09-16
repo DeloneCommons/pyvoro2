@@ -265,6 +265,41 @@ pyvoro2 should expose structured failures and adopt useful upstream Voro++
 improvements when practical, but informational limitations are not scheduled
 features.
 
+### Deferred Voro++ extreme-power investigation
+
+pyvoro2 has observed backend-level numerical failure in some radical/power
+tessellations when finite and representable squared-radii or power-weight
+ranges become extreme relative to the geometric coordinate scale. Current
+evidence does not justify a universal pyvoro2 cutoff, automatic rescaling rule,
+or downstream Voro++ patch.
+
+This is intentionally deferred as an upstream-oriented investigation rather
+than a v0.9.0 implementation requirement. Reconsider it during the released
+v0.9.x soak, when the stabilized pyvoro2 contract and real downstream workloads
+provide better evidence of practical impact; the soak does not promise a fix.
+
+Before opening an upstream Voro++ issue or adopting a local remedy, the
+investigation should:
+
+- reproduce the behavior against the then-current upstream Voro++ source
+  rather than assume the vendored snapshot still represents upstream behavior;
+- search upstream history, issues, and fixes for duplicates or relevant
+  numerical changes;
+- reduce the problem to a small backend-level reproducer independent of
+  pyvoro2 where possible;
+- characterize the failure mechanism and the scale/range conditions that
+  trigger it;
+- distinguish representable but ill-conditioned input from invalid input;
+- evaluate whether any remedy belongs upstream, in a narrow binding/interface
+  layer, in documented capability limits, or nowhere; and
+- decide whether an upstream issue is justified only when the evidence supports
+  a precise failure description and reproducer.
+
+Until then, pyvoro2 should retain accurate narrow capability/failure wording
+and structured failure behavior where possible rather than claim a universal
+safe dynamic range. Any substantive local Voro++ source change remains subject
+to the D9 policy gate below.
+
 ## Pre-1.0 decision still to confirm
 
 ADR 0017 settles **one repository and one distribution through 1.0**, with
