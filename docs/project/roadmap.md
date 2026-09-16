@@ -16,10 +16,12 @@ first-class separator-based inverse layer.
 
 The sequencing rule is:
 
-> Complete technical cleanup in v0.8, use development through v0.9.0 for
-> functional/API stabilization, use released v0.9.x for downstream-readiness
-> soak, stabilize the existing forward and separator inverse workflows in 1.0,
-> then add new inverse observation families after 1.0.
+> Complete technical cleanup in v0.8; use development through v0.9.0 for
+> functional/API stabilization, deliberate whole-code comprehension and audit,
+> remediation of findings explicitly accepted for pre-release work if any, and
+> the documentation overhaul; use released v0.9.x for downstream-readiness soak;
+> stabilize the existing forward and separator inverse workflows in 1.0; then
+> add new inverse observation families after 1.0.
 
 The roadmap preserves potentially valuable workstreams so they are not lost.
 Exact issue grouping, implementation order within a release, and acceptance
@@ -91,10 +93,19 @@ already occurred.
 - Promote the normal realization-aware separator workflow from experimental to
   a **supported primary inverse contract**.
 - Perform a final broad API refinement pass before the stronger 1.0 promise.
-- Complete factual API/capability documentation alignment as a v0.9.0 gate.
-  Run **content and information architecture**, then **visual/navigation design**
-  or possible engine replacement as separately activated v0.9.x soak-period
-  work, not as conditions for releasing v0.9.0.
+- After functional/API stabilization, perform an explicit maintainer reread of
+  the complete codebase for comprehension and architecture reconciliation.
+- Follow that reread with a separate evidence-driven architectural and technical
+  audit; remediate only findings explicitly accepted for pre-release work, if
+  any, before documentation.
+- Complete the pre-release documentation overhaul: verify and migrate the
+  Markdown-first stack to Zensical with the notebook source/export workflow and
+  required API-reference, MathJax, extension, and snippet capabilities intact;
+  then improve content/information architecture, visual/navigation design, and
+  the landing page.
+- Run final frozen-source qualification and publication work only after all
+  release-blocking implementation, review, explicitly accepted pre-release
+  remediation, and documentation work has completed.
 
 The separator promotion does not turn the empirical outer active-set algorithm
 into a convergence theorem. The fixed-observation inner problem remains the
@@ -108,6 +119,12 @@ realization-aware entry-point shape. Ordinary callers should not need an API
 labelled experimental merely to perform "points + separator observations ->
 fitted weighted tessellation". Advanced path/iteration internals may remain
 provisional or experimental if the normal workflow does not depend on them.
+
+The released-v0.9.x soak then tests that internally reviewed release against
+real downstream workflows, integration pressure, workload diversity, and
+operational experience. It is not the planned venue for architectural problems
+or obvious technical weaknesses that deliberate pre-release inspection could
+reasonably have found.
 
 ### Candidate v0.9 workstreams to preserve
 
@@ -225,6 +242,13 @@ Possible later research workstreams include:
 - optional solver backend plugins;
 - bounded site-coordinate optimization as an explicit new unknown family;
 - anisotropic or non-Euclidean models driven by a concrete research project.
+
+Additional observation directions remain an explicitly uncommitted research
+backlog: cell-membership or power-comparison inequalities; visibility/support
+constraints; structured or tied weight parameterizations; second moments after
+centroid observations; non-uniform-density cell masses; and boundary-point
+separator observations. They are not milestones, version promises, or public
+API designs.
 
 ## Informational and upstream-oriented limitations
 

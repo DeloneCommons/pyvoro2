@@ -105,9 +105,9 @@ criteria from conditional improvements that may be deferred.
 ## Proposed issue decomposition
 
 List durable issue titles and dependencies. Final issue bodies live on GitHub.
-For issue-scoped human or coding-agent work, each issue should state the
-observable outcome, in/out of scope behavior, accepted decisions, baseline to
-preserve, tests/docs required, and stop conditions for maintainer review.
+For issue-scoped implementation, each issue should state the observable outcome,
+in/out of scope behavior, accepted decisions, baseline to preserve, tests/docs
+required, and stop conditions for maintainer review.
 
 ## Public API inventory
 

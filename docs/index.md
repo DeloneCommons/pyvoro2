@@ -26,9 +26,10 @@ The v0.8 tree provides:
 The package is evolving toward a stable architecture for **forward and inverse
 weighted tessellations**. v0.8 is a feature-free maintenance and
 compatibility-removal release. Development through v0.9.0 is reserved for
-functional/API stabilization, released v0.9.x is the downstream-readiness soak,
-and 1.0 stabilizes the existing core. Prescribed cell measures begin in v1.1,
-and mixed separator-plus-measure fitting begins in v1.2.
+functional/API stabilization followed by pre-release whole-code review and a
+documentation overhaul; released v0.9.x is the downstream-readiness soak, and
+1.0 stabilizes the existing core. Prescribed cell measures begin in v1.1, and
+mixed separator-plus-measure fitting begins in v1.2.
 
 pyvoro2 is designed to be explicit and predictable:
 
@@ -257,7 +258,7 @@ of the Python-side contracts needed in scientific workflows. pyvoro2 adds:
 | [Examples](guide/notebooks.md) | Executable notebook workflows. |
 | [API reference](reference/index.md) | Exact signatures and docstring reference for spatial, planar, and separator-fitting APIs. |
 | [v0.8.0 release notes](project/release-notes-v0.8.md) | Removals, fixes, maintenance, documentation, and the release distribution contract. |
-| [Roadmap](project/roadmap.md) | v0.8 cleanup, v0.9 functional stabilization, the stable 1.0 core, v1.1 prescribed measures, v1.2 mixed fitting, and future research. |
+| [Roadmap](project/roadmap.md) | v0.8 cleanup, v0.9 functional stabilization and pre-release maturation, the stable 1.0 core, v1.1 prescribed measures, v1.2 mixed fitting, and future research. |
 
 ## Installation
 
@@ -354,15 +355,6 @@ Reproducible bugs and focused feature proposals are welcome through GitHub
 issues. Development is currently led by one maintainer, so support is
 best-effort. Contribution and decision policies are described in
 [`CONTRIBUTING.md`](https://github.com/DeloneCommons/pyvoro2/blob/main/CONTRIBUTING.md).
-
-## AI-assisted development
-
-The project has used the latest Chat and Codex models available at the time of
-development for planning, implementation support, testing, and documentation.
-The maintainer reviews and validates all integrated changes and remains
-responsible for the software and scientific claims.
-
-See [AI-assisted development](project/ai.md) for details.
 
 ## License
 

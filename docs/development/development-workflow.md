@@ -1,8 +1,8 @@
 # Development workflow
 
 This document defines how pyvoro2 work moves from an idea to an accepted
-release. It is the shared process for maintainers, contributors, and coding
-agents.
+release. It is the shared process for maintainers, contributors, implementers,
+and reviewers.
 
 The workflow is intentionally lightweight enough for a single-maintainer
 research package, while leaving a visible record of scope, design, validation,
@@ -33,7 +33,7 @@ released from a reviewed state.
 | [Changelog](../about/changelog.md) | What completed user-visible behavior was delivered? |
 
 A substantial change should be traceable through these levels without requiring
-access to a private chat or personal notes.
+access to private conversations or personal notes.
 
 ## When a release plan is required
 
@@ -143,7 +143,7 @@ validation, then regenerate stored-output pages with
 `python tools/export_notebooks.py`. Ordinary MkDocs builds do not execute
 notebooks.
 
-A coding agent must read the active plan, linked issue, and relevant decision
+The implementer must read the active plan, linked issue, and relevant decision
 records before changing public behavior. Unresolved design gates require a
 maintainer decision rather than an invented implementation choice.
 
@@ -244,11 +244,12 @@ When release scope changes:
 Do not rewrite the roadmap to mirror every scope adjustment. Update it only when
 the version-level direction changes.
 
-## Requirements for agent-assisted work
+## Requirements for issue-scoped implementation
 
-Agent-assisted changes follow the same process as human-authored changes.
+All implementation follows the same repository process regardless of the tools
+used to prepare it.
 
-Agents must:
+Implementers must:
 
 - read `AGENTS.md`, the active plan, linked issue, relevant ADRs, and API
   inventory before implementation;
@@ -266,8 +267,9 @@ Agents must:
 - never mark a plan or decision as approved without an explicit maintainer
   instruction.
 
-Any important decision reached in a chat must be transferred to an issue,
-release plan, API inventory, or decision record before it governs later work.
+Any important decision reached outside the repository must be transferred to an
+issue, release plan, API inventory, or decision record before it governs later
+work.
 The process should not produce duplicate status documents when the issue, tests,
 docs, changelog, and plan already provide the needed record.
 

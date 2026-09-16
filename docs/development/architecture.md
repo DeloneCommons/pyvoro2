@@ -819,9 +819,16 @@ realization-aware outer refinement. Stable status means stable input, result,
 provenance, and structured termination semantics; it does not promise that the
 outer algorithm converges on every input.
 
-Factual API/capability alignment is a v0.9.0 gate. Content/information-
-architecture improvement and then presentation/navigation or documentation-stack
-redesign are separately activated v0.9.x soak-period projects.
+After WP1-WP13, the maintainer performs a complete-code comprehension reread and
+architecture reconciliation, followed by a distinct evidence-driven
+architectural and technical audit. Findings explicitly accepted for pre-release
+remediation are resolved if any; otherwise the project progresses directly to
+the documentation phase. The pre-release documentation overhaul then migrates
+the Markdown-first stack to Zensical after compatibility verification,
+preserves the notebook source/export workflow, and proceeds from low-redesign
+migration to content/information-architecture and
+visual/navigation/landing-page work. Final frozen-source qualification under
+#48 follows all of these stages.
 
 ### 1.0 stable main contract
 

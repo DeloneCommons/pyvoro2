@@ -1,8 +1,8 @@
 # AGENTS.md
 
-This file is the operational contract for coding agents and maintainers working
-on pyvoro2. Durable rationale and process live in the linked repository
-documents:
+This file is the machine-facing operational contract for implementation and
+review work on pyvoro2. Durable rationale and process live in the linked
+repository documents:
 
 - [Architecture](docs/development/architecture.md)
 - [Development workflow](docs/development/development-workflow.md)
@@ -24,6 +24,10 @@ tessellations:
 - v0.8 is a feature-free cleanup and compatibility-removal release;
 - development through v0.9.0 is functional/API stabilization, and released
   v0.9.x is the downstream-readiness/soak phase;
+- after WP1-WP13, v0.9.0 includes a complete-code maintainer comprehension
+  reread, a separate architectural/technical audit, remediation of findings
+  explicitly accepted for pre-release work if any, and a pre-release
+  documentation overhaul before final frozen-source qualification under #48;
 - one repository/distribution is retained through 1.0;
 - 1.0 stabilizes the existing forward and separator-inverse core after the soak,
   before new inverse observation families;
@@ -45,7 +49,8 @@ archived. The v0.8.0 source is finalized before exact-commit qualification
 under issue #33; any tracked correction changes that candidate. The
 [active v0.9 plan](docs/development/plans/v0.9.md) now governs functional/API
 stabilization work; #46 records activation and #47 tracks substantive WP1–WP13
-execution.
+execution. The later post-functional pre-release stages remain outside #47, and
+#48 remains the final frozen-source qualification/publication gate.
 
 ## Authoritative sources
 
@@ -99,7 +104,7 @@ inconsistent.
 - `docs/reference/`: exact current API reference.
 - `docs/development/`: architecture, API policy, workflow, plans, and decisions.
 - `docs/development/plans/`: draft, active, and archived release/workstream plans.
-- `docs/project/`: public project identity, roadmap, license, and AI policy.
+- `docs/project/`: public project identity, roadmap, license, and release notes.
 - `tools/`: repository generation, validation, and release helpers.
 
 ## Generated files
@@ -210,7 +215,7 @@ For substantial work:
    changes;
 7. report the validation commands that passed.
 
-Do not use private chat history as lasting authority. Transfer important scope
+Do not use private working notes as lasting authority. Transfer important scope
 or design decisions into the plan, an issue, or a decision record.
 
 Do not remove completed work packages from an active plan. Issues show detailed
@@ -218,9 +223,9 @@ progress; plans preserve release structure. During release review, record
 outcomes and deferrals, then archive the completed plan.
 
 
-## Issue-scoped agent handoff
+## Issue-scoped implementation handoff
 
-For substantial release-scoped implementation, one coding-agent chain should
+For substantial release-scoped implementation, one implementation task should
 normally own one linked issue. Before editing, read the issue, its work package,
 relevant ADRs, and the API inventory. The issue defines observable outcomes and
 boundaries; choose clean internal implementation details without inventing new
@@ -301,8 +306,11 @@ In brief:
 - release plans define scope and gates; issues track progress;
 - the roadmap uses version-level outcomes, not private “Stage 0/1” labels;
 - v0.8 is cleanup-only, v0.9.0 is functional/API stabilization, released
-  v0.9.x is the downstream soak, 1.0 is the stable main release, v1.1 is
-  prescribed measures, and v1.2 is mixed
+  v0.9.x is the downstream soak, and the explicit post-WP13 pre-release order is
+  complete-code comprehension reread, architectural/technical audit,
+  remediation of findings explicitly accepted for pre-release work if any,
+  documentation overhaul, then #48 frozen-source qualification; 1.0 is the
+  stable main release, v1.1 is prescribed measures, and v1.2 is mixed
   separator-plus-measure fitting;
 - the changelog records completed user-visible changes;
 - use `separator observation` in explanatory prose and historical API names

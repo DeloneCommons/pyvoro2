@@ -3,7 +3,7 @@
 This section explains how pyvoro2 is structured, how planned work is approved
 and tracked, which parts of the public API are intended to remain stable, and
 why major design decisions were made. It is written for maintainers,
-contributors, reviewers, coding agents, and downstream package authors.
+contributors, implementers, reviewers, and downstream package authors.
 
 ## Where to look
 
@@ -12,7 +12,7 @@ contributors, reviewers, coding agents, and downstream package authors.
 | How do I use the current package? | [User guide](../guide/concepts.md) and [API reference](../reference/index.md) |
 | What mathematics does it implement? | [Theory](../theory/index.md) |
 | How does work move from proposal to release? | [Development workflow](development-workflow.md) |
-| What work is planned next? | [Active v0.9.0 functional/API stabilization plan](plans/v0.9.md), [development plans](plans/index.md), and execution tracker [#47](https://github.com/DeloneCommons/pyvoro2/issues/47) |
+| What work is planned next? | [Active v0.9.0 functional/API stabilization plan](plans/v0.9.md), [development plans](plans/index.md), execution tracker [#47](https://github.com/DeloneCommons/pyvoro2/issues/47), and final qualification/release issue [#48](https://github.com/DeloneCommons/pyvoro2/issues/48) |
 | Which concrete APIs are stable, provisional, experimental, removed, or internal? | [v0.8 implemented / v0.9 target API inventory](api-inventory.md) and [API lifecycle](api-lifecycle.md) |
 | How should repository documentation be written? | [Documentation conventions](documentation-conventions.md) |
 | How are modules and layers organized? | [Architecture](architecture.md) |
@@ -35,7 +35,10 @@ gates. The v0.7 and v0.8 plans are **Completed** and archived. The
 implementation authority for the current functional/API stabilization phase.
 Activation is tracked by [#46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 and substantive WP1–WP13 execution by
-[#47](https://github.com/DeloneCommons/pyvoro2/issues/47). v0.8 R1–R9 and the
+[#47](https://github.com/DeloneCommons/pyvoro2/issues/47). The post-WP13
+comprehension, audit, conditional remediation, and documentation stages remain
+outside #47; [#48](https://github.com/DeloneCommons/pyvoro2/issues/48) is the
+final frozen-source qualification/publication gate. v0.8 R1–R9 and the
 post-R9 `COPYING` distribution correction are complete. After source
 finalization and independent review, issue #33 qualifies the exact frozen v0.8
 source commit and its artifacts before the public tag is created. The roadmap

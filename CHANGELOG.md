@@ -6,6 +6,17 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+### Changed
+
+- Reordered the v0.9.0 pre-release plan so WP1-WP13 are followed by a complete-
+  code maintainer reread, a separate architectural/technical audit, remediation
+  of findings accepted for pre-release work if any, and a Zensical-led
+  documentation overhaul before final frozen-source qualification under #48.
+  Released v0.9.x remains the downstream-readiness/soak phase before 1.0.
+- Made current development-process documentation tool-neutral and removed the
+  standalone development-tool attribution page; repository contracts, evidence,
+  review, validation, and maintainer decisions remain explicit.
+
 ## [0.8.0] - 2026-08-17
 
 ### Added

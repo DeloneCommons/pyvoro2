@@ -10,6 +10,7 @@
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
 - **v0.9 activation:** [issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **v0.9 execution tracker:** [issue #47](https://github.com/DeloneCommons/pyvoro2/issues/47)
+- **v0.9 final qualification/release:** [issue #48](https://github.com/DeloneCommons/pyvoro2/issues/48)
 - **Policy:** [API lifecycle and compatibility](api-lifecycle.md)
 - **Plans:** [completed v0.8 development plan](plans/archive/v0.8.md),
   [active v0.9 development plan](plans/v0.9.md)

@@ -1,9 +1,8 @@
 # Documentation conventions
 
 This page defines the language and maintenance rules used across the pyvoro2
-repository. It applies to text written by maintainers, contributors, and coding
-agents. The same standard applies whether a draft was written manually or with
-AI assistance.
+repository. It applies to all text written by maintainers, contributors,
+implementers, and reviewers.
 
 The aim is to keep each document useful outside the conversation or development
 session in which it was created.
@@ -47,7 +46,7 @@ Preferred:
 
 Avoid:
 
-- “Stage 0,” “Stage 1,” or similar chat-specific numbering;
+- “Stage 0,” “Stage 1,” or similar private-session numbering;
 - “as discussed earlier” without a repository link;
 - “our current plan” when the relevant plan can be named;
 - “the next step” when a release, work package, or issue can be identified;

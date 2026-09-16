@@ -9,9 +9,13 @@ The feature-free v0.8 maintenance and compatibility-removal plans are complete
 and archived. The [v0.9.0 development plan](docs/development/plans/v0.9.md) is
 Active; substantial v0.9 work must follow that plan and a linked issue under
 execution tracker [#47](https://github.com/DeloneCommons/pyvoro2/issues/47).
-v0.9 is reserved for functional/API stabilization and downstream readiness,
-1.0 stabilizes the existing core, prescribed cell measures begin in v1.1, and
-mixed-observation fitting begins in v1.2.
+After WP13, v0.9.0 also includes the separately scoped complete-code reread,
+architectural/technical audit, remediation of findings explicitly accepted for
+pre-release work if any, and documentation overhaul before final qualification under
+[#48](https://github.com/DeloneCommons/pyvoro2/issues/48). Released v0.9.x then
+supplies downstream-readiness evidence; 1.0 stabilizes the existing core,
+prescribed cell measures begin in v1.1, and mixed-observation fitting begins in
+v1.2.
 
 ## Before starting
 
@@ -45,7 +49,7 @@ The normal branch model is:
 
 Substantial changes should follow the active release plan and a linked GitHub
 issue. A draft plan records work under discussion; it does not authorize a
-contributor or coding agent to resolve open API decisions independently.
+contributor or implementer to resolve open API decisions independently.
 
 The project uses the following traceable flow:
 
@@ -224,18 +228,17 @@ Do not remove completed work packages from the plan. Issues track detailed
 progress; the plan preserves the release structure. After release, the plan is
 completed with an outcome summary and moved to the plan archive.
 
-Important decisions made in a conversation should be transferred to an issue,
-plan, or decision record before they govern later changes.
+Important decisions made outside the repository should be transferred to an
+issue, plan, or decision record before they govern later changes.
 
+### Issue-scoped implementation
 
-### Agent-assisted issue execution
+A substantial issue should be self-contained for a fresh implementer: it should
+link the plan and ADRs, state in/out of scope behavior, define observable
+acceptance criteria, and name required tests and documentation. The implementer
+is free to choose clean internal details within those boundaries.
 
-A substantial issue should be self-contained for a fresh human or coding agent:
-it should link the plan and ADRs, state in/out of scope behavior, define
-observable acceptance criteria, and name required tests and documentation. The
-implementer is free to choose clean internal details within those boundaries.
-
-Use one issue per implementation chain where practical. Escalate conflicts with
+Use one issue per implementation task where practical. Escalate conflicts with
 accepted ADRs, new mandatory dependencies, unexplained numerical changes, or
 unplanned public API changes rather than resolving them silently in code.
 
