@@ -290,7 +290,9 @@ def normalize_vertices(
         cells: Output list from :func:`pyvoro2.compute`. Must include local
             vertices (`return_vertices=True`). For periodic domains, faces and
             face shifts are required unless `require_face_shifts=False`.
-        domain: The domain used for the computation.
+        domain: The domain used for the computation. Periodic vertex
+            canonicalization intentionally retains ``remap_cart``'s established
+            backend-primary meaning; it does not use user-cell ``wrap_cart``.
         tol: Quantization tolerance used for coordinate keys and residual
             verification. If None, defaults to 1e-8 * L where L is a domain
             length scale.

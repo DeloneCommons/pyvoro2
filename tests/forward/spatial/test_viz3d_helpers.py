@@ -2,6 +2,8 @@ import importlib
 
 import numpy as np
 
+import pyvoro2
+
 
 class _DummyView:
     def __init__(self):
@@ -75,3 +77,86 @@ def test_dedup_vertices_uses_tuple_keys_and_preserves_order(monkeypatch):
     assert np.allclose(out[0], [0.0, 0.0, 0.0])
     assert np.allclose(out[1], [1.0, 0.0, 0.0])
     assert np.allclose(out[2], [0.0, 1.0, 0.0])
+
+
+def test_periodic_visualization_wrap_delegates_to_user_lattice(monkeypatch):
+    viz = importlib.import_module('pyvoro2.viz3d')
+    monkeypatch.setattr(viz, '_py3Dmol', _DummyPy3Dmol(), raising=False)
+    calls = []
+    original = pyvoro2.PeriodicCell.wrap_cart
+
+    def recorded(self, points, *, return_shifts=False):
+        calls.append((np.array(points, copy=True), return_shifts))
+        return original(self, points, return_shifts=return_shifts)
+
+    monkeypatch.setattr(pyvoro2.PeriodicCell, 'wrap_cart', recorded)
+    cell = pyvoro2.PeriodicCell(
+        ((1.0, 0.0, 0.0), (0.25, 1.0, 0.0), (0.0, 0.0, -1.0))
+    )
+    cells = [{
+        'id': 0,
+        'site': [1.25, 0.25, -0.25],
+        'vertices': [[1.2, 0.2, -0.2], [1.3, 0.2, -0.2], [1.2, 0.3, -0.2]],
+        'faces': [{'vertices': [0, 1, 2], 'adjacent_cell': 0}],
+    }]
+
+    viz.view_tessellation(
+        cells,
+        domain=cell,
+        wrap_cells=True,
+        show_domain=False,
+        show_axes=False,
+        show_vertices=False,
+    )
+    assert len(calls) == 1
+    np.testing.assert_array_equal(calls[0][0], [[1.25, 0.25, -0.25]])
+    assert calls[0][1] is True
+
+
+def test_periodic_visualization_preserves_exact_large_lattice_shift(monkeypatch):
+    viz = importlib.import_module('pyvoro2.viz3d')
+    monkeypatch.setattr(viz, '_py3Dmol', _DummyPy3Dmol(), raising=False)
+
+    domain = pyvoro2.PeriodicCell(
+        np.eye(3),
+        origin=(0.5, 0.0, 0.0),
+    )
+    # float(2**53 + 2) is exact, while the required shift 2**53 + 1 is not.
+    site_x = float(2**53 + 2)
+    cells = [{
+        'id': 0,
+        'site': [site_x, 0.25, 0.5],
+        'vertices': [
+            [float(2**53), 0.0, 0.0],
+            [float(2**53 + 2), 1.0, 0.0],
+            [float(2**53 + 4), 0.0, 1.0],
+        ],
+        'faces': [{'vertices': [0, 1, 2], 'adjacent_cell': 0}],
+    }]
+
+    view = viz.view_tessellation(
+        cells,
+        domain=domain,
+        wrap_cells=True,
+        show_domain=False,
+        show_axes=False,
+        show_vertices=False,
+        show_site_labels=False,
+    )
+
+    assert [sphere['center'] for sphere in view.spheres] == [
+        {'x': 1.0, 'y': 0.25, 'z': 0.5}
+    ]
+    expected_edges = {
+        frozenset(((-1.0, 0.0, 0.0), (1.0, 1.0, 0.0))),
+        frozenset(((1.0, 1.0, 0.0), (3.0, 0.0, 1.0))),
+        frozenset(((3.0, 0.0, 1.0), (-1.0, 0.0, 0.0))),
+    }
+    actual_edges = {
+        frozenset((
+            tuple(line['start'][axis] for axis in ('x', 'y', 'z')),
+            tuple(line['end'][axis] for axis in ('x', 'y', 'z')),
+        ))
+        for line in view.lines
+    }
+    assert actual_edges == expected_edges

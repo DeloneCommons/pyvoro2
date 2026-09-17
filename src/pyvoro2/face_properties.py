@@ -122,6 +122,10 @@ def annotate_face_properties(
       - intersection_centroid_dist: float
       - intersection_edge_min_dist: float
 
+    ``normal`` always points from the cell site toward the face. Periodic
+    compute transport preserves this Cartesian meaning for both proper and
+    improper backend frames; face area remains unsigned.
+
     Policy note:
         We preserve as much information as possible. `other_site` is only set
         to None when it cannot be determined (missing neighbor id/shift). Global

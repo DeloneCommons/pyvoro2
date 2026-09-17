@@ -19,6 +19,11 @@ from typing import Iterator, Sequence
 
 import numpy as np
 
+from .exact_lattice import (
+    determinant_3x3 as _determinant_3x3,
+    dyadic_parts as _dyadic_parts,
+    inverse_fraction_matrix as _inverse_fraction_matrix,
+)
 from .inputs import coerce_finite_matrix, coerce_point_array
 from .validation import (
     INT64_MAX,
@@ -174,56 +179,6 @@ def _float_from_bits(bits: int) -> float:
     return struct.unpack('>d', struct.pack('>Q', bits))[0]
 
 
-def _dyadic_parts(value: float) -> tuple[int, int]:
-    numerator, denominator = float(value).as_integer_ratio()
-    exponent = denominator.bit_length() - 1
-    if denominator != 1 << exponent:
-        raise _BasisPreparationError('binary64 denominator is not a power of two')
-    return numerator, exponent
-
-
-def _determinant_3x3(matrix: Sequence[Sequence[Fraction]]) -> Fraction:
-    a, b, c = matrix
-    return (
-        a[0] * (b[1] * c[2] - b[2] * c[1])
-        - a[1] * (b[0] * c[2] - b[2] * c[0])
-        + a[2] * (b[0] * c[1] - b[1] * c[0])
-    )
-
-
-def _inverse_fraction_matrix(
-    matrix: Sequence[Sequence[Fraction]],
-) -> tuple[tuple[Fraction, ...], ...]:
-    dimension = len(matrix)
-    work = [
-        list(row) + [Fraction(int(i == j)) for j in range(dimension)]
-        for i, row in enumerate(matrix)
-    ]
-    for column in range(dimension):
-        pivot = next(
-            (row for row in range(column, dimension) if work[row][column]),
-            None,
-        )
-        if pivot is None:
-            raise _BasisPreparationError('lattice is exactly singular')
-        if pivot != column:
-            work[column], work[pivot] = work[pivot], work[column]
-        scale = work[column][column]
-        work[column] = [value / scale for value in work[column]]
-        for row in range(dimension):
-            if row == column:
-                continue
-            factor = work[row][column]
-            if factor:
-                work[row] = [
-                    left - factor * right
-                    for left, right in zip(work[row], work[column])
-                ]
-    return tuple(
-        tuple(work[row][dimension:]) for row in range(dimension)
-    )
-
-
 @lru_cache(maxsize=_BASIS_CACHE_SIZE)
 def _prepare_basis(
     dimension: int,
@@ -259,9 +214,9 @@ def _prepare_basis(
         for column in range(dimension)
         if row != column
     )
-    if orthogonal and any(fractions[axis][axis] <= 0 for axis in range(dimension)):
+    if orthogonal and any(fractions[axis][axis] == 0 for axis in range(dimension)):
         raise _BasisPreparationError(
-            'canonical orthogonal lattice lengths must be strictly positive'
+            'orthogonal lattice diagonal entries must be non-zero'
         )
 
     inverse = None
@@ -274,9 +229,9 @@ def _prepare_basis(
                 'non-orthogonal certification is supported only for fully '
                 'periodic three-dimensional lattices'
             )
-        if _determinant_3x3(fractions) <= 0:
+        if _determinant_3x3(fractions) == 0:
             raise _BasisPreparationError(
-                'canonical triclinic lattice must be exactly right-handed'
+                'triclinic lattice must be exactly nonsingular'
             )
 
     # Fully periodic 3D bucket layouts need the same exact inverse whether the

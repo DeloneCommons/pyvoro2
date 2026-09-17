@@ -36,6 +36,12 @@ from typing import Any, Iterable, Sequence, Literal
 
 import numpy as np
 
+from ._internal.exact_lattice import (
+    ExactBasis3D,
+    exact_basis_3d,
+    exact_point,
+    finite_float_view,
+)
 from ._internal.validation import require_string_choice
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from .normalize import NormalizedTopology, NormalizedVertices
@@ -415,6 +421,35 @@ def _shift_cell_geometry(cell: dict[str, Any], delta: np.ndarray) -> dict[str, A
     return out
 
 
+def _shift_periodic_cell_geometry_exact(
+    cell: dict[str, Any],
+    basis: ExactBasis3D,
+    shifts: np.ndarray,
+) -> dict[str, Any]:
+    """Shift one displayed cell by exact user-lattice coefficients."""
+
+    shift_tuple = tuple(int(value) for value in shifts)
+
+    def shifted_point(values: Sequence[float]) -> list[float]:
+        point = exact_point(np.asarray(values, dtype=np.float64).reshape((3,)))
+        translated = basis.subtract_lattice_shift(
+            point, shift_tuple  # type: ignore[arg-type]
+        )
+        return [
+            finite_float_view(value, operation='periodic visualization wrapping')
+            for value in translated
+        ]
+
+    out = dict(cell)
+    if out.get('site') is not None:
+        out['site'] = shifted_point(out['site'])
+    if out.get('vertices') is not None:
+        vertices = np.asarray(out['vertices'], dtype=np.float64)
+        if vertices.ndim == 2 and vertices.shape[1] == 3:
+            out['vertices'] = [shifted_point(vertex) for vertex in vertices]
+    return out
+
+
 def _dedup_vertices(vertices: np.ndarray, *, tol: float) -> np.ndarray:
     """Deduplicate vertices by quantized coordinate tuples.
 
@@ -586,14 +621,11 @@ def view_tessellation(
         if not isinstance(domain, Box):
             shifted: list[dict[str, Any]] = []
 
-            # For PeriodicCell we intentionally wrap into the *geometric*
-            # parallelepiped spanned by the user-provided vectors.
-            # Precompute the inverse once (important for interactive use).
+            # PeriodicCell uses the exact user-lattice wrapping contract.
             if isinstance(domain, PeriodicCell):
-                o = np.asarray(domain.origin, dtype=float)
-                a, b, c = (np.asarray(vv, dtype=float) for vv in domain.vectors)
-                A = np.column_stack([a, b, c])
-                Ainv = np.linalg.inv(A)
+                exact_basis = exact_basis_3d(
+                    np.asarray(domain.vectors, dtype=np.float64)
+                )
 
             for cc in cell_list:
                 site = cc.get('site')
@@ -604,23 +636,12 @@ def view_tessellation(
                 s = np.asarray(site, dtype=float).reshape((3,))
 
                 if isinstance(domain, PeriodicCell):
-                    # Wrap into origin + u*a + v*b + w*c with u,v,w in [0,1).
-                    frac = Ainv @ (s - o)
-                    sh = np.floor(frac).astype(np.int64)
-                    frac2 = frac - sh.astype(float)
-
-                    # Deterministic half-open convention [0,1).
-                    eps = 1e-12
-                    if eps > 0.0:
-                        for k in range(3):
-                            if abs(frac2[k]) < eps:
-                                frac2[k] = 0.0
-                            if frac2[k] >= 1.0 - eps:
-                                frac2[k] = 0.0
-                                sh[k] += 1
-
-                    delta = sh[0] * a + sh[1] * b + sh[2] * c
-                    shifted.append(_shift_cell_geometry(cc, delta))
+                    _wrapped, shifts = domain.wrap_cart(
+                        s.reshape((1, 3)), return_shifts=True
+                    )
+                    shifted.append(_shift_periodic_cell_geometry_exact(
+                        cc, exact_basis, shifts[0]
+                    ))
 
                 else:
                     # OrthorhombicCell wrapping uses the same definition as

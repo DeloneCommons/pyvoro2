@@ -85,6 +85,46 @@ def test_normalize_vertices_periodic_reconstructs_local_vertices_sheared():
         assert np.allclose(rec, verts, atol=1e-7)
 
 
+def test_normalize_vertices_reconstructs_left_handed_periodic_cells():
+    reflection = np.diag((-1.0, 1.0, 1.0))
+    origin = np.array((1.0, 0.0, 0.0))
+    cell = PeriodicCell(
+        vectors=tuple(map(tuple, reflection)), origin=tuple(origin)
+    )
+    fractional = np.array(
+        [[0.25, 0.25, 0.25], [0.6875, 0.3125, 0.375],
+         [0.375, 0.8125, 0.625], [0.875, 0.75, 0.9375]]
+    )
+    points = origin + fractional @ reflection
+    cells = compute(
+        points,
+        domain=cell,
+        output='cells',
+        return_face_shifts=True,
+    )
+
+    normalized = normalize_vertices(cells, domain=cell)
+    global_vertices = np.asarray(normalized.global_vertices)
+    vectors = np.asarray(cell.vectors)
+    remapped, shifts = cell.remap_cart(global_vertices, return_shifts=True)
+    assert np.all(shifts == 0)
+    np.testing.assert_allclose(remapped, global_vertices, rtol=0, atol=1e-10)
+
+    for normalized_cell in normalized.cells:
+        reconstructed = _reconstruct_vertices(
+            global_vertices,
+            np.asarray(normalized_cell['vertex_global_id'], dtype=int),
+            np.asarray(normalized_cell['vertex_shift'], dtype=int),
+            vectors,
+        )
+        np.testing.assert_allclose(
+            reconstructed,
+            normalized_cell['vertices'],
+            rtol=0,
+            atol=1e-7,
+        )
+
+
 def test_normalize_vertices_orthorhombic_partial_periodic_reconstructs_local_vertices():
     dom = OrthorhombicCell(
         bounds=((0.0, 1.0), (0.0, 1.0), (0.0, 1.0)),

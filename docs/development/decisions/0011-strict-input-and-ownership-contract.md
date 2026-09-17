@@ -85,6 +85,12 @@ intermediates are not a route for accepting non-finite public source data.
 
 ### Periodic cells and remapping
 
+ADR 0018 and WP2 supersede this subsection's mathematical-validity and
+conditioning-rejection policy for `PeriodicCell`: current construction uses an
+exact non-zero binary64 determinant, accepts either handedness, and treats
+conditioning only as a warning diagnostic. The strict finite-input, ownership,
+backend-remap validation, and signed-int64 requirements below remain in force.
+
 `PeriodicCell` validates finite real vector and origin data before determinant,
 singular-value, or basis work. The lattice must be right-handed with
 `determinant > 0`; pyvoro2 does not silently flip vectors. The existing

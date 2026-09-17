@@ -260,9 +260,13 @@ origins are owned nested tuples of built-in floats, while periodic flags are
 owned tuples of built-in Booleans. Retained numerical inputs are owned
 C-contiguous read-only arrays. This protects a frozen/value object from caller
 mutation without deep-freezing raw nested tessellation records or
-solver-created result graphs. `PeriodicCell` additionally requires a
-right-handed basis at construction. Remapping proves every returned lattice
-shift representable as signed int64 before conversion. Normalization treats
+solver-created result graphs. `PeriodicCell` accepts either handedness and
+requires an exact non-zero determinant over its finite binary64 source values;
+conditioning is diagnostic rather than a validity test. User-coordinate
+wrapping chooses exact floor shifts and checks signed-int64 range only when a
+public shift array is requested. Established backend remapping still proves
+every returned lattice shift representable as signed int64 before conversion.
+Normalization treats
 mutable raw cell records as a fresh public boundary, validates all consumed
 integer metadata before topology-key construction, and rejects an
 unrepresentable coordinate/tolerance quantization relationship before
@@ -792,7 +796,7 @@ representative public workflows. Releasing v0.9.0 begins rather than completes
 the real downstream-readiness/soak phase; external v0.9.x use supplies the
 stronger evidence required for 1.0.
 
-The target periodic architecture separates: (1) the user row-basis lattice and
+The periodic architecture separates: (1) the user row-basis lattice and
 exact half-open wrapping shifts; (2) an orientation-neutral Voro++ backend frame;
 and (3) private exact proof/reduction arithmetic. For a QR factorization
 `A.T = Q @ R`, the lower-triangular backend basis is `L = R.T = A @ Q`; row
@@ -800,17 +804,25 @@ points transform by `(x - origin) @ Q` and return by `origin + x_backend @ Q.T`.
 A left-handed user basis is valid and may induce an improper orthogonal backend
 transform without reordering user lattice vectors.
 
-Discrete user-wrap shifts are decided from exact dyadic input arithmetic, not a
-rounded inverse/floor heuristic. Approximate native Cartesian image positions
-yield a public integer shift only after unique compatibility is certified within
-a declared envelope. Semantic periodic boundary identity is attached only to
-certified-positive-measure records; zero-measure raw artifacts and unresolved or
-coincident provenance follow explicit normalization/ambiguity rules. In power
-mode, native-boundary compatibility uses the exact binary64 radii passed to
-Voro++ plus an envelope for native arithmetic, while mathematical weights remain
-the public scientific representation. Ghost semantics do not trust native integer
-sign/value alone, and the 3D bridge must prevent uninitialized temporary ghost IDs
-from being read.
+WP2 implements that user/backend split and reflection-correct transport for
+ordinary compute and ghost geometry. One detached frame snapshot owns each
+forward operation. Under an improper frame, Cartesian points transform
+normally while face and vertex-adjacency cycles reverse once; face and neighbor
+identity and unsigned measures do not change. Later boundary-identity and
+reduced-proof work in this section remains target architecture.
+
+Discrete user-wrap shifts are decided by exact rational arithmetic over the
+dyadic source numbers, not a rounded inverse/floor heuristic. Approximate
+native Cartesian image positions yield a public integer shift only after unique
+compatibility is certified within a declared envelope. Semantic periodic
+boundary identity is attached only to certified-positive-measure records;
+zero-measure raw artifacts and unresolved or coincident provenance follow
+explicit normalization/ambiguity rules. In power mode, native-boundary
+compatibility uses the exact binary64 radii passed to Voro++ plus an envelope
+for native arithmetic, while mathematical weights remain the public scientific
+representation. Ghost semantics do not trust native integer sign/value alone,
+and the 3D bridge must prevent uninitialized temporary ghost IDs from being
+read.
 
 The normal "points + separator observations -> fitted weighted tessellation"
 workflow should be promoted to a supported public inverse contract. The

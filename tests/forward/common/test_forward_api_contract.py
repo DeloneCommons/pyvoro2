@@ -303,6 +303,30 @@ def test_documented_domain_signatures_are_characterized() -> None:
         ),
         (pv.PeriodicCell.to_internal_params, (('self', REQUIRED),)),
         (
+            pv.PeriodicCell.cart_to_fractional,
+            (('self', REQUIRED), ('points', REQUIRED)),
+        ),
+        (
+            pv.PeriodicCell.fractional_to_cart,
+            (('self', REQUIRED), ('fractional', REQUIRED)),
+        ),
+        (
+            pv.PeriodicCell.wrap_fractional,
+            (
+                ('self', REQUIRED),
+                ('fractional', REQUIRED),
+                ('return_shifts', False),
+            ),
+        ),
+        (
+            pv.PeriodicCell.wrap_cart,
+            (
+                ('self', REQUIRED),
+                ('points', REQUIRED),
+                ('return_shifts', False),
+            ),
+        ),
+        (
             pv.PeriodicCell.cart_to_internal,
             (('self', REQUIRED), ('points', REQUIRED)),
         ),
@@ -716,6 +740,10 @@ def test_forward_positional_and_keyword_only_parameters_are_characterized() -> N
             ('bx', 'bxy', 'by', 'bxz', 'byz', 'bz'),
         ),
         (pv.PeriodicCell.to_internal_params, ('self',)),
+        (pv.PeriodicCell.cart_to_fractional, ('self', 'points')),
+        (pv.PeriodicCell.fractional_to_cart, ('self', 'fractional')),
+        (pv.PeriodicCell.wrap_fractional, ('self', 'fractional')),
+        (pv.PeriodicCell.wrap_cart, ('self', 'points')),
         (pv.PeriodicCell.cart_to_internal, ('self', 'points')),
         (pv.PeriodicCell.internal_to_cart, ('self', 'points_internal')),
         (pv.PeriodicCell.remap_internal, ('self', 'points_internal')),

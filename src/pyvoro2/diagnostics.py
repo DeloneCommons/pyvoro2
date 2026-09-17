@@ -24,6 +24,7 @@ import warnings
 import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
+from ._internal.exact_lattice import exact_basis_3d
 from ._internal.inputs import coerce_external_id_array
 from ._internal.tessellation_diagnostics import (
     classify_expected_ids,
@@ -106,8 +107,18 @@ def _domain_volume(domain: Box | OrthorhombicCell | PeriodicCell) -> float:
         (xmin, xmax), (ymin, ymax), (zmin, zmax) = domain.bounds
         return float((xmax - xmin) * (ymax - ymin) * (zmax - zmin))
     vec = np.asarray(domain.vectors, dtype=np.float64)
-    # vectors are rows -> det of rows
-    return float(abs(np.linalg.det(vec)))
+    # Vectors are rows. Use the exact source-binary64 determinant, rounded
+    # only at this diagnostics boundary.
+    try:
+        volume = float(abs(exact_basis_3d(vec).determinant))
+    except OverflowError:
+        volume = float('inf')
+    if not np.isfinite(volume) or volume <= 0.0:
+        raise ValueError(
+            'exact PeriodicCell domain volume has no positive finite '
+            'binary64 view'
+        )
+    return volume
 
 
 def _characteristic_length(domain: Box | OrthorhombicCell | PeriodicCell) -> float:

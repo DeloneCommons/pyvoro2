@@ -23,8 +23,15 @@ from ._internal.inputs import (
     coerce_point_array,
     floor_to_int64,
 )
+from ._internal.exact_lattice import (
+    exact_basis_3d,
+    exact_point,
+    finite_float_view,
+)
+from ._internal.spatial.backend_frame import prepare_backend_frame
 from ._internal.validation import (
     INT64_MAX,
+    INT64_MIN,
     require_bool,
     require_bool_tuple,
     require_finite_real,
@@ -255,8 +262,13 @@ class OrthorhombicCell:
 class PeriodicCell:
     """Fully periodic triclinic cell for 3D crystals.
 
-    The user provides three lattice vectors in Cartesian coordinates. Internally,
-    pyvoro2 converts them into the Voro++ periodic container representation:
+    The user provides three lattice vectors as the unchanged rows of a matrix
+    ``A``. Both handedness signs are valid when the represented binary64 matrix
+    has an exact non-zero determinant. User coordinates satisfy
+    ``x = origin + fractional @ A``.
+
+    Native operations separately convert the lattice into Voro++'s periodic
+    container representation:
         a = (bx, 0, 0)
         b = (bxy, by, 0)
         c = (bxz, byz, bz)
@@ -268,7 +280,7 @@ class PeriodicCell:
         origin: Origin of the unit cell in Cartesian coordinates.
 
     Raises:
-        ValueError: If vectors are malformed or degenerate.
+        ValueError: If vectors are malformed, non-finite, or exactly singular.
     """
 
     vectors: tuple[
@@ -286,45 +298,17 @@ class PeriodicCell:
         )
         org = coerce_finite_vector(self.origin, name='origin', n=3)
 
-        # Basic non-degeneracy checks.
-        with np.errstate(over='ignore', invalid='ignore'):
-            norms = np.linalg.norm(vec, axis=1)
-        if not np.all(np.isfinite(norms)) or np.any(norms <= 0.0):
-            raise ValueError('cell vectors must have positive finite lengths')
+        # Exact binary64 nonsingularity is the user-lattice validity rule.
+        exact_basis_3d(vec)
 
-        det = float(np.linalg.det(vec))
-        if not np.isfinite(det):
-            raise ValueError('cell vectors produce a non-finite determinant')
-        if det <= 0.0:
-            raise ValueError(
-                'cell vectors must be right-handed with determinant > 0'
-            )
-
-        # Near-degeneracy detection:
-        #   - relvol ~ 0 indicates near-coplanar / almost-degenerate cells.
-        #   - a huge condition number indicates numerical instability for
-        #     matrix inversions and image bookkeeping.
-        s = np.linalg.svd(vec, compute_uv=False)
-        if not np.all(np.isfinite(s)) or np.any(s <= 0.0):
-            raise ValueError('cell vectors are singular or ill-defined')
-        smax = float(np.max(s))
-        smin = float(np.min(s))
-        cond = float(smax / smin) if smin > 0 else float('inf')
-
-        relvol = float(abs(det) / float(norms[0] * norms[1] * norms[2]))
-
-        # Raise for truly near-coplanar / nearly singular cells.
-        if relvol < 1e-12 or cond > 1e15:
-            raise ValueError(
-                'cell vectors are nearly degenerate (poorly conditioned). '
-                f'relvol={relvol:.3g}, cond={cond:.3g}. '
-                'Use a well-conditioned 3D cell (non-coplanar vectors) or '
-                'rescale/re-parameterize your lattice.'
-            )
-
-        # Warn for very ill-conditioned (but not nearly singular) cells.
-        # This can happen for extreme aspect-ratio boxes/slabs.
-        if cond > 1e10:
+        # Conditioning is a best-effort numerical diagnostic only. It never
+        # changes exact user-lattice validity.
+        try:
+            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+                cond = float(np.linalg.cond(vec))
+        except np.linalg.LinAlgError:
+            cond = float('inf')
+        if not np.isfinite(cond) or cond > 1e10:
             warnings.warn(
                 'PeriodicCell lattice vectors are very ill-conditioned '
                 f'(cond≈{cond:.3g}). Numerical accuracy and periodic image '
@@ -390,53 +374,42 @@ class PeriodicCell:
         c = (bxz_value, byz_value, bz_value)
         return cls(vectors=(a, b, c), origin=origin)
 
+    def _backend_frame(self):
+        """Return the validated private frame used by native operations."""
+
+        return prepare_backend_frame(np.asarray(self.vectors, dtype=np.float64))
+
     def _rotation_to_internal(self) -> np.ndarray:
-        """Return the 3x3 rotation that maps Cartesian -> internal basis."""
-        a, b, _c = np.asarray(self.vectors, dtype=float)
-        e1 = a / np.linalg.norm(a)
-        b_perp = b - np.dot(b, e1) * e1
-        nb = np.linalg.norm(b_perp)
-        if nb == 0:
-            raise ValueError('vectors a and b are colinear')
-        e2 = b_perp / nb
-        e3 = np.cross(e1, e2)
-        r = np.vstack([e1, e2, e3])
-        return r
+        """Return the 3x3 orthogonal Cartesian-to-backend matrix."""
+
+        return self._backend_frame().q.T
 
     def to_internal_params(self) -> tuple[float, float, float, float, float, float]:
         """Convert lattice vectors into Voro++ periodic cell parameters.
 
+        This backend-frame operation can fail numerically even though the user
+        lattice is exactly nonsingular. Such failure does not imply exact
+        lattice singularity.
+
         Returns:
             Tuple of (bx, bxy, by, bxz, byz, bz).
         """
-        r = self._rotation_to_internal()
-        a, b, c = (r @ np.asarray(self.vectors, dtype=float).T).T
-        bx = float(a[0])
-        bxy = float(b[0])
-        by = float(b[1])
-        bxz = float(c[0])
-        byz = float(c[1])
-        bz = float(c[2])
-        if bx <= 0 or by <= 0 or bz <= 0:
-            raise ValueError(
-                'internal cell parameters must be positive (check handedness)'
-            )
-        return bx, bxy, by, bxz, byz, bz
+        return self._backend_frame().params
 
     def cart_to_internal(self, points: np.ndarray) -> np.ndarray:
         """Transform Cartesian points into the internal coordinate system."""
-        r = self._rotation_to_internal()
+        q = self._backend_frame().q
         origin = np.asarray(self.origin, dtype=float)
         pts = coerce_point_array(points, name='points', dim=3) - origin[None, :]
         with np.errstate(over='ignore', invalid='ignore'):
-            result = (r @ pts.T).T
+            result = pts @ q
         if not np.all(np.isfinite(result)):
             raise ValueError('points produce non-finite internal coordinates')
         return result
 
     def internal_to_cart(self, points_internal: np.ndarray) -> np.ndarray:
         """Transform internal points back into Cartesian coordinates."""
-        r = self._rotation_to_internal()
+        q = self._backend_frame().q
         origin = np.asarray(self.origin, dtype=float)
         pts = coerce_point_array(
             points_internal,
@@ -444,10 +417,139 @@ class PeriodicCell:
             dim=3,
         )
         with np.errstate(over='ignore', invalid='ignore'):
-            result = (r.T @ pts.T).T + origin[None, :]
+            result = pts @ q.T + origin[None, :]
         if not np.all(np.isfinite(result)):
             raise ValueError('points_internal produce non-finite coordinates')
         return result
+
+    def cart_to_fractional(self, points: np.ndarray) -> np.ndarray:
+        """Return rounded views of exact user-lattice coordinates.
+
+        The exact source-number equation is ``x = origin + f @ A``, where
+        the supplied vectors are the unchanged rows of ``A``.  The returned
+        binary64 values are nearest-even views; no floating inverse chooses
+        any lattice coefficient.
+        """
+
+        pts = coerce_point_array(points, name='points', dim=3)
+        basis = exact_basis_3d(np.asarray(self.vectors, dtype=np.float64))
+        origin = exact_point(np.asarray(self.origin, dtype=np.float64))
+        result = np.empty(pts.shape, dtype=np.float64)
+        for row_index, row in enumerate(pts):
+            point = exact_point(row)
+            delta = tuple(point[index] - origin[index] for index in range(3))
+            solved = basis.solve_row(delta)  # type: ignore[arg-type]
+            result[row_index] = [
+                finite_float_view(value, operation='cart_to_fractional')
+                for value in solved
+            ]
+        return result
+
+    def fractional_to_cart(self, fractional: np.ndarray) -> np.ndarray:
+        """Reconstruct Cartesian coordinates using exact source numbers.
+
+        Exact rational multiply/add is performed before each coordinate is
+        rounded once to its nearest-even binary64 view.
+        """
+
+        frac = coerce_point_array(fractional, name='fractional', dim=3)
+        basis = exact_basis_3d(np.asarray(self.vectors, dtype=np.float64))
+        origin = exact_point(np.asarray(self.origin, dtype=np.float64))
+        result = np.empty(frac.shape, dtype=np.float64)
+        for row_index, row in enumerate(frac):
+            values = exact_point(row)
+            exact_cart = tuple(
+                origin[column]
+                + sum(values[index] * basis.rows[index][column]
+                      for index in range(3))
+                for column in range(3)
+            )
+            result[row_index] = [
+                finite_float_view(value, operation='fractional_to_cart')
+                for value in exact_cart
+            ]
+        return result
+
+    def wrap_fractional(
+        self,
+        fractional: np.ndarray,
+        *,
+        return_shifts: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+        """Exactly floor-wrap binary64 fractional inputs into ``[0, 1)``.
+
+        Exact remainders are rounded only for the returned view.  Consequently
+        a strict interior remainder can display as ``1.0`` and is not repaired.
+        Shifts are range-checked only when requested as an int64 array.
+        """
+
+        return_shifts_value = require_bool(return_shifts, name='return_shifts')
+        frac = coerce_point_array(fractional, name='fractional', dim=3)
+        result = np.empty(frac.shape, dtype=np.float64)
+        shifts_exact: list[tuple[int, int, int]] = []
+        for row_index, row in enumerate(frac):
+            values = exact_point(row)
+            shifts = tuple(value.numerator // value.denominator
+                           for value in values)
+            remainders = tuple(value - shift
+                               for value, shift in zip(values, shifts))
+            result[row_index] = [
+                finite_float_view(value, operation='wrap_fractional')
+                for value in remainders
+            ]
+            shifts_exact.append(shifts)  # type: ignore[arg-type]
+        if not return_shifts_value:
+            return result
+        if any(
+            shift < INT64_MIN or shift > INT64_MAX
+            for shifts in shifts_exact
+            for shift in shifts
+        ):
+            raise ValueError('wrap shifts must be representable as signed int64')
+        return result, np.asarray(shifts_exact, dtype=np.int64).reshape((-1, 3))
+
+    def wrap_cart(
+        self,
+        points: np.ndarray,
+        *,
+        return_shifts: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+        """Exactly wrap Cartesian inputs in the supplied user lattice.
+
+        Floors are chosen from the exact affine solve.  Reconstruction uses
+        ``x_wrapped = x - n @ A`` in exact source-number arithmetic, so a
+        rounded fractional view never determines the shift.
+        """
+
+        return_shifts_value = require_bool(return_shifts, name='return_shifts')
+        pts = coerce_point_array(points, name='points', dim=3)
+        basis = exact_basis_3d(np.asarray(self.vectors, dtype=np.float64))
+        origin = exact_point(np.asarray(self.origin, dtype=np.float64))
+        result = np.empty(pts.shape, dtype=np.float64)
+        shifts_exact: list[tuple[int, int, int]] = []
+        for row_index, row in enumerate(pts):
+            point = exact_point(row)
+            delta = tuple(point[index] - origin[index] for index in range(3))
+            solved = basis.solve_row(delta)  # type: ignore[arg-type]
+            shifts = tuple(value.numerator // value.denominator
+                           for value in solved)
+            wrapped = basis.subtract_lattice_shift(
+                point, shifts  # type: ignore[arg-type]
+            )
+            result[row_index] = [
+                finite_float_view(value, operation='wrap_cart')
+                for value in wrapped
+            ]
+            shifts_exact.append(shifts)  # type: ignore[arg-type]
+        if not return_shifts_value:
+            return result
+        if any(
+            shift < INT64_MIN or shift > INT64_MAX
+            for shifts in shifts_exact
+            for shift in shifts
+        ):
+            raise ValueError('wrap shifts must be representable as signed int64')
+        return result, np.asarray(shifts_exact, dtype=np.int64).reshape((-1, 3))
 
     def remap_internal(
         self,
@@ -483,9 +585,9 @@ class PeriodicCell:
               corresponding lattice shift is incremented
 
         Notes:
-            - This method is provided as an explicit helper.
-            - The main `compute(...)` API does **not** pre-wrap points for
-              periodic domains; Voro++ remaps points internally.
+            This is the established backend-primary operation. Forward
+            generator preparation uses this same remap before native dispatch;
+            it is distinct from exact user-parallelepiped wrapping.
 
         Args:
             points_internal: Points in the internal coordinate system,
@@ -665,10 +767,12 @@ class PeriodicCell:
         return_shifts: bool = False,
         eps: float | None = None,
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
-        """Remap Cartesian points into the primary cell.
+        """Remap Cartesian points into the backend-primary cell.
 
         This is a convenience wrapper around :meth:`cart_to_internal`,
         :meth:`remap_internal`, and :meth:`internal_to_cart`.
+        It preserves the established Voro++-frame epsilon behavior and is not
+        an alias for exact :meth:`wrap_cart` user-lattice wrapping.
 
         Args:
             points: Cartesian coordinates, shape (n, 3).

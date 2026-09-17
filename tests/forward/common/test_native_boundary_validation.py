@@ -633,12 +633,26 @@ def test_warning_level_query_operations_reach_native_under_warning_as_error(
     domain = _warning_level_periodic_cell()
     core = RecordingCore()
     _install_core(monkeypatch, 3, core)
+    original = domain_geometry.DomainGeometry3D.native_periodic_snapshot
+    snapshot_calls = 0
+
+    def counted_snapshot(self):
+        nonlocal snapshot_calls
+        snapshot_calls += 1
+        return original(self)
+
+    monkeypatch.setattr(
+        domain_geometry.DomainGeometry3D,
+        'native_periodic_snapshot',
+        counted_snapshot,
+    )
 
     with warnings.catch_warnings():
         warnings.simplefilter('error')
         points = np.array([[0.1, 0.1, 0.0], [0.6, 0.6, 0.0]])
         _invoke(3, operation, domain=domain, points=points)
 
+    assert snapshot_calls == 1
     prefix = 'locate' if operation == 'locate' else 'ghost'
     assert core.calls[0][0] == f'{prefix}_periodic_standard'
 

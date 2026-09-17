@@ -8,6 +8,12 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Added provisional exact user-lattice conversion and wrapping methods to
+  `PeriodicCell`. Exact non-zero-determinant bases of either handedness now
+  construct without vector reordering; native operations use one validated
+  sign-normalized orthogonal frame and reflection-correct face/adjacency
+  transport. Existing backend-primary remap meanings remain unchanged, while
+  visualization user-cell wrapping delegates to the exact user-lattice path.
 - Added weight-first spatial and planar `locate()` and `ghost_cells()` parity.
   Power-mode locate calls now require exactly one of mathematical `weights` or
   explicit backend `radii`; ghost calls require one complete

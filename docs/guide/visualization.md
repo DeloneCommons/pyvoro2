@@ -119,9 +119,10 @@ periodic images in a single Cartesian coordinate system.
 For ease of interpretation, `view_tessellation(..., wrap_cells=True)` can translate each
 cell by a lattice vector so that its *site* lies inside the primary cell.
 
-For `PeriodicCell`, the viewer wraps sites into the **geometric parallelepiped** spanned
-by the user-provided vectors. This is slightly different from
-`PeriodicCell.remap_cart(...)`, which matches Voro++'s internal wrapping convention.
+For `PeriodicCell`, the viewer delegates to exact `PeriodicCell.wrap_cart(...)`
+and wraps sites into the **geometric parallelepiped** spanned by the
+user-provided vectors. This is distinct from `PeriodicCell.remap_cart(...)`,
+which retains Voro++'s backend-primary epsilon convention.
 
 ## Practical tips
 

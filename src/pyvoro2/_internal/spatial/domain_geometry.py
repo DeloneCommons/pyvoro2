@@ -14,6 +14,7 @@ from ..inputs import (
     coerce_native_block_parameters,
     coerce_point_array,
 )
+from .backend_frame import prepare_backend_frame
 from ..periodic_images import (
     MinimumImageBatch,
     minimum_image_displacements as _minimum_image_displacements,
@@ -24,7 +25,6 @@ from ..validation import (
     INT64_MIN,
     require_index_array,
     require_ordered_bounds,
-    require_positive_finite_real,
 )
 
 Domain3D = Box | OrthorhombicCell | PeriodicCell
@@ -38,6 +38,7 @@ class _NativePeriodicSnapshot:
     origin: np.ndarray
     rotation_to_internal: np.ndarray
     params: tuple[float, float, float, float, float, float]
+    parity: int
     length_scale: float
 
     @classmethod
@@ -60,51 +61,8 @@ class _NativePeriodicSnapshot:
             n=3,
         )
 
-        # Match PeriodicCell's Cartesian-to-internal basis construction, but do
-        # it on validated detached values without replaying constructor
-        # conditioning policy or warnings.
-        a, b, _c = vectors_array
-        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-            norm_a = float(np.linalg.norm(a))
-        if not np.isfinite(norm_a) or norm_a <= 0.0:
-            raise ValueError(
-                'PeriodicCell.vectors must define a finite non-zero first vector'
-            )
-        e1 = a / norm_a
-        b_perp = b - np.dot(b, e1) * e1
-        with np.errstate(over='ignore', invalid='ignore'):
-            norm_b_perp = float(np.linalg.norm(b_perp))
-        if not np.isfinite(norm_b_perp) or norm_b_perp <= 0.0:
-            raise ValueError(
-                'PeriodicCell.vectors must define non-colinear first and '
-                'second vectors'
-            )
-        e2 = b_perp / norm_b_perp
-        e3 = np.cross(e1, e2)
-        rotation = np.vstack([e1, e2, e3])
-
-        transformed = (rotation @ vectors_array.T).T
-        a_internal, b_internal, c_internal = transformed
-        params_array = coerce_finite_vector(
-            np.array(
-                [
-                    a_internal[0],
-                    b_internal[0],
-                    b_internal[1],
-                    c_internal[0],
-                    c_internal[1],
-                    c_internal[2],
-                ],
-                dtype=np.float64,
-            ),
-            name='periodic cell parameters',
-            n=6,
-        )
-        for index, label in ((0, 'bx'), (2, 'by'), (5, 'bz')):
-            require_positive_finite_real(
-                params_array[index],
-                name=f'periodic cell parameter {label}',
-            )
+        frame = prepare_backend_frame(vectors_array)
+        rotation = frame.q.T
 
         with np.errstate(over='ignore', invalid='ignore'):
             vector_lengths = np.linalg.norm(vectors_array, axis=1)
@@ -116,12 +74,12 @@ class _NativePeriodicSnapshot:
         for array in (vectors_snapshot, origin_snapshot, rotation_snapshot):
             array.setflags(write=False)
 
-        params = tuple(float(value) for value in params_array)
         return cls(
             vectors=vectors_snapshot,
             origin=origin_snapshot,
             rotation_to_internal=rotation_snapshot,
-            params=params,  # type: ignore[arg-type]
+            params=frame.params,
+            parity=frame.parity,
             length_scale=length_scale,
         )
 

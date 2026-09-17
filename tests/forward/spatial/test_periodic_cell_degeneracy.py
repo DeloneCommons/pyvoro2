@@ -5,9 +5,10 @@ import pytest
 import pyvoro2
 
 
-def test_periodic_cell_near_coplanar_raises() -> None:
-    # Nearly coplanar vectors: extremely small normalized volume.
-    with pytest.raises(ValueError, match='degenerate'):
+def test_periodic_cell_near_coplanar_is_exactly_valid_but_warns() -> None:
+    # Numerical conditioning is diagnostic; this binary64 lattice is exactly
+    # nonsingular and construction therefore succeeds.
+    with pytest.warns(RuntimeWarning, match='ill-conditioned'):
         pyvoro2.PeriodicCell(
             vectors=(
                 (1.0, 0.0, 0.0),
