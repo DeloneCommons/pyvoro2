@@ -27,23 +27,36 @@ def test_backend_frame_has_positive_diagonal_and_exact_parity(signs) -> None:
     assert np.sign(np.linalg.det(q)) == snapshot.parity
 
 
-@pytest.mark.parametrize('rows', [
-    ((2.0, 0.25, 0.5), (0.2, 3.0, -0.4), (0.1, 0.7, 4.0)),
-    ((0.2, 3.0, -0.4), (2.0, 0.25, 0.5), (0.1, 0.7, 4.0)),
+@pytest.mark.parametrize(('rows', 'expected_parity'), [
+    (((2.0, 0.25, 0.5), (0.2, 3.0, -0.4), (0.1, 0.7, 4.0)), 1),
+    (((0.2, 3.0, -0.4), (2.0, 0.25, 0.5), (0.1, 0.7, 4.0)), -1),
 ])
-def test_public_and_snapshot_backend_transforms_agree(rows) -> None:
+def test_public_and_snapshot_backend_transforms_agree(
+    rows, expected_parity
+) -> None:
     cell = pyvoro2.PeriodicCell(rows, origin=(0.25, -0.5, 1.0))
     snapshot = DomainGeometry3D(cell).native_periodic_snapshot()
     points = np.array([[1.0, 2.0, 3.0], [-4.0, 0.5, 8.0]])
 
     np.testing.assert_array_equal(
-        cell.cart_to_internal(points), snapshot.cart_to_internal(points)
-    )
-    np.testing.assert_array_equal(
-        cell.internal_to_cart(snapshot.cart_to_internal(points)),
-        snapshot.internal_to_cart(snapshot.cart_to_internal(points)),
+        cell._rotation_to_internal(), snapshot.rotation_to_internal
     )
     assert cell.to_internal_params() == snapshot.params
+    assert snapshot.parity == expected_parity
+
+    # The two paths use the identical prepared frame but express the products
+    # as row matmul and transposed column matmul. Four ULP cover their three-term
+    # dot products plus origin addition without tolerating a different frame.
+    internal_public = cell.cart_to_internal(points)
+    internal_snapshot = snapshot.cart_to_internal(points)
+    np.testing.assert_array_max_ulp(
+        internal_public, internal_snapshot, maxulp=4
+    )
+    np.testing.assert_array_max_ulp(
+        cell.internal_to_cart(internal_snapshot),
+        snapshot.internal_to_cart(internal_snapshot),
+        maxulp=4,
+    )
 
 
 @pytest.mark.parametrize('scale', [1e-100, 1e100])

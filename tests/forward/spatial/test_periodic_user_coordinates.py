@@ -151,7 +151,10 @@ def test_randomized_wrap_cart_matches_fraction_oracle() -> None:
     rng = np.random.default_rng(5418)
     integers = rng.integers(-1000, 1001, size=(32, 3))
     exponents = rng.integers(-8, 9, size=(32, 3))
-    points = np.ldexp(integers.astype(np.float64), exponents)
+    points = np.ldexp(
+        integers.astype(np.float64),
+        np.asarray(exponents, dtype=np.intc),
+    )
 
     wrapped, shifts = cell.wrap_cart(points, return_shifts=True)
     for index, point in enumerate(points):
