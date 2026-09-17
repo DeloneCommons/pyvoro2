@@ -95,3 +95,44 @@ def test_compute_passes_primary_periodic_points(monkeypatch) -> None:
     assert 'pts_i' in captured
     # Internal basis equals Cartesian and y wrapping couples x through bxy.
     np.testing.assert_allclose(captured['pts_i'][0], [9.0, 2.0, 0.0])
+
+
+def test_compute_routing_keeps_backend_remap_distinct_from_exact_wrap(
+    monkeypatch,
+) -> None:
+    cell = _sheared_cell()
+    points = np.array([[-2.0**-55, 1.0, 1.0], [5.0, 5.0, 5.0]])
+    captured = {}
+
+    exact_wrapped, exact_shifts = cell.wrap_cart(
+        points[:1], return_shifts=True
+    )
+    assert exact_wrapped[0, 0] == 10.0
+    assert exact_shifts[0, 0] == -1
+
+    def fake_compute_periodic_standard(
+        pts_i, ids_internal, cell_params, blocks, init_mem, opts
+    ):
+        captured['pts_i'] = np.asarray(pts_i, dtype=float)
+        return [{'id': int(value), 'volume': 0.0}
+                for value in ids_internal]
+
+    monkeypatch.setattr(
+        api3d,
+        '_core',
+        SimpleNamespace(compute_periodic_standard=fake_compute_periodic_standard),
+    )
+    monkeypatch.setattr(api3d, '_CORE_IMPORT_ERROR', None)
+
+    compute(
+        points,
+        domain=cell,
+        output='cells',
+        return_vertices=False,
+        return_adjacency=False,
+        return_faces=False,
+    )
+
+    # Native generator preparation deliberately keeps remap_cart's epsilon
+    # and backend-primary convention; exact user wrapping does not replace it.
+    assert captured['pts_i'][0, 0] == 0.0

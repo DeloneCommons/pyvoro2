@@ -110,9 +110,15 @@ def _domain_volume(domain: Box | OrthorhombicCell | PeriodicCell) -> float:
     # Vectors are rows. Use the exact source-binary64 determinant, rounded
     # only at this diagnostics boundary.
     try:
-        return float(abs(exact_basis_3d(vec).determinant))
+        volume = float(abs(exact_basis_3d(vec).determinant))
     except OverflowError:
-        return float('inf')
+        volume = float('inf')
+    if not np.isfinite(volume) or volume <= 0.0:
+        raise ValueError(
+            'exact PeriodicCell domain volume has no positive finite '
+            'binary64 view'
+        )
+    return volume
 
 
 def _characteristic_length(domain: Box | OrthorhombicCell | PeriodicCell) -> float:

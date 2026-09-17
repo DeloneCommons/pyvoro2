@@ -82,11 +82,14 @@ def _assert_reflection_covariance(right_cells, left_cells, *, vertices, adjacenc
             rtol=0, atol=2e-14,
         )
         if vertices:
-            np.testing.assert_allclose(
-                left['vertices'],
-                _OFFSET + np.asarray(right['vertices']) @ _REFLECTION,
-                rtol=0, atol=3e-14,
-            )
+            if right['vertices']:
+                np.testing.assert_allclose(
+                    left['vertices'],
+                    _OFFSET + np.asarray(right['vertices']) @ _REFLECTION,
+                    rtol=0, atol=3e-14,
+                )
+            else:
+                assert left['vertices'] == []
         if adjacency:
             assert left['adjacency'] == [
                 list(reversed(cycle)) for cycle in right['adjacency']
@@ -158,14 +161,70 @@ def test_ghost_reflection_transport_preserves_ids_and_cycles(mode) -> None:
         assert right_cell['query'] != left_cell['query']
 
 
+def test_structured_power_result_transports_actual_empty_cells() -> None:
+    right, left, right_points, left_points = _domains_and_points()
+    common = dict(
+        mode='power',
+        weights=(100.0, 0.0, 0.0, 0.0),
+        output='result',
+        include_empty=True,
+        ids=(11, 13, 17, 19),
+    )
+    right_result = pyvoro2.compute(right_points, domain=right, **common)
+    left_result = pyvoro2.compute(left_points, domain=left, **common)
+
+    np.testing.assert_array_equal(right_result.ids, left_result.ids)
+    np.testing.assert_array_equal(right_result.empty_mask, [False, True, True, True])
+    np.testing.assert_array_equal(left_result.empty_mask, right_result.empty_mask)
+    np.testing.assert_allclose(
+        left_result.sites,
+        _OFFSET + right_result.sites @ _REFLECTION,
+        rtol=0,
+        atol=0,
+    )
+    np.testing.assert_allclose(
+        left_result.cell_measures,
+        right_result.cell_measures,
+        rtol=0,
+        atol=2e-14,
+    )
+    _assert_reflection_covariance(
+        right_result.cells,
+        left_result.cells,
+        vertices=True,
+        adjacency=True,
+        faces=True,
+    )
+
+
+def _assert_inward_cycles_and_signed_volume(cells) -> None:
+    for cell in cells:
+        if cell.get('empty', False):
+            continue
+        vertices = np.asarray(cell['vertices'])
+        site = np.asarray(cell['site'])
+        signed_six_volume = 0.0
+        for face in cell['faces']:
+            polygon = vertices[face['vertices']] - site
+            area_twice = sum(
+                (np.cross(polygon[index], polygon[(index + 1) % len(polygon)])
+                 for index in range(len(polygon))),
+                np.zeros(3),
+            )
+            interior_witness = float(np.dot(area_twice, polygon.mean(axis=0)))
+            assert interior_witness < 0.0
+            signed_six_volume += interior_witness
+        assert signed_six_volume / 6.0 == pytest.approx(
+            -cell['volume'], rel=3e-13, abs=3e-13
+        )
+
+
 def test_reflected_face_cycles_give_reflected_cross_products() -> None:
     right, left, right_points, left_points = _domains_and_points()
-    right_cell = pyvoro2.compute(
-        right_points, domain=right, output='cells'
-    )[0]
-    left_cell = pyvoro2.compute(
-        left_points, domain=left, output='cells'
-    )[0]
+    right_cells = pyvoro2.compute(right_points, domain=right, output='cells')
+    left_cells = pyvoro2.compute(left_points, domain=left, output='cells')
+    right_cell = right_cells[0]
+    left_cell = left_cells[0]
     right_face = next(face for face in right_cell['faces']
                       if len(face['vertices']) >= 3)
     left_face = left_cell['faces'][right_cell['faces'].index(right_face)]
@@ -184,3 +243,4 @@ def test_reflected_face_cycles_give_reflected_cross_products() -> None:
     np.testing.assert_allclose(
         left_cross, right_cross @ _REFLECTION, rtol=0, atol=2e-13
     )
+    _assert_inward_cycles_and_signed_volume(right_cells + left_cells)

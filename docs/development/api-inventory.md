@@ -112,19 +112,29 @@ PeriodicCell.wrap_cart(points, *, return_shifts=False)
 ```
 
 For lattice rows `A` and origin `o`, conversion uses `x = o + f @ A`. User
-wrapping satisfies
+Before coordinate output rounding, user wrapping satisfies
 
 ```text
-fractional = fractional_wrapped + shift
-points = points_wrapped + shift @ A.
+fractional* = fractional_wrapped* + shift
+points* = points_wrapped* + shift @ A*.
 ```
 
-The integer `shift` is the exact dyadic half-open decision described by ADR
-0018. A binary64 wrapped coordinate that rounds to an upper endpoint does not
-change that shift. `return_shifts=True` returns a signed-int64 array in the
-user basis. A finite exact non-zero determinant is the mathematical validity
-criterion; determinant sign is not. Conditioning/backend/proof-resource
-failures are separate operation-level outcomes.
+Stars denote the exact rational values determined from the supplied binary64
+source numbers. The returned views satisfy
+`fractional_wrapped_hat = fractional_wrapped* + e_fractional` and
+`points_wrapped_hat = points_wrapped* + e_cart`, where each error is solely the
+nearest-even binary64 materialization error. Thus reconstruction from public
+views differs from the exact source by those signed errors; the rounded values
+are not claimed to satisfy an impossible bit-exact identity.
+
+The integer `shift` is the exact rational half-open decision described by ADR
+0018: source binary64 values enter as exact dyadics, while the affine solve may
+produce non-dyadic rationals. A binary64 wrapped coordinate that rounds to an
+upper endpoint does not change that shift. `return_shifts=True` returns a
+signed-int64 array in the user basis. A finite exact non-zero determinant is
+the mathematical validity criterion; determinant sign is not.
+Conditioning/backend/proof-resource failures are separate operation-level
+outcomes.
 
 Conversions perform the affine solve or reconstruction in exact arithmetic
 over the binary64 source numbers, then expose nearest-even binary64 views.

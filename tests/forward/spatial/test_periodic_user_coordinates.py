@@ -68,6 +68,10 @@ def _reconstruct_exact(
     )  # type: ignore[return-value]
 
 
+def _floor(value: Fraction) -> int:
+    return value.numerator // value.denominator
+
+
 def test_exact_nonsingularity_accepts_both_handedness_and_cancellation() -> None:
     scale = float(2**27)
     right = (
@@ -100,6 +104,18 @@ def test_exact_singularity_is_the_only_constructor_rejection() -> None:
     pyvoro2.PeriodicCell(((1e308, 0.0, 0.0),
                           (0.0, 1e308, 0.0),
                           (0.0, 0.0, 1e308)))
+
+
+@pytest.mark.parametrize(
+    'scale',
+    [float.fromhex('0x0.0000000000001p-1022'), 1e308],
+)
+def test_diagnostic_volume_rejects_an_unrepresentable_float_view(scale) -> None:
+    cell = pyvoro2.PeriodicCell(
+        ((scale, 0.0, 0.0), (0.0, scale, 0.0), (0.0, 0.0, scale))
+    )
+    with pytest.raises(ValueError, match='positive finite binary64 view'):
+        _domain_volume(cell)
 
 
 def test_user_coordinate_methods_match_independent_exact_oracles() -> None:
@@ -178,9 +194,18 @@ def test_exact_floor_is_not_chosen_from_a_rounded_fractional_view() -> None:
     assert wrapped_again.tolist() == wrapped.tolist()
 
 
-def test_wrap_fractional_preserves_exact_upper_endpoint_remainders() -> None:
+@pytest.mark.parametrize(
+    'below_zero',
+    [
+        -2.0**-54,
+        -2.0**-55,
+        -float.fromhex('0x0.0000000000001p-1022'),
+    ],
+)
+def test_wrap_fractional_preserves_exact_upper_endpoint_remainders(
+    below_zero,
+) -> None:
     cell = pyvoro2.PeriodicCell.from_params(1, 0, 1, 0, 0, 1)
-    below_zero = -2.0**-55
     source = np.array([[below_zero, -0.0, math.nextafter(1.0, 0.0)]])
 
     wrapped, shifts = cell.wrap_fractional(source, return_shifts=True)
@@ -213,6 +238,82 @@ def test_wrap_shift_range_is_checked_only_when_materialized() -> None:
     ]
     with pytest.raises(ValueError, match='signed int64'):
         tiny_cell.wrap_cart([[1.0, 0.25, 0.5]], return_shifts=True)
+
+
+def test_wrap_shift_int64_boundaries_are_exact() -> None:
+    cell = pyvoro2.PeriodicCell.from_params(1, 0, 1, 0, 0, 1)
+    largest_binary64_below_max = float(2**63 - 1024)
+    source = np.array([
+        [-float(2**63), 0.0, 0.0],
+        [largest_binary64_below_max, 0.0, 0.0],
+    ])
+
+    wrapped, shifts = cell.wrap_fractional(source, return_shifts=True)
+    assert wrapped.tolist() == [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+    assert shifts.dtype == np.int64
+    assert int(shifts[0, 0]) == -(2**63)
+    assert int(shifts[1, 0]) == 2**63 - 1024
+
+    with pytest.raises(ValueError, match='signed int64'):
+        cell.wrap_fractional([[float(2**63), 0.0, 0.0]], return_shifts=True)
+
+
+def test_cart_wrap_view_error_preserves_the_exact_reconstruction_envelope() -> None:
+    rows = (
+        (1.1, 0.0, 0.0),
+        (0.0, 1.0, 0.0),
+        (0.0, 0.0, 1.0),
+    )
+    origin = (0.0, 0.0, 0.0)
+    point = (-0.060143602597438485, float(2**52), 0.1)
+    cell = pyvoro2.PeriodicCell(rows, origin=origin)
+
+    wrapped, shifts = cell.wrap_cart([point], return_shifts=True)
+    exact_fractional = _solve_row_exact(point, origin, rows)
+    exact_shifts = tuple(_floor(value) for value in exact_fractional)
+    exact_wrapped = tuple(
+        _f(point[column])
+        - sum(exact_shifts[row] * _f(rows[row][column]) for row in range(3))
+        for column in range(3)
+    )
+
+    assert tuple(shifts[0]) == exact_shifts
+    view_error = tuple(
+        _f(wrapped[0, column]) - exact_wrapped[column]
+        for column in range(3)
+    )
+    assert any(error != 0 for error in view_error)
+    for column in range(3):
+        reconstructed_view = (
+            _f(wrapped[0, column])
+            + sum(int(shifts[0, row]) * _f(rows[row][column])
+                  for row in range(3))
+        )
+        assert _f(point[column]) - reconstructed_view == -view_error[column]
+
+
+def test_wrap_cart_is_covariant_under_signed_row_permutations() -> None:
+    rows = np.array(
+        ((1.5, -0.25, 0.125), (0.5, 2.0, -0.375),
+         (-0.25, 0.75, -1.25)),
+        dtype=np.float64,
+    )
+    origin = np.array((0.125, -0.5, 0.75))
+    point = np.array((2.75, -1.125, 0.3125))
+    reference = pyvoro2.PeriodicCell(
+        tuple(map(tuple, rows)), origin=tuple(origin)
+    ).wrap_cart([point])[0]
+
+    permutation = np.array((2, 0, 1))
+    signs = np.array((-1, 1, -1))
+    permuted = rows[permutation]
+    signed = signs[:, None] * permuted
+    signed_origin = origin + permuted[signs < 0].sum(axis=0)
+    actual = pyvoro2.PeriodicCell(
+        tuple(map(tuple, signed)), origin=tuple(signed_origin)
+    ).wrap_cart([point])[0]
+
+    np.testing.assert_array_equal(actual, reference)
 
 
 def test_user_coordinate_outputs_are_owned_and_empty_batches_work() -> None:

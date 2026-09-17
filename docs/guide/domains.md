@@ -92,7 +92,7 @@ cell = PeriodicCell(
 All domain constructors require finite real bounds, vectors, and origins.
 Bounds, vectors, origins, and periodic flags are copied into canonical nested
 Python tuples, so later mutation of a caller list or array cannot change the
-domain. Periodic flags must be actual Python or NumPy Booleans. A
+domain. Periodic flags must be actual Python or NumPy Booleans.
 The three supplied vectors remain in their original row order. Either
 handedness is valid: the finite binary64 values must have an exact non-zero
 determinant. Numerical conditioning is a warning-only diagnostic. A later
@@ -146,16 +146,22 @@ With the supplied vectors as rows of `A`, these use
 `x = origin + fractional @ A`. Their calculations treat each input binary64
 number exactly and round only the returned coordinate view to nearest-even.
 The exact floor—not a float inverse, rounded subtraction, or epsilon—chooses a
-wrap shift. Returned shifts satisfy `x = wrapped + shift @ A` and are checked
-for signed-int64 range only when requested.
+wrap shift. Before output rounding, the exact source values satisfy
+`f* = r* + shift` and `x* = x_wrapped* + shift @ A*`. If the returned views
+are `r_hat = r* + e_r` and `x_wrapped_hat = x_wrapped* + e_w`, their public
+reconstruction envelopes are
+`f* = r_hat + shift - e_r` and
+`x* = x_wrapped_hat + shift @ A* - e_w`. Shifts are checked for signed-int64
+range only when requested.
 
 An exact interior fractional remainder can round to the displayed endpoint
 `1.0`. For example, `wrap_fractional([[-2**-55, 0, 0]])` returns a first
 coordinate displayed as `1.0` with shift `-1`; it is not repaired to zero.
 Wrapping that returned binary64 array again treats `1.0` as a new exact input,
 so the second result is zero with shift `1`. Rounded views are therefore not
-universally idempotent, while each call preserves its exact reconstruction
-equation.
+universally idempotent. The shift and pre-rounding remainder preserve the exact
+reconstruction equation; the displayed value carries only its stated
+nearest-even rounding error.
 
 ### A note on `PeriodicCell.remap_cart` vs the geometric parallelepiped
 

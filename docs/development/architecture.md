@@ -811,17 +811,18 @@ normally while face and vertex-adjacency cycles reverse once; face and neighbor
 identity and unsigned measures do not change. Later boundary-identity and
 reduced-proof work in this section remains target architecture.
 
-Discrete user-wrap shifts are decided from exact dyadic input arithmetic, not a
-rounded inverse/floor heuristic. Approximate native Cartesian image positions
-yield a public integer shift only after unique compatibility is certified within
-a declared envelope. Semantic periodic boundary identity is attached only to
-certified-positive-measure records; zero-measure raw artifacts and unresolved or
-coincident provenance follow explicit normalization/ambiguity rules. In power
-mode, native-boundary compatibility uses the exact binary64 radii passed to
-Voro++ plus an envelope for native arithmetic, while mathematical weights remain
-the public scientific representation. Ghost semantics do not trust native integer
-sign/value alone, and the 3D bridge must prevent uninitialized temporary ghost IDs
-from being read.
+Discrete user-wrap shifts are decided by exact rational arithmetic over the
+dyadic source numbers, not a rounded inverse/floor heuristic. Approximate
+native Cartesian image positions yield a public integer shift only after unique
+compatibility is certified within a declared envelope. Semantic periodic
+boundary identity is attached only to certified-positive-measure records;
+zero-measure raw artifacts and unresolved or coincident provenance follow
+explicit normalization/ambiguity rules. In power mode, native-boundary
+compatibility uses the exact binary64 radii passed to Voro++ plus an envelope
+for native arithmetic, while mathematical weights remain the public scientific
+representation. Ghost semantics do not trust native integer sign/value alone,
+and the 3D bridge must prevent uninitialized temporary ghost IDs from being
+read.
 
 The normal "points + separator observations -> fitted weighted tessellation"
 workflow should be promoted to a supported public inverse contract. The
