@@ -1458,11 +1458,12 @@ or in-place annotation.
 All domain constructors canonicalize bounds, periodic flags, triclinic vectors,
 and origins into owned nested built-in tuples. `Box.from_points` rejects empty
 or non-finite data before reduction and accepts non-negative padding only when
-the resulting bounds remain finite and strictly ordered. `PeriodicCell`
-requires a right-handed basis while retaining its existing conditioning
-warning and rejection thresholds. Remap helpers validate exact Boolean flags,
-finite non-negative `eps`, and finite points, and reject a lattice shift that
-cannot fit signed int64 before casting. ADR 0011 records this contract.
+the resulting bounds remain finite and strictly ordered. WP2 supersedes the
+older `PeriodicCell` validity sentence in ADR 0011: either handedness is valid
+when the finite binary64 basis has an exact non-zero determinant, while
+conditioning remains a warning-only diagnostic. Existing backend remap helpers
+still validate exact Boolean flags, finite non-negative `eps`, and finite
+points, and reject a lattice shift that cannot fit signed int64 before casting.
 
 All 18 internal native construction routes repeat converted-value checks and
 checked constructor arithmetic before allocation. An aggregate source-derived
