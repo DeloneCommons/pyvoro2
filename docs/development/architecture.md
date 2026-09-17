@@ -260,9 +260,13 @@ origins are owned nested tuples of built-in floats, while periodic flags are
 owned tuples of built-in Booleans. Retained numerical inputs are owned
 C-contiguous read-only arrays. This protects a frozen/value object from caller
 mutation without deep-freezing raw nested tessellation records or
-solver-created result graphs. `PeriodicCell` additionally requires a
-right-handed basis at construction. Remapping proves every returned lattice
-shift representable as signed int64 before conversion. Normalization treats
+solver-created result graphs. `PeriodicCell` accepts either handedness and
+requires an exact non-zero determinant over its finite binary64 source values;
+conditioning is diagnostic rather than a validity test. User-coordinate
+wrapping chooses exact floor shifts and checks signed-int64 range only when a
+public shift array is requested. Established backend remapping still proves
+every returned lattice shift representable as signed int64 before conversion.
+Normalization treats
 mutable raw cell records as a fresh public boundary, validates all consumed
 integer metadata before topology-key construction, and rejects an
 unrepresentable coordinate/tolerance quantization relationship before
@@ -792,13 +796,20 @@ representative public workflows. Releasing v0.9.0 begins rather than completes
 the real downstream-readiness/soak phase; external v0.9.x use supplies the
 stronger evidence required for 1.0.
 
-The target periodic architecture separates: (1) the user row-basis lattice and
+The periodic architecture separates: (1) the user row-basis lattice and
 exact half-open wrapping shifts; (2) an orientation-neutral Voro++ backend frame;
 and (3) private exact proof/reduction arithmetic. For a QR factorization
 `A.T = Q @ R`, the lower-triangular backend basis is `L = R.T = A @ Q`; row
 points transform by `(x - origin) @ Q` and return by `origin + x_backend @ Q.T`.
 A left-handed user basis is valid and may induce an improper orthogonal backend
 transform without reordering user lattice vectors.
+
+WP2 implements that user/backend split and reflection-correct transport for
+ordinary compute and ghost geometry. One detached frame snapshot owns each
+forward operation. Under an improper frame, Cartesian points transform
+normally while face and vertex-adjacency cycles reverse once; face and neighbor
+identity and unsigned measures do not change. Later boundary-identity and
+reduced-proof work in this section remains target architecture.
 
 Discrete user-wrap shifts are decided from exact dyadic input arithmetic, not a
 rounded inverse/floor heuristic. Approximate native Cartesian image positions

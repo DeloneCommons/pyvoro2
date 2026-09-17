@@ -2,6 +2,8 @@ import importlib
 
 import numpy as np
 
+import pyvoro2
+
 
 class _DummyView:
     def __init__(self):
@@ -75,3 +77,37 @@ def test_dedup_vertices_uses_tuple_keys_and_preserves_order(monkeypatch):
     assert np.allclose(out[0], [0.0, 0.0, 0.0])
     assert np.allclose(out[1], [1.0, 0.0, 0.0])
     assert np.allclose(out[2], [0.0, 1.0, 0.0])
+
+
+def test_periodic_visualization_wrap_delegates_to_user_lattice(monkeypatch):
+    viz = importlib.import_module('pyvoro2.viz3d')
+    monkeypatch.setattr(viz, '_py3Dmol', _DummyPy3Dmol(), raising=False)
+    calls = []
+    original = pyvoro2.PeriodicCell.wrap_cart
+
+    def recorded(self, points, *, return_shifts=False):
+        calls.append((np.array(points, copy=True), return_shifts))
+        return original(self, points, return_shifts=return_shifts)
+
+    monkeypatch.setattr(pyvoro2.PeriodicCell, 'wrap_cart', recorded)
+    cell = pyvoro2.PeriodicCell(
+        ((1.0, 0.0, 0.0), (0.25, 1.0, 0.0), (0.0, 0.0, -1.0))
+    )
+    cells = [{
+        'id': 0,
+        'site': [1.25, 0.25, -0.25],
+        'vertices': [[1.2, 0.2, -0.2], [1.3, 0.2, -0.2], [1.2, 0.3, -0.2]],
+        'faces': [{'vertices': [0, 1, 2], 'adjacent_cell': 0}],
+    }]
+
+    viz.view_tessellation(
+        cells,
+        domain=cell,
+        wrap_cells=True,
+        show_domain=False,
+        show_axes=False,
+        show_vertices=False,
+    )
+    assert len(calls) == 1
+    np.testing.assert_array_equal(calls[0][0], [[1.25, 0.25, -0.25]])
+    assert calls[0][1] is True

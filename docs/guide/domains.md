@@ -93,9 +93,12 @@ All domain constructors require finite real bounds, vectors, and origins.
 Bounds, vectors, origins, and periodic flags are copied into canonical nested
 Python tuples, so later mutation of a caller list or array cannot change the
 domain. Periodic flags must be actual Python or NumPy Booleans. A
-`PeriodicCell` basis must be right-handed (`determinant > 0`); pyvoro2 does not
-silently reorder or flip vectors. The existing near-degeneracy rejection and
-ill-conditioning warning thresholds still apply.
+The three supplied vectors remain in their original row order. Either
+handedness is valid: the finite binary64 values must have an exact non-zero
+determinant. Numerical conditioning is a warning-only diagnostic. A later
+backend-frame operation can still fail explicitly when a mathematically valid
+lattice is not numerically representable; that is not reported as exact
+singularity.
 
 `Box.from_points(...)` validates a non-empty finite point matrix before taking
 minimums or maximums. Padding must be finite and non-negative. Zero padding is
@@ -116,7 +119,8 @@ cell = PeriodicCell.from_params(bx, bxy, by, bxz, byz, bz)
 
 ## Coordinate wrapping helpers
 
-Both periodic domain classes provide remapping utilities that appear in several workflows:
+Both periodic domain classes provide backend remapping utilities that appear in
+several workflows:
 
 - `remap_cart(points, return_shifts=True|False)`
 
@@ -128,8 +132,30 @@ Boolean. A remap whose lattice-shift quotient cannot fit signed int64 raises
 `ValueError` before integer conversion; the established shift-sign convention
 is unchanged.
 
-These helpers are used internally (for example, in visualization wrapping and in periodic graph work),
-but they are also useful when you want to align your own data to the primary cell.
+These helpers remain useful when you need Voro++'s backend-primary convention.
+Periodic normalization intentionally keeps that convention.
+
+`PeriodicCell` also provides four user-lattice methods:
+
+- `cart_to_fractional(points)`
+- `fractional_to_cart(fractional)`
+- `wrap_fractional(fractional, return_shifts=True|False)`
+- `wrap_cart(points, return_shifts=True|False)`
+
+With the supplied vectors as rows of `A`, these use
+`x = origin + fractional @ A`. Their calculations treat each input binary64
+number exactly and round only the returned coordinate view to nearest-even.
+The exact floor—not a float inverse, rounded subtraction, or epsilon—chooses a
+wrap shift. Returned shifts satisfy `x = wrapped + shift @ A` and are checked
+for signed-int64 range only when requested.
+
+An exact interior fractional remainder can round to the displayed endpoint
+`1.0`. For example, `wrap_fractional([[-2**-55, 0, 0]])` returns a first
+coordinate displayed as `1.0` with shift `-1`; it is not repaired to zero.
+Wrapping that returned binary64 array again treats `1.0` as a new exact input,
+so the second result is zero with shift `1`. Rounded views are therefore not
+universally idempotent, while each call preserves its exact reconstruction
+equation.
 
 ### A note on `PeriodicCell.remap_cart` vs the geometric parallelepiped
 
@@ -139,9 +165,9 @@ For `PeriodicCell`, Voro++ works in a *lower-triangular internal representation*
 (`bx, bxy, by, bxz, byz, bz`). The method `PeriodicCell.remap_cart(...)` is
 defined to match that convention exactly.
 
-This means that wrapping via `remap_cart` does not always coincide with wrapping
-into the **geometric parallelepiped** spanned by the user vectors.
+This means that wrapping via `remap_cart` does not always coincide with
+`wrap_cart`, which wraps into the **geometric parallelepiped** spanned by the
+user vectors.
 
-For visualization, `pyvoro2.viz3d.view_tessellation(..., wrap_cells=True)` wraps
-sites into the geometric parallelepiped, because that is typically what users
-expect to see.
+For visualization, `pyvoro2.viz3d.view_tessellation(..., wrap_cells=True)`
+delegates to `wrap_cart` and uses its exact user-lattice shift.

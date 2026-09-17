@@ -85,7 +85,7 @@ adopts a backend-fork policy.
 |---|---|---|
 | Existing `compute`, `locate`, `ghost_cells`, domain classes, fixed separator fit | Stable | Existing stable operations remain stable; accepted v0.9 semantic corrections are deliberate pre-1.0 contract changes. |
 | Weight-first `locate`; complete weight/radius `ghost_cells` families | Stable — implemented by WP1 | Same mathematical-weight versus backend-radius representation model as stable weight-first `compute`. |
-| New `PeriodicCell` user-coordinate/wrap helpers | Provisional | Public convenience names may receive soak feedback; exact wrap-shift authority and reconstruction equations are fixed by ADR 0018. |
+| New `PeriodicCell` user-coordinate/wrap helpers | Provisional — implemented by WP2 | Public convenience names may receive soak feedback; exact wrap-shift authority and reconstruction equations are fixed by ADR 0018. |
 | New periodic query/owner/ghost metadata and `boundary_reference` | Provisional | Field spellings below are the v0.9 target; user-basis shift meaning and kind/payload invariants are fixed. |
 | Separator objective/constraint/penalty `space` selectors and effective-space views | Provisional | Advanced model objects remain provisional; observation/source identity remains stable. |
 | `fit_self_consistent_weights_from_separators` and preferred-namespace `SelfConsistentPowerFitResult` | Provisional | Supported normal public workflow during v0.9.x soak; no Experimental import is required. |
@@ -97,12 +97,12 @@ WP13 performs the final pre-1.0 lifecycle audit after implementation and public
 qualification. The facade/result row is ordinary supported public API with the existing
 **Provisional** lifecycle category, not Experimental research API.
 
-### Target periodic coordinate API
+### Implemented WP2 periodic coordinate API
 
 `PeriodicCell` keeps its existing backend-frame methods
 `cart_to_internal()`, `internal_to_cart()`, `remap_internal()`,
 `remap_cart()`, and compatibility `wrap_internal()` with their backend-primary
-meaning. v0.9 adds the distinct user-lattice operations:
+meaning. WP2 adds the distinct user-lattice operations:
 
 ```text
 PeriodicCell.cart_to_fractional(points)
@@ -125,6 +125,15 @@ change that shift. `return_shifts=True` returns a signed-int64 array in the
 user basis. A finite exact non-zero determinant is the mathematical validity
 criterion; determinant sign is not. Conditioning/backend/proof-resource
 failures are separate operation-level outcomes.
+
+Conversions perform the affine solve or reconstruction in exact arithmetic
+over the binary64 source numbers, then expose nearest-even binary64 views.
+Wrapping does not compose those rounded views to choose a shift. For example,
+the exact interior remainder ``1 - 2**-55`` rounds to ``1.0``; it remains the
+view of the original shift-zero result. Passing that returned ``1.0`` into a
+second wrap is a new exact input and therefore returns ``0.0`` with shift one.
+This intentional upper-endpoint case means the rounded wrapping view is not
+universally idempotent.
 
 All other public periodic shift fields use the same user-basis sign convention:
 
