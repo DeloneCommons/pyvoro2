@@ -36,6 +36,12 @@ from typing import Any, Iterable, Sequence, Literal
 
 import numpy as np
 
+from ._internal.exact_lattice import (
+    ExactBasis3D,
+    exact_basis_3d,
+    exact_point,
+    finite_float_view,
+)
 from ._internal.validation import require_string_choice
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from .normalize import NormalizedTopology, NormalizedVertices
@@ -415,6 +421,35 @@ def _shift_cell_geometry(cell: dict[str, Any], delta: np.ndarray) -> dict[str, A
     return out
 
 
+def _shift_periodic_cell_geometry_exact(
+    cell: dict[str, Any],
+    basis: ExactBasis3D,
+    shifts: np.ndarray,
+) -> dict[str, Any]:
+    """Shift one displayed cell by exact user-lattice coefficients."""
+
+    shift_tuple = tuple(int(value) for value in shifts)
+
+    def shifted_point(values: Sequence[float]) -> list[float]:
+        point = exact_point(np.asarray(values, dtype=np.float64).reshape((3,)))
+        translated = basis.subtract_lattice_shift(
+            point, shift_tuple  # type: ignore[arg-type]
+        )
+        return [
+            finite_float_view(value, operation='periodic visualization wrapping')
+            for value in translated
+        ]
+
+    out = dict(cell)
+    if out.get('site') is not None:
+        out['site'] = shifted_point(out['site'])
+    if out.get('vertices') is not None:
+        vertices = np.asarray(out['vertices'], dtype=np.float64)
+        if vertices.ndim == 2 and vertices.shape[1] == 3:
+            out['vertices'] = [shifted_point(vertex) for vertex in vertices]
+    return out
+
+
 def _dedup_vertices(vertices: np.ndarray, *, tol: float) -> np.ndarray:
     """Deduplicate vertices by quantized coordinate tuples.
 
@@ -588,7 +623,9 @@ def view_tessellation(
 
             # PeriodicCell uses the exact user-lattice wrapping contract.
             if isinstance(domain, PeriodicCell):
-                a, b, c = (np.asarray(vv, dtype=float) for vv in domain.vectors)
+                exact_basis = exact_basis_3d(
+                    np.asarray(domain.vectors, dtype=np.float64)
+                )
 
             for cc in cell_list:
                 site = cc.get('site')
@@ -602,9 +639,9 @@ def view_tessellation(
                     _wrapped, shifts = domain.wrap_cart(
                         s.reshape((1, 3)), return_shifts=True
                     )
-                    sh = shifts[0]
-                    delta = sh[0] * a + sh[1] * b + sh[2] * c
-                    shifted.append(_shift_cell_geometry(cc, delta))
+                    shifted.append(_shift_periodic_cell_geometry_exact(
+                        cc, exact_basis, shifts[0]
+                    ))
 
                 else:
                     # OrthorhombicCell wrapping uses the same definition as

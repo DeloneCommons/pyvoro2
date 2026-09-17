@@ -97,6 +97,20 @@ class ExactBasis3D:
             for column in range(3)
         )  # type: ignore[return-value]
 
+    def subtract_lattice_shift(
+        self,
+        point: tuple[Fraction, Fraction, Fraction],
+        shifts: tuple[int, int, int],
+    ) -> tuple[Fraction, Fraction, Fraction]:
+        """Return ``point - shifts @ rows`` in exact source arithmetic."""
+
+        return tuple(
+            point[column]
+            - sum(shifts[index] * self.rows[index][column]
+                  for index in range(3))
+            for column in range(3)
+        )  # type: ignore[return-value]
+
 
 def _bits(value: float) -> int:
     return struct.unpack('>Q', struct.pack('>d', float(value)))[0]

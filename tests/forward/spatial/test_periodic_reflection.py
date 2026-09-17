@@ -436,11 +436,28 @@ def test_reflected_face_cycles_give_reflected_cross_products() -> None:
     right, left, right_points, left_points = _domains_and_points()
     right_cells = pyvoro2.compute(right_points, domain=right, output='cells')
     left_cells = pyvoro2.compute(left_points, domain=left, output='cells')
-    right_cell = right_cells[0]
-    left_cell = left_cells[0]
+    # Deliberately perturb incidental native result ordering. Correspondence
+    # must come from public cell identity and reflected geometry instead.
+    left_cells.reverse()
+    for cell in left_cells:
+        cell['faces'].reverse()
+
+    right_cell, left_cell = next(
+        pair for pair in _paired_cells(right_cells, left_cells)
+        if pair[0]['id'] == 0
+    )
+    vertex_map = _reflected_vertex_map(right_cell, left_cell)
     right_face = next(face for face in right_cell['faces']
                       if len(face['vertices']) >= 3)
-    left_face = left_cell['faces'][right_cell['faces'].index(right_face)]
+    expected_cycle = [
+        int(vertex_map[index]) for index in reversed(right_face['vertices'])
+    ]
+    matching_faces = [
+        face for face in left_cell['faces']
+        if _same_directed_cycle(face['vertices'], expected_cycle)
+    ]
+    assert len(matching_faces) == 1
+    left_face = matching_faces[0]
     rv = np.asarray(right_cell['vertices'])[right_face['vertices']]
     lv = np.asarray(left_cell['vertices'])[left_face['vertices']]
     right_cross = sum(

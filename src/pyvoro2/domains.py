@@ -533,11 +533,8 @@ class PeriodicCell:
             solved = basis.solve_row(delta)  # type: ignore[arg-type]
             shifts = tuple(value.numerator // value.denominator
                            for value in solved)
-            wrapped = tuple(
-                point[column]
-                - sum(shifts[index] * basis.rows[index][column]
-                      for index in range(3))
-                for column in range(3)
+            wrapped = basis.subtract_lattice_shift(
+                point, shifts  # type: ignore[arg-type]
             )
             result[row_index] = [
                 finite_float_view(value, operation='wrap_cart')
