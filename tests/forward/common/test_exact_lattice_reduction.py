@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, replace
 from fractions import Fraction
-import math
+import subprocess
+import sys
 
 import numpy as np
 import pytest
 
+from pyvoro2._internal import exact_lattice as _exact_lattice
+from pyvoro2._internal import periodic_images as _production_periodic_images
 from pyvoro2._internal.exact_lattice import (
     DEFAULT_REDUCTION_LIMITS,
     ExactLatticeReductionLimits,
@@ -35,38 +38,21 @@ IDENTITY: IntMatrix = ((1, 0, 0), (0, 1, 0), (0, 0, 1))
 
 
 def _integer_determinant(matrix: IntMatrix) -> int:
-    a, b, c = matrix
-    return (
-        a[0] * (b[1] * c[2] - b[2] * c[1])
-        - a[1] * (b[0] * c[2] - b[2] * c[0])
-        + a[2] * (b[0] * c[1] - b[1] * c[0])
+    signed_permutations = (
+        ((0, 1, 2), 1),
+        ((0, 2, 1), -1),
+        ((1, 0, 2), -1),
+        ((1, 2, 0), 1),
+        ((2, 0, 1), 1),
+        ((2, 1, 0), -1),
     )
-
-
-def _integer_inverse(matrix: IntMatrix) -> IntMatrix:
-    a, b, c = matrix
-    determinant = _integer_determinant(matrix)
-    assert abs(determinant) == 1
-    adjugate = (
-        (
-            b[1] * c[2] - b[2] * c[1],
-            a[2] * c[1] - a[1] * c[2],
-            a[1] * b[2] - a[2] * b[1],
-        ),
-        (
-            b[2] * c[0] - b[0] * c[2],
-            a[0] * c[2] - a[2] * c[0],
-            a[2] * b[0] - a[0] * b[2],
-        ),
-        (
-            b[0] * c[1] - b[1] * c[0],
-            a[1] * c[0] - a[0] * c[1],
-            a[0] * b[1] - a[1] * b[0],
-        ),
+    return sum(
+        sign
+        * matrix[0][permutation[0]]
+        * matrix[1][permutation[1]]
+        * matrix[2][permutation[2]]
+        for permutation, sign in signed_permutations
     )
-    return tuple(
-        tuple(value // determinant for value in row) for row in adjugate
-    )  # type: ignore[return-value]
 
 
 def _integer_product(left: IntMatrix, right: IntMatrix) -> IntMatrix:
@@ -123,7 +109,7 @@ def _cartesian_product(
 
 
 def _gram_schmidt(
-    rows: ExactMatrix,
+    rows,
 ) -> tuple[
     tuple[tuple[Fraction, Fraction, Fraction], ...],
     tuple[tuple[Fraction, ...], ...],
@@ -132,7 +118,10 @@ def _gram_schmidt(
     stars: list[tuple[Fraction, Fraction, Fraction]] = []
     coefficients: list[list[Fraction]] = [[], [], []]
     squared: list[Fraction] = []
-    for row_index, row in enumerate(rows):
+    exact_rows = tuple(
+        tuple(Fraction(value) for value in row) for row in rows
+    )
+    for row_index, row in enumerate(exact_rows):
         star = list(row)
         for previous in range(row_index):
             coefficient = sum(
@@ -157,20 +146,77 @@ def _gram_schmidt(
 
 
 def _nearest_integer_ties_toward_zero(value: Fraction) -> int:
-    lower = math.floor(value)
-    remainder = value - lower
-    if remainder < Fraction(1, 2):
-        return lower
-    if remainder > Fraction(1, 2):
-        return lower + 1
-    return lower if value > 0 else lower + 1
+    numerator = value.numerator
+    quotient, remainder = divmod(abs(numerator), value.denominator)
+    doubled = 2 * remainder
+    if doubled > value.denominator:
+        quotient += 1
+    return quotient if numerator >= 0 else -quotient
 
 
-def _prefix_gram_potential(rows: ExactMatrix) -> Fraction:
-    first_norm = sum(value * value for value in rows[0])
-    second_norm = sum(value * value for value in rows[1])
+def _rank3_gram_certificate(rows) -> None:
+    """Check rank-3 LLL through exact Gram-minor identities."""
+
+    exact_rows = tuple(
+        tuple(Fraction(value) for value in row) for row in rows
+    )
+    gram = tuple(
+        tuple(
+            sum(
+                (left * right for left, right in zip(row, other)),
+                Fraction(),
+            )
+            for other in exact_rows
+        )
+        for row in exact_rows
+    )
+    delta_1 = gram[0][0]
+    delta_2 = gram[0][0] * gram[1][1] - gram[0][1] ** 2
+    delta_3 = sum(
+        sign
+        * gram[0][permutation[0]]
+        * gram[1][permutation[1]]
+        * gram[2][permutation[2]]
+        for permutation, sign in (
+            ((0, 1, 2), 1),
+            ((0, 2, 1), -1),
+            ((1, 0, 2), -1),
+            ((1, 2, 0), 1),
+            ((2, 0, 1), 1),
+            ((2, 1, 0), -1),
+        )
+    )
+    assert delta_1 > 0
+    assert delta_2 > 0
+    assert delta_3 > 0
+
+    assert abs(2 * gram[0][1]) <= delta_1
+    assert abs(2 * gram[0][2]) <= delta_1
+    mu_21_numerator = gram[0][0] * gram[1][2] - (
+        gram[0][1] * gram[0][2]
+    )
+    assert abs(2 * mu_21_numerator) <= delta_2
+
+    assert 4 * gram[1][1] >= 3 * gram[0][0]
+    assert 4 * (
+        gram[0][0] * gram[2][2] - gram[0][2] ** 2
+    ) >= 3 * delta_2
+
+
+def _prefix_gram_potential(rows) -> Fraction:
+    exact_rows = tuple(
+        tuple(Fraction(value) for value in row) for row in rows
+    )
+    first_norm = sum(
+        (value * value for value in exact_rows[0]), Fraction()
+    )
+    second_norm = sum(
+        (value * value for value in exact_rows[1]), Fraction()
+    )
     cross = sum(
-        rows[0][column] * rows[1][column] for column in range(3)
+        (exact_rows[0][column] * exact_rows[1][column]
+         for column in range(3)),
+        Fraction(),
     )
     second_prefix_determinant = first_norm * second_norm - cross * cross
     return first_norm * second_prefix_determinant
@@ -252,18 +298,10 @@ def _assert_independently_certified(
         result.transform, source
     )
     assert _integer_determinant(result.transform) in (-1, 1)
-    assert result.inverse_transform == _integer_inverse(result.transform)
     assert _integer_product(result.transform, result.inverse_transform) == IDENTITY
     assert _integer_product(result.inverse_transform, result.transform) == IDENTITY
 
-    _stars, coefficients, squared = _gram_schmidt(result.reduced_rows)
-    for row in range(1, 3):
-        for column in range(row):
-            assert abs(coefficients[row][column]) <= Fraction(1, 2)
-    for row in range(1, 3):
-        assert squared[row] >= (
-            Fraction(3, 4) - coefficients[row][row - 1] ** 2
-        ) * squared[row - 1]
+    _rank3_gram_certificate(result.reduced_rows)
     for row in result.reduced_rows:
         first = next(value for value in row if value)
         assert first > 0
@@ -330,6 +368,39 @@ def test_three_vector_cancellation_does_not_stall_at_pairwise_half_ties() -> Non
     _assert_independently_certified(basis, result)
 
 
+@pytest.mark.parametrize(
+    ('value', 'expected'),
+    (
+        (Fraction(1, 2), 0),
+        (Fraction(-1, 2), 0),
+        (Fraction(1, 2) - Fraction(1, 2**20), 0),
+        (Fraction(1, 2) + Fraction(1, 2**20), 1),
+        (Fraction(-1, 2) + Fraction(1, 2**20), 0),
+        (Fraction(-1, 2) - Fraction(1, 2**20), -1),
+    ),
+)
+def test_independent_rounding_uses_divmod_and_half_ties_toward_zero(
+    value: Fraction,
+    expected: int,
+) -> None:
+    assert _nearest_integer_ties_toward_zero(value) == expected
+
+
+def test_independent_oracle_stays_exact_under_determinant_cancellation() -> None:
+    magnitude = 2**27
+    source = (
+        (magnitude, magnitude - 1, 0),
+        (magnitude + 1, magnitude, 0),
+        (0, 0, 1),
+    )
+
+    rows, transform, _trace = _independent_lll_oracle(source)
+
+    assert _integer_determinant(source) == 1
+    assert _integer_determinant(transform) in (-1, 1)
+    _rank3_gram_certificate(rows)
+
+
 def test_strict_swaps_follow_an_independent_positive_integer_potential_trace(
 ) -> None:
     basis = (
@@ -347,23 +418,54 @@ def test_strict_swaps_follow_an_independent_positive_integer_potential_trace(
         for row in exact_matrix(basis)
     )
 
-    oracle_rows, oracle_transform, trace = _independent_lll_oracle(
+    oracle_rows, oracle_transform, oracle_trace = _independent_lll_oracle(
         aligned  # type: ignore[arg-type]
     )
-    result = exact_lll_reduce_3d(np.asarray(basis, dtype=np.float64))
+    result, production_trace = _exact_lattice._trace_exact_lll_reduce_3d(
+        np.asarray(basis, dtype=np.float64)
+    )
 
-    assert len(trace) == result.diagnostics.swaps == 4
+    assert len(oracle_trace) == result.diagnostics.swaps == 4
     assert all(
         before.denominator == after.denominator == 1
         and 0 < after < before
-        for before, after in trace
+        for before, after in oracle_trace
     )
+    swaps = []
+    for operation in production_trace:
+        before = _prefix_gram_potential(operation.before)
+        after = _prefix_gram_potential(operation.after)
+        assert before.denominator == after.denominator == 1
+        assert before > 0 and after > 0
+        if operation.kind == 'size_reduction':
+            assert after == before
+        elif operation.kind == 'swap':
+            assert 4 * after < 3 * before
+            swaps.append(operation.row_index)
+        elif operation.kind == 'sign_normalization':
+            assert after == before
+        else:
+            raise AssertionError(f'unknown production operation {operation.kind!r}')
+    assert len(swaps) == result.diagnostics.swaps
+    assert any(right < left for left, right in zip(swaps, swaps[1:]))
     scale = Fraction(1, 1 << exponent)
     expected_rows = tuple(
         tuple(value * scale for value in row) for row in oracle_rows
     )
     assert result.transform == oracle_transform
     assert result.reduced_rows == expected_rows
+
+
+def test_actual_production_trace_accepts_lovasz_equality_without_a_swap() -> None:
+    basis = np.asarray(
+        ((2.0, 0.0, 0.0), (1.0, 2.0, 0.0), (0.0, 0.0, 2.0)),
+        dtype=np.float64,
+    )
+
+    result, trace = _exact_lattice._trace_exact_lll_reduce_3d(basis)
+
+    assert result.transform == IDENTITY
+    assert not any(operation.kind == 'swap' for operation in trace)
 
 
 def test_reduced_rows_never_round_through_binary64() -> None:
@@ -518,7 +620,7 @@ def test_256_seed_policy_oracle_and_diagnostic_maxima() -> None:
 
     assert maxima == {
         'steps': 22,
-        'work': 3_264,
+        'work': 3_270,
         'integer_bits': 32,
         'rational_bits': 73,
         'transform_bits': 23,
@@ -629,6 +731,76 @@ def test_final_certification_is_covered_by_the_work_limit() -> None:
 
     assert captured.value.resource == 'work'
     assert captured.value.stage == 'certificate_gram'
+
+
+def test_final_lovasz_rational_growth_is_limited_and_cache_safe() -> None:
+    basis = np.eye(3) * 2.0**-100
+    restricted = replace(
+        DEFAULT_REDUCTION_LIMITS,
+        max_rational_bits=201,
+    )
+    sufficient = replace(
+        DEFAULT_REDUCTION_LIMITS,
+        max_rational_bits=203,
+    )
+    _reduction_cache_clear()
+
+    for _ in range(2):
+        with pytest.raises(ExactLatticeReductionResourceError) as captured:
+            exact_lll_reduce_3d(basis, limits=restricted)
+        error = captured.value
+        assert error.stage == 'certificate_lovasz'
+        assert error.resource == 'rational_bits'
+        assert error.observed == 203
+        assert error.configured_limit == 201
+    assert _reduction_cache_info().currsize == 0
+
+    result = exact_lll_reduce_3d(basis, limits=sufficient)
+    assert result.certified
+    assert result.diagnostics.max_rational_bits == 203
+    assert exact_lll_reduce_3d(basis, limits=sufficient) is result
+
+    with pytest.raises(ExactLatticeReductionResourceError):
+        exact_lll_reduce_3d(basis, limits=restricted)
+    assert _reduction_cache_info().currsize == 1
+
+
+def test_certificate_invariant_checks_run_under_python_optimized_mode() -> None:
+    script = """
+from fractions import Fraction
+from pyvoro2._internal import exact_lattice
+
+zero = Fraction()
+one = Fraction(1)
+identity = ((one, zero, zero), (zero, one, zero), (zero, zero, one))
+bad = ((Fraction(2), zero, zero), identity[1], identity[2])
+transform = ((1, 0, 0), (0, 1, 0), (0, 0, 1))
+monitor = exact_lattice._ReductionMonitor(
+    limits=exact_lattice.DEFAULT_REDUCTION_LIMITS,
+    source_summary={},
+)
+try:
+    exact_lattice._certify_reduction(
+        source=identity,
+        reduced=bad,
+        transform=transform,
+        inverse_transform=transform,
+        monitor=monitor,
+    )
+except exact_lattice.ExactLatticeReductionInvariantError:
+    print('certificate-rejected')
+else:
+    raise RuntimeError('optimized mode bypassed certification')
+"""
+
+    completed = subprocess.run(
+        [sys.executable, '-O', '-c', script],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.stdout.strip() == 'certificate-rejected'
 
 
 def test_limit_validation_rejects_boolean_and_nonpositive_values() -> None:
@@ -777,7 +949,7 @@ def _before_after(fixture, seed: int):
         common_exponent=exponent,
         fixed_incumbent_squared=fixed,
     )
-    return result, before_fixed, after_fixed
+    return result, before, seeded_after, before_fixed, after_fixed
 
 
 @pytest.mark.parametrize('seed', (0, 1))
@@ -786,9 +958,29 @@ def test_repository_thin_regressions_meet_proof_box_gates(seed: int) -> None:
                 if fixture.cohort == 'repository-regression']
     assert len(fixtures) == 2
     for fixture in fixtures:
-        _result, before, after = _before_after(fixture, seed)
-        assert after.fixed_box_count <= 4096
-        assert before.fixed_box_count >= 100 * after.fixed_box_count
+        _result, before, after, before_shared, after_shared = _before_after(
+            fixture, seed
+        )
+        assert after.box_count <= 4096
+        assert before.box_count >= 100 * after.box_count
+        assert after.box_count <= 1_000_000
+        assert before_shared.fixed_box_count >= (
+            100 * after_shared.fixed_box_count
+        )
+
+
+def test_six_row_thin_batch_is_below_the_existing_budget() -> None:
+    fixture = next(
+        fixture for fixture in FROZEN_WORKLOAD_FIXTURES
+        if fixture.name == 'thin-1e-3'
+    )
+    for seed in (0, 1):
+        _result, _before, after, _before_shared, _after_shared = (
+            _before_after(fixture, seed)
+        )
+        assert after.box_count == 980
+        assert 6 * after.box_count == 5_880
+        assert 6 * after.box_count <= 5_000_000
 
 
 @pytest.mark.parametrize('seed', (0, 1))
@@ -799,22 +991,40 @@ def test_exact_cubic_shear_work_is_bounded_independently_of_magnitude(
                 if fixture.cohort == 'exact-large-shear']
     counts = []
     for fixture in fixtures:
-        _result, before, after = _before_after(fixture, seed)
-        assert before.fixed_box_count > after.fixed_box_count
-        assert after.fixed_box_count <= 64
-        counts.append(after.fixed_box_count)
+        _result, before, after, before_shared, after_shared = _before_after(
+            fixture, seed
+        )
+        assert before.box_count > after.box_count
+        assert after.box_count <= 64
+        assert before_shared.fixed_box_count > after_shared.fixed_box_count
+        counts.append(after.box_count)
     assert len(set(counts)) == 1
 
 
-@pytest.mark.parametrize('seed', (0, 1))
-def test_equivalent_well_conditioned_cohort_meets_buffered_gates(seed: int) -> None:
+def test_equivalent_well_conditioned_cohort_meets_buffered_gates() -> None:
     fixtures = [fixture for fixture in FROZEN_WORKLOAD_FIXTURES
                 if fixture.cohort == 'equivalent-well-conditioned']
+    over_budget = []
     for fixture in fixtures:
-        _result, before, after = _before_after(fixture, seed)
-        assert after.fixed_box_count <= 256
-        if before.fixed_box_count > 1_000_000:
-            assert before.fixed_box_count >= 1000 * after.fixed_box_count
+        for seed in (0, 1):
+            _result, before, after, before_shared, after_shared = _before_after(
+                fixture, seed
+            )
+            assert after.box_count <= 256
+            assert after.box_count <= 1_000_000
+            if before.box_count > 1_000_000:
+                over_budget.append((fixture.name, seed))
+                assert before.box_count >= 1000 * after.box_count
+            assert after_shared.fixed_box_count <= 256
+            assert before_shared.fixed_box_count > after_shared.fixed_box_count
+    assert over_budget == [
+        ('equivalent-composed-a', 0),
+        ('equivalent-composed-a', 1),
+        ('equivalent-composed-b', 0),
+        ('equivalent-composed-b', 1),
+        ('equivalent-composed-c', 0),
+        ('equivalent-composed-c', 1),
+    ]
 
 
 def test_frozen_seeded_random_unimodular_workload_cohort() -> None:
@@ -832,39 +1042,32 @@ def test_frozen_seeded_random_unimodular_workload_cohort() -> None:
             (13, 1),
         ),
     }
+    over_budget = []
     for fixture in FROZEN_RANDOM_UNIMODULAR_FIXTURES:
         seeded_counts = []
         fixed_counts = []
         for image_search in (0, 1):
-            result, before, after = _before_after(fixture, image_search)
-            seeded_before = evaluate_proof_workload(
-                fixture.basis,
-                pi=fixture.pi,
-                pj=fixture.pj,
-                image_search=image_search,
-                common_exponent=common_alignment_exponent(
-                    fixture.basis, fixture.pi, fixture.pj
-                ),
-            )
-            seeded_after = evaluate_proof_workload(
-                result.reduced_rows,
-                pi=fixture.pi,
-                pj=fixture.pj,
-                image_search=image_search,
-                common_exponent=common_alignment_exponent(
-                    fixture.basis, fixture.pi, fixture.pj
-                ),
+            _result, seeded_before, seeded_after, before, after = (
+                _before_after(fixture, image_search)
             )
             seeded_counts.append(
                 (seeded_before.box_count, seeded_after.box_count)
             )
             fixed_counts.append((before.fixed_box_count, after.fixed_box_count))
+            assert seeded_after.box_count <= 256
+            assert seeded_after.box_count <= 1_000_000
+            if seeded_before.box_count > 1_000_000:
+                over_budget.append((fixture.name, image_search))
+                assert seeded_before.box_count >= 1000 * seeded_after.box_count
             assert after.fixed_box_count <= 256
-            if before.fixed_box_count > 1_000_000:
-                assert before.fixed_box_count >= 1000 * after.fixed_box_count
         expected_seeded, expected_fixed = expected[fixture.name]
         assert tuple(seeded_counts) == expected_seeded
         assert fixed_counts == [expected_fixed, expected_fixed]
+    assert over_budget == [
+        ('random-unimodular-seed-0', 0),
+        ('random-unimodular-seed-1', 0),
+        ('random-unimodular-seed-1', 1),
+    ]
 
 
 def test_r5_sc_001_inverse_bound_product_improves_by_at_least_100x() -> None:
@@ -872,10 +1075,13 @@ def test_r5_sc_001_inverse_bound_product_improves_by_at_least_100x() -> None:
         fixture for fixture in FROZEN_WORKLOAD_FIXTURES
         if fixture.name == 'r5-sc-001'
     )
-    _result, before, after = _before_after(fixture, seed=1)
+    _result, _seeded_before, _seeded_after, before, after = _before_after(
+        fixture, seed=1
+    )
 
     assert before.inverse_bound_product >= 100 * after.inverse_bound_product
-    assert before.bucket_bins != after.bucket_bins
+    assert before.bucket_bins == (3, 132_997, 598_610_259)
+    assert after.bucket_bins == (5_137, 210_991, 598_610_259)
 
 
 def test_intrinsic_anisotropy_is_reported_separately_without_false_gate() -> None:
@@ -883,9 +1089,107 @@ def test_intrinsic_anisotropy_is_reported_separately_without_false_gate() -> Non
         fixture for fixture in FROZEN_WORKLOAD_FIXTURES
         if fixture.cohort == 'intrinsically-anisotropic'
     )
-    result, before, after = _before_after(fixture, seed=1)
+    result, _seeded_before, _seeded_after, before, after = _before_after(
+        fixture, seed=1
+    )
 
     assert result.certified
     assert before.fixed_box_count > 0
     assert after.fixed_box_count > 0
     assert max(after.inverse_column_l1) >= 2**16
+
+
+def test_workload_default_alignment_includes_uncancelled_endpoints() -> None:
+    basis = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+    ordinary = evaluate_proof_workload(
+        basis,
+        pi=(0.0, 0.0, 0.0),
+        pj=(0.25, 0.0, 0.0),
+        image_search=0,
+    )
+    cancelled = evaluate_proof_workload(
+        basis,
+        pi=(0.1, 0.0, 0.0),
+        pj=(0.1, 0.0, 0.0),
+        image_search=0,
+    )
+
+    assert ordinary.exponent == common_alignment_exponent(
+        basis, (0.0, 0.0, 0.0), (0.25, 0.0, 0.0)
+    )
+    assert cancelled.exponent == common_alignment_exponent(
+        basis, (0.1, 0.0, 0.0), (0.1, 0.0, 0.0)
+    )
+    assert cancelled.exponent > 0
+
+
+@pytest.mark.parametrize('image_search', (-1, 2, 8, True, 1.0))
+def test_workload_evaluator_rejects_unsupported_seed_domains(
+    image_search,
+) -> None:
+    basis = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+
+    with pytest.raises(ValueError, match='image_search'):
+        evaluate_proof_workload(
+            basis,
+            pi=(0.0, 0.0, 0.0),
+            pj=(0.25, 0.0, 0.0),
+            image_search=image_search,
+        )
+
+
+@pytest.mark.parametrize('image_search', (0, 1))
+def test_workload_formulas_match_bounded_production_preparation(
+    image_search: int,
+) -> None:
+    basis = np.asarray(
+        ((1.0, 0.0, 0.0), (0.25, 1.0, 0.0), (0.0, 0.0, 1.0)),
+        dtype=np.float64,
+    )
+    pi = np.asarray((0.1, -0.2, 0.3), dtype=np.float64)
+    pj = np.asarray((0.35, 0.15, -0.05), dtype=np.float64)
+    workload = evaluate_proof_workload(
+        basis,
+        pi=pi,
+        pj=pj,
+        image_search=image_search,
+    )
+
+    prepared = _production_periodic_images._prepare_basis(
+        *_production_periodic_images._basis_key(
+            basis, (True, True, True)
+        )
+    )
+    displacement, lattice, exponent = (
+        _production_periodic_images._aligned_integer_geometry(
+            pi, pj, prepared
+        )
+    )
+    plan = _production_periodic_images._prepare_triclinic_row(
+        displacement,
+        lattice,
+        exponent,
+        pair_index=0,
+        basis=prepared,
+        orientation=1,
+        image_search=image_search,
+    )
+    layout = _production_periodic_images._exact_triclinic_bucket_layout(
+        np.asarray((pi, pj)),
+        origin=np.zeros(3),
+        lattice_vectors=basis,
+        radius=1e-5,
+    )
+
+    assert workload.exponent == plan.denominator_exponent
+    assert workload.interval_widths == tuple(
+        upper - lower + 1
+        for lower, upper in zip(plan.lower, plan.upper)
+    )
+    assert workload.box_count == plan.candidate_count
+    assert workload.seed_count == plan.seed_count
+    assert workload.bucket_bins == layout.bins
+    assert tuple(
+        Fraction.from_float(1e-5) * value
+        for value in workload.inverse_column_l1
+    ) == layout.coefficient_bounds

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 from itertools import product
 import math
+import operator
 from typing import Iterable, Sequence
 
 
@@ -101,16 +102,25 @@ def _dyadic_exponent(values: Iterable[Fraction]) -> int:
     )
 
 
+def _exact_input_fraction(value: float | int | Fraction) -> Fraction:
+    if isinstance(value, Fraction):
+        return value
+    return Fraction.from_float(float(value))
+
+
 def common_alignment_exponent(
-    *matrices_or_rows: Sequence[Sequence[float]] | Sequence[float],
+    *matrices_or_rows: Sequence[Sequence[float | Fraction]]
+    | Sequence[float | Fraction],
 ) -> int:
     values: list[Fraction] = []
     for item in matrices_or_rows:
         for row in item:
-            if isinstance(row, (float, int)):
-                values.append(Fraction.from_float(float(row)))
+            try:
+                row_values = iter(row)  # type: ignore[arg-type]
+            except TypeError:
+                values.append(_exact_input_fraction(row))  # type: ignore[arg-type]
             else:
-                values.extend(Fraction.from_float(float(value)) for value in row)
+                values.extend(_exact_input_fraction(value) for value in row_values)
     return _dyadic_exponent(values)
 
 
@@ -177,12 +187,25 @@ def evaluate_proof_workload(
     fixed_incumbent_squared: Fraction | None = None,
     bucket_radius: float = 1e-5,
 ) -> ProofWorkload:
-    """Evaluate the current proof-box and R5 bucket formulas exactly."""
+    """Evaluate current formulas for qualification seed radii zero and one.
+
+    The helper deliberately supports only the two frozen WP3 seed domains.  It
+    does not claim to reproduce production's capped shell enumeration for
+    larger ``image_search`` values.
+    """
+
+    if isinstance(image_search, bool):
+        raise ValueError('image_search must be exactly 0 or 1')
+    try:
+        image_search = int(operator.index(image_search))
+    except TypeError:
+        raise ValueError('image_search must be exactly 0 or 1') from None
+    if image_search not in (0, 1):
+        raise ValueError('image_search must be exactly 0 or 1')
 
     basis = tuple(
         tuple(
-            value if isinstance(value, Fraction)
-            else Fraction.from_float(float(value))
+            _exact_input_fraction(value)
             for value in row
         )
         for row in basis_values
@@ -196,8 +219,10 @@ def evaluate_proof_workload(
     )
     exponent = common_exponent
     if exponent is None:
-        exponent = _dyadic_exponent(
-            value for row in (*basis, (delta,)) for value in row
+        exponent = common_alignment_exponent(
+            basis,
+            pi,
+            pj,
         )
     displacement = tuple(_aligned_integer(value, exponent) for value in delta)
     lattice = tuple(

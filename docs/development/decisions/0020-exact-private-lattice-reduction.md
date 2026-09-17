@@ -91,6 +91,15 @@ separate from reducer state, checks positive squared norms, every size bound,
 both Lovasz inequalities, the final signs, and coherent accounting. Certificate
 failure is an invariant error, never a resource result.
 
+Bit accounting applies to every explicitly materialized semantic integer and
+normalized rational result, including the factors of compound Gram--Schmidt
+terms and the square, subtraction, and product in each final Lovasz check
+before later cancellation. Reducer-side rounding likewise observes its exact
+remainder and selected integer. It does not claim to count temporary integers
+used inside Python's `Fraction` normalization. Charged work is likewise a
+deterministic formula-level score for fixed scalar arithmetic, comparison, and
+row-update blocks, not a count of machine instructions or allocations.
+
 The private defaults are one million charged operations, 100,000 LLL steps,
 4,096 bits for each transform, 32,768 integer-operand bits, and 65,536 rational
 numerator/denominator bits. Exhaustion reports method, policy, stage, resource,
@@ -101,11 +110,14 @@ origin is irrelevant.
 
 These limits are structural ceilings with substantial measured margin, not
 validity tests. Across the frozen workload cohort below the maxima were 5
-steps, 974 work, 81 transform bits, 81 inverse-transform bits, 181 integer
+steps, 980 work, 81 transform bits, 81 inverse-transform bits, 181 integer
 bits, and 138 rational bits. A separate deterministic 256-seed unimodular
-composition qualification reached 22 steps, 3,264 work, 23/18 transform/
+composition qualification reached 22 steps, 3,270 work, 23/18 transform/
 inverse bits, and 32/73 integer/rational bits. Tests also cover a much wider
-exact exponent spread.
+exact exponent spread. A scale-only certificate witness reaches a 203-bit
+rational denominator in the final Lovasz product and therefore fails
+structurally under a 201-bit policy even though its aligned-integer reduction
+uses tiny operands.
 
 ## Qualification method
 
@@ -113,10 +125,27 @@ The test-only evaluator imports no production exact-lattice, reduction,
 periodic-image, or duplicate-scanning helper. It reconstructs source binary64
 values with `Fraction.from_float`, uses direct cofactor inversion, and evaluates
 the current proof-box and R5 bucket formulas arithmetically. It keeps physical
-endpoints and one exact dyadic alignment fixed. For each seed it also uses the
+endpoints and one exact dyadic alignment fixed. Its default alignment derives
+from the basis and both original endpoints, so cancellation in `pj - pi` cannot
+discard endpoint scale. The qualification interface accepts only the frozen
+`image_search` values zero and one rather than silently emulating a different
+uncapped large-radius seed cube. Bounded tests cross-check its independent
+arithmetic against the unchanged production triclinic preparation and bucket
+formulas. For each seed it also uses the
 better of the source/reduced seeded physical incumbents on both bases, isolating
 the inverse-bound effect. Enormous boxes are counted from proved interval
 widths rather than enumerated.
+
+The decisive test-side reducedness certificate uses exact rank-3 Gram-minor
+identities, while the supplementary policy oracle uses an exact projection
+route and `divmod` rounding with explicit signed half cases. Determinants use a
+Leibniz permutation sum; inverse evidence uses independently composed known
+inverses and verifies both matrix products. A test-only, opt-in private trace
+observes actual production size reductions, swaps, and sign changes without
+adding normal trace collection: size reductions preserve
+`Phi = Delta_1 * Delta_2`, and every recorded swap satisfies
+`4 * Phi_after < 3 * Phi_before`, including a backtracking fixture. Exact
+Lovasz equality records no swap.
 
 The equivalent-composed cases are frozen exact integer unimodular images of the
 cubic lattice. They are not floating matrix products rounded into supposed
@@ -169,9 +198,14 @@ The frozen seeded-random cohort gives the following additional qualification:
 Both thin regressions improve by more than 100x and finish below 4,096. All
 cubic shears finish at one candidate independent of shear magnitude. The frozen
 equivalent cohort finishes at most eight candidates and improves every
-over-budget case by more than 1,000x. Intrinsic anisotropy remains separately
-reported: reduction removes representation shear but cannot remove the physical
-`2**16` inverse scale.
+seeded over-budget case by more than 1,000x for both proof seeds; those six
+checks are deliberately non-vacuous. Six thin-1e-3 rows total 5,880 reduced
+candidates, below the existing cumulative batch budget. Shared-incumbent
+counts remain separate evidence for the inverse-bound effect and are not used
+as substitutes for seeded acceptance gates. Three seeded-random cases are also
+over budget before reduction and meet the same non-vacuous 1,000x gate.
+Intrinsic anisotropy remains separately reported: reduction removes
+representation shear but cannot remove the physical `2**16` inverse scale.
 
 ### Inverse, bucket, length, and orthogonality diagnostics
 
@@ -206,20 +240,20 @@ collapsed into a scalar score.
 
 | Case | max abs `U` / `U_inverse` | bits `U` / `U_inverse` | integer / rational bits | steps / swaps / reductions | work / certificate |
 |---|---:|---:|---:|---:|---:|
-| `thin-3e-4` | 1 / 1 | 1 / 1 | 181 / 129 | 3 / 1 / 1 | 719 / 245 |
-| `thin-1e-3` | 1 / 1 | 1 / 1 | 171 / 121 | 3 / 1 / 1 | 719 / 245 |
-| `cubic-shear-2p8` | 256 / 256 | 9 / 9 | 9 / 9 | 2 / 0 / 1 | 616 / 245 |
-| `cubic-shear-2p32` | 4,294,967,296 / 4,294,967,296 | 33 / 33 | 33 / 33 | 2 / 0 / 1 | 616 / 245 |
-| `cubic-shear-2p53` | 9,007,199,254,740,992 / 9,007,199,254,740,992 | 54 / 54 | 54 / 54 | 2 / 0 / 1 | 616 / 245 |
-| `cubic-shear-2p80` | 1,208,925,819,614,629,174,706,176 / 1,208,925,819,614,629,174,706,176 | 81 / 81 | 81 / 81 | 2 / 0 / 1 | 616 / 245 |
-| `equivalent-composed-a` | 565 / 32 | 10 / 6 | 10 / 10 | 2 / 0 / 3 | 652 / 245 |
-| `equivalent-composed-b` | 653 / 48 | 10 / 6 | 10 / 10 | 2 / 0 / 3 | 658 / 245 |
-| `equivalent-composed-c` | 667 / 64 | 10 / 7 | 10 / 10 | 2 / 0 / 3 | 658 / 245 |
-| `intrinsic-anisotropy` | 16 / 16 | 5 / 5 | 33 / 37 | 5 / 2 / 1 | 974 / 245 |
-| `r5-sc-001` | 55,336,879 / 83,759 | 26 / 17 | 178 / 138 | 2 / 0 / 3 | 658 / 245 |
-| `random-unimodular-seed-0` | 41 / 41 | 8 / 6 | 9 / 13 | 3 / 1 / 4 | 773 / 245 |
-| `random-unimodular-seed-1` | 660 / 4,300 | 10 / 13 | 20 / 51 | 21 / 14 / 19 | 3,148 / 245 |
-| `random-unimodular-seed-56` | 12 / 12 | 4 / 4 | 4 / 4 | 2 / 0 / 1 | 622 / 245 |
+| `thin-3e-4` | 1 / 1 | 1 / 1 | 181 / 131 | 3 / 1 / 1 | 725 / 251 |
+| `thin-1e-3` | 1 / 1 | 1 / 1 | 171 / 123 | 3 / 1 / 1 | 725 / 251 |
+| `cubic-shear-2p8` | 256 / 256 | 9 / 9 | 9 / 9 | 2 / 0 / 1 | 622 / 251 |
+| `cubic-shear-2p32` | 4,294,967,296 / 4,294,967,296 | 33 / 33 | 33 / 33 | 2 / 0 / 1 | 622 / 251 |
+| `cubic-shear-2p53` | 9,007,199,254,740,992 / 9,007,199,254,740,992 | 54 / 54 | 54 / 54 | 2 / 0 / 1 | 622 / 251 |
+| `cubic-shear-2p80` | 1,208,925,819,614,629,174,706,176 / 1,208,925,819,614,629,174,706,176 | 81 / 81 | 81 / 81 | 2 / 0 / 1 | 622 / 251 |
+| `equivalent-composed-a` | 565 / 32 | 10 / 6 | 10 / 10 | 2 / 0 / 3 | 658 / 251 |
+| `equivalent-composed-b` | 653 / 48 | 10 / 6 | 10 / 10 | 2 / 0 / 3 | 664 / 251 |
+| `equivalent-composed-c` | 667 / 64 | 10 / 7 | 10 / 10 | 2 / 0 / 3 | 664 / 251 |
+| `intrinsic-anisotropy` | 16 / 16 | 5 / 5 | 33 / 37 | 5 / 2 / 1 | 980 / 251 |
+| `r5-sc-001` | 55,336,879 / 83,759 | 26 / 17 | 178 / 138 | 2 / 0 / 3 | 664 / 251 |
+| `random-unimodular-seed-0` | 41 / 41 | 8 / 6 | 9 / 13 | 3 / 1 / 4 | 779 / 251 |
+| `random-unimodular-seed-1` | 660 / 4,300 | 10 / 13 | 20 / 51 | 21 / 14 / 19 | 3,154 / 251 |
+| `random-unimodular-seed-56` | 12 / 12 | 4 / 4 | 4 / 4 | 2 / 0 / 1 | 628 / 251 |
 
 ## Consequences and scope boundary
 

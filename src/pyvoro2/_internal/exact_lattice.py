@@ -9,6 +9,14 @@ determinants, while every strict Lovasz swap decreases that potential.
 Together with finite descending size-reduction passes and bounded index motion,
 this proves termination; the private step/work limits below are resource guards,
 not the mathematical termination argument.
+
+Charged work is a deterministic formula-level score: fixed scalar arithmetic,
+comparison, and row-update blocks receive documented-sized charges.  It is not
+a count of processor instructions, allocations, or ``Fraction`` internals.
+Operand-growth limits observe every explicitly materialized semantic integer or
+normalized rational result, including compound subexpressions before a later
+cancellation; they likewise do not model temporary integers internal to
+Python's rational normalization.
 """
 
 from __future__ import annotations
@@ -19,7 +27,7 @@ from functools import lru_cache
 import math
 import operator
 import struct
-from typing import Iterable, Sequence
+from typing import Callable, Iterable, Sequence
 
 import numpy as np
 
@@ -29,7 +37,7 @@ _REDUCTION_METHOD = 'exact-lll-rank3'
 _REDUCTION_POLICY = (
     'delta=3/4;source-row-order;descending-full-size-reduction;'
     'nearest-half-ties-toward-zero;strict-lovasz-swap;'
-    'first-nonzero-cartesian-positive;no-final-sort;v1'
+    'first-nonzero-cartesian-positive;no-final-sort;v2'
 )
 _DELTA = Fraction(3, 4)
 
@@ -117,6 +125,17 @@ class ExactLatticeReductionDiagnostics:
     max_rational_bits: int
     max_transform_bits: int
     max_inverse_transform_bits: int
+
+
+@dataclass(frozen=True, slots=True)
+class _ReductionTraceEvent:
+    """One immutable test-only view of an actual reducer row operation."""
+
+    kind: str
+    row_index: int
+    previous_index: int | None
+    before: IntMatrix3
+    after: IntMatrix3
 
 
 @dataclass(frozen=True, slots=True)
@@ -694,15 +713,24 @@ def _vector_gram_schmidt(
     )
 
 
-def _nearest_integer_ties_toward_zero(value: Fraction) -> int:
+def _nearest_integer_ties_toward_zero(
+    value: Fraction,
+    *,
+    monitor: _ReductionMonitor,
+) -> int:
     lower = math.floor(value)
     remainder = value - lower
+    monitor.observe_integer(lower, stage='size_reduction_rounding')
+    monitor.observe_fraction(remainder, stage='size_reduction_rounding')
     half = Fraction(1, 2)
     if remainder < half:
-        return lower
-    if remainder > half:
-        return lower + 1
-    return lower if value > 0 else lower + 1
+        nearest = lower
+    elif remainder > half:
+        nearest = lower + 1
+    else:
+        nearest = lower if value > 0 else lower + 1
+    monitor.observe_integer(nearest, stage='size_reduction_rounding')
+    return nearest
 
 
 def _first_nonzero_positive(row: Sequence[Fraction | int]) -> bool:
@@ -739,13 +767,20 @@ def _certificate_gram_schmidt(
     squared = [Fraction() for _ in range(3)]
     for row in range(3):
         for column in range(row):
-            correction = _observed_fraction_sum(
-                (
+            terms = []
+            for previous in range(column):
+                coefficient_product = (
                     coefficients[row][previous]
                     * coefficients[column][previous]
-                    * squared[previous]
-                    for previous in range(column)
-                ),
+                )
+                monitor.observe_fraction(
+                    coefficient_product, stage='certificate_gram'
+                )
+                term = coefficient_product * squared[previous]
+                monitor.observe_fraction(term, stage='certificate_gram')
+                terms.append(term)
+            correction = _observed_fraction_sum(
+                terms,
                 monitor=monitor,
                 stage='certificate_gram',
             )
@@ -757,11 +792,17 @@ def _certificate_gram_schmidt(
             monitor.observe_fraction(
                 coefficients[row][column], stage='certificate_gram'
             )
+        terms = []
+        for previous in range(row):
+            coefficient_squared = coefficients[row][previous] ** 2
+            monitor.observe_fraction(
+                coefficient_squared, stage='certificate_gram'
+            )
+            term = coefficient_squared * squared[previous]
+            monitor.observe_fraction(term, stage='certificate_gram')
+            terms.append(term)
         correction = _observed_fraction_sum(
-            (
-                coefficients[row][previous] ** 2 * squared[previous]
-                for previous in range(row)
-            ),
+            terms,
             monitor=monitor,
             stage='certificate_gram',
         )
@@ -791,6 +832,20 @@ def _certify_reduction(
         raise ExactLatticeReductionInvariantError(
             'reduction transforms are not exact integer matrices'
         )
+    for row in transform:
+        for value in row:
+            monitor.observe_integer(
+                value,
+                stage='certificate_transform_limits',
+                role='transform',
+            )
+    for row in inverse_transform:
+        for value in row:
+            monitor.observe_integer(
+                value,
+                stage='certificate_inverse_transform_limits',
+                role='inverse_transform',
+            )
     expected = _transform_exact_rows(
         transform,
         source,
@@ -847,9 +902,30 @@ def _certify_reduction(
                     'reduced basis is not fully size-reduced'
                 )
     for row in range(1, 3):
-        if squared[row] < (
-            _DELTA - coefficients[row][row - 1] ** 2
-        ) * squared[row - 1]:
+        coefficient_squared = coefficients[row][row - 1] ** 2
+        monitor.charge(
+            1,
+            stage='certificate_lovasz',
+            certification=True,
+        )
+        monitor.observe_fraction(
+            coefficient_squared, stage='certificate_lovasz'
+        )
+        factor = _DELTA - coefficient_squared
+        monitor.charge(
+            1,
+            stage='certificate_lovasz',
+            certification=True,
+        )
+        monitor.observe_fraction(factor, stage='certificate_lovasz')
+        right = factor * squared[row - 1]
+        monitor.charge(
+            1,
+            stage='certificate_lovasz',
+            certification=True,
+        )
+        monitor.observe_fraction(right, stage='certificate_lovasz')
+        if squared[row] < right:
             raise ExactLatticeReductionInvariantError(
                 'reduced basis violates an exact Lovasz condition'
             )
@@ -911,6 +987,7 @@ def _reduce_exact_lll(
     source: ExactMatrix3,
     *,
     monitor: _ReductionMonitor,
+    operation_observer: Callable[[_ReductionTraceEvent], None] | None = None,
 ) -> tuple[ExactMatrix3, IntMatrix3, IntMatrix3]:
     rows, _exponent = _aligned_integer_rows(source, monitor=monitor)
     source_determinant = _integer_determinant_3x3(
@@ -938,11 +1015,14 @@ def _reduce_exact_lll(
                 monitor=monitor,
             )
             nearest = _nearest_integer_ties_toward_zero(
-                coefficients[row_index][previous]
+                coefficients[row_index][previous],
+                monitor=monitor,
             )
             monitor.charge(2, stage='size_reduction_decision')
             if nearest == 0:
                 continue
+            if operation_observer is not None:
+                before = _as_int_matrix(rows)
             updated_row = []
             updated_transform = []
             for column in range(3):
@@ -968,6 +1048,16 @@ def _reduce_exact_lll(
                     stage='size_reduction_update',
                     role='transform',
                 )
+            if operation_observer is not None:
+                operation_observer(
+                    _ReductionTraceEvent(
+                        kind='size_reduction',
+                        row_index=row_index,
+                        previous_index=previous,
+                        before=before,
+                        after=_as_int_matrix(rows),
+                    )
+                )
 
         _stars, coefficients, squared = _vector_gram_schmidt(
             rows,
@@ -983,6 +1073,8 @@ def _reduce_exact_lll(
         monitor.observe_fraction(right, stage='lovasz_decision')
         monitor.charge(4, stage='lovasz_decision')
         if squared[row_index] < right:
+            if operation_observer is not None:
+                before = _as_int_matrix(rows)
             rows[row_index], rows[row_index - 1] = (
                 rows[row_index - 1], rows[row_index]
             )
@@ -991,12 +1083,24 @@ def _reduce_exact_lll(
             )
             monitor.swaps += 1
             monitor.charge(1, stage='lovasz_swap')
+            if operation_observer is not None:
+                operation_observer(
+                    _ReductionTraceEvent(
+                        kind='swap',
+                        row_index=row_index,
+                        previous_index=row_index - 1,
+                        before=before,
+                        after=_as_int_matrix(rows),
+                    )
+                )
             row_index = max(row_index - 1, 1)
         else:
             row_index += 1
 
     for row_index, row in enumerate(rows):
         if not _first_nonzero_positive(row):
+            if operation_observer is not None:
+                before = _as_int_matrix(rows)
             rows[row_index] = [-value for value in row]
             transform[row_index] = [
                 -value for value in transform[row_index]
@@ -1007,6 +1111,16 @@ def _reduce_exact_lll(
                     value,
                     stage='sign_normalization',
                     role='transform',
+                )
+            if operation_observer is not None:
+                operation_observer(
+                    _ReductionTraceEvent(
+                        kind='sign_normalization',
+                        row_index=row_index,
+                        previous_index=None,
+                        before=before,
+                        after=_as_int_matrix(rows),
+                    )
                 )
 
     transform_result = _as_int_matrix(transform)
@@ -1031,11 +1145,12 @@ def _reduce_exact_lll(
     return reduced, transform_result, inverse_transform
 
 
-@lru_cache(maxsize=_CACHE_SIZE)
-def _reduction_from_bits(
+def _uncached_reduction_from_bits(
     bit_patterns: tuple[int, ...],
     policy: str,
     limits: ExactLatticeReductionLimits,
+    *,
+    operation_observer: Callable[[_ReductionTraceEvent], None] | None = None,
 ) -> ExactReducedBasis3D:
     if policy != _REDUCTION_POLICY:
         raise ExactLatticeReductionInvariantError(
@@ -1053,6 +1168,7 @@ def _reduction_from_bits(
     reduced, transform, inverse_transform = _reduce_exact_lll(
         source,
         monitor=monitor,
+        operation_observer=operation_observer,
     )
     return ExactReducedBasis3D(
         reduced_rows=reduced,
@@ -1064,6 +1180,32 @@ def _reduction_from_bits(
         limits=limits,
         diagnostics=monitor.diagnostics(),
     )
+
+
+@lru_cache(maxsize=_CACHE_SIZE)
+def _reduction_from_bits(
+    bit_patterns: tuple[int, ...],
+    policy: str,
+    limits: ExactLatticeReductionLimits,
+) -> ExactReducedBasis3D:
+    return _uncached_reduction_from_bits(bit_patterns, policy, limits)
+
+
+def _validated_reduction_bits(
+    matrix: Sequence[Sequence[float]] | np.ndarray,
+) -> tuple[int, ...]:
+    try:
+        array = np.asarray(matrix, dtype=np.float64)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(
+            'matrix must be a finite binary64 (3, 3) array'
+        ) from exc
+    if array.shape != (3, 3):
+        raise ValueError('matrix must have shape (3, 3)')
+    if not np.all(np.isfinite(array)):
+        raise ValueError('matrix must contain only finite binary64 values')
+    contiguous = np.ascontiguousarray(array, dtype=np.float64)
+    return tuple(int(value) for value in contiguous.view(np.uint64).ravel())
 
 
 def exact_lll_reduce_3d(
@@ -1079,19 +1221,27 @@ def exact_lll_reduce_3d(
 
     if not isinstance(limits, ExactLatticeReductionLimits):
         raise ValueError('limits must be an ExactLatticeReductionLimits value')
-    try:
-        array = np.asarray(matrix, dtype=np.float64)
-    except (TypeError, ValueError, OverflowError) as exc:
-        raise ValueError('matrix must be a finite binary64 (3, 3) array') from exc
-    if array.shape != (3, 3):
-        raise ValueError('matrix must have shape (3, 3)')
-    if not np.all(np.isfinite(array)):
-        raise ValueError('matrix must contain only finite binary64 values')
-    contiguous = np.ascontiguousarray(array, dtype=np.float64)
-    bit_patterns = tuple(
-        int(value) for value in contiguous.view(np.uint64).ravel()
-    )
+    bit_patterns = _validated_reduction_bits(matrix)
     return _reduction_from_bits(bit_patterns, _REDUCTION_POLICY, limits)
+
+
+def _trace_exact_lll_reduce_3d(
+    matrix: Sequence[Sequence[float]] | np.ndarray,
+    *,
+    limits: ExactLatticeReductionLimits = DEFAULT_REDUCTION_LIMITS,
+) -> tuple[ExactReducedBasis3D, tuple[_ReductionTraceEvent, ...]]:
+    """Run uncached reduction with a test-only actual-row-operation trace."""
+
+    if not isinstance(limits, ExactLatticeReductionLimits):
+        raise ValueError('limits must be an ExactLatticeReductionLimits value')
+    events: list[_ReductionTraceEvent] = []
+    result = _uncached_reduction_from_bits(
+        _validated_reduction_bits(matrix),
+        _REDUCTION_POLICY,
+        limits,
+        operation_observer=events.append,
+    )
+    return result, tuple(events)
 
 
 def _reduction_cache_info():
