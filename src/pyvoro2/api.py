@@ -133,6 +133,43 @@ def _remap_ids_inplace(cells: list[dict[str, Any]], ids_user: np.ndarray) -> Non
                 f['adjacent_cell'] = int(ids_user[adj])
 
 
+def _transport_periodic_cells_to_cart_inplace(
+    cells: list[dict[str, Any]],
+    snapshot: Any,
+) -> None:
+    """Transport native cell geometry through one periodic frame snapshot.
+
+    An improper orthogonal transform reverses oriented boundary cycles.
+    Vertex coordinates and sites use the ordinary point transform; scalar
+    measures, vertex identities, face ordering, and neighbor identities are
+    left unchanged.
+    """
+
+    reverse_orientation = snapshot.parity < 0
+    for cell in cells:
+        vertices = np.asarray(cell.get('vertices', []), dtype=np.float64)
+        if vertices.size:
+            cell['vertices'] = snapshot.internal_to_cart(vertices).tolist()
+        site = np.asarray(cell.get('site', []), dtype=np.float64)
+        if site.size == 3:
+            cell['site'] = snapshot.internal_to_cart(
+                site.reshape(1, 3)
+            ).reshape(3).tolist()
+        if not reverse_orientation:
+            continue
+        adjacency = cell.get('adjacency')
+        if adjacency is not None:
+            cell['adjacency'] = [
+                list(reversed(cycle)) for cycle in adjacency
+            ]
+        faces = cell.get('faces')
+        if faces is not None:
+            for face in faces:
+                cycle = face.get('vertices')
+                if cycle is not None:
+                    face['vertices'] = list(reversed(cycle))
+
+
 def _add_empty_cells_inplace(
     cells: list[dict[str, Any]],
     *,
@@ -716,18 +753,7 @@ def compute(
     if ids_user is not None:
         _remap_ids_inplace(cells, ids_user)
 
-    # Transform vertices back to Cartesian if requested
-    if return_vertices_value:
-        for c in cells:
-            verts = np.asarray(c.get('vertices', []), dtype=np.float64)
-            if verts.size:
-                c['vertices'] = cell.internal_to_cart(verts).tolist()
-
-    # Transform site positions back to Cartesian for periodic cells
-    for c in cells:
-        site_i = np.asarray(c.get('site', []), dtype=np.float64)
-        if site_i.size == 3:
-            c['site'] = cell.internal_to_cart(site_i.reshape(1, 3)).reshape(3).tolist()
+    _transport_periodic_cells_to_cart_inplace(cells, cell)
 
     diag = None
     do_diag = return_diagnostics_value or tessellation_check != 'none'
@@ -1294,19 +1320,7 @@ def ghost_cells(
         else:
             raise ValueError(f'unknown mode: {mode}')
 
-        # Convert vertices/site back to Cartesian for PeriodicCell.
-        if return_vertices_value:
-            for c in cells:
-                verts = np.asarray(c.get('vertices', []), dtype=np.float64)
-                if verts.size:
-                    c['vertices'] = cell.internal_to_cart(verts).tolist()
-
-        for c in cells:
-            site_i = np.asarray(c.get('site', []), dtype=np.float64)
-            if site_i.size == 3:
-                c['site'] = (
-                    cell.internal_to_cart(site_i.reshape(1, 3)).reshape(3).tolist()
-                )
+        _transport_periodic_cells_to_cart_inplace(cells, cell)
 
     # Remap generator IDs on faces to user IDs if requested.
     if ids_user is not None:
