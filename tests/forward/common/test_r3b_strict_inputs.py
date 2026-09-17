@@ -436,12 +436,15 @@ def test_domain_scalar_nan_inf_matrix(nonfinite: float) -> None:
         )
 
 
-def test_periodic_cell_rejects_left_handed_and_accepts_right_handed() -> None:
-    with pytest.raises(ValueError, match='right-handed.*determinant > 0'):
-        pyvoro2.PeriodicCell(((1, 0, 0), (0, 0, 1), (0, 1, 0)))
-
-    cell = pyvoro2.PeriodicCell(((1, 0, 0), (0, 1, 0), (0, 0, 1)))
-    assert np.linalg.det(np.asarray(cell.vectors)) > 0
+def test_periodic_cell_accepts_both_handedness_signs_without_reordering() -> None:
+    left_rows = ((1, 0, 0), (0, 0, 1), (0, 1, 0))
+    right_rows = ((1, 0, 0), (0, 1, 0), (0, 0, 1))
+    left = pyvoro2.PeriodicCell(left_rows)
+    right = pyvoro2.PeriodicCell(right_rows)
+    assert left.vectors == left_rows
+    assert right.vectors == right_rows
+    assert np.linalg.det(np.asarray(left.vectors)) < 0
+    assert np.linalg.det(np.asarray(right.vectors)) > 0
 
 
 @pytest.mark.parametrize(

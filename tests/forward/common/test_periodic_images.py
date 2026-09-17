@@ -237,6 +237,37 @@ def _minimum(
     )
 
 
+@pytest.mark.parametrize(
+    'lattice',
+    [
+        np.diag(signs)
+        for signs in product((-2.0, 3.0), (-4.0, 5.0), (-6.0, 7.0))
+    ],
+)
+def test_signed_diagonal_bases_match_independent_oracle(lattice) -> None:
+    pi = np.array([0.25, -0.75, 1.5])
+    pj = np.array([4.75, 7.0, -5.25])
+    result = _minimum(pi, pj, lattice)
+    _assert_result_matches_fraction_oracle(
+        result, pi, pj, lattice, radius=6, orientation=1
+    )
+    assert result.method == 'orthogonal-exact'
+
+
+def test_left_handed_skew_basis_matches_independent_oracle() -> None:
+    lattice = np.array(
+        ((0.4, 1.3, 0.0), (1.0, 0.0, 0.0), (-0.2, 0.5, 0.9))
+    )
+    assert np.linalg.det(lattice) < 0.0
+    pi = np.array([0.125, -0.25, 0.375])
+    pj = pi + np.array([2.4, -1.7, 3.1])
+    result = _minimum(pi, pj, lattice)
+    _assert_result_matches_fraction_oracle(
+        result, pi, pj, lattice, radius=8, orientation=1
+    )
+    assert result.method == 'triclinic-finite-box'
+
+
 def test_fixed_skewed_triclinic_regression_matches_independent_oracle() -> None:
     cell = PeriodicCell.from_params(1, 1.5, 1, 0, 0, 1)
     pi = np.array([0.63696169, 0.26978671, 0.04097352])
