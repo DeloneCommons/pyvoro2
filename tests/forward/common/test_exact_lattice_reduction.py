@@ -458,9 +458,13 @@ def test_strict_swaps_follow_an_independent_positive_integer_potential_trace(
 
 def test_actual_production_trace_accepts_lovasz_equality_without_a_swap() -> None:
     basis = np.asarray(
-        ((2.0, 0.0, 0.0), (1.0, 2.0, 0.0), (0.0, 0.0, 2.0)),
+        ((2.0, 0.0, 0.0), (1.0, 1.0, 1.0), (0.0, 1.0, -1.0)),
         dtype=np.float64,
     )
+    _stars, coefficients, squared = _gram_schmidt(basis)
+    assert squared[1] - (
+        Fraction(3, 4) - coefficients[1][0] ** 2
+    ) * squared[0] == 0
 
     result, trace = _exact_lattice._trace_exact_lll_reduce_3d(basis)
 
