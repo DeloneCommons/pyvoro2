@@ -8,6 +8,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Batched 3D `PeriodicCell` ghost queries now use independent native containers
+  in standard and power modes, preventing stale temporary periodic images from
+  changing later cells. Weight batches retain one common conversion gauge.
+
 - Separator nearest-image inference, explicit connectors, and source verification
   now use original caller coordinates before backend-primary remapping. This
   preserves unique images near backend snap boundaries, physical ties across
