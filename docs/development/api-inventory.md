@@ -6,8 +6,9 @@
 - **Previous contract:** v0.7.0
 - **Implemented release:** v0.8.0
 - **Active target:** v0.9.0 — WP0 contract activated 2026-09-01; WP1 query-input
-  parity implemented 2026-09-16; later feature work remains target-only until
-  its owning work package lands
+  parity and WP2 user/backend lattice separation are implemented; WP3 adds no
+  public surface, and later public feature work remains target-only until its
+  owning work package lands
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
 - **v0.9 activation:** [issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **v0.9 execution tracker:** [issue #47](https://github.com/DeloneCommons/pyvoro2/issues/47)
@@ -29,8 +30,9 @@
   [ADR 0015](decisions/0015-atomic-separator-active-state.md),
   [ADR 0016](decisions/0016-severity-complete-tessellation-diagnostics.md),
   [ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md),
-  [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md), and
-  [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md)
+  [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md),
+  [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md),
+  and [ADR 0020](decisions/0020-exact-private-lattice-reduction.md)
 
 This inventory has two explicit authority layers. The current implemented
 sections record accepted behavior in the tree, including completed v0.9 work
@@ -67,15 +69,16 @@ fact.
 
 This section is the implementation/target ledger activated by issue
 [#46](https://github.com/DeloneCommons/pyvoro2/issues/46). It freezes the public
-contract choices needed by WP1–WP11 and records WP1 as implemented. Entries for
-later work packages remain target-only until accepted; the
+contract choices needed by WP1–WP11 and records WP1/WP2 as implemented. Entries for
+later public work packages remain target-only until accepted; the
 [current implemented contract](#current-implemented-contract) remains factual
 authority. Issue
 [#47](https://github.com/DeloneCommons/pyvoro2/issues/47) tracks substantive
 WP1–WP13 execution.
 
-The target follows [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md)
-and [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md).
+The target follows [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md),
+[ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md),
+and [ADR 0020](decisions/0020-exact-private-lattice-reduction.md).
 D9 in the active plan remains unresolved by design; nothing in this ledger
 adopts a backend-fork policy.
 
@@ -111,8 +114,8 @@ PeriodicCell.wrap_fractional(fractional, *, return_shifts=False)
 PeriodicCell.wrap_cart(points, *, return_shifts=False)
 ```
 
-For lattice rows `A` and origin `o`, conversion uses `x = o + f @ A`. User
-Before coordinate output rounding, user wrapping satisfies
+For lattice rows `A` and origin `o`, conversion uses `x = o + f @ A`. Before
+coordinate output rounding, user wrapping satisfies
 
 ```text
 fractional* = fractional_wrapped* + shift
@@ -159,6 +162,22 @@ when exactly one shift is compatible within the declared native envelope.
 Ambiguous/inconsistent recovery is structured failure, never nearest-residual
 selection. Exact periodic ties use ADR 0012's amended physical Cartesian
 displacement order.
+
+### Implemented WP3 private proof-basis boundary
+
+WP3 adds no public name, signature, default, result field, coordinate meaning,
+or error surface. The private exact-lattice layer now provides deterministic
+exact rank-3 LLL reduction with exact unimodular transform/inverse data and
+exact row-coefficient mappings. Successful immutable results are certified in
+normal execution, cached by ordered source bits and private policy in a bounded
+128-entry cache, and subject to explicit private work and bit limits.
+
+This primitive is not used by `PeriodicCell`, `BackendFrame`, native snapshots,
+generator preparation, Voro++, minimum-image enumeration, or duplicate
+scanning in WP3. Public fractional coordinates and shifts remain in the user
+basis. Reduced-basis proof enumeration, exact mapping back before public
+signed-int64 validation, and certified native translation recovery remain WP4
+target work.
 
 ### Implemented WP1 forward input signatures and target removals
 

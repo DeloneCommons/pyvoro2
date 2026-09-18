@@ -809,7 +809,17 @@ ordinary compute and ghost geometry. One detached frame snapshot owns each
 forward operation. Under an improper frame, Cartesian points transform
 normally while face and vertex-adjacency cycles reverse once; face and neighbor
 identity and unsigned measures do not change. Later boundary-identity and
-reduced-proof work in this section remains target architecture.
+reduced-proof consumer work in this section remains target architecture.
+
+WP3 adds the private exact proof-basis primitive below the user and backend
+layers. It interprets the ordered source binary64 rows as dyadic rationals and
+returns a certified exact rank-3 LLL basis `A_reduced = U @ A`, exact integer
+`U` and `U_inverse`, and the row-coefficient maps
+`s_user = s_reduced @ U` and
+`s_reduced = s_user @ U_inverse`. The reducer has bounded successful caching
+and explicit private work/bit failures. It is not yet called by periodic-image,
+duplicate-scanning, generator-preparation, backend-frame, or native code;
+connecting those proof consumers remains WP4 target work.
 
 Discrete user-wrap shifts are decided by exact rational arithmetic over the
 dyadic source numbers, not a rounded inverse/floor heuristic. Approximate

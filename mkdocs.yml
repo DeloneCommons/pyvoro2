@@ -110,6 +110,7 @@ nav:
           - Post-v0.8 stabilization before 1.0: development/decisions/0017-v0.9-functional-stabilization-before-1.0.md
           - User-lattice periodic semantics and boundary identity: development/decisions/0018-periodic-user-lattice-and-boundary-semantics.md
           - Separator measurement spaces and supported realization-aware fitting: development/decisions/0019-separator-measurement-spaces-and-supported-realization.md
+          - Exact private rank-3 lattice reduction: development/decisions/0020-exact-private-lattice-reduction.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md
