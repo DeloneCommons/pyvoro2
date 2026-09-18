@@ -1111,7 +1111,9 @@ def test_bound_inferred_triclinic_replace_reuses_minimum_image_geometry() -> Non
         domain=cell,
     )
 
-    assert tuple(int(value) for value in observations.shifts[0]) == (0, -1, -1)
+    # The original second endpoint lies beyond the first user-lattice row.
+    # Its source-relative coefficient is -1, not the remapped representative's 0.
+    assert tuple(int(value) for value in observations.shifts[0]) == (-1, -1, -1)
     assert not bool(observations.explicit_shift[0])
     assert tuple(float(value).hex() for value in observations.delta[0]) == (
         '-0x1.428f5c28f5c26p-2',
@@ -1219,6 +1221,64 @@ def test_bound_inferred_skew_cell_preserves_public_certified_resolution() -> Non
             observations,
             domain=cell,
         )
+
+
+def test_snap_source_geometry_survives_fitting_copy_and_realization() -> None:
+    epsilon = 2.0**-41
+    points = np.array([[epsilon, 0.25, 0.25], [0.5, 0.25, 0.25]])
+    cell = pyvoro2.PeriodicCell(np.eye(3))
+    observations = resolve_separator_observations(points, [(0, 1, 0.5)], domain=cell)
+    np.testing.assert_array_equal(observations.shifts, [[0, 0, 0]])
+    np.testing.assert_array_equal(observations.delta, [[0.5 - epsilon, 0, 0]])
+
+    # replace independently re-verifies the original source geometry. A direct
+    # public-field reconstruction instead exercises first binding via fitting.
+    copied = replace(observations)
+    unbound = SeparatorObservations(**{
+        field.name: getattr(observations, field.name)
+        for field in fields(observations)
+    })
+    before_binding = _row_only_report(unbound)['observation_set']
+    assert _row_only_report(unbound)['source']['binding'] == 'unbound'
+    for rows in (observations, copied, unbound):
+        fit = fit_weights_from_separators(points, rows, domain=cell)
+        assert fit.status == 'optimal'
+        np.testing.assert_array_equal(fit.used_shifts, [[0, 0, 0]])
+        report = build_fit_report(fit, rows)
+        assert report['source']['points'] == points.tolist()
+        assert report['source']['binding'] == 'bound'
+        assert report['observation_set'] == before_binding
+        realized = match_realized_pairs(
+            points, domain=cell, constraints=rows, weights=fit.weights,
+        )
+        np.testing.assert_array_equal(realized.realized_same_shift, [True])
+
+
+@pytest.mark.parametrize('explicit_shift', (False, True))
+def test_former_backend_geometry_cannot_bind_to_original_snap_source(
+    explicit_shift: bool,
+) -> None:
+    points = np.array([[2.0**-41, 0.25, 0.25], [0.5, 0.25, 0.25]])
+    cell = pyvoro2.PeriodicCell(np.eye(3))
+    old_rows = _one_observation(
+        n_points=2, ids=None,
+        shifts=np.array([[-1, 0, 0]]),
+        delta=np.array([[-0.5, 0, 0]]),
+        distance=np.array([0.5]), distance2=np.array([0.25]),
+        target_position=np.array([0.125]),
+        explicit_shift=np.array([explicit_shift]),
+    )
+    # Inferred rows have the wrong shift; explicit rows retain their shift
+    # but still have the wrong delta. Both must fail exact source verification.
+    mismatch = 'delta' if explicit_shift else 'shifts'
+    with pytest.raises(ValueError, match=rf'exact geometry source \({mismatch}\)'):
+        fit_weights_from_separators(points, old_rows, domain=cell)
+    assert _row_only_report(old_rows)['source']['binding'] == 'unbound'
+    with pytest.raises(ValueError, match=rf'exact geometry source \({mismatch}\)'):
+        match_realized_pairs(
+            points, domain=cell, constraints=old_rows, weights=np.zeros(2),
+        )
+    assert _row_only_report(old_rows)['source']['binding'] == 'unbound'
 
 
 def _ordinary_bound_triclinic_observations() -> SeparatorObservations:

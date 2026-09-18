@@ -1519,7 +1519,18 @@ translation and pair reversal retain their expected shift/displacement
 invariants. External IDs remain metadata and do not participate in geometric
 tie selection; no point-array permutation invariant or public tie mode is
 introduced. Explicit observation shifts remain authoritative even when a
-different image is nearer.
+different image is nearer. Separator inference and source verification use
+original coerced caller points before backend remapping. Inferred `delta` is
+the certified displacement view; explicit `delta` is
+`source_points[j] + shift @ A - source_points[i]`, with the shift in the user
+lattice basis. Distances retain the canonical derivation from `delta`; source
+equality and the version-1 identity vocabulary remain unchanged.
+
+Current realization matching consumes backend-primary-relative face/edge
+metadata. For independently lattice-translated endpoints it can report another
+shift despite an unchanged physical connector; source-relative boundary
+metadata remains WP5/WP6 work. The separator source correction does not claim
+that later boundary contract is already implemented.
 
 The public `image_search` parameter remains a non-negative exact integer with
 default one in all three separator entry points below. It is now only a capped

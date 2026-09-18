@@ -482,7 +482,8 @@ def resolve_separator_observations(
 
     Args:
         points: Site coordinates with shape ``(n, d)`` where ``d`` is currently
-            supported for planar (2D) and spatial (3D) workflows.
+            supported for planar (2D) and spatial (3D) workflows. The coerced
+            source coordinates own connector geometry before backend remapping.
         constraints: Raw constraint tuples ``(i, j, value[, shift])``.
         measurement: Whether ``value`` is interpreted as a normalized coordinate
             on the connector line or as an absolute position from the first
@@ -495,6 +496,8 @@ def resolve_separator_observations(
             external IDs. Endpoint values must be integers in either mode;
             floats, numeric strings, and booleans are rejected.
         image: Shift resolution policy for tuples that do not specify a shift.
+            Inferred shifts use certified minimum images of the source points.
+            Explicit shifts apply to those same points in the user lattice basis.
         image_search: Bounded incumbent-seeding hint for certified periodic
             nearest-image inference. It cannot change a successful result.
         confidence: Optional non-negative per-constraint weights.
@@ -673,7 +676,7 @@ def _derive_target_representations(
 
 
 def _derive_connector_geometry(
-    points: np.ndarray,
+    source_points: np.ndarray,
     i_idx: np.ndarray,
     j_idx: np.ndarray,
     shifts: np.ndarray,
@@ -683,11 +686,15 @@ def _derive_connector_geometry(
     image: Literal['nearest', 'given_only'] = 'nearest',
     image_search: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, tuple[str, ...]]:
-    """Resolve shifts and derive canonical connector geometry from a source."""
+    """Resolve connectors from coerced source points, never backend remaps.
 
-    pts2 = _maybe_remap_points(points, domain)
+    Inferred rows retain the certified physical displacement directly; explicit
+    rows translate the original endpoint in the user lattice basis. Distances
+    follow the observation constructor's canonical binary64 delta semantics.
+    """
+
     shifts_used, warnings, inferred_geometry = _resolve_constraint_shifts(
-        pts2,
+        source_points,
         i_idx,
         j_idx,
         shifts,
@@ -697,14 +704,14 @@ def _derive_connector_geometry(
         image_search=image_search,
     )
     m = int(i_idx.shape[0])
-    dim = int(pts2.shape[1])
+    dim = int(source_points.shape[1])
     if inferred_geometry is None:
         shift_cart = shift_to_cart(shifts_used, domain)
         with np.errstate(all='ignore'):
-            endpoint = pts2[j_idx] + shift_cart
+            endpoint = source_points[j_idx] + shift_cart
         _require_finite_connector_geometry(endpoint, stage='endpoint translation')
         with np.errstate(all='ignore'):
-            delta = endpoint - pts2[i_idx]
+            delta = endpoint - source_points[i_idx]
     else:
         missing = ~shift_given
         delta = np.empty((m, dim), dtype=np.float64)
@@ -715,7 +722,7 @@ def _derive_connector_geometry(
             )
             with np.errstate(all='ignore'):
                 explicit_endpoint = (
-                    pts2[j_idx[shift_given]] + explicit_shift_cart
+                    source_points[j_idx[shift_given]] + explicit_shift_cart
                 )
             _require_finite_connector_geometry(
                 explicit_endpoint,
@@ -723,7 +730,7 @@ def _derive_connector_geometry(
             )
             with np.errstate(all='ignore'):
                 delta[shift_given] = (
-                    explicit_endpoint - pts2[i_idx[shift_given]]
+                    explicit_endpoint - source_points[i_idx[shift_given]]
                 )
         delta[missing] = inferred_geometry.displacement
     _require_finite_connector_geometry(delta, stage='coordinate difference')
@@ -839,10 +846,6 @@ def _parse_constraints(
     return i_idx, j_idx, val, shifts, shift_given, tuple(warnings)
 
 
-def maybe_remap_points(points: np.ndarray, domain: DomainAny | None) -> np.ndarray:
-    return _maybe_remap_points(points, domain)
-
-
 def _geometry_for_dim(dim: int, domain: DomainAny | None):
     if dim == 2:
         if domain is not None and not isinstance(domain, (Box2D, RectangularCell)):
@@ -861,18 +864,6 @@ def _geometry_for_dim(dim: int, domain: DomainAny | None):
             )
         return geometry3d(domain)
     raise ValueError('only 2D and 3D points are supported')
-
-
-def _maybe_remap_points(points: np.ndarray, domain: DomainAny | None) -> np.ndarray:
-    raw = np.asarray(points, dtype=object)
-    if raw.ndim != 2:
-        raise ValueError('points must have shape (n, d)')
-    pts = coerce_point_array(
-        raw,
-        name='points',
-        dim=int(raw.shape[1]),
-    )
-    return _geometry_for_dim(int(pts.shape[1]), domain).remap_cart(pts)
 
 
 def _resolve_constraint_shifts(

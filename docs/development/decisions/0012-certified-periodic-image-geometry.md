@@ -217,8 +217,15 @@ mismatch; WP4 does not wire those boundary consumers.
 
 ### Call-site and workstream boundary
 
-Inferred separator rows consume the certified shift and numerical displacement;
-explicit rows retain their requested shift. When periodic wrapping is enabled
+Separator inference supplies the original coerced caller endpoints, before any
+backend-primary remapping, to the certified solver. Inferred rows consume its
+user-basis shift and numerical displacement directly; explicit rows retain
+their requested shift and form `pj + shift @ A - pi` from those same source
+endpoints. Separator distances follow ADR 0014's canonical binary64 derivation
+from `delta`. Backend remapping may snap or round coordinates and must not
+redefine the source problem or its verification.
+
+When periodic wrapping is enabled
 (`wrap=True`, or `duplicate_wrap=True` in forward operations), spatial and
 planar duplicate checks consume the same primitive and exact distance key for
 each candidate pair they already evaluate. With wrapping disabled, the
