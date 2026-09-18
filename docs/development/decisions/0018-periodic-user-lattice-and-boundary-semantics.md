@@ -73,6 +73,12 @@ Private exact arithmetic may use Python integers. Public shifts are materialized
 only after mapping back to the user basis and must satisfy the signed-int64
 public representation contract.
 
+WP4 implements this private proof layer for minimum images and triclinic
+duplicate buckets using the accepted WP3 reducer. User coordinate/wrapping and
+backend-frame paths still use the user basis. Distance-only duplicate checks
+consume exact squared distance before any optional diagnostic float view and
+require no fixed-width shift.
+
 ### Mathematical validity is orientation-neutral
 
 A `PeriodicCell` basis is mathematically non-degenerate when its finite binary64
@@ -148,6 +154,16 @@ native numerical envelope. No nearest-residual or rounded-inverse guess is a
 semantic fallback. Zero compatible shifts are inconsistent; multiple compatible
 shifts are ambiguous. Both cases fail structurally when certified metadata is
 required.
+
+WP4 supplies the reusable private consumer for an explicit exact closed
+Cartesian compatibility box. Exact reduced inverse-column extrema enclose all
+integer candidates, which are filtered against the original Cartesian box.
+Its candidate ceiling is 1,000,000 per call; admitted enumeration completes
+before unique/inconsistent/ambiguous outcome selection. Resource and invariant
+errors remain separate. No universal numerical tolerance or producer envelope
+is claimed, and the kernel does not select the reference anchor. Deriving the
+concrete native arithmetic envelopes and wiring boundary/metadata producers
+remains WP5–WP8 work.
 
 Boundary-plane compatibility is relative to the binary64 geometry actually
 returned by the backend. In power mode, certification uses the exact binary64
