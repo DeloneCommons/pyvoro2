@@ -14,7 +14,9 @@ from ..inputs import (
 )
 from ..periodic_images import (
     MinimumImageBatch,
+    MinimumImageDistances,
     minimum_image_displacements as _minimum_image_displacements,
+    minimum_image_distances as _minimum_image_distances,
 )
 from ..validation import (
     CPP_INT_MAX,
@@ -167,6 +169,24 @@ class DomainGeometry2D:
             lattice_vectors=self.lattice_vectors_cart,
             periodic_axes=self.periodic_axes,
             tie_orientation=tie_orientation,
+            image_search=image_search,
+        )
+
+    def minimum_image_distances(
+        self,
+        pi: np.ndarray,
+        pj: np.ndarray,
+        *,
+        tie_orientation: np.ndarray,
+        image_search: int,
+    ) -> MinimumImageDistances:
+        """Return exact rectangular distances without unused shift views."""
+
+        if not isinstance(self.domain, RectangularCell):
+            raise ValueError('nearest-image distances require a periodic planar domain')
+        return _minimum_image_distances(
+            pi, pj, lattice_vectors=self.lattice_vectors_cart,
+            periodic_axes=self.periodic_axes, tie_orientation=tie_orientation,
             image_search=image_search,
         )
 

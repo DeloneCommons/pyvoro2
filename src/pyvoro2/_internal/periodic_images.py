@@ -20,6 +20,10 @@ from typing import Iterator, Sequence
 import numpy as np
 
 from .exact_lattice import (
+    DEFAULT_REDUCTION_LIMITS,
+    ExactLatticeReductionLimits,
+    ExactReducedBasis3D,
+    exact_lll_reduce_3d,
     determinant_3x3 as _determinant_3x3,
     dyadic_parts as _dyadic_parts,
     inverse_fraction_matrix as _inverse_fraction_matrix,
@@ -61,6 +65,16 @@ class MinimumImageBatch:
     tie_count: np.ndarray
     seed_count: np.ndarray
     seed_truncated: np.ndarray
+    certified: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class MinimumImageDistances:
+    """Exact distance-only view; no fixed-width shift or float is required."""
+
+    exact_distance_key: tuple[ExactDistanceKey, ...]
+    candidate_count: tuple[int, ...]
+    method: str
     certified: bool = True
 
 
@@ -117,6 +131,7 @@ class _BasisData:
     orthogonal: bool
     bit_patterns: tuple[int, ...]
     condition_number: float
+    reduction: ExactReducedBasis3D | None
 
     @property
     def method(self) -> str:
@@ -179,11 +194,32 @@ def _float_from_bits(bits: int) -> float:
     return struct.unpack('>d', struct.pack('>Q', bits))[0]
 
 
-@lru_cache(maxsize=_BASIS_CACHE_SIZE)
 def _prepare_basis(
     dimension: int,
     periodic_axes: tuple[bool, ...],
     bit_patterns: tuple[int, ...],
+    *,
+    reduction_limits: ExactLatticeReductionLimits = DEFAULT_REDUCTION_LIMITS,
+) -> _BasisData:
+    """Prepare proof geometry, keeping WP3 and WP2 caches separate.
+
+    Limits are normalized into the cache key even for default requests, so a
+    warm looser preparation cannot bypass a stricter reduction policy.
+    """
+
+    if not isinstance(reduction_limits, ExactLatticeReductionLimits):
+        raise ValueError('reduction_limits must be ExactLatticeReductionLimits')
+    return _cached_prepare_basis(
+        dimension, periodic_axes, bit_patterns, reduction_limits,
+    )
+
+
+@lru_cache(maxsize=_BASIS_CACHE_SIZE)
+def _cached_prepare_basis(
+    dimension: int,
+    periodic_axes: tuple[bool, ...],
+    bit_patterns: tuple[int, ...],
+    reduction_limits: ExactLatticeReductionLimits,
 ) -> _BasisData:
     floats = tuple(_float_from_bits(value) for value in bit_patterns)
     rows_float = tuple(
@@ -223,6 +259,7 @@ def _prepare_basis(
     inverse_column_l1 = None
     inverse_column_numerators = None
     inverse_column_denominators = None
+    reduction = None
     if not orthogonal:
         if dimension != 3 or not all(periodic_axes):
             raise _BasisPreparationError(
@@ -233,6 +270,21 @@ def _prepare_basis(
             raise _BasisPreparationError(
                 'triclinic lattice must be exactly nonsingular'
             )
+
+        # Only WP4 proof geometry uses B = U @ A. No reduced float matrix is
+        # constructed, and source identity remains the ordered input bits.
+        reduction = exact_lll_reduce_3d(rows_float, limits=reduction_limits)
+        fractions = reduction.reduced_rows
+        exponent = max(
+            exponent,
+            *(value.denominator.bit_length() - 1
+              for row in fractions for value in row),
+        )
+        integer_rows = tuple(
+            tuple(value.numerator * ((1 << exponent) // value.denominator)
+                  for value in row)
+            for row in fractions
+        )
 
     # Fully periodic 3D bucket layouts need the same exact inverse whether the
     # supplied PeriodicCell happens to be skew or diagonal.  Keeping its
@@ -289,6 +341,7 @@ def _prepare_basis(
         orthogonal=orthogonal,
         bit_patterns=bit_patterns,
         condition_number=condition,
+        reduction=reduction,
     )
 
 
@@ -304,13 +357,13 @@ def _basis_key(
 def _basis_cache_info():
     """Return private cache statistics for deterministic tests/benchmarks."""
 
-    return _prepare_basis.cache_info()
+    return _cached_prepare_basis.cache_info()
 
 
 def _basis_cache_clear() -> None:
     """Clear the private bounded basis cache for deterministic tests."""
 
-    _prepare_basis.cache_clear()
+    _cached_prepare_basis.cache_clear()
 
 
 def _exact_triclinic_bucket_layout(
@@ -463,7 +516,7 @@ def _distance_numerator(values: tuple[int, ...]) -> int:
     return sum(value * value for value in values)
 
 
-def _prefer_shift(
+def _prefer_displacement(
     candidate: tuple[int, ...],
     incumbent: tuple[int, ...],
     orientation: int,
@@ -523,14 +576,13 @@ def _solve_orthogonal_row(
             tie_count = 1
         elif distance == best_distance:
             tie_count += 1
-            assert best_shift is not None
-            if _prefer_shift(shift, best_shift, orientation):
+            assert best_values is not None
+            if _prefer_displacement(values, best_values, orientation):
                 best_shift = shift
                 best_values = values
 
     assert best_shift is not None and best_values is not None
     assert best_distance is not None
-    _check_selected_shift(best_shift, pair_index=pair_index, basis=basis)
     return _RowSolution(
         shift=best_shift,
         displacement_numerators=best_values,
@@ -633,6 +685,7 @@ def _prepare_triclinic_row(
 
     offsets, seed_count, seed_truncated = _seed_offsets(3, image_search)
     incumbent_shift: tuple[int, ...] | None = None
+    incumbent_values: tuple[int, ...] | None = None
     incumbent_distance: int | None = None
     for offset in offsets:
         shift = tuple(center[axis] + offset[axis] for axis in range(3))
@@ -640,11 +693,13 @@ def _prepare_triclinic_row(
         distance = _distance_numerator(values)
         if incumbent_distance is None or distance < incumbent_distance:
             incumbent_shift = shift
+            incumbent_values = values
             incumbent_distance = distance
         elif distance == incumbent_distance:
-            assert incumbent_shift is not None
-            if _prefer_shift(shift, incumbent_shift, orientation):
+            assert incumbent_values is not None
+            if _prefer_displacement(values, incumbent_values, orientation):
                 incumbent_shift = shift
+                incumbent_values = values
     assert incumbent_shift is not None and incumbent_distance is not None
 
     upper_norm = Fraction(_ceil_sqrt(incumbent_distance), 1 << exponent)
@@ -657,9 +712,12 @@ def _prepare_triclinic_row(
         for axis in range(3)
     )
     widths = tuple(upper[axis] - lower[axis] + 1 for axis in range(3))
-    if any(width <= 0 for width in widths):
+    if any(width <= 0 for width in widths) or any(
+        not lower[axis] <= incumbent_shift[axis] <= upper[axis]
+        for axis in range(3)
+    ):
         raise MinimumImageCertificationError(
-            'proof-derived triclinic candidate box is unexpectedly empty',
+            'proof-derived triclinic candidate box omits its incumbent',
             stage='finite_box',
             method=basis.method,
             pair_index=pair_index,
@@ -718,14 +776,15 @@ def _solve_triclinic_plan(
             tie_count = 1
         elif distance == best_distance:
             tie_count += 1
-            assert best_shift is not None
-            if _prefer_shift(shift, best_shift, plan.tie_orientation):
+            assert best_values is not None
+            if _prefer_displacement(values, best_values, plan.tie_orientation):
                 best_shift = shift
                 best_values = values
 
     assert best_shift is not None and best_values is not None
     assert best_distance is not None
-    _check_selected_shift(best_shift, pair_index=plan.pair_index, basis=basis)
+    assert basis.reduction is not None
+    best_shift = basis.reduction.map_reduced_to_user(best_shift)
     return _RowSolution(
         shift=best_shift,
         displacement_numerators=best_values,
@@ -764,7 +823,7 @@ def _validate_tie_orientation(
     return np.asarray(result, dtype=np.int8)
 
 
-def minimum_image_displacements(
+def _minimum_image_solutions(
     pi: Sequence[Sequence[float]] | np.ndarray,
     pj: Sequence[Sequence[float]] | np.ndarray,
     *,
@@ -772,7 +831,8 @@ def minimum_image_displacements(
     periodic_axes: Sequence[bool],
     tie_orientation: Sequence[int] | np.ndarray,
     image_search: int,
-) -> MinimumImageBatch:
+    reduction_limits: ExactLatticeReductionLimits = DEFAULT_REDUCTION_LIMITS,
+) -> tuple[_BasisData, tuple[_RowSolution, ...]]:
     """Return exact-certified minimum-image geometry for a row batch.
 
     ``image_search`` seeds an incumbent neighborhood only.  The successful
@@ -809,7 +869,7 @@ def minimum_image_displacements(
 
     key = _basis_key(lattice, axes)
     try:
-        basis = _prepare_basis(*key)
+        basis = _prepare_basis(*key, reduction_limits=reduction_limits)
     except _BasisPreparationError as exc:
         summary = {
             'dimension': dimension,
@@ -878,6 +938,52 @@ def minimum_image_displacements(
         else _solve_triclinic_plan(row, basis=basis)
         for row in prepared
     )
+    return basis, solutions
+
+
+def minimum_image_distances(
+    pi: Sequence[Sequence[float]] | np.ndarray,
+    pj: Sequence[Sequence[float]] | np.ndarray,
+    *,
+    lattice_vectors: Sequence[Sequence[float]] | np.ndarray,
+    periodic_axes: Sequence[bool],
+    tie_orientation: Sequence[int] | np.ndarray,
+    image_search: int,
+) -> MinimumImageDistances:
+    """Solve the same complete CVP without unused output materialization."""
+
+    basis, solutions = _minimum_image_solutions(
+        pi, pj, lattice_vectors=lattice_vectors, periodic_axes=periodic_axes,
+        tie_orientation=tie_orientation, image_search=image_search,
+    )
+    return MinimumImageDistances(
+        exact_distance_key=tuple(
+            ExactDistanceKey(row.distance_numerator, 2*row.denominator_exponent)
+            for row in solutions
+        ),
+        candidate_count=tuple(row.candidate_count for row in solutions),
+        method=basis.method,
+    )
+
+
+def minimum_image_displacements(
+    pi: Sequence[Sequence[float]] | np.ndarray,
+    pj: Sequence[Sequence[float]] | np.ndarray,
+    *,
+    lattice_vectors: Sequence[Sequence[float]] | np.ndarray,
+    periodic_axes: Sequence[bool],
+    tie_orientation: Sequence[int] | np.ndarray,
+    image_search: int,
+) -> MinimumImageBatch:
+    """Materialize exact physical winners in the user-basis shift contract."""
+
+    basis, solutions = _minimum_image_solutions(
+        pi, pj, lattice_vectors=lattice_vectors, periodic_axes=periodic_axes,
+        tie_orientation=tie_orientation, image_search=image_search,
+    )
+    dimension = basis.dimension
+    for pair_index, solution in enumerate(solutions):
+        _check_selected_shift(solution.shift, pair_index=pair_index, basis=basis)
     shift_values: object = [solution.shift for solution in solutions]
     if not solutions:
         shift_values = np.empty((0, dimension), dtype=np.int64)
@@ -973,6 +1079,19 @@ def exact_distance_less_than(
         key.numerator * denominator * denominator
         < numerator * numerator * (1 << key.denominator_exponent)
     )
+
+
+def exact_distance_float(key: ExactDistanceKey) -> float:
+    """Round a display distance only after classification, without overflow.
+
+    Normalize the square before converting to binary64, so an otherwise
+    representable distance does not require a representable squared distance.
+    """
+
+    scale = (key.numerator.bit_length() + 1) // 2
+    exponent, odd = divmod(key.denominator_exponent, 2)
+    square = float(Fraction(key.numerator, 1 << (2*scale + odd)))
+    return math.ldexp(math.sqrt(square), scale - exponent)
 
 
 def exact_distance_squared_less_equal(

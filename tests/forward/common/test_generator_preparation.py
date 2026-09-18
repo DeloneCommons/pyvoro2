@@ -874,21 +874,7 @@ def _brute_triclinic_pairs(
     lattice: np.ndarray,
     radius: float,
 ) -> set[tuple[int, int]]:
-    found: set[tuple[int, int]] = set()
-    for i, j in combinations(range(len(points)), 2):
-        best_distance = math.inf
-        best_shift = None
-        for shift in product(range(-2, 3), repeat=3):
-            displacement = points[i] - points[j] - np.asarray(shift) @ lattice
-            distance = float(np.linalg.norm(displacement))
-            if distance < best_distance:
-                best_distance = distance
-                best_shift = shift
-        assert best_shift is not None
-        assert all(abs(value) < 2 for value in best_shift)
-        if best_distance < radius:
-            found.add((i, j))
-    return found
+    return _fraction_close_pairs(points, points, lattice, radius, within=True)
 
 
 def _fraction_inverse_3x3(
@@ -897,7 +883,8 @@ def _fraction_inverse_3x3(
     """Independent exact source-binary64 inverse for R5-SC-001 tests."""
 
     matrix = tuple(
-        tuple(Fraction.from_float(float(value)) for value in row)
+        tuple(value if isinstance(value, Fraction)
+              else Fraction.from_float(float(value)) for value in row)
         for row in lattice
     )
     a, b, c = matrix
@@ -906,7 +893,7 @@ def _fraction_inverse_3x3(
         - a[1] * (b[0] * c[2] - b[2] * c[0])
         + a[2] * (b[0] * c[1] - b[1] * c[0])
     )
-    assert determinant > 0
+    assert determinant != 0
 
     def cofactor(row: int, column: int) -> Fraction:
         rows = [index for index in range(3) if index != row]
@@ -1015,10 +1002,14 @@ def _fraction_minimum_geometry(
         elif distance_squared == best:
             minimizers.append(shift)
     assert best is not None
-    assert all(
-        all(abs(value) < shift_radius for value in shift)
-        for shift in minimizers
-    )
+    # Any coefficient outside the cube has |q_j+s_j| at least this bound.
+    # Cauchy--Schwarz then excludes it from improving or tying our incumbent.
+    inverse = _fraction_inverse_3x3(lattice)
+    for axis in range(3):
+        q = sum(delta[k]*inverse[k][axis] for k in range(3))
+        outside = shift_radius + 1 - abs(q)
+        assert outside > 0
+        assert outside**2 > best * sum(inverse[k][axis]**2 for k in range(3))
     return best, tuple(minimizers)
 
 
@@ -1064,10 +1055,18 @@ def test_r5_sc_001_review_witness_uses_exact_bound_bins_and_keys() -> None:
         ],
         dtype=np.float64,
     )
+    # Accepted WP3 transform, evaluated independently in exact source values.
+    # Its determinant is -1; no floating reconstruction of reduced rows.
+    transform = ((1, 0, 0), (-33205, 1, 0), (55336879, -1664, -1))
+    reduced = tuple(
+        tuple(sum(transform[i][k] * Fraction.from_float(float(lattice[k, j]))
+                  for k in range(3)) for j in range(3))
+        for i in range(3)
+    )
     expected_keys, expected_bins, expected_bounds = _fraction_bucket_oracle(
         points,
         origin=origin,
-        lattice=lattice,
+        lattice=reduced,
         radius=BACKEND_SAFETY_DISTANCE,
     )
 
@@ -1081,8 +1080,8 @@ def test_r5_sc_001_review_witness_uses_exact_bound_bins_and_keys() -> None:
     assert layout.coefficient_bounds == expected_bounds
     assert layout.bins == expected_bins
     assert layout.keys == expected_keys
-    assert expected_bounds[0] > Fraction(1, 4)
-    assert expected_bins[0] == 3
+    assert expected_bounds[0] < Fraction(1, 5000)
+    assert expected_bins == (5137, 210991, 598610259)
     assert (
         Fraction.from_float(BACKEND_SAFETY_DISTANCE) ** 2
         > Fraction.from_float(BACKEND_SAFETY_DISTANCE_SQUARED)
