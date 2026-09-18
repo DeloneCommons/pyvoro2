@@ -945,25 +945,29 @@ m.def(
       auto q = queries.unchecked<2>();
       const py::ssize_t m = queries.shape(0);
 
-      container_periodic con(cell_params[0],
-                             cell_params[1],
-                             cell_params[2],
-                             cell_params[3],
-                             cell_params[4],
-                             cell_params[5],
-                             blocks[0],
-                             blocks[1],
-                             blocks[2],
-                             init_mem);
-
-      for (py::ssize_t i = 0; i < n; i++) {
-        con.put(id(i), p(i, 0), p(i, 1), p(i, 2));
-      }
-
       py::list out;
-      voronoicell_neighbor cell;
 
       for (py::ssize_t i = 0; i < m; i++) {
+        // compute_ghost_cell removes the primary temporary particle, but
+        // leaves its lazily generated periodic images in the container.
+        // Own all mutable native state per query; reuse only validated
+        // inputs (including the batch-wide power radii) across queries.
+        container_periodic con(cell_params[0],
+                               cell_params[1],
+                               cell_params[2],
+                               cell_params[3],
+                               cell_params[4],
+                               cell_params[5],
+                               blocks[0],
+                               blocks[1],
+                               blocks[2],
+                               init_mem);
+
+        for (py::ssize_t j = 0; j < n; j++) {
+          con.put(id(j), p(j, 0), p(j, 1), p(j, 2));
+        }
+        voronoicell_neighbor cell;
+
         const double x = q(i, 0);
         const double y = q(i, 1);
         const double z = q(i, 2);
@@ -1013,25 +1017,29 @@ m.def(
       auto q = queries.unchecked<2>();
       auto gr = ghost_radii.unchecked<1>();
 
-      container_periodic_poly con(cell_params[0],
-                                  cell_params[1],
-                                  cell_params[2],
-                                  cell_params[3],
-                                  cell_params[4],
-                                  cell_params[5],
-                                  blocks[0],
-                                  blocks[1],
-                                  blocks[2],
-                                  init_mem);
-
-      for (py::ssize_t i = 0; i < n; i++) {
-        con.put(id(i), p(i, 0), p(i, 1), p(i, 2), r(i));
-      }
-
       py::list out;
-      voronoicell_neighbor cell;
 
       for (py::ssize_t i = 0; i < m; i++) {
+        // compute_ghost_cell removes the primary temporary particle, but
+        // leaves its lazily generated periodic images in the container.
+        // Own all mutable native state per query; reuse only validated
+        // inputs (including the batch-wide power radii) across queries.
+        container_periodic_poly con(cell_params[0],
+                                    cell_params[1],
+                                    cell_params[2],
+                                    cell_params[3],
+                                    cell_params[4],
+                                    cell_params[5],
+                                    blocks[0],
+                                    blocks[1],
+                                    blocks[2],
+                                    init_mem);
+
+        for (py::ssize_t j = 0; j < n; j++) {
+          con.put(id(j), p(j, 0), p(j, 1), p(j, 2), r(j));
+        }
+        voronoicell_neighbor cell;
+
         const double x = q(i, 0);
         const double y = q(i, 1);
         const double z = q(i, 2);
