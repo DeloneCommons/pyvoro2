@@ -8,6 +8,15 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Certified triclinic minimum images and duplicate buckets now use the accepted
+  exact reduced proof basis. Selected shifts map back to the unchanged user
+  basis before signed-int64 validation, and exact ties follow Cartesian
+  displacement order. Duplicate classification consumes exact distances
+  without requiring an unused fixed-width shift. Existing proof budgets and
+  the independent native duplicate guard remain in force.
+- Added private exact-envelope lattice translation certification with complete
+  unique/inconsistent/ambiguous/resource outcomes. It supplies no default native
+  tolerance and does not yet change face, edge, ghost, or query metadata.
 - Added provisional exact user-lattice conversion and wrapping methods to
   `PeriodicCell`. Exact non-zero-determinant bases of either handedness now
   construct without vector reordering; native operations use one validated

@@ -12,8 +12,6 @@ from pyvoro2 import OrthorhombicCell, PeriodicCell
 from pyvoro2._internal.periodic_images import (
     _basis_cache_clear,
     _basis_cache_info,
-    _MAX_EXACT_CANDIDATES_PER_BATCH,
-    _MAX_EXACT_CANDIDATES_PER_PAIR,
     _MAX_SEED_CANDIDATES,
     exact_distance_less_than,
     minimum_image_displacements,
@@ -25,6 +23,8 @@ from pyvoro2._internal.spatial.domain_geometry import geometry3d
 from pyvoro2.inverse.separator import resolve_separator_observations
 import pyvoro2
 import pyvoro2.planar as planar
+import pyvoro2._internal.periodic_images as periodic_images
+from _lattice_reduction_workload import inverse as _oracle_inverse
 
 
 def _aligned_exact_geometry(
@@ -95,15 +95,19 @@ def _exact_exhaustive_oracle(
             tie_count += 1
             assert best_shift is not None
             if (
-                (orientation == 1 and shift < best_shift)
-                or (orientation == -1 and shift > best_shift)
+                (orientation == 1 and values < best_values)
+                or (orientation == -1 and values > best_values)
             ):
                 best_shift = shift
                 best_values = values
     assert best_shift is not None and best_values is not None
     assert best_distance is not None
-    assert all(abs(value) < radius for value in best_shift)
     denominator = 1 << exponent
+    _assert_cube_complete(
+        tuple(Fraction(v, denominator) for v in displacement),
+        tuple(tuple(Fraction(v, denominator) for v in row) for row in rows),
+        Fraction(best_distance, denominator**2), radius,
+    )
     displacement_float = tuple(
         float(Fraction(value, denominator)) for value in best_values
     )
@@ -172,11 +176,25 @@ def _fraction_exhaustive_minimizers(
 
     assert best_distance is not None
     assert minimizers
-    assert all(
-        all(abs(component) < radius for component in shift)
-        for shift in minimizers
-    )
+    _assert_cube_complete(delta, exact_lattice, best_distance, radius)
     return tuple(minimizers), tuple(displacements), best_distance
+
+
+def _assert_cube_complete(delta, rows, best_distance, radius):
+    """Cauchy--Schwarz excludes every coefficient outside the oracle cube."""
+
+    dim = len(rows)
+    if dim == 3:
+        inv = _oracle_inverse(rows)
+    else:
+        det = rows[0][0]*rows[1][1] - rows[0][1]*rows[1][0]
+        inv = ((rows[1][1]/det, -rows[0][1]/det),
+               (-rows[1][0]/det, rows[0][0]/det))
+    for j in range(dim):
+        q = sum(delta[k]*inv[k][j] for k in range(dim))
+        outside = radius + 1 - abs(q)
+        assert outside > 0
+        assert outside**2 > best_distance * sum(inv[k][j]**2 for k in range(dim))
 
 
 def _assert_result_matches_fraction_oracle(
@@ -196,10 +214,9 @@ def _assert_result_matches_fraction_oracle(
             radius=radius,
         )
     )
-    expected_shift = (
-        min(minimizers) if orientation == 1 else max(minimizers)
-    )
-    selected = minimizers.index(expected_shift)
+    physical = min(displacements) if orientation == 1 else max(displacements)
+    selected = displacements.index(physical)
+    expected_shift = minimizers[selected]
 
     assert tuple(result.shift[0]) == expected_shift
     np.testing.assert_array_equal(
@@ -655,7 +672,10 @@ def test_image_search_changes_only_seed_work() -> None:
     assert bool(results[-1].seed_truncated[0]) is True
 
 
-def test_resource_contract_fails_structurally_without_approximation() -> None:
+def test_resource_contract_fails_structurally_without_approximation(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(periodic_images, '_MAX_EXACT_CANDIDATES_PER_PAIR', 3000)
     lattice = np.array(
         [[1.0, 0.0, 0.0], [1.0, 0.0003, 0.0], [0.0, 0.0, 1.0]],
         dtype=np.float64,
@@ -672,13 +692,16 @@ def test_resource_contract_fails_structurally_without_approximation() -> None:
     assert error.stage == 'pair_candidate_budget'
     assert error.pair_index == 0
     assert error.candidate_bound is not None
-    assert error.candidate_bound > _MAX_EXACT_CANDIDATES_PER_PAIR
-    assert error.configured_limit == _MAX_EXACT_CANDIDATES_PER_PAIR
+    assert error.candidate_bound == 3270
+    assert error.configured_limit == 3000
     assert error.interval_widths is not None
     assert error.basis_summary['condition_number'] < 1e15
 
 
-def test_batch_cumulative_budget_is_checked_before_exact_enumeration() -> None:
+def test_batch_cumulative_budget_is_checked_before_exact_enumeration(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(periodic_images, '_MAX_EXACT_CANDIDATES_PER_BATCH', 5000)
     lattice = np.array(
         [[1.0, 0.0, 0.0], [1.0, 0.001, 0.0], [0.0, 0.0, 1.0]],
         dtype=np.float64,
@@ -703,8 +726,8 @@ def test_batch_cumulative_budget_is_checked_before_exact_enumeration() -> None:
     assert error.stage == 'batch_candidate_budget'
     assert error.pair_index == 5
     assert error.candidate_bound is not None
-    assert error.candidate_bound > _MAX_EXACT_CANDIDATES_PER_BATCH
-    assert error.configured_limit == _MAX_EXACT_CANDIDATES_PER_BATCH
+    assert error.candidate_bound == 5880
+    assert error.configured_limit == 5000
 
 
 def test_certified_shift_outside_int64_contract_fails_structurally() -> None:

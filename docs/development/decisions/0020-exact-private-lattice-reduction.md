@@ -270,6 +270,18 @@ entry. The measured gains concern the existing proof formulas, not merely
 shorter vectors: the shared-incumbent rows isolate inverse-bound effects, while
 the separate seeded rows expose incumbent-quality effects.
 
+## WP4 integration status
+
+Issue [#58](https://github.com/DeloneCommons/pyvoro2/issues/58) now connects the
+accepted reducer unchanged to a shared exact proof context for minimum-image
+enumeration, reduced triclinic duplicate buckets, and private exact-envelope
+native translation certification. The tables above remain the historical WP3
+formula qualification; actual WP4 consumer counts include 3,270 for the thin
+pair, 5,880 for the six-row thin batch, and two for R5-SC-001. The source-basis,
+backend-frame, user-coordinate, and fixed-width materialization boundaries are
+unchanged. WP4 adds no alternative reduction policy and does not accept the
+separate integrated Checkpoint A.
+
 ## Alternatives considered
 
 ### Pairwise/Gauss reduction

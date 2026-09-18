@@ -6,9 +6,9 @@
 - **Previous contract:** v0.7.0
 - **Implemented release:** v0.8.0
 - **Active target:** v0.9.0 — WP0 contract activated 2026-09-01; WP1 query-input
-  parity and WP2 user/backend lattice separation are implemented; WP3 adds no
-  public surface, and later public feature work remains target-only until its
-  owning work package lands
+  parity, WP2 user/backend lattice separation, and WP4 exact proof geometry are
+  implemented; WP3/WP4 add no public surface, and later public feature work
+  remains target-only until its owning work package lands
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
 - **v0.9 activation:** [issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **v0.9 execution tracker:** [issue #47](https://github.com/DeloneCommons/pyvoro2/issues/47)
@@ -69,7 +69,7 @@ fact.
 
 This section is the implementation/target ledger activated by issue
 [#46](https://github.com/DeloneCommons/pyvoro2/issues/46). It freezes the public
-contract choices needed by WP1–WP11 and records WP1/WP2 as implemented. Entries for
+contract choices needed by WP1–WP11 and records WP1–WP4 as implemented. Entries for
 later public work packages remain target-only until accepted; the
 [current implemented contract](#current-implemented-contract) remains factual
 authority. Issue
@@ -172,12 +172,19 @@ exact row-coefficient mappings. Successful immutable results are certified in
 normal execution, cached by ordered source bits and private policy in a bounded
 128-entry cache, and subject to explicit private work and bit limits.
 
-This primitive is not used by `PeriodicCell`, `BackendFrame`, native snapshots,
-generator preparation, Voro++, minimum-image enumeration, or duplicate
-scanning in WP3. Public fractional coordinates and shifts remain in the user
-basis. Reduced-basis proof enumeration, exact mapping back before public
-signed-int64 validation, and certified native translation recovery remain WP4
-target work.
+WP3 itself did not integrate consumers. WP4 now uses the primitive for exact
+proof enumeration and triclinic duplicate buckets, with physical Cartesian tie
+selection and exact mapping back before signed-int64 materialization.
+Distance-only duplicate classification does not require a fixed-width shift or
+a floating displacement. User fractional coordinates, wrapping, lattice order
+and handedness, backend frames/snapshots, and Voro++ parameters remain unchanged.
+
+The private native translation kernel certifies uniqueness relative to an
+explicit exact Cartesian compatibility box. It has structured inconsistency,
+ambiguity, reduction-invariant, and resource outcomes, arbitrary Python-integer
+successful shifts, and no default native tolerance. It adds no public API and
+does not implement WP5–WP8 boundary or query/ghost metadata. Producer-specific
+native envelopes remain later work.
 
 ### Implemented WP1 forward input signatures and target removals
 
@@ -436,7 +443,7 @@ separate algorithm and accepts the same v0.9 mixed-space model terms.
 | Face/edge finite reconstruction search keywords listed above | Removed | No replacement correctness knob; certified reconstruction is authoritative. |
 | Face/edge validation/repair reconstruction keywords listed above | Removed | No mutation-based public repair path. |
 | Face/edge reconstruction matching tolerance keywords listed above | Removed | Private certification envelopes/resource policy replace user correctness tuning. |
-| Coefficient-lexicographic exact-tie selection | Replaced semantic rule | Exact physical Cartesian displacement order from amended ADR 0012. |
+| Coefficient-lexicographic exact-tie selection | Replaced — implemented by WP4 | Exact physical Cartesian displacement order from amended ADR 0012. |
 | Right-handed-only `PeriodicCell` validity | Replaced semantic rule | Any finite exact non-degenerate basis is mathematically valid; later backend/resource failure is separate. |
 | Experimental-only ordinary realization-aware entry route | Preferred supported facade added | Use `pyvoro2.inverse.fit_self_consistent_weights_from_separators`; advanced controls remain available only in the advanced namespace. |
 

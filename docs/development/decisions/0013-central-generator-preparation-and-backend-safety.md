@@ -119,16 +119,19 @@ that widens ordinary cells. Python uses arbitrary-size integer keys; the native
 backstop uses wide integer keys and raises structurally before insertion when
 an extreme quotient or candidate workload is not representable.
 
-Triclinic scans bucket primary fractional coordinates. For physical radius
-`h`, exact source-binary64 inverse-basis column L1 bounds give
+WP4 triclinic scans derive reduced fractional coordinates from the same
+backend-primary Cartesian representatives and common origin used by preparation.
+They do not rewrap points into a reduced cell or change optional unwrapped
+policy. For physical radius `h`, exact reduced inverse-column L1 bounds give
 
 ```text
-|fractional_delta_l - integer_l|
-    <= h * sum_j |(A_inverse)[j, l]|.
+|fractional_delta_l + s_reduced_l|
+    <= h * sum_j |(B_inverse)[j, l]|.
 ```
 
 Python constructs both sides of this inequality from the exact dyadic values
-represented by the input arrays. It reuses the R4 bit-keyed exact-basis cache,
+represented by the input arrays and the exact WP3 rows `B = U @ A`.
+It reuses the shared bit-and-limit-keyed proof cache,
 forms fractional coordinates with integer arithmetic over a common inverse
 denominator, and performs the modulo and bucket-floor operations exactly. With
 `n_l = max(1, floor(1 / bound_l))`, each bin is therefore at least as wide as
@@ -139,7 +142,9 @@ neighboring exact keys on every cyclic axis, including at a bucket boundary or
 the zero/one seam and regardless of the size of its minimizing lattice shift.
 
 These bounds decide candidates only. R4 certified geometry makes every final
-periodic comparison. Candidate keys and neighboring bins are deduplicated;
+periodic comparison through its distance-only view: unused fixed-width shifts
+and float views cannot prevent an exact threshold decision. Candidate keys and
+neighboring bins are deduplicated, including one/two-bin cyclic aliases;
 ordinary well-separated clouds do not incur an unconditional all-pairs scan.
 Subnormal positive thresholds remain representable for candidate generation,
 including exact-duplicate discovery. Private work limits fail explicitly

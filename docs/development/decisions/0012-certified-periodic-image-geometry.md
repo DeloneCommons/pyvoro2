@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-09
-- **Amended:** 2026-09-01 for the v0.9 physical-space exact-tie rule
+- **Amended:** 2026-09-18 for WP4 reduced proof integration and exact-envelope recovery
 - **Related issues:** [#40 — v0.8 R4: certify periodic nearest-image and minimum-image geometry](https://github.com/DeloneCommons/pyvoro2/issues/40),
   [#46 — Activate the v0.9.0 functional/API stabilization plan](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **Related decisions:** [ADR 0011](0011-strict-input-and-ownership-contract.md),
@@ -79,35 +79,40 @@ examines the exact floor and ceiling nearest to `-d/L`; each non-periodic
 coordinate has shift zero. At most `2**k` combinations are exact-compared for
 `k` periodic axes.
 
-Fully periodic non-orthogonal 3D lattices use an exact finite enumeration. For
-each pair, all coordinates and basis components are aligned to one denominator
-`2**Q`:
+Fully periodic non-diagonal 3D lattices use the accepted WP3 exact reduced
+rows `B = U @ A` in private proof geometry. No derived row is rounded to
+binary64. Each original endpoint is exactified before subtraction. Endpoints
+and exact reduced rows are aligned to one denominator `2**Q`:
 
 ```text
 d = D / 2**Q
-A = B / 2**Q
-r(s) = (D + s @ B) / 2**Q
-N(s) = sum((D + s @ B)**2)
+B = C / 2**Q
+r(s_reduced) = (D + s_reduced @ C) / 2**Q
+N(s_reduced) = sum((D + s_reduced @ C)**2)
 ```
 
-Thus every candidate distance is compared as a Python integer `N(s)`. The
-exact inverse of `A` is prepared from rational binary64 values. With
-`q = d @ inverse(A)`, an incumbent `s0`, and
+Every candidate distance is compared as a Python integer. The exact inverse of
+`B` is derived directly from its rational rows. With `q = d @ inverse(B)`, an
+incumbent `s0`, and
 
 ```text
-U = ceil_sqrt(N(s0)) / 2**Q
-C_l = sum_j(abs(inverse(A)[j, l]))
+R = ceil_sqrt(N(s0)) / 2**Q
+beta_l = R * sum_j(abs(inverse(B)[j, l]))
 ```
 
 every global minimizer lies in the exact interval
 
 ```text
-ceil(-q_l - U*C_l) <= s_l <= floor(-q_l + U*C_l).
+ceil(-q_l - beta_l) <= s_reduced_l <= floor(-q_l + beta_l).
 ```
 
-The implementation checked-multiplies the interval widths, enumerates every
-tuple in that proof-derived box, and exact-compares all `N(s)`. This box, not
-the seed, is the certification authority.
+Completeness follows from `q + s_reduced = r @ inverse(B)` and `||r||_2 <= R`.
+The box must contain the incumbent. The implementation preflights its complete
+product and enumerates every candidate. After physical winner selection,
+`s_user = s_reduced @ U` is computed using Python integers. Only then does a
+shift-bearing materializer check int64. The exact winning Cartesian
+displacement is retained directly, never rebuilt through rounded user-basis
+multiplication.
 
 ### Public `image_search` compatibility meaning
 
@@ -126,8 +131,8 @@ neighborhood is truncated deterministically and recorded in private metadata.
 The certified minimization problem and shift sign convention above are
 unchanged. The v0.8 implementation selected an exact tie by lexicographic
 ordering of integer shift coefficients. As of the 2026-09-01 v0.9 activation,
-that coefficient-space selector is historical implemented v0.8 behavior and is
-no longer the accepted target semantics. WP4 implements the amended rule.
+that coefficient-space selector is historical v0.8 behavior. WP4 now implements
+the amended rule, including signed diagonal fast paths.
 
 Private callers still supply an orientation token derived from stable ordered
 endpoint keys. For all exact minimizers, compare the **exact Cartesian
@@ -165,10 +170,50 @@ binary64 result view raises the private structured
 interval, candidate, and limit metadata as applicable. There is no approximate
 fallback.
 
-The bounded LRU cache stores basis-derived exact data only. Its key contains
-the dimension, periodic-axis tuple, and exact binary64 bit patterns of all
-lattice components. The cell origin is absent because it does not change the
-displacement lattice. Pair results are not cached.
+The bounded proof cache stores immutable basis-derived exact data, including
+a reference to the accepted WP3 reduction, exact inverse-column bounds and
+aligned integer rows. Its key contains dimension, periodic axes, ordered source
+binary64 bits and reduction limits. Stricter limits cannot reuse a looser
+preparation. The separate WP3 reduction cache and WP2 user/backend caches retain
+their own roles. Origin and pair arrays are not basis keys, and failures are
+not cached as successes. Reduction resource and invariant errors remain
+distinct and never trigger a source-basis fallback or incumbent retry.
+
+### Distance-only consumers and native translation recovery
+
+Duplicate classification uses the same exact solver but consumes only its
+exact distance key. It does not require an unused int64 shift, floating
+displacement, or floating squared distance. A display distance is formed only
+after a pair is classified for reporting. Thresholds and mandatory/optional
+policy remain those of ADR 0013. Exact pair reversal can hold while the
+asymmetric int64 negation boundary prevents one public materialization.
+
+The private native translation kernel certifies `s_user @ A` inside an explicit
+finite closed Cartesian box `C`. The optional observation constructor uses
+`p + s_user @ A - x_hat in E`, hence `C = x_hat - p + E`, exactifying each
+operand separately. It chooses no reference anchor or native tolerance.
+
+For exact `V = inverse(B)`, extrema of each linear form `t @ V[:,j]` over `C`
+give complete reduced coefficient intervals. Their ceiling/floor endpoints
+define a finite outer box; exhaustive exact Cartesian filtering determines
+compatibility. Signed Cartesian-diagonal 2D/3D domains use direct division,
+zero coefficients on nonperiodic axes, and exact compatibility with zero on
+those Cartesian components.
+
+The private native ceiling is 1,000,000 candidates per call, preflighted before
+enumeration. An admitted proof counts all compatible translations and retains
+at most four witnesses by default. Zero, one, and several solutions mean
+structured inconsistency, one certified Python-integer user shift, and
+structured ambiguity. Optional witness-mapping resource limits preserve proved
+ambiguity and are recorded separately; required unique-shift mapping still
+enforces its limits. Resource/invariant failures remain distinct; no
+fixed-width candidate filtering or residual winner is used. Separately named
+native semantic bit guards default to 32,768 integer bits and 65,536 rational
+bits and observe compound factors and partial sums before cancellation.
+These resource sizes never define uncertainty or retroactively constrain
+minimum-image/duplicate arithmetic. Later WP5–WP8 producers must justify their
+own useful finite envelope, including coefficient-amplified backend-frame
+mismatch; WP4 does not wire those boundary consumers.
 
 ### Call-site and workstream boundary
 
@@ -179,12 +224,13 @@ planar duplicate checks consume the same primitive and exact distance key for
 each candidate pair they already evaluate. With wrapping disabled, the
 established unwrapped Cartesian check is preserved.
 
-R4 does not change face/edge image reconstruction, public duplicate modes or
-thresholds, generator containment, the mandatory native-safety floor, or the
-periodic duplicate candidate scanner. In particular, using the certified
-distance does not claim that the current scanner finds every pair across every
-periodic seam. Candidate-generation and mandatory safety independent of
-`duplicate_wrap` remain R5.
+Historically, R4 left periodic duplicate candidate generation and mandatory
+safety independent of `duplicate_wrap` to R5. ADR 0013 now records those
+implemented policies and the complete cyclic bucket scanner. WP4 changes only
+its private proof coordinates and distance materialization boundary, preserving
+the same representatives, complete candidate coverage, public duplicate modes,
+thresholds, containment policy, and independent native-safety floor. Face/edge
+image reconstruction remains outside this proof-geometry workstream.
 
 ## Consequences
 

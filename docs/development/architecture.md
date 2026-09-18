@@ -286,10 +286,13 @@ vectors and periodic-axis masks; they do not implement separate image
 algorithms.
 
 Rectangular 2D and orthorhombic 3D domains use exact per-axis floor/ceiling
-choices. Fully periodic non-orthogonal 3D cells align the supplied binary64
-coordinates and basis to exact dyadic integers, prepare an exact rational
-basis inverse, derive a finite coefficient box from an incumbent norm bound,
-and exact-compare every integer candidate in that box. Successful private
+choices. WP4 fully periodic non-diagonal 3D proof preparation references the
+accepted WP3 exact reduction `B = U @ A`, derives the inverse directly from
+exact `B`, and aligns endpoints and reduced rows as dyadic integers. It derives
+a finite coefficient box from an incumbent norm bound and exact-compares every
+candidate. Physical Cartesian ties are selected before the winning coefficient
+maps through `U` to the user basis. Only the shift-bearing materializer checks
+signed int64 and constructs float views. Successful private
 results include exact distance keys and deterministic work metadata. A bounded
 seed can tighten the box, but it has no correctness authority.
 
@@ -304,7 +307,9 @@ a capped incumbent-seeding hint. If exact certification would exceed the
 frozen private candidate budget or signed-int64 shift contract, the operation
 raises a structured private runtime error without an approximate fallback.
 
-Periodic duplicate distance evaluation consumes the same primitive. Mandatory
+Periodic duplicate distance evaluation consumes the same exact solving core
+through a distance-only view, with no unused fixed-width shift or displacement
+view. Mandatory
 forward safety always wraps; `duplicate_wrap=False` selects the established
 unwrapped Cartesian distance only for optional user-threshold diagnostics.
 ADR 0012 fixes the exact problem, proof box, tie rule, and resource/cache
@@ -331,8 +336,11 @@ storage uses `0..n-1`.
 
 Candidate generation is separate from distance classification. Rectangular
 domains use primary-coordinate spatial buckets with neighbor wrapping only on
-periodic axes. Triclinic cells bucket primary fractional coordinates using
-exact source-binary64 keys and inverse-basis column bounds. Both feed R4 for
+periodic axes. Triclinic cells compute exact reduced fractional bucket keys from
+the same backend-primary Cartesian representatives and common origin, without
+rewrapping into a reduced cell. Exact reduced inverse-column bounds prove
+neighbor-bin completeness; cyclic key aliases are deduplicated. Both feed the
+shared exact core for
 final periodic classification and avoid unconditional all-pairs work for
 ordinary well-separated inputs. Raw standard compute output must contain every
 internal ID exactly once; raw power output may contain a unique subset for
@@ -808,8 +816,8 @@ WP2 implements that user/backend split and reflection-correct transport for
 ordinary compute and ghost geometry. One detached frame snapshot owns each
 forward operation. Under an improper frame, Cartesian points transform
 normally while face and vertex-adjacency cycles reverse once; face and neighbor
-identity and unsigned measures do not change. Later boundary-identity and
-reduced-proof consumer work in this section remains target architecture.
+identity and unsigned measures do not change. Later boundary-identity work in
+this section remains target architecture.
 
 WP3 adds the private exact proof-basis primitive below the user and backend
 layers. It interprets the ordered source binary64 rows as dyadic rationals and
@@ -817,9 +825,20 @@ returns a certified exact rank-3 LLL basis `A_reduced = U @ A`, exact integer
 `U` and `U_inverse`, and the row-coefficient maps
 `s_user = s_reduced @ U` and
 `s_reduced = s_user @ U_inverse`. The reducer has bounded successful caching
-and explicit private work/bit failures. It is not yet called by periodic-image,
-duplicate-scanning, generator-preparation, backend-frame, or native code;
-connecting those proof consumers remains WP4 target work.
+and explicit private work/bit failures. WP4 connects minimum-image and duplicate
+proof geometry through one immutable prepared context and a separate 128-entry
+proof cache keyed by source bits, axes, and reduction limits. User/backend
+caches and Voro++ continue to use the user basis.
+
+The private `_internal.native_translation` consumer uses that same context to
+certify lattice translations inside explicit exact closed Cartesian boxes.
+Exact inverse-column extrema give complete coefficient intervals; every
+admitted candidate is filtered in Cartesian space. Zero, one, or several
+compatible translations produce structured inconsistency, a Python-integer
+user shift, or structured ambiguity. Candidate and semantic bit limits are
+separate native-recovery resources. No producer tolerance is supplied: later
+WP5–WP8 callers must justify their own envelope and choose their reference
+anchor. The kernel currently has no boundary/metadata call sites.
 
 Discrete user-wrap shifts are decided by exact rational arithmetic over the
 dyadic source numbers, not a rounded inverse/floor heuristic. Approximate

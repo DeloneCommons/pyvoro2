@@ -11,6 +11,7 @@ import numpy as np
 
 from .periodic_images import (
     _exact_triclinic_bucket_layout,
+    exact_distance_float,
     exact_distance_less_than,
     exact_distance_squared_less_equal,
 )
@@ -32,6 +33,7 @@ class PairScan:
     truncated: bool
     candidate_count: int
     minimum_image_used: bool
+    classification_candidate_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,7 +153,7 @@ def _fractional_layout(points: np.ndarray, radius: float, geometry) -> _BucketLa
     """Build the R5-SC-001 triclinic layout with exact rational keys.
 
     If an image displacement has Cartesian norm at most ``radius``, each exact
-    fractional-coordinate change is at most ``radius * ||A^-1[:, k]||_1``.
+    reduced-coordinate change is at most ``radius * ||B^-1[:, k]||_1``.
     The exact bin counts below make every bin at least that wide.  Exact modulo
     and floor assignment therefore put such endpoints in the same or adjacent
     periodic bins on every axis, including at bucket boundaries and seams.
@@ -311,6 +313,7 @@ def _scan(
 ) -> PairScan:
     found: list[tuple[int, int, float]] = []
     candidate_count = 0
+    classification_candidate_count = 0
     minimum_image_used = bool(
         geometry is not None and geometry.has_any_periodic_axis
     )
@@ -325,12 +328,13 @@ def _scan(
         if minimum_image_used:
             pi = np.asarray([left_points[i] for i, _ in chunk], dtype=np.float64)
             pj = np.asarray([right_points[j] for _, j in chunk], dtype=np.float64)
-            minimum = geometry.minimum_image_displacements(
+            minimum = geometry.minimum_image_distances(
                 pi,
                 pj,
                 tie_orientation=np.ones(len(chunk), dtype=np.int8),
                 image_search=1,
             )
+            classification_candidate_count += sum(minimum.candidate_count)
         for offset, (i, j) in enumerate(chunk):
             if minimum is None:
                 distance = _unwrapped_distance(left_points[i], right_points[j])
@@ -353,7 +357,8 @@ def _scan(
                         key,
                         inclusive_squared,
                     )
-                distance = math.sqrt(float(minimum.distance_squared[offset]))
+                if close:
+                    distance = exact_distance_float(key)
             if close:
                 found.append((int(i), int(j), float(distance)))
                 if len(found) >= max_pairs:
@@ -362,12 +367,14 @@ def _scan(
                         truncated=True,
                         candidate_count=candidate_count,
                         minimum_image_used=minimum_image_used,
+                        classification_candidate_count=classification_candidate_count,
                     )
     return PairScan(
         pairs=tuple(found),
         truncated=False,
         candidate_count=candidate_count,
         minimum_image_used=minimum_image_used,
+        classification_candidate_count=classification_candidate_count,
     )
 
 
