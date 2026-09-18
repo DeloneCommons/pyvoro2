@@ -196,7 +196,9 @@ Each raw tuple is `(i, j, value[, shift])`, where `shift=(na, nb, nc)` is the
 integer lattice image applied to site `j`.
 
 An explicit shift names that image and is used unchanged, even if another
-image is nearer. If a periodic observation omits the shift and
+image is nearer. Its connector is `p_j + shift @ A - p_i`, using original
+coerced caller points and the user lattice rows `A`. Backend-primary remapping
+does not change these endpoints. If a periodic observation omits the shift and
 `image='nearest'`, pyvoro2 certifies the minimum-image displacement for the
 exact binary64 values supplied. Exact ties use stable endpoint orientation, so
 reversing an ordered pair negates its shift and displacement. For separator
@@ -844,6 +846,13 @@ geometry = realized.geometry
 print(geometry.endpoint_i_empty, geometry.endpoint_j_empty)
 print(geometry.boundary_measure, geometry.tessellation_diagnostics)
 ```
+
+Current periodic face/edge shifts are still anchored to backend-primary site
+representatives. Resolved observations use original source endpoints, so moving
+one endpoint by a lattice vector can leave the physical connector unchanged
+while realization reports another shift. Source-relative boundary metadata is
+tracked by WP5/WP6 in the [v0.9 plan](../development/plans/v0.9.md); source
+verification and a successful fixed fit do not certify that metadata.
 
 The fit result never computes or owns a tessellation automatically.
 

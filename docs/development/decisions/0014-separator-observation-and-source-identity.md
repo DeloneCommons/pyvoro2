@@ -104,6 +104,13 @@ from the supplied points and domain and rejecting any inconsistency. Once
 bound, the object cannot be rebound and requires exact canonical source
 equality.
 
+Those original coerced source points also own connector geometry: inferred
+rows use ADR 0012's certified source-endpoint shift and displacement, while
+explicit rows apply their user-basis shift to the original endpoint. Independent
+source verification uses the same source authority and exact array equality;
+backend-primary remapping is not part of that computation. This correction
+changes neither the identity vocabulary/version nor the fingerprint algorithm.
+
 The source payload retains original caller-order points before periodic
 remapping, exact dimension and count, exact ID provenance, and one exact domain
 representation from this closed vocabulary:

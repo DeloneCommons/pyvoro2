@@ -6,6 +6,15 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+### Fixed
+
+- Separator nearest-image inference, explicit connectors, and source verification
+  now use original caller coordinates before backend-primary remapping. This
+  preserves unique images near backend snap boundaries, physical ties across
+  equivalent bases of either handedness, and endpoint translation covariance.
+  Public shifts remain in the user basis; backend remapping, certified proof
+  mathematics, and separator source-identity contracts are unchanged.
+
 ### Changed
 
 - Certified triclinic minimum images and duplicate buckets now use the accepted

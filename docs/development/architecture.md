@@ -296,6 +296,14 @@ signed int64 and constructs float views. Successful private
 results include exact distance keys and deterministic work metadata. A bounded
 seed can tighten the box, but it has no correctness authority.
 
+Separator resolution and independent source verification use original coerced
+caller points, before backend-primary remapping. Inferred rows retain the
+certified user-basis shift and displacement directly; explicit rows translate
+the original endpoint by their supplied user-basis shift. Observation distances
+are derived from that `delta` under ADR 0014. No backend-primary copy participates
+in separator connector construction; backend remapping and private reduced
+proof geometry retain their separate responsibilities.
+
 Separator inference derives an orientation token from the resolved internal
 site indices within the fixed resolved problem. External ID values remain
 metadata and do not participate in geometric tie selection. This makes exact
