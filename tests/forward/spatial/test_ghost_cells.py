@@ -1,3 +1,6 @@
+from functools import lru_cache
+from itertools import product
+
 import numpy as np
 import pytest
 
@@ -138,6 +141,53 @@ def _common_radii(weights, ghost_weights):
     return dict(radii=radii[:len(weights)], ghost_radii=radii[len(weights):])
 
 
+@lru_cache(maxsize=2)
+def _independent_cubic_ghost_volume(power):
+    """Compute the fixture cell directly from complete power half-spaces."""
+    spatial = pytest.importorskip('scipy.spatial')
+    points = np.array([
+        [1 / 16, 3 / 16, 5 / 16],
+        [5 / 8, 7 / 16, 1 / 8],
+        [1 / 4, 3 / 4, 11 / 16],
+    ])
+    query = np.array([-3 / 16, -3 / 16, 3 / 8])
+    weights = np.array([0.0, 1 / 32, -1 / 64]) if power else np.zeros(3)
+    query_weight = 3 / 64 if power else 0.0
+
+    def bounded_volume(image_radius):
+        halfspaces = []
+        for shift_tuple in product(
+            range(-image_radius, image_radius + 1), repeat=3
+        ):
+            shift = np.asarray(shift_tuple, dtype=float)
+            for point, weight in zip(points, weights):
+                image = point + shift
+                normal = 2 * (image - query)
+                upper = (
+                    image @ image - weight
+                    - query @ query + query_weight
+                )
+                halfspaces.append(np.r_[normal, -upper])
+            if shift_tuple != (0, 0, 0):
+                image = query + shift
+                normal = 2 * (image - query)
+                upper = image @ image - query @ query
+                halfspaces.append(np.r_[normal, -upper])
+        intersections = spatial.HalfspaceIntersection(
+            np.asarray(halfspaces),
+            query,
+        ).intersections
+        return spatial.ConvexHull(intersections).volume
+
+    # Ghost self-images confine the cell to a unit cube about the query. The
+    # radius-two image set contains every generator image that can cut that
+    # cube; radius three independently confirms that the oracle is stable.
+    radius_two = bounded_volume(2)
+    radius_three = bounded_volume(3)
+    assert radius_three == pytest.approx(radius_two, abs=1e-14, rel=0)
+    return radius_two
+
+
 def _assert_physical_ghost_equal(actual, expected):
     """Compare physical geometry without asserting future WP7 neighbor IDs."""
     assert actual['empty'] == expected['empty']
@@ -250,6 +300,52 @@ def test_periodic_ghost_permutation_matches_independent_geometry(basis, mode, bl
                 assert cell['query_index'] == i
                 np.testing.assert_array_equal(cell['query'], queries[order[i]])
                 _assert_physical_ghost_equal(cell, singles[order[i]])
+
+
+@pytest.mark.parametrize('basis', _CUBIC_BASES)
+@pytest.mark.parametrize('blocks', [(1, 1, 1), (2, 3, 2)])
+@pytest.mark.parametrize('family', ['standard', 'weights', 'radii'])
+def test_periodic_singleton_ghost_preserves_cubic_physics(
+    basis,
+    blocks,
+    family,
+):
+    points = np.array([
+        [1 / 16, 3 / 16, 5 / 16],
+        [5 / 8, 7 / 16, 1 / 8],
+        [1 / 4, 3 / 4, 11 / 16],
+    ])
+    query = np.array([[-3 / 16, -3 / 16, 3 / 8]])
+    options = {}
+    if family != 'standard':
+        weights = np.array([0.0, 1 / 32, -1 / 64])
+        ghost_weights = np.array([3 / 64])
+        options['mode'] = 'power'
+        if family == 'weights':
+            options.update(
+                weights=weights,
+                ghost_weights=ghost_weights,
+            )
+        else:
+            options.update(_common_radii(weights, ghost_weights))
+
+    cell = pyvoro2.ghost_cells(
+        points,
+        query,
+        domain=pyvoro2.PeriodicCell(basis),
+        blocks=blocks,
+        return_vertices=False,
+        return_adjacency=False,
+        return_faces=False,
+        **options,
+    )[0]
+
+    expected = _independent_cubic_ghost_volume(family != 'standard')
+    assert not cell['empty']
+    assert cell['volume'] == pytest.approx(expected, abs=1e-12, rel=1e-12)
+    assert 'vertices' not in cell
+    assert 'adjacency' not in cell
+    assert 'faces' not in cell
 
 
 @pytest.mark.parametrize('mode', ['standard', 'power'])

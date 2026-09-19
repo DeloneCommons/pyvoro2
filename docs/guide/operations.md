@@ -137,12 +137,13 @@ tessellations are a particularly sensitive regime. pyvoro2 does not silently
 weaken validation or alter the requested power geometry in this unsupported
 regime.
 
-Power-mode `compute(...)` requires exactly one of `weights=` or the existing
-`radii=` representation. Radii have length units and should not be interpreted
-as unique physical radii; valid radius-based power computations remain
-unchanged. Standard-mode `compute(...)` rejects both representations. Direct
-weights are available on `compute(...)`, not on `locate(...)` or
-`ghost_cells(...)`.
+Power-mode `compute(...)` and `locate(...)` require exactly one of `weights=`
+or the existing `radii=` representation. Power-mode `ghost_cells(...)`
+requires one complete `weights=`/`ghost_weights=` or
+`radii=`/`ghost_radii=` family and converts persistent and ghost weights with
+one common gauge. Radii have length units and should not be interpreted as
+unique physical radii; valid radius-based power computations remain unchanged.
+Standard mode rejects both representations.
 
 Power diagrams can produce **empty cells** (volume 0). Voro++ omits those in its iteration;
 pyvoro2 can reinsert explicit empty-cell records when `include_empty=True`.

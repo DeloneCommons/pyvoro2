@@ -160,3 +160,29 @@ def test_normalize_vertices_orthorhombic_partial_periodic_reconstructs_local_ver
         sh = np.asarray(c['vertex_shift'], dtype=int)
         rec = _reconstruct_vertices(gv, gids, sh, vec)
         assert np.allclose(rec, verts, atol=1e-7)
+
+
+def test_normalize_vertices_preserves_coupled_remap_tangential_residual():
+    vectors = np.array([
+        [1.0, 0.0, 0.0],
+        [-0.5, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ])
+    point = np.array([[3 / 16, -(2.0**-55), 3 / 8]])
+    normalized = normalize_vertices(
+        [{'id': 7, 'vertices': point.tolist(), 'faces': []}],
+        domain=PeriodicCell(vectors),
+        require_face_shifts=False,
+    )
+    global_vertices = np.asarray(normalized.global_vertices)
+    shifts = np.asarray(normalized.cells[0]['vertex_shift'])
+
+    np.testing.assert_allclose(
+        global_vertices,
+        [[3 / 16, 0.0, 3 / 8]],
+        rtol=0,
+        atol=1e-15,
+    )
+    np.testing.assert_array_equal(shifts, [[0, 0, 0]])
+    reconstructed = global_vertices + shifts @ vectors
+    np.testing.assert_allclose(reconstructed, point, rtol=0, atol=1e-15)

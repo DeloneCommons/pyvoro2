@@ -1,6 +1,20 @@
 import numpy as np
+import pytest
 
-from pyvoro2 import Box, OrthorhombicCell, locate
+from pyvoro2 import Box, OrthorhombicCell, PeriodicCell, locate
+
+
+_EQUIVALENT_CUBIC_BASES = [
+    pytest.param(np.eye(3), id='I-right'),
+    pytest.param(
+        np.array([[1.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+        id='T-right',
+    ),
+    pytest.param(
+        np.array([[-1.0, -1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+        id='T-left',
+    ),
+]
 
 
 def test_locate_box_standard_two_points():
@@ -59,3 +73,37 @@ def test_locate_orthorhombic_periodic_x_returns_image_positions():
     assert np.isclose(pos[0, 0], pts[0, 0] + 1 * Lx)
     assert np.isclose(pos[1, 0], pts[1, 0] - 1 * Lx)
     assert np.allclose(pos[:, 1:], pts[:, 1:])
+
+
+@pytest.mark.parametrize('basis', _EQUIVALENT_CUBIC_BASES)
+@pytest.mark.parametrize('family', ['standard', 'weights', 'radii'])
+def test_locate_equivalent_cubic_bases_have_unique_physical_owner(
+    basis,
+    family,
+) -> None:
+    points = np.array([
+        [-3 / 16, -3 / 16, 3 / 8],
+        [1 / 16, 3 / 16, 5 / 16],
+    ])
+    query = np.array([[0.0, 0.0, 1 / 8]])
+    options = {}
+    if family != 'standard':
+        weights = np.array([3 / 64, 0.0])
+        options['mode'] = 'power'
+        if family == 'weights':
+            options['weights'] = weights
+        else:
+            options['radii'] = np.sqrt(weights - weights.min())
+
+    result = locate(
+        points,
+        query,
+        ids=[101, 202],
+        domain=PeriodicCell(basis),
+        **options,
+    )
+
+    # Independent exact standard squared distances are 34/256 and 19/256.
+    # Subtracting weights gives power scores 22/256 and 19/256.
+    assert result['found'].tolist() == [True]
+    assert result['owner_id'].tolist() == [202]
