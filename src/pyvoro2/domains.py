@@ -584,6 +584,12 @@ class PeriodicCell:
             - values within `eps` of the upper boundary are wrapped to 0 and the
               corresponding lattice shift is incremented
 
+        With ``eps=0``, remainders rounded exactly to an excluded upper
+        endpoint are wrapped to 0, carrying the lattice shift and its coupled
+        coordinates. Negative remainders whose normalized quotient underflows
+        to negative zero are set to 0 without changing shifts. Interior
+        floating-point values are not snapped.
+
         Notes:
             This is the established backend-primary operation. Forward
             generator preparation uses this same remap before native dispatch;
@@ -714,11 +720,22 @@ class PeriodicCell:
                 break
 
         # Final remap to guarantee we are inside the primary cell after any snapping.
+        # At zero epsilon, repair rounded upper endpoints before normalizing
+        # the coupled coordinates, so their tangential residuals survive.
+        # A negative remainder with a zero quotient is specifically division
+        # underflow; canonicalize it without snapping other negative values.
         with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
             dc_quotient = z / bz
         dc = floor_to_int64(dc_quotient, name='points_internal c shift')
         with np.errstate(over='ignore', invalid='ignore'):
             z -= dc * bz
+            if eps_val == 0.0:
+                z[(z < 0.0) & (dc_quotient == 0.0)] = 0.0
+                upper = z == bz
+                z[upper] = 0.0
+                dc = checked_int64_add(
+                    dc, upper.astype(np.int64), name='remap c shifts',
+                )
             y -= dc * byz
             x -= dc * bxz
         _require_finite_remap_coordinates(x, y, z)
@@ -728,6 +745,13 @@ class PeriodicCell:
         db = floor_to_int64(db_quotient, name='points_internal b shift')
         with np.errstate(over='ignore', invalid='ignore'):
             y -= db * by
+            if eps_val == 0.0:
+                y[(y < 0.0) & (db_quotient == 0.0)] = 0.0
+                upper = y == by
+                y[upper] = 0.0
+                db = checked_int64_add(
+                    db, upper.astype(np.int64), name='remap b shifts',
+                )
             x -= db * bxy
         _require_finite_remap_coordinates(x, y, z)
 
@@ -736,6 +760,13 @@ class PeriodicCell:
         da = floor_to_int64(da_quotient, name='points_internal a shift')
         with np.errstate(over='ignore', invalid='ignore'):
             x -= da * bx
+            if eps_val == 0.0:
+                x[(x < 0.0) & (da_quotient == 0.0)] = 0.0
+                upper = x == bx
+                x[upper] = 0.0
+                da = checked_int64_add(
+                    da, upper.astype(np.int64), name='remap a shifts',
+                )
         _require_finite_remap_coordinates(x, y, z)
 
         na = checked_int64_add(na, da, name='remap a shifts')

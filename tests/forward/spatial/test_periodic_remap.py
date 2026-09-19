@@ -19,6 +19,124 @@ def _sheared_cell() -> PeriodicCell:
 
 
 @pytest.mark.parametrize('handedness', [1.0, -1.0], ids=['right', 'left'])
+@pytest.mark.parametrize(
+    ('lower', 'point', 'expected'),
+    [
+        pytest.param(
+            [[1.0, 0.0, 0.0], [0.25, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            [-2.0**-55, -2.0**-55, 3 / 8],
+            [0.0, 0.0, 3 / 8],
+            id='A-y-to-x',
+        ),
+        pytest.param(
+            [[1.0, 0.0, 0.0], [-0.5, 1.0, 0.0], [0.0, 2.0**-54, 1.0]],
+            [3 / 16, -2.0**-55, -2.0**-55],
+            [3 / 16, 0.0, 0.0],
+            id='B-z-to-y-to-x',
+        ),
+    ],
+)
+def test_zero_epsilon_coupled_remap_is_canonical(lower, point, expected, handedness):
+    lower = np.asarray(lower)
+    cell = PeriodicCell(lower @ np.diag([handedness, 1.0, 1.0]))
+    snapshot = DomainGeometry3D(cell).native_periodic_snapshot()
+    # Translated copies also check nonzero shifts and their reconstruction sign.
+    translations = np.array([[0, 0, 0], [2, -1, 3], [-2, 1, -3]])
+    points = np.asarray([point]) + translations @ lower
+
+    for remapper in (cell, snapshot):
+        for eps in (0.0, None, 1e-12):
+            wrapped, shifts = remapper.remap_internal(
+                points, eps=eps, return_shifts=True,
+            )
+            assert np.all(wrapped >= 0.0)
+            assert np.all(wrapped < np.diag(lower))
+            np.testing.assert_array_equal(wrapped, np.tile(expected, (3, 1)))
+            np.testing.assert_array_equal(shifts, translations)
+            np.testing.assert_allclose(
+                wrapped + shifts @ lower, points, rtol=0, atol=2.0**-53,
+            )
+            repeated, repeat_shifts = remapper.remap_internal(
+                wrapped, eps=eps, return_shifts=True,
+            )
+            np.testing.assert_array_equal(repeated, wrapped)
+            np.testing.assert_array_equal(repeat_shifts, np.zeros_like(shifts))
+            np.testing.assert_array_equal(
+                remapper.remap_internal(points, eps=eps), wrapped,
+            )
+
+
+@pytest.mark.parametrize('handedness', [1.0, -1.0], ids=['right', 'left'])
+def test_zero_epsilon_remap_preserves_interior_seam_neighbors(handedness):
+    cell = PeriodicCell(np.diag([handedness, 1.0, 1.0]))
+    snapshot = DomainGeometry3D(cell).native_periodic_snapshot()
+    seams = np.array([
+        np.nextafter(0.0, -np.inf), 0.0, np.nextafter(0.0, np.inf),
+        np.nextafter(1.0, 0.0), 1.0, np.nextafter(1.0, np.inf),
+    ])
+    points = np.repeat(seams[:, None], 3, axis=1)
+    expected = np.repeat(np.array([
+        0.0, 0.0, seams[2], seams[3], 0.0, seams[5] - 1.0,
+    ])[:, None], 3, axis=1)
+    expected_shifts = np.repeat(np.array([0, 0, 0, 0, 1, 1])[:, None], 3, axis=1)
+
+    for remapper in (cell, snapshot):
+        wrapped, shifts = remapper.remap_internal(points, eps=0, return_shifts=True)
+        np.testing.assert_array_equal(wrapped, expected)
+        np.testing.assert_array_equal(shifts, expected_shifts)
+        np.testing.assert_allclose(
+            wrapped + shifts, points, rtol=0, atol=np.nextafter(0.0, 1.0),
+        )
+        repeated, repeat_shifts = remapper.remap_internal(
+            wrapped, eps=0, return_shifts=True,
+        )
+        np.testing.assert_array_equal(repeated, wrapped)
+        np.testing.assert_array_equal(repeat_shifts, np.zeros_like(shifts))
+
+
+@pytest.mark.parametrize('handedness', [1.0, -1.0], ids=['right', 'left'])
+@pytest.mark.parametrize('axis', [0, 1, 2], ids=['a', 'b', 'c'])
+@pytest.mark.parametrize('sheared', [False, True], ids=['diagonal', 'coupled'])
+def test_zero_epsilon_remap_repairs_only_negative_quotient_underflow(
+    handedness, axis, sheared,
+):
+    lower = np.eye(3)
+    lower[axis, axis] = 2.0
+    if sheared:
+        lower = np.array([[2.0, 0.0, 0.0], [-0.5, 2.0, 0.0], [0.25, -0.5, 2.0]])
+    cell = PeriodicCell(lower @ np.diag([handedness, 1.0, 1.0]))
+    snapshot = DomainGeometry3D(cell).native_periodic_snapshot()
+    tiny = np.nextafter(0.0, 1.0)
+    points = np.tile([3 / 16, 3 / 8, 5 / 8] if sheared else [0.0] * 3, (3, 1))
+    points[:, axis] = [-tiny, tiny, -1 / 8]
+    quotient = points[0, axis] / lower[axis, axis]
+    assert quotient == 0.0 and np.signbit(quotient)
+    expected_subnormals = points[:2].copy()
+    expected_subnormals[0, axis] = 0.0
+    reference = None
+
+    for remapper in (cell, snapshot):
+        wrapped, shifts = remapper.remap_internal(points, eps=0, return_shifts=True)
+        assert np.all(wrapped >= 0.0)
+        assert np.all(wrapped < np.diag(lower))
+        np.testing.assert_array_equal(wrapped[:2], expected_subnormals)
+        np.testing.assert_array_equal(shifts[:2], np.zeros((2, 3), dtype=np.int64))
+        # Ordinary negative residuals still transport the coupled coordinates.
+        assert shifts[2, axis] == -1
+        np.testing.assert_allclose(wrapped + shifts @ lower, points, rtol=0, atol=tiny)
+        repeated, repeat_shifts = remapper.remap_internal(
+            wrapped, eps=0, return_shifts=True,
+        )
+        np.testing.assert_array_equal(repeated, wrapped)
+        np.testing.assert_array_equal(repeat_shifts, np.zeros_like(shifts))
+        if reference is None:
+            reference = wrapped, shifts
+        else:
+            np.testing.assert_array_equal(wrapped, reference[0])
+            np.testing.assert_array_equal(shifts, reference[1])
+
+
+@pytest.mark.parametrize('handedness', [1.0, -1.0], ids=['right', 'left'])
 def test_coupled_upper_snap_preserves_cartesian_tangential_residual(
     handedness,
 ) -> None:
