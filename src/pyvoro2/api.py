@@ -1112,9 +1112,10 @@ def ghost_cells(
         return_adjacency: Include vertex adjacency.
         return_faces: Include faces with adjacent generator IDs.
         include_empty: If True, return an explicit empty record for queries for
-            which Voro++ cannot compute a cell (e.g. outside a non-periodic box).
-            Empty records have ``empty=True`` and volume 0.0. If False, those
-            queries are omitted from the output list.
+            which Voro++ cannot compute a cell. Outside non-periodic queries
+            are rejected before native dispatch. Empty records have
+            ``empty=True`` and volume 0.0. If False, those queries are omitted
+            from the output list.
 
     Returns:
         A list of cell dicts (length ``m`` unless ``include_empty=False``).

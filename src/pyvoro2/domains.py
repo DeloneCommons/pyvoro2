@@ -678,7 +678,10 @@ class PeriodicCell:
             # Snap near upper boundaries to 0 with the corresponding shift increment.
             changed = False
 
-            mz = z >= (bz - eps_val)
+            # A coupled snap can move a tangential coordinate well outside
+            # its interval. Only values genuinely near their own upper bound
+            # are snaps; the next iteration normalizes all other residuals.
+            mz = (z >= (bz - eps_val)) & (z <= (bz + eps_val))
             if np.any(mz):
                 z[mz] = 0.0
                 y[mz] -= byz
@@ -688,7 +691,7 @@ class PeriodicCell:
                 nc = checked_int64_add(nc, increment, name='remap c shifts')
                 changed = True
 
-            my = y >= (by - eps_val)
+            my = (y >= (by - eps_val)) & (y <= (by + eps_val))
             if np.any(my):
                 y[my] = 0.0
                 x[my] -= bxy
@@ -697,7 +700,7 @@ class PeriodicCell:
                 nb = checked_int64_add(nb, increment, name='remap b shifts')
                 changed = True
 
-            mx = x >= (bx - eps_val)
+            mx = (x >= (bx - eps_val)) & (x <= (bx + eps_val))
             if np.any(mx):
                 x[mx] = 0.0
                 increment = np.zeros_like(na)

@@ -8,6 +8,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Backend-primary periodic remapping now preserves tangential residuals when
+  snapping a coupled triclinic coordinate at its upper boundary. Public and
+  detached native preparation retain the same epsilon and shift conventions.
+
 - Batched 3D `PeriodicCell` ghost queries now use independent native containers
   in standard and power modes, preventing stale temporary periodic images from
   changing later cells. Weight batches retain one common conversion gauge.
