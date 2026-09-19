@@ -95,6 +95,48 @@ def test_zero_epsilon_remap_preserves_interior_seam_neighbors(handedness):
 
 
 @pytest.mark.parametrize('handedness', [1.0, -1.0], ids=['right', 'left'])
+@pytest.mark.parametrize('axis', [0, 1, 2], ids=['a', 'b', 'c'])
+@pytest.mark.parametrize('sheared', [False, True], ids=['diagonal', 'coupled'])
+def test_zero_epsilon_remap_repairs_only_negative_quotient_underflow(
+    handedness, axis, sheared,
+):
+    lower = np.eye(3)
+    lower[axis, axis] = 2.0
+    if sheared:
+        lower = np.array([[2.0, 0.0, 0.0], [-0.5, 2.0, 0.0], [0.25, -0.5, 2.0]])
+    cell = PeriodicCell(lower @ np.diag([handedness, 1.0, 1.0]))
+    snapshot = DomainGeometry3D(cell).native_periodic_snapshot()
+    tiny = np.nextafter(0.0, 1.0)
+    points = np.tile([3 / 16, 3 / 8, 5 / 8] if sheared else [0.0] * 3, (3, 1))
+    points[:, axis] = [-tiny, tiny, -1 / 8]
+    quotient = points[0, axis] / lower[axis, axis]
+    assert quotient == 0.0 and np.signbit(quotient)
+    expected_subnormals = points[:2].copy()
+    expected_subnormals[0, axis] = 0.0
+    reference = None
+
+    for remapper in (cell, snapshot):
+        wrapped, shifts = remapper.remap_internal(points, eps=0, return_shifts=True)
+        assert np.all(wrapped >= 0.0)
+        assert np.all(wrapped < np.diag(lower))
+        np.testing.assert_array_equal(wrapped[:2], expected_subnormals)
+        np.testing.assert_array_equal(shifts[:2], np.zeros((2, 3), dtype=np.int64))
+        # Ordinary negative residuals still transport the coupled coordinates.
+        assert shifts[2, axis] == -1
+        np.testing.assert_allclose(wrapped + shifts @ lower, points, rtol=0, atol=tiny)
+        repeated, repeat_shifts = remapper.remap_internal(
+            wrapped, eps=0, return_shifts=True,
+        )
+        np.testing.assert_array_equal(repeated, wrapped)
+        np.testing.assert_array_equal(repeat_shifts, np.zeros_like(shifts))
+        if reference is None:
+            reference = wrapped, shifts
+        else:
+            np.testing.assert_array_equal(wrapped, reference[0])
+            np.testing.assert_array_equal(shifts, reference[1])
+
+
+@pytest.mark.parametrize('handedness', [1.0, -1.0], ids=['right', 'left'])
 def test_coupled_upper_snap_preserves_cartesian_tangential_residual(
     handedness,
 ) -> None:
