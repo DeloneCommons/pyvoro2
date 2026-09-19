@@ -8,6 +8,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Backend-primary `PeriodicCell.remap_internal(..., eps=0)` now repairs rounded
+  upper endpoints with coupled lattice shifts, returning stable half-open
+  representatives. Default epsilon behavior and exact user wrapping are unchanged.
+
 - Backend-primary periodic remapping now preserves tangential residuals when
   snapping a coupled triclinic coordinate at its upper boundary. Public and
   detached native preparation retain the same epsilon and shift conventions.
