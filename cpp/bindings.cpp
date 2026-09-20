@@ -11,6 +11,7 @@
 
 #include "voro++.hh"
 #include "native_preconditions.hpp"
+#include "native_witness.hpp"
 
 namespace py = pybind11;
 using namespace voro;
@@ -185,6 +186,7 @@ py::list compute_cells_impl(ContainerT& con, LoopT& loop, const OutputOpts& opts
 
 PYBIND11_MODULE(_core, m) {
   m.doc() = "pyvoro2 core bindings (Voro++)";
+  pyvoro2::native_witness::register_bindings(m);
   m.attr("_EAGER_ALLOCATION_LIMIT_BYTES") =
       py::int_(native::eager_allocation_limit_bytes);
   m.def("_test_checked_count", [](py::ssize_t value) {

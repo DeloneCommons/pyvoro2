@@ -40,8 +40,33 @@ set(VORO2D_SOURCES
 
 pybind11_add_module(_core
   cpp/bindings.cpp
+  cpp/native_witness.cpp
   ${VORO_SOURCES}
 )
+
+# Only the private observer has strict contraction control. Existing producer
+# source files retain their original compilation and template instantiations.
+if (MSVC)
+  set_source_files_properties(cpp/native_witness.cpp PROPERTIES
+    COMPILE_OPTIONS "/fp:strict")
+else()
+  set_source_files_properties(cpp/native_witness.cpp PROPERTIES
+    COMPILE_OPTIONS "-fno-fast-math;-ffp-contract=off")
+endif()
+set(_PYVORO2_WITNESS_SOURCE_HASHES "")
+foreach(_source unitcell.cc cell.hh cell.cc v_compute.hh v_compute.cc rad_option.hh)
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${VORO_SRC_DIR}/${_source}")
+  file(SHA256 "${VORO_SRC_DIR}/${_source}" _source_hash)
+  string(APPEND _PYVORO2_WITNESS_SOURCE_HASHES "${_source}:${_source_hash};")
+endforeach()
+# Semicolons are CMake list delimiters; use commas within the single metadata
+# string passed to the compiler.
+string(REPLACE ";" "," _PYVORO2_WITNESS_SOURCE_HASHES
+  "${_PYVORO2_WITNESS_SOURCE_HASHES}")
+set_source_files_properties(cpp/native_witness.cpp PROPERTIES
+  COMPILE_DEFINITIONS
+  "PYVORO2_WITNESS_SOURCE_SHA256=\"${_PYVORO2_WITNESS_SOURCE_HASHES}\";PYVORO2_WITNESS_COMPILER_VERSION=\"${CMAKE_CXX_COMPILER_VERSION}\"")
 
 target_include_directories(_core PRIVATE
   "${VORO_SRC_DIR}"

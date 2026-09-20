@@ -75,12 +75,15 @@ jobs:
             LD_PRELOAD="${ASAN_LIB}:${UBSAN_LIB}" \
             ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
             UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
+            PYVORO2_NATIVE_TEST_SANITIZERS=1 \
             python -m pytest -q \
               tests/forward/common/test_native_boundary_validation.py \
               tests/forward/common/test_native_preconditions.py \
               tests/forward/common/test_generator_preparation.py \
               tests/forward/spatial/test_duplicate_check.py \
               tests/forward/spatial/test_ghost_cells.py \
+              tests/forward/spatial/test_native_witness.py \
+              tests/tooling/test_native_witness_cpp.py \
               tests/forward/planar/test_api_dispatch.py
 
   test:

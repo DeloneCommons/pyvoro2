@@ -848,6 +848,13 @@ separate native-recovery resources. No producer tolerance is supplied: later
 WP5–WP8 callers must justify their own envelope and choose their reference
 anchor. The kernel currently has no boundary/metadata call sites.
 
+The [private native face witness](native-face-witness.md) supplies the WP5 G0
+observation prerequisite through separate internal `_core` entry points.
+It records applied cut planes, checked face-origin tokens and final doubled-local
+vertices, with exact comparisons against the ordinary native computation.
+Public forward paths do not consume it; G0 producer-envelope and provenance
+closure remain pending.
+
 Discrete user-wrap shifts are decided by exact rational arithmetic over the
 dyadic source numbers, not a rounded inverse/floor heuristic. Approximate
 native Cartesian image positions yield a public integer shift only after unique
