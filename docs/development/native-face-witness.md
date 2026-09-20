@@ -132,7 +132,14 @@ Linux, macOS, Windows and supported Python versions.
 The seed-owner regression uses the dyadic lattice `(4096,0,0)`,
 `(1024,4096,0)`, `(512,1536,4096)` and radii `(0,40960)`. The surviving
 generator's seed faces retain legacy zero while their observed semantic owner
-is one. The lower-dimensional power fixture separately retains a genuine cut
+is one. Initial qualification found ten surviving seed faces on Linux/GCC
+and Windows/MSVC, and eleven on macOS 15/ARM64. On each platform the matched
+ordinary and observed computations agreed; the count is not a portable
+contract. The regression checks the origins and exact rational noncollinearity
+of every surviving seed polygon without an area threshold. CI logs its full
+private packet, including compiler metadata and round-trip binary64 values,
+before running the full suite so platform differences remain inspectable.
+The lower-dimensional power fixture separately retains a genuine cut
 owner whose own computation returns no volumetric cell. Neither fixture
 implements positive-measure or reciprocity policy.
 

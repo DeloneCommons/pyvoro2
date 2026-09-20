@@ -108,6 +108,10 @@ jobs:
         run: python -m pip install .[test]
       - name: Check SciPy-enabled installed workflows
         run: python tools/check_installed_package.py --require-scipy
+      - name: Record native seed-owner characterization
+        run: >-
+          python -m pytest -q -s tests/forward/spatial/test_native_witness.py
+          -k surviving_seed_legacy_zero
       - name: Run installed-package tests
         run: python -m pytest -q
 
