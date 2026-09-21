@@ -1,5 +1,6 @@
 #include "native_witness.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -106,6 +107,50 @@ bool survives(const ObservedCell& cell, int token) {
   for (const auto& face : cell.witness_faces())
     if (face.token == token) return true;
   return false;
+}
+
+class RadiusPrimitiveProbe : public voro::radius_poly {
+ public:
+  void check(double owner_radius, double neighbor_radius) {
+    double storage[8] = {0, 0, 0, owner_radius, 0, 0, 0, neighbor_radius};
+    double* blocks[] = {storage};
+    ppr = blocks;
+    max_radius = std::max(owner_radius, neighbor_radius);
+    r_init(0, 0);
+    const double ordinary = r_scale(1.0, 0, 1);
+    double checked = 1.0;
+    const bool passed = r_scale_check(checked, 1e100, 0, 1);
+    CHECK(same_bits(ordinary, 0.0));
+    CHECK(same_bits(checked, 1.0));
+    CHECK(passed);
+  }
+};
+
+void uncontracted_power_primitives() {
+  for (double radius : {0x1p27, 0x1.0000002p27}) {
+    // Separate volatile loads keep the optimizer from replacing these
+    // runtime primitive operands with a precomputed constant or shared square.
+    volatile double owner_radius = radius;
+    volatile double neighbor_radius = radius;
+    RadiusPrimitiveProbe{}.check(owner_radius, neighbor_radius);
+  }
+  // 2**27 preserves the existing association discriminator. For 2**27+1,
+  // the rounded radius square is one below its exact value, exposing FMA.
+}
+
+void uncontracted_standard_plane() {
+  ObservedCell observed;
+  voro::voronoicell_neighbor native;
+  initialize(observed, native, 4);
+  volatile double first = 0x1.ffffff4p-1;
+  volatile double second = 0x1.ffffffep+0;
+  const double x = first, y = second;
+  CHECK(native.plane(x, y, 0.0));
+  CHECK(observed.plane(x, y, 0.0));
+  // Rounded squares sum exactly at a midpoint; round-to-even selects this
+  // value, while contracting either square into the sum selects the next ULP.
+  CHECK(same_bits(observed.origins.back().offset, 0x1.3fffffbp+2));
+  check_native(observed, native);
 }
 
 void occurrence_tokens() {
@@ -320,6 +365,8 @@ int main(int argc, char** argv) {
     else if (name == "token_exhaustion") token_exhaustion();
     else if (name == "higher_order_and_marginal") higher_order_and_marginal();
     else if (name == "memory_relocation") memory_relocation();
+    else if (name == "uncontracted_power_primitives") uncontracted_power_primitives();
+    else if (name == "uncontracted_standard_plane") uncontracted_standard_plane();
     else throw std::runtime_error("unknown native witness test: " + name);
     std::cout << "native witness: " << name << " passed\n";
   } catch (const std::exception& error) {

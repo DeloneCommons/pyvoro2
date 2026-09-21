@@ -9,8 +9,8 @@
 
 // Instantiate a distinct compute type directly from the vendored source. The
 // four adapters expose only radius operations which the original compute type
-// accesses through friendship. Ordinary producer instantiations and compiler
-// options remain in their original translation unit.
+// accesses through friendship. Ordinary producer instantiations remain in
+// v_compute.cc; every _core translation unit shares the NativeFP policy.
 namespace voro {
 template <class Base>
 class witness_container_access : public Base {
@@ -85,7 +85,9 @@ py::dict build_metadata() {
   build["fast_math"] = false;
   build["fp_contract"] = "off";
   build["fp_contract_scope"] =
-      "native_witness.cpp; linked clipping retains ordinary producer settings";
+      "all _core translation units, including ordinary producer and clipping";
+  build["native_fp_policy"] = "binary64-noncontracting-v1";
+  build["ipo"] = false;
   build["source_coupled_seed_replay"] = true;
   build["source_coupled_compute"] = true;
 #ifdef __VERSION__

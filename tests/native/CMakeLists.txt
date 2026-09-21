@@ -13,10 +13,10 @@ target_include_directories(test_native_witness PRIVATE
 )
 target_compile_features(test_native_witness PRIVATE cxx_std_17)
 if(MSVC)
-  target_compile_options(test_native_witness PRIVATE /EHsc /fp:strict)
-else()
-  target_compile_options(test_native_witness PRIVATE -ffp-contract=off)
+  target_compile_options(test_native_witness PRIVATE /EHsc)
 endif()
+include("${REPO_ROOT}/cmake/NativeFP.cmake")
+pyvoro2_native_fp(test_native_witness)
 
 option(PYVORO2_NATIVE_TEST_SANITIZERS "Check native witness memory safety" OFF)
 if(PYVORO2_NATIVE_TEST_SANITIZERS)

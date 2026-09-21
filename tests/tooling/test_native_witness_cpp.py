@@ -20,6 +20,8 @@ CASES = (
     'token_exhaustion',
     'higher_order_and_marginal',
     'memory_relocation',
+    'uncontracted_power_primitives',
+    'uncontracted_standard_plane',
 )
 
 
@@ -29,7 +31,9 @@ def _cmake() -> str:
     except ImportError:
         executable = shutil.which('cmake')
     else:
-        executable = shutil.which('cmake', path=cmake.CMAKE_BIN_DIR)
+        # The repository's cmake/ directory can be a namespace package when
+        # the PyPI CMake package is absent; then use the ordinary PATH.
+        executable = shutil.which('cmake', path=getattr(cmake, 'CMAKE_BIN_DIR', None))
     if executable is None:
         pytest.skip('CMake is required to compile the standalone native tests')
     return executable
@@ -44,6 +48,7 @@ def _run(command: list[str], env: dict[str, str]) -> str:
         f'{command!r} exited {completed.returncode}\n'
         f'{completed.stdout}\n{completed.stderr}'
     )
+    print(completed.stdout, end='')
     return completed.stdout
 
 
@@ -66,7 +71,7 @@ def native_witness_executable(tmp_path_factory) -> Path:
         '-DCMAKE_BUILD_TYPE=Release',
         f'-DPYVORO2_NATIVE_TEST_SANITIZERS={"ON" if sanitize else "OFF"}',
     ], env)
-    _run([cmake, '--build', str(build), '--config', 'Release'], env)
+    _run([cmake, '--build', str(build), '--config', 'Release', '--verbose'], env)
     basename = 'test_native_witness.exe' if os.name == 'nt' else (
         'test_native_witness'
     )

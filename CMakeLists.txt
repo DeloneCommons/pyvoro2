@@ -38,21 +38,19 @@ set(VORO2D_SOURCES
   "${VORO2D_SRC_DIR}/quad_march.cc"
 )
 
-pybind11_add_module(_core
+# NO_EXTRAS excludes pybind11's implicit LTO; NativeFP also disables CMake IPO.
+pybind11_add_module(_core NO_EXTRAS
   cpp/bindings.cpp
   cpp/native_witness.cpp
   ${VORO_SOURCES}
 )
-
-# Only the private observer has strict contraction control. Existing producer
-# source files retain their original compilation and template instantiations.
-if (MSVC)
-  set_source_files_properties(cpp/native_witness.cpp PROPERTIES
-    COMPILE_OPTIONS "/fp:strict")
-else()
-  set_source_files_properties(cpp/native_witness.cpp PROPERTIES
-    COMPILE_OPTIONS "-fno-fast-math;-ffp-contract=off")
+if(MSVC)
+  # NO_EXTRAS also omits these non-IPO defaults; retain /bigobj and /MP.
+  target_link_libraries(_core PRIVATE pybind11::windows_extras)
 endif()
+
+include(cmake/NativeFP.cmake)
+pyvoro2_native_fp(_core)
 set(_PYVORO2_WITNESS_SOURCE_HASHES "")
 foreach(_source unitcell.cc cell.hh cell.cc v_compute.hh v_compute.cc rad_option.hh)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS

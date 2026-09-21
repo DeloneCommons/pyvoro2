@@ -403,6 +403,59 @@ def test_power_plane_offset_operation_order_is_observable():
     assert offsets['r_scale_check_passes'] is True
 
 
+def test_power_plane_primitives_preserve_uncontracted_radius_square():
+    radius = float(2**27 + 1)
+    offsets = _core._test_power_offset_order(1.0, radius, radius)
+    # The exact radius square is 2**54 + 2**28 + 1, whose binary64
+    # product rounds down by one. Contracting either product with a
+    # neighboring addition/subtraction can retain that lost unit.
+    assert _bits(offsets['r_scale']) == _bits(0.0)
+    assert _bits(offsets['r_scale_check_offset']) == _bits(1.0)
+    assert offsets['r_scale_check_passes'] is True
+
+
+def test_power_compute_preserves_uncontracted_particle_plane_offset():
+    radius = float(2**27 + 1)
+    packet = _box([[1.0, 2.0, 2.0], [2.0, 2.0, 2.0]], [0, 1],
+                  radii=np.array([radius, radius]))
+    assert len(packet['cells']) == 2
+    for cell in packet['cells']:
+        assert cell['computed'] is True
+        particle_origins = [origin for origin in cell['origins']
+                            if origin['kind'] == 'particle']
+        assert len(particle_origins) == 1
+        origin = particle_origins[0]
+        assert origin['owner'] == 1 - cell['id']
+        assert _bits(origin['offset']) == _bits(0.0)
+        assert all(cell['noninterference'].values())
+
+
+def test_standard_compute_preserves_uncontracted_squared_displacement():
+    displacement = np.array([1.0 - 3.0 * 2**-27, 2.0 - 2**-27, 0.0])
+    packet = _box([np.zeros(3), displacement], [0, 1],
+                  bounds=((-4.0, 4.0),) * 3)
+    assert len(packet['cells']) == 2
+    # Both products round down by 2**-54. Their rounded sum is exactly a
+    # midpoint, so ties-to-even rounds down; fusing either product into
+    # the sum retains its lost 2**-54 and rounds one ULP higher instead.
+    expected = float.fromhex('0x1.3fffffb000000p+2')
+    for cell in packet['cells']:
+        assert cell['computed'] is True
+        particle_origins = [origin for origin in cell['origins']
+                            if origin['kind'] == 'particle']
+        assert len(particle_origins) == 1
+        origin = particle_origins[0]
+        assert origin['owner'] == 1 - cell['id']
+        # Match the actual source subtraction, including the +0 z component.
+        expected_normal = (displacement - np.zeros(3) if cell['id'] == 0
+                           else np.zeros(3) - displacement)
+        assert list(map(_bits, origin['normal'])) == list(
+            map(_bits, expected_normal)
+        )
+        assert _bits(origin['offset']) == _bits(expected)
+        assert all(cell['noninterference'].values())
+
+
 @pytest.mark.parametrize('observe', (_box, _periodic))
 @pytest.mark.parametrize('power', (False, True))
 def test_empty_input_keeps_native_packet_context(observe, power):
