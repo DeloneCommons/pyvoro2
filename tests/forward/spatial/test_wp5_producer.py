@@ -64,8 +64,11 @@ def _producer(packet, points, ids, radii=None, budget=None):
     return Producer(packet, points, ids, radii, budget=budget)
 
 
-def test_rectangular_particle_occurrences_keep_both_periodic_directions():
-    packet, points, ids = _observe([[1.0, 2.0, 2.0], [3.0, 2.0, 2.0]])
+@pytest.mark.parametrize('axis', (0, 1, 2))
+def test_rectangular_particle_occurrences_keep_both_periodic_directions(axis):
+    first, second = [2., 2., 2.], [2., 2., 2.]
+    first[axis], second[axis] = 1., 3.
+    packet, points, ids = _observe([first, second])
     producer = _producer(packet, points, ids)
     cell = next(row for row in packet['cells'] if row['id'] == 0)
     labels = {}
@@ -73,8 +76,10 @@ def test_rectangular_particle_occurrences_keep_both_periodic_directions():
         if origin['kind'] == 'particle' and origin['owner'] == 1:
             result = producer.attribute(cell, origin)
             labels[tuple(origin['normal'])] = result.shift
-    assert labels[2.0, 0.0, 0.0] == (0, 0, 0)
-    assert labels[-2.0, 0.0, 0.0] == (-1, 0, 0)
+    positive = tuple(2. if k == axis else 0. for k in range(3))
+    negative = tuple(-2. if k == axis else 0. for k in range(3))
+    assert labels[positive] == (0, 0, 0)
+    assert labels[negative] == tuple(-1 if k == axis else 0 for k in range(3))
     assert producer.removals == ((0, 0, 0), (0, 0, 0))
 
 
