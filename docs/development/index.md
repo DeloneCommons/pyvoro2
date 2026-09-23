@@ -17,6 +17,7 @@ contributors, implementers, reviewers, and downstream package authors.
 | How should repository documentation be written? | [Documentation conventions](documentation-conventions.md) |
 | How are modules and layers organized? | [Architecture](architecture.md) |
 | Why was a durable choice made? | [Decision records](decisions/index.md) |
+| What is the closed WP5 G0 contract? | [ADR 0021 — native occurrence and exact face certification](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md) (implementation pending) |
 | What is planned over several releases? | [Roadmap](../project/roadmap.md) |
 | What historical work produced v0.8? | [v0.8 audit/remediation record](audits/v0.8-pre-release.md), [completed remediation plan](plans/archive/v0.8-remediation.md), GitHub issues, and milestones |
 | How do I prepare a change? | [`CONTRIBUTING.md`](https://github.com/DeloneCommons/pyvoro2/blob/main/CONTRIBUTING.md) |

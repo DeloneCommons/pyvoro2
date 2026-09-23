@@ -34,6 +34,7 @@ Each record has a status:
 18. [User-lattice periodic semantics and certified boundary identity](0018-periodic-user-lattice-and-boundary-semantics.md)
 19. [Independent separator measurement spaces and supported realization-aware fitting](0019-separator-measurement-spaces-and-supported-realization.md)
 20. [Exact private rank-3 lattice reduction](0020-exact-private-lattice-reduction.md)
+21. [WP5 native occurrence and exact periodic face certification](0021-wp5-native-occurrence-and-exact-face-certification.md)
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the

@@ -844,29 +844,37 @@ Exact inverse-column extrema give complete coefficient intervals; every
 admitted candidate is filtered in Cartesian space. Zero, one, or several
 compatible translations produce structured inconsistency, a Python-integer
 user shift, or structured ambiguity. Candidate and semantic bit limits are
-separate native-recovery resources. No producer tolerance is supplied: later
-WP5–WP8 callers must justify their own envelope and choose their reference
-anchor. The kernel currently has no boundary/metadata call sites.
+separate native-recovery resources. The WP4 primitive accepts an explicitly
+justified exact compatibility box, not a producer tolerance. WP5's separate
+source-complete producer predicate is fixed by
+[ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md),
+not a generic numerical envelope; WP6–WP8 must justify their own complete
+producer predicates/regions and reference anchors. The kernel currently has no
+boundary/metadata call sites.
 
 The [private native face witness](native-face-witness.md) supplies the WP5 G0
 observation prerequisite through separate internal `_core` entry points.
 It records applied cut planes, checked face-origin tokens and final doubled-local
 vertices, with exact comparisons against the ordinary native computation.
-Public forward paths do not consume it; G0 producer-envelope and provenance
-closure remain pending.
+Public forward paths do not consume it; the G0 producer and provenance
+specification is closed in
+[ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md).
+Production WP5 integration remains pending.
 
 Discrete user-wrap shifts are decided by exact rational arithmetic over the
-dyadic source numbers, not a rounded inverse/floor heuristic. Approximate
-native Cartesian image positions yield a public integer shift only after unique
-compatibility is certified within a declared envelope. Semantic periodic
-boundary identity is attached only to certified-positive-measure records;
-zero-measure raw artifacts and unresolved or coincident provenance follow
-explicit normalization/ambiguity rules. In power mode, native-boundary
-compatibility uses the exact binary64 radii passed to Voro++ plus an envelope
-for native arithmetic, while mathematical weights remain the public scientific
-representation. Ghost semantics do not trust native integer sign/value alone,
-and the 3D bridge must prevent uninitialized temporary ghost IDs from being
-read.
+dyadic source numbers, not a rounded inverse/floor heuristic. The target
+ordinary 3D face path separates actual applied native support/topology N,
+source-complete binary64 image attribution, native-effective exact ideal E
+(actual stored sites/lattice/radii), and public-semantic exact ideal S
+(caller sites/lattice/weights). Both E and S must be positive; status
+disagreement fails certification. Certification failure is atomic; native
+face area is not exact ideal measure, and zero faces are not silently deleted.
+[ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
+defines its chart, reciprocity and public output. The implemented WP4
+explicit-box translation consumer is separate. WP6/WP7 producer contracts
+require their own qualification. Ghost semantics do not trust native integer
+sign/value alone, and the 3D bridge must prevent uninitialized temporary ghost
+IDs from being read.
 
 The normal "points + separator observations -> fitted weighted tessellation"
 workflow should be promoted to a supported public inverse contract. The

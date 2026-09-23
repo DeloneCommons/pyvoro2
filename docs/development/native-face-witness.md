@@ -2,8 +2,10 @@
 
 This is the observation prerequisite for WP5 G0 under
 [#68](https://github.com/DeloneCommons/pyvoro2/issues/68), tracked by
-[#47](https://github.com/DeloneCommons/pyvoro2/issues/47). It does not close
-G0-N/G0-O or implement certified face-image reconstruction. The public forward
+[#47](https://github.com/DeloneCommons/pyvoro2/issues/47). The subsequent
+[ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
+closes G0-N/G0-C/G0-O using this witness; the witness alone did not close those
+gates and does not implement certified face-image reconstruction. The public forward
 routes, output options, face shifts, normalization, and diagnostics do not
 consume this witness.
 
@@ -291,8 +293,13 @@ focused tests together. Follow the actual observed plane into the unchanged
 vendored `v_compute.cc`, `rad_option.hh`, `cell.hh` and `cell.cc`; follow seed
 provenance into `unitcell.hh`, `unitcell.cc`, and `container_prd.hh`.
 
-Still unproved here are the complete native arithmetic envelope,
-positive/zero/unresolved measure contract, finite candidate bound,
-true-assignment retention, semantic reciprocity coverage, and the
-source-centered public integration. A final native polygon plus its observed
-support plane is evidence for those arguments, not their replacement.
+This prerequisite record alone did not prove the producer-compatible
+attribution, separate E/S exact ideal classification, finite candidate regions,
+true-assignment retention, semantic reciprocity coverage, or source-centered
+public integration. Their subsequently closed **specification** separates
+actual native support N, exact native-effective ideal E and exact
+public-semantic ideal S in
+[ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md);
+production implementation and acceptance remain pending. A final native
+polygon plus its observed support plane is evidence, not a replacement for
+that contract.
