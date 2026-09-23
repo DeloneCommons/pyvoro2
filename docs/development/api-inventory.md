@@ -297,14 +297,14 @@ temporary/undefined native ghost ID.
 For **ordinary persistent 3D faces**, [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
 supersedes the earlier native-envelope/zero-face-deletion target. Requested
 `return_face_shifts=True` requires periodic `return_faces=True`, works with
-`return_vertices=False, return_adjacency=False`, and must either certify the
-whole returned boundary metadata or fail atomically. It separates actual
+`return_vertices=False, return_adjacency=False`, and must either source-attribute
+every returned native generator-face shift or fail atomically. It separates actual
 applied support/topology N, exact native-effective ideal E built from
 stored native sites/lattice/radii, and the exact caller-semantic ideal S;
-source-complete attribution identifies N's image before both E and S are
-classified as positive/zero/absent. Successful certification requires both
-exact ideals positive, with E/S disagreement a representation conflict.
-A zero or absent native occurrence is **not silently removed**. Success
+source-complete attribution identifies N's image independently of E/S
+positive/zero/absent classification. The independent consistency audit requires
+both exact ideals positive; E/S disagreement is a structured diagnostic.
+A zero or absent ideal contact does **not** remove a native occurrence. Success
 returns persistent `adjacent_cell` and public user-basis integer
 `adjacent_shift` for generator
 faces, including nonzero self-image shifts; real walls keep wall identity
@@ -312,10 +312,23 @@ without an applicable `adjacent_shift`. `cell['site']` and `result.sites`
 remain original persistent input sites; returned native vertices and
 `face_properties` are numerical native descriptors, not exact E/S measures.
 Temporary private geometry does not set public geometry capability flags or
-leak into unrequested output. Complete positive generator coverage requires
-compatible reverse `(i,j,s) <-> (j,i,-s)`. Failed certification is separate
-from the validity of an ordinary non-certified tessellation. The currently
-implemented face-shift helper remains factual until WP5 lands.
+leak into unrequested output. For the WP5 target, `has_periodic_shifts=True`
+means all requested shifts on returned native generator faces were uniquely
+source-attributed and materialized; it does not claim E/S consistency. A result
+may have that capability true and `tessellation_diagnostics.ok=False`.
+`return_diagnostics=True` or `tessellation_check != 'none'` runs the independent
+exact E/S/native consistency audit; a default shifts-only call may omit it.
+Zero/absent, E/S conflict, invalid projected cycle, missing positive facet or
+required reciprocal `(i,j,s) <-> (j,i,-s)` coverage, and audit resource limits
+are structured diagnostic findings. `tessellation_check='none'` takes no action;
+`'diagnose'` attaches diagnostics without warning; `'warn'` emits the existing
+summary warning when `diagnostics.ok` is false; `'raise'` raises the existing
+`TessellationError` in that case. `tessellation_require_reciprocity` keeps its
+established required/optional policy. Inconsistent, ambiguous, unsupported or
+resource-limited producer attribution, malformed occurrence/provenance, and
+unrepresentable public shifts still fail the requested shift call
+independently of `tessellation_check`. The currently implemented face-shift
+helper remains factual until WP5 lands.
 
 For WP5 until WP9, `face_shift_search`, `face_shift_tol`,
 `validate_face_shifts`, and `repair_face_shifts` keep existing strict input
@@ -2132,7 +2145,7 @@ The following convenience surface remains **provisional**:
 | `measure_kind` | Provisional | `"area"` in 2D or `"volume"` in 3D. |
 | `boundary_kind` | Provisional | `"edges"` in 2D or `"faces"` in 3D. |
 | `has_tessellation_diagnostics`, `has_normalized_vertices`, `has_normalized_topology` | Provisional | Distinguish absent optional objects from present objects. |
-| `has_boundaries`, `has_periodic_shifts` | Provisional | Report explicit builder capabilities, including available-but-empty geometry. |
+| `has_boundaries`, `has_periodic_shifts` | Provisional | Report explicit builder capabilities, including available-but-empty geometry. For the WP5 target, the latter means complete source-attributed availability of requested native generator-face shifts, not exact E/S consistency; inspect diagnostics for that separate question. |
 | `require_tessellation_diagnostics()`, `require_normalized_vertices()`, `require_normalized_topology()` | Provisional | Return optional objects or raise a clear `ValueError`. |
 | `require_boundaries()` | Provisional | Return input-order-aligned edge/face collections, using an empty collection for hidden sites, or raise when boundaries were unavailable. |
 | `global_vertices`, `global_edges` | Provisional conveniences | Forward to available planar normalized objects; otherwise `None`. |
