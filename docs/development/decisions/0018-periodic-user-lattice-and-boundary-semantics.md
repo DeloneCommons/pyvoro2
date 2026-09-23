@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-09-01
+- **WP5 clarification:** 2026-09-23; [ADR 0021](0021-wp5-native-occurrence-and-exact-face-certification.md)
 - **Related issue:** [#46 — Activate the v0.9.0 functional/API stabilization plan](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **Related plan:** [active v0.9.0 development plan](../plans/v0.9.md)
 - **Related decisions:** [ADR 0002](0002-weights-radii-and-gauge.md),
@@ -147,6 +148,15 @@ Private reduced-basis coefficients are never public output.
 
 ### Native Cartesian translations require unique certification
 
+This section describes the generic WP4 native-translation consumer and the
+earlier cross-work-package target. For ordinary persistent **3D faces**, the
+closed WP5 contract is [ADR 0021](0021-wp5-native-occurrence-and-exact-face-certification.md):
+source-complete producer-compatible attribution followed independently by
+exact public semantic ideal reconstruction. An enclosing numerical box alone
+is not the final WP5 candidate predicate or semantic positivity test. This
+clarification does not change WP4's existing explicit-box consumer or decide
+WP6/WP7 producer contracts.
+
 Approximate Cartesian image positions returned by native code may be converted
 to a public integer lattice translation only when exactly one user-lattice
 integer shift is compatible with the returned geometry within the declared
@@ -162,14 +172,14 @@ Its candidate ceiling is 1,000,000 per call; admitted enumeration completes
 before unique/inconsistent/ambiguous outcome selection. Resource and invariant
 errors remain separate. No universal numerical tolerance or producer envelope
 is claimed, and the kernel does not select the reference anchor. Deriving the
-concrete native arithmetic envelopes and wiring boundary/metadata producers
-remains WP5–WP8 work.
+WP5 source-compatible producer attribution is closed in ADR 0021; its
+implementation and the separate WP6–WP8 producer integrations remain work.
 
-Boundary-plane compatibility is relative to the binary64 geometry actually
-returned by the backend. In power mode, certification uses the exact binary64
-radii sent to Voro++ and an envelope covering the backend's radius-squaring and
-plane-offset arithmetic. The original mathematical weights remain the public
-scientific representation.
+For WP5 the actual binary64 normal/offset and source arithmetic identify
+producer-compatible images; the independent exact ideal uses public
+mathematical weights. The backend radii and their source-associated arithmetic
+do not become the public semantic weights. See ADR 0021 for the closed 3D
+contract; producer contracts for other work packages remain separate.
 
 ### Ghost boundary identity is a tagged public record
 
@@ -201,13 +211,12 @@ For ghost boundaries, `adjacent_cell` may remain only where it already has a
 well-defined persistent-generator or wall compatibility meaning; it must never
 contain an undefined temporary native ghost ID.
 
-A boundary receives semantic identity only after its measure is certified
-positive within the declared envelope. A native face/edge certified to have zero
-measure is dropped from the public packaged boundary list and from normalized
-semantic topology; v0.9 adds no separate public raw-zero boundary channel. If
-zero versus positive measure cannot be resolved within the envelope, an
-operation requesting certified semantic metadata reports structured ambiguity
-rather than assigning an owner by residual ordering.
+The earlier proposed rule to delete certified-zero native faces from public
+output is **superseded for ordinary persistent 3D face certification by
+ADR 0021**. For that WP5 path, exact ideal affine dimension determines positive/zero,
+and zero, absent, unresolved or other certificate failure fails the entire
+certified call without deleting any native face. An ordinary non-certified
+result has its own numerical validity policy.
 
 Candidate boundary assignments are equivalent only when they define the same
 exact cut **and** the same semantic provenance (`kind`, owner where applicable,
@@ -270,6 +279,7 @@ uninitialized temporary ID before Python normalization.
 
 ### Preserve certified-zero boundaries as semantic records
 
-Rejected. A zero-measure native artifact has no supported topological boundary
-meaning. v0.9 drops it from packaged/normalized boundary lists instead of
-inventing a public raw-artifact schema.
+Rejected as an automatic semantic-boundary rule. The former proposal to drop
+zero-measure native artifacts from packaged output is superseded for WP5 by
+ADR 0021: an exact-zero/absent mismatch fails the certified call atomically.
+The planar and ghost packages must specify their own policy.

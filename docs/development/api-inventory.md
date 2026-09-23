@@ -78,7 +78,8 @@ WP1–WP13 execution.
 
 The target follows [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md),
 [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md),
-and [ADR 0020](decisions/0020-exact-private-lattice-reduction.md).
+[ADR 0020](decisions/0020-exact-private-lattice-reduction.md), and the
+closed WP5-specific [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md).
 D9 in the active plan remains unresolved by design; nothing in this ledger
 adopts a backend-fork policy.
 
@@ -183,8 +184,9 @@ The private native translation kernel certifies uniqueness relative to an
 explicit exact Cartesian compatibility box. It has structured inconsistency,
 ambiguity, reduction-invariant, and resource outcomes, arbitrary Python-integer
 successful shifts, and no default native tolerance. It adds no public API and
-does not implement WP5–WP8 boundary or query/ghost metadata. Producer-specific
-native envelopes remain later work.
+does not implement WP5–WP8 boundary or query/ghost metadata. The WP5
+producer-specific contract is closed in ADR 0021, but production integration
+and WP6–WP8 producer qualification remain pending.
 
 ### Implemented WP1 forward input signatures and target removals
 
@@ -290,18 +292,31 @@ contract. A ghost `adjacent_cell` may be retained only when it has a defined
 persistent-generator or wall compatibility meaning and must never expose a
 temporary/undefined native ghost ID.
 
-Semantic identity is assigned only to certified positive-measure boundaries.
-A native face/edge certified to have zero measure is removed from the packaged
-public boundary list and from normalized semantic topology; there is no new
-public raw-zero artifact channel. Unresolved zero-versus-positive measure,
-multiple non-equivalent owner/shift/kind assignments, or inconsistent native
-translation recovery produce structured ambiguity/failure when certified
-metadata is requested. Candidate records are equivalent only for the same exact
-cut and the same semantic provenance.
+For **ordinary persistent 3D faces**, [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
+supersedes the earlier native-envelope/zero-face-deletion target. Requested
+`return_face_shifts=True` requires periodic `return_faces=True`, works with
+`return_vertices=False, return_adjacency=False`, and must either certify the
+whole returned boundary metadata or fail atomically. Its exact public-weight
+ideal classifies positive/zero/absent independently from the actual native
+occurrence and source-compatible image attribution. A zero or absent native
+occurrence is **not silently removed**. Success returns persistent
+`adjacent_cell` and public user-basis integer `adjacent_shift` for generator
+faces, including nonzero self-image shifts; real walls keep wall identity
+without an applicable `adjacent_shift`. `cell['site']` and `result.sites`
+remain original persistent input sites; returned native vertices and
+`face_properties` are numerical native descriptors, not exact ideal measures.
+Temporary private geometry does not set public geometry capability flags or
+leak into unrequested output. Complete positive generator coverage requires
+compatible reverse `(i,j,s) <-> (j,i,-s)`. Failed certification is separate
+from the validity of an ordinary non-certified tessellation. The currently
+implemented face-shift helper remains factual until WP5 lands.
 
-Power-mode boundary certification uses the exact binary64 backend radii sent to
-Voro++ (including an envelope for backend radius squaring/plane arithmetic),
-while original mathematical weights remain the public scientific values.
+For WP5 until WP9, `face_shift_search`, `face_shift_tol`,
+`validate_face_shifts`, and `repair_face_shifts` keep existing strict input
+validation but are no-ops for the certified result. WP9 still owns their
+removal. WP6/WP7 require separate producer-specific contracts for planar edges
+and ghost boundary identity; this WP5 decision does not silently determine
+their zero-boundary output policy.
 
 ### Target separator measurement-space model
 
