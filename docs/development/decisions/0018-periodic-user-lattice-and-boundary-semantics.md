@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-09-01
-- **WP5 clarification:** 2026-09-23; [ADR 0021](0021-wp5-native-occurrence-and-exact-face-certification.md)
+- **WP5 clarification/amendment:** 2026-09-23;
+  [ADR 0021](0021-wp5-native-occurrence-and-exact-face-certification.md)
 - **Related issue:** [#46 — Activate the v0.9.0 functional/API stabilization plan](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **Related plan:** [active v0.9.0 development plan](../plans/v0.9.md)
 - **Related decisions:** [ADR 0002](0002-weights-radii-and-gauge.md),
@@ -152,9 +153,10 @@ This section describes the generic WP4 native-translation consumer and the
 earlier cross-work-package target. For ordinary persistent **3D faces**, the
 closed WP5 contract is [ADR 0021](0021-wp5-native-occurrence-and-exact-face-certification.md):
 source-complete producer-compatible attribution of observed native support N,
-followed independently by native-effective exact ideal E and public-semantic
-exact ideal S reconstruction. Both E and S must be positive; disagreement
-fails certification. An enclosing numerical box alone
+followed, when diagnostics are requested, by native-effective exact ideal E
+and public-semantic exact ideal S reconstruction. E/S positivity and any
+disagreement determine exact-consistency diagnostics, not availability of a
+uniquely source-attributed native shift. An enclosing numerical box alone
 is not the final WP5 candidate predicate or semantic positivity test. This
 clarification does not change WP4's existing explicit-box consumer or decide
 WP6/WP7 producer contracts.
@@ -217,10 +219,11 @@ contain an undefined temporary native ghost ID.
 The earlier proposed rule to delete certified-zero native faces from public
 output is **superseded for ordinary persistent 3D face certification by
 ADR 0021**. For that WP5 path, independent E/S exact ideal affine dimensions
-determine positive/zero/absent; their disagreement is a representation conflict,
-and zero, absent, unresolved or other certificate failure fails the entire
-certified call without deleting any native face. An ordinary non-certified
-result has its own numerical validity policy.
+determine positive/zero/absent when diagnostics are requested; their
+disagreement is a representation-conflict diagnostic. Zero/absent ideal
+contacts do not delete native faces or prevent returning uniquely attributed
+shifts. Unresolved *producer attribution* still fails the requested shift
+call atomically. Ordinary results retain their numerical validity policy.
 
 Candidate boundary assignments are equivalent only when they define the same
 exact cut **and** the same semantic provenance (`kind`, owner where applicable,
@@ -285,5 +288,6 @@ uninitialized temporary ID before Python normalization.
 
 Rejected as an automatic semantic-boundary rule. The former proposal to drop
 zero-measure native artifacts from packaged output is superseded for WP5 by
-ADR 0021: an exact-zero/absent mismatch fails the certified call atomically.
+ADR 0021: an exact-zero/absent mismatch is a requested consistency diagnostic,
+while a uniquely source-attributed native shift remains available.
 The planar and ghost packages must specify their own policy.

@@ -2,6 +2,8 @@
 
 - **Status:** Accepted for WP5 implementation; not implemented
 - **Date:** 2026-09-23
+- **Public-action amendment:** 2026-09-23 — native shift availability and
+  exact E/S consistency have separate outcomes; G0-N/C/O remain closed.
 - **Related issues:** [#68 — WP5](https://github.com/DeloneCommons/pyvoro2/issues/68),
   [#47 — v0.9 implementation](https://github.com/DeloneCommons/pyvoro2/issues/47)
 - **Prerequisite:** [PR #69 — private native face witness](https://github.com/DeloneCommons/pyvoro2/pull/69)
@@ -93,12 +95,18 @@ remain distinct even when planes coincide.
 finite set of periodic images whose *actual qualified binary64 source
 operations* could have produced its `(n,h)`. Include the true image by the
 one-sided theorem below. Do not use E or S positivity to select among
-source-compatible images. Only a unique image/provenance class may be
-compared with the full E and S ideals. A successful positive certificate
-requires its E **and** S contacts both to have exact affine dimension two,
-the exact projected native observation audit, complete global coverage and
-required reciprocity. E/S status disagreement (positive, zero or absent)
-is a structured representation conflict and fails certification. Neither
+source-compatible images. Only a unique image/provenance class can supply a
+public shift; compare that attributed native occurrence independently with
+the full E and S ideals when diagnostics are requested. Native shift
+attribution succeeds when its occurrence/provenance is trustworthy, its
+complete producer-compatible set is known, exactly one non-equivalent
+image/provenance class remains and the public shift is representable. A
+successful **exact-consistency audit** additionally requires its E **and** S
+contacts both to have exact affine dimension two, the exact projected native
+observation audit, complete global coverage and required reciprocity. E/S
+status disagreement (positive, zero or absent) is a structured representation
+conflict in that audit; it does not invalidate an already attributed shift.
+Neither
 native radius/gauge arithmetic nor public weights are redefined to make
 the other representation authoritative.
 
@@ -459,25 +467,25 @@ a common weight shift, but native binary64 topology need not be gauge
 invariant. Native radii and planes are producer evidence; they never redefine
 public mathematical weight semantics.
 
-## Classification and failure
+## Classification and public action
 
 For an attributed label, classify the exact E and S **full-cell** contacts
 independently. `zero` means a nonempty contact of affine dimension below
 two; `absent` includes a strictly redundant cut. Native appearance does
 not change either exact status.
 
-| Observed N / producer / E / S | Certified outcome |
+| Observed N / producer / E / S | Native shift / exact-consistency audit |
 |---|---|
-| Unique compatible native occurrence, E positive, S positive | Locally `positive` only after projected-cycle audit; global success additionally requires complete facet/cell and reciprocal coverage. |
-| Unique occurrence, E zero, S zero | `zero`; fail the requested certified call, even if native polygon area is positive. |
-| Unique occurrence, S absent (whether E is absent or positive) | Semantic inconsistency if E also absent; representation conflict if E differs; fail, regardless of native appearance. |
-| Unique occurrence, E/S status disagreement among positive/zero/absent | Structured representation conflict; fail, without redefining public weights or native radii. |
+| Unique compatible native occurrence, E positive, S positive | Return its shift; exact consistency passes locally only after projected-cycle audit and globally after required facet/cell and reciprocal coverage. |
+| Unique occurrence, E zero, S zero | Return its shift; report `zero` as an exact-consistency finding even if native polygon area is positive. |
+| Unique occurrence, S absent (whether E is absent or positive) | Return its shift; report absent/redundant contact or representation conflict as appropriate, regardless of native appearance. |
+| Unique occurrence, E/S status disagreement among positive/zero/absent | Return its shift; report structured representation conflict without redefining public weights or native radii. |
 | No native occurrence, S zero | No missing positive semantic facet solely from this contact. |
-| No native occurrence, S positive | Missing required positive native facet/cell coverage; fail. |
-| Multiple non-equivalent producer-compatible image/provenance classes | `unresolved`; do not choose the sole ideal-positive one. |
-| Coincident support with different semantic provenance | Retain distinct classes and occurrences; unresolved until source evidence disambiguates; never merge by plane equality alone. |
+| No native occurrence, S positive | Report missing required positive native facet/cell coverage; retain other uniquely attributed shifts. |
+| Multiple non-equivalent producer-compatible image/provenance classes | Hard attribution failure; do not choose the sole ideal-positive one. |
+| Coincident support with different semantic provenance | Retain distinct classes and occurrences; if a requested face's class remains unresolved, fail attribution; never merge by plane equality alone. |
 | Exactified native original cycle of affine rank three | Run projected native-support audit; rank three alone is not an error. |
-| Hidden/lower-dimensional owner | Its native provenance can be real; missing required volumetric reverse coverage fails certification, not ownership repair. |
+| Hidden/lower-dimensional owner | Its native provenance can be real; missing required volumetric reverse coverage is an exact-consistency finding, not ownership repair. |
 
 Every positive facet of the reconstructed S and E cells must have compatible
 native occurrence coverage under its attributed source chart. Check incidence
@@ -514,21 +522,23 @@ coordinates. Preserve the original cyclic occurrence order.
 4. Require a simple ordered boundary of a convex 2D polygon with
    nonzero exact oriented area. Every nonzero successive turn has one
    orientation; after redundant-point removal there are no opposed or
-   collinear turns. Invalid cycles fail rather than being fixed by a
-   tolerance or reordering.
+   collinear turns. Invalid cycles fail the audit rather than being fixed by
+   a tolerance or reordering.
 
 This private audit can pass when the **original** exactified binary64
 vertices have affine rank three. Their projection corrects observational
 nonplanarity for the cycle test only; it never changes returned vertices.
-A projected cycle of dimension below two cannot support a positive complete
-certificate. Native vector area, epsilon thresholds and exact coplanarity
+A projected cycle of dimension below two cannot support a positive exact-
+consistency audit, but retains a uniquely source-attributed shift. Native
+vector area, epsilon thresholds and exact coplanarity
 of raw float vertices are not semantic measure tests. Exact semantic
 measure is obtained solely from the corresponding E/S full ideal contacts.
 
 ### Structured reasons and resources
 
-Use the repository's `TessellationIssue.code` uppercase-underscore style,
-with `severity='error'` in the requested certified-call failure diagnostic.
+Use the repository's `TessellationIssue.code` uppercase-underscore style.
+Exact-consistency failures may have `severity='error'`, making the completed
+diagnostic not okay without unconditionally raising from `compute()`.
 The following codes and mappings are the WP5 target contract; context
 (`source_id`, occurrence token, route, candidate labels as applicable)
 belongs in the issue examples/message without substituting a bare exception:
@@ -547,7 +557,7 @@ belongs in the issue examples/message without substituting a bare exception:
 | `WP5_POSITIVE_FACET_MISSING` | Exact positive S/E ideal facet lacks native coverage. |
 | `WP5_OWNER_COVERAGE_MISSING` | Required returned volumetric owner/cell coverage is absent. |
 | `WP5_RECIPROCAL_MISSING` | Required compatible reverse positive native/semantic coverage is missing. |
-| `WP5_RESOURCE_LIMIT` | Known complete candidate or exact/polytope region cannot be fully processed within a guard. |
+| `WP5_RESOURCE_LIMIT` | Producer attribution or exact semantic audit cannot complete within a guard; identify the stage in the issue context. |
 | `WP5_SHIFT_REPRESENTATION` | Mathematically established public shift is outside public signed-int64 representation. |
 | `WP5_UNSUPPORTED_FP_PROFILE` | Compiler/rounding/source profile is not qualified for the proof. |
 | `WP5_NONFINITE_OUTPUT_VIEW` | Requested public coordinate/descriptor materialization is nonfinite. |
@@ -560,8 +570,10 @@ codes. Different owners/coefficients on one support use
 is the image of one occurrence. Missing reverse volumetric coverage uses
 `WP5_RECIPROCAL_MISSING`, even when hidden owner provenance is genuine.
 No producer-compatible image uses `WP5_IMAGE_INCONSISTENT`; a compatible
-image with S/E both absent uses `WP5_IDEAL_ABSENT`. Resource and
-representation failures are separate from inconsistency.
+image with S/E both absent uses `WP5_IDEAL_ABSENT`. When only one of E and S
+is zero or absent, use `WP5_REPRESENTATION_CONFLICT` with both statuses in the
+issue context. Resource and representation failures are separate from
+inconsistency.
 
 Every complete producer route's integer family is finite before limits.
 Preflight the **whole** mathematical region, not its searched prefix. The
@@ -573,12 +585,16 @@ Public integer overflow is representation failure; no smaller representable
 coefficient may be substituted. Legacy finite search knobs never enter
 these bounds.
 
-When shifts are requested, **any fatal certificate outcome fails the call
-atomically**; no zero/absent face is dropped, no reverse face fabricated,
-no shift repaired, and no partly certified metadata returned. An ordinary
-non-certified call can remain available if its ordinary validation succeeds.
-A certification mismatch alone does not declare the native producer's
-entire geometry invalid.
+Distinguish resources by stage. If the complete producer-compatible set cannot
+be processed before a requested shift is uniquely established, the requested
+shift output fails atomically: a searched prefix never establishes uniqueness.
+If all requested shifts are known but independent E/S ideal enumeration or
+exact geometry exceeds its budget, retain the shifts and report an incomplete
+semantic audit with `WP5_RESOURCE_LIMIT` when diagnostics were requested. With
+no diagnostic request the independent audit may be skipped. No zero/absent
+native face is silently dropped, no reverse face fabricated, no shift repaired,
+and no incomplete attribution presented as a known shift. An exact mismatch
+alone does not declare the native producer's entire geometry invalid.
 
 ## Exact source-centered chart and frame bridge
 
@@ -624,14 +640,16 @@ have the same owner and nonzero public shift.
 ## Public output, diagnostics and consumers
 
 When `return_face_shifts=False`, every existing ordinary combination of
-`return_faces`, `return_vertices`, and `return_adjacency` remains
-ordinary noncertified behavior. When `return_face_shifts=True`, validate
+`return_faces`, `return_vertices`, and `return_adjacency` retains its
+ordinary geometry/output behavior; a requested diagnostic still invokes
+the relevant independent WP5 consistency audit for periodic 3D faces.
+When `return_face_shifts=True`, validate
 `return_faces=True` and a periodic domain **before native work**; both
 Boolean values of `return_vertices` and `return_adjacency` are
 supported. In particular, the ordered option tuple
 `(return_face_shifts, return_faces, return_vertices, return_adjacency)
 = (True, True, False, False)` must succeed when certification succeeds.
-Temporary native observation/exact proof geometry is private and never
+Temporary native observation/proof geometry is private and never
 causes an unrequested public array or capability. Do not perform an
 unrequested public-coordinate conversion merely to support an internal
 proof if that conversion would add an avoidable representation failure.
@@ -642,19 +660,51 @@ user-basis integer tuple`. A self-image may have the same source and owner
 but must have nonzero shift. A wall retains its wall `adjacent_cell` and
 omits the optional `adjacent_shift` key; a zero tuple is not a wall image.
 Native face vertices and request-dependent indexing keep their ordinary
-public meaning. `has_periodic_shifts` means complete **requested**
-certification succeeded, never partial processing or private temporary
-geometry; other capability flags reflect requested public fields.
+public meaning. `has_periodic_shifts` means all **requested** periodic shifts
+on returned native generator faces were completely and uniquely source-
+attributed and materialized, including the available-but-empty case. It
+does not assert exact E/S positivity or full-tessellation consistency;
+other capability flags reflect requested public fields. A result can have
+`has_periodic_shifts == True` and `tessellation_diagnostics.ok == False`.
+No new per-face certification-state field or separate capability flag is
+required; requested diagnostics may identify problematic occurrences in
+issues and existing analyzer-owned annotations.
 
-A requested certified call with a fatal certificate issue raises the
-existing spatial `TessellationError` mechanism with structured
-`TessellationDiagnostics.issues` and an error-severity WP5 code above,
-regardless of an optional ordinary `tessellation_check` setting. It
-returns no partially certified result. Ordinary noncertified calls and
-their numerical validity remain separate. The implementation must preserve
-ordinary diagnostics (volume closure, hidden cells, severity policy) and
-identify certificate failures without treating an ideal/native mismatch
-as proof that native geometry was globally invalid.
+The independent exact E/S/native consistency audit runs when
+`return_diagnostics=True` or `tessellation_check != 'none'`, using the
+existing `compute()` diagnostic lifecycle. With
+`return_face_shifts=True, return_diagnostics=False, tessellation_check='none'`,
+complete source-faithful shift attribution remains mandatory but the full
+independent semantic audit may be skipped; running it must not change the
+selected shifts. Exact zero/absent contacts, E/S status conflict, missing
+positive ideal/native or required reciprocal coverage, projected-cycle
+collapse/invalidity, and native/ideal topology mismatch are structured
+findings in `TessellationDiagnostics`, not automatic shift-attribution
+failures. Error-severity findings make `diagnostics.ok == False` under
+ADR 0016's rule. Preserve ordinary diagnostic findings (volume closure,
+hidden cells and severity policy), and honor the established
+`tessellation_require_reciprocity` requirement for reciprocal coverage.
+
+The existing `tessellation_check` value controls the action on the completed
+diagnostic: `'none'` takes no diagnostic action (though
+`return_diagnostics=True` still computes/returns diagnostics); `'diagnose'`
+computes/attaches diagnostics without warning or exception; `'warn'` emits
+the existing summary warning if `diagnostics.ok` is false; and `'raise'`
+raises the existing `TessellationError` in that case. Structured output
+attaches the diagnostic; raw `output='cells'` returns `(cells, diagnostics)`
+only when `return_diagnostics=True`. No WP5-specific public strictness knob
+is introduced.
+
+If trustworthy occurrence/provenance or supported FP/source profile is
+missing, source/insertion replay disagrees with witnessed storage, the
+completed producer-compatible set is empty or has multiple non-equivalent
+classes, attribution exhausts its resources before completion, or the
+public shift cannot be represented, the requested shifts cannot be
+truthfully produced. Such attribution failures remain hard failures
+independent of `tessellation_check` and return no partly attributed result.
+They use the existing spatial `TessellationError` mechanism with a
+structured WP5 reason. A malformed *projected geometric cycle* alone is an
+audit finding when occurrence attribution remains trustworthy.
 
 The opt-in `annotate_face_properties` implementation currently uses
 triangulated native float vertices: triangle magnitudes contribute to its
@@ -670,21 +720,26 @@ explicitly requested nonfinite public view fails with
 materialize that view.
 
 Separate raw native occurrence reciprocity, ideal semantic reciprocity and
-coverage of the complete successful certificate. The semantic pairing is
+complete-tessellation consistency. The semantic pairing is
 `(i,j,s) <-> (j,i,-s)`, including distinct self pairs. Every exact
-positive generator boundary in a complete certified result needs compatible
-certified-positive native/semantic reverse coverage. A missing returned
-volumetric reverse occurrence is a structural certification failure; a hidden
-or lower-dimensional owner can still be genuine provenance of a native cut.
+positive generator boundary needs compatible positive native/semantic reverse
+coverage for a successful required audit. A missing returned volumetric
+reverse occurrence is an error-severity consistency finding when reciprocity
+is required, while any uniquely source-attributed native face retains its
+shift. A hidden or lower-dimensional owner can still be genuine provenance
+of a native cut.
 Do not fabricate reverse faces, redirect ownership, repair shifts or suppress
 faces by epsilon. Real walls are exempt.
 
-Periodic 3D inverse/separator realization consumes adjacency/image identity
-only after a **successful complete WP5 certificate**. Its scientific
+Periodic 3D inverse/separator realization requires an explicitly completed,
+successful exact E/S consistency audit before treating native topology as
+scientifically realized geometry. It may inspect diagnostics or request an
+equivalent internal strict check; default forward `compute()` is not made
+strict by this consumer. Its scientific
 boundary positivity and `boundary_measure` are determined from the exact
 S ideal, with a documented finite numerical view when the existing report
 field requires a float; the native triangulated face `area` is not that
-measure. A certification failure is a structured realization failure, not
+measure. An audit failure is a structured realization failure, not
 an empty realized adjacency, a successful fit, or convergence. Preserve the
 existing atomic active-state behavior and unrelated nonperiodic inverse
 behavior. The current realization implementation reads native face area;
