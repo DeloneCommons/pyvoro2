@@ -844,9 +844,13 @@ Exact inverse-column extrema give complete coefficient intervals; every
 admitted candidate is filtered in Cartesian space. Zero, one, or several
 compatible translations produce structured inconsistency, a Python-integer
 user shift, or structured ambiguity. Candidate and semantic bit limits are
-separate native-recovery resources. No producer tolerance is supplied: later
-WP5–WP8 callers must justify their own envelope and choose their reference
-anchor. The kernel currently has no boundary/metadata call sites.
+separate native-recovery resources. The WP4 primitive accepts an explicitly
+justified exact compatibility box, not a producer tolerance. WP5's separate
+source-complete producer predicate is fixed by
+[ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md),
+not a generic numerical envelope; WP6–WP8 must justify their own complete
+producer predicates/regions and reference anchors. The kernel currently has no
+boundary/metadata call sites.
 
 The [private native face witness](native-face-witness.md) supplies the WP5 G0
 observation prerequisite through separate internal `_core` entry points.

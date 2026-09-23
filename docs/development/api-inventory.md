@@ -158,8 +158,10 @@ boundary_image = generator_site + shift @ A
 boundary_image = ghost_site + shift @ A      # ghost_self, shift != 0
 ```
 
-An approximate native Cartesian image produces a public integer shift only
-when exactly one shift is compatible within the declared native envelope.
+Generic approximate-native translation consumers require a uniquely compatible
+shift within an explicitly justified certified compatibility region. Ordinary
+persistent 3D WP5 faces use [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)'s
+complete source-compatible producer attribution and independent E/S exact ideals.
 Ambiguous/inconsistent recovery is structured failure, never nearest-residual
 selection. Exact periodic ties use ADR 0012's amended physical Cartesian
 displacement order.
@@ -461,7 +463,7 @@ separate algorithm and accepts the same v0.9 mixed-space model terms.
 | `ghost_radius` | Removed | Use `ghost_radii` with `radii`, or `ghost_weights` with `weights`. |
 | Face/edge finite reconstruction search keywords listed above | Removed | No replacement correctness knob; certified reconstruction is authoritative. |
 | Face/edge validation/repair reconstruction keywords listed above | Removed | No mutation-based public repair path. |
-| Face/edge reconstruction matching tolerance keywords listed above | Removed | Private certification envelopes/resource policy replace user correctness tuning. |
+| Face/edge reconstruction matching tolerance keywords listed above | Removed | Producer-specific complete certification and private resource policy replace user correctness tuning; WP5 follows ADR 0021, without a public finite/tolerance correctness knob. |
 | Coefficient-lexicographic exact-tie selection | Replaced — implemented by WP4 | Exact physical Cartesian displacement order from amended ADR 0012. |
 | Right-handed-only `PeriodicCell` validity | Replaced semantic rule | Any finite exact non-degenerate basis is mathematically valid; later backend/resource failure is separate. |
 | Experimental-only ordinary realization-aware entry route | Preferred supported facade added | Use `pyvoro2.inverse.fit_self_consistent_weights_from_separators`; advanced controls remain available only in the advanced namespace. |
