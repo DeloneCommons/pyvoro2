@@ -118,7 +118,7 @@ def test_post_loop_final_refit_state_matrix_is_atomic(
         return _realization([True])
 
     monkeypatch.setattr(active_mod, 'fit_weights_from_separators', fake_fit)
-    monkeypatch.setattr(active_mod, 'match_realized_pairs', fake_realize)
+    monkeypatch.setattr(active_mod, '_match_realized_pairs', fake_realize)
 
     result = active_mod.solve_self_consistent_power_weights(
         points,
@@ -233,7 +233,7 @@ def test_failed_final_refit_preserves_prior_outer_stop(
         return _realization(outer_realizations[index])
 
     monkeypatch.setattr(active_mod, 'fit_weights_from_separators', fake_fit)
-    monkeypatch.setattr(active_mod, 'match_realized_pairs', fake_realize)
+    monkeypatch.setattr(active_mod, '_match_realized_pairs', fake_realize)
     options = (
         ActiveSetOptions(add_after=1, drop_after=1, cycle_window=4, max_iter=8)
         if outer_case == 'cycle'
@@ -291,7 +291,7 @@ def test_first_inner_failure_has_explicitly_unavailable_final_layers(
         raise AssertionError('no realization is valid without final weights')
 
     monkeypatch.setattr(active_mod, 'fit_weights_from_separators', fake_fit)
-    monkeypatch.setattr(active_mod, 'match_realized_pairs', unexpected_realize)
+    monkeypatch.setattr(active_mod, '_match_realized_pairs', unexpected_realize)
 
     result = active_mod.solve_self_consistent_power_weights(
         points,
@@ -477,7 +477,7 @@ def test_extreme_finite_max_iter_state_has_scale_safe_residual_summaries(
         return _realization([True])
 
     monkeypatch.setattr(active_mod, 'fit_weights_from_separators', fake_fit)
-    monkeypatch.setattr(active_mod, 'match_realized_pairs', fake_realize)
+    monkeypatch.setattr(active_mod, '_match_realized_pairs', fake_realize)
 
     result = active_mod.solve_self_consistent_power_weights(
         points,
@@ -550,7 +550,7 @@ def test_unavailable_final_refit_preserves_scale_safe_extreme_history(
         return _realization([False])
 
     monkeypatch.setattr(active_mod, 'fit_weights_from_separators', fake_fit)
-    monkeypatch.setattr(active_mod, 'match_realized_pairs', fake_realize)
+    monkeypatch.setattr(active_mod, '_match_realized_pairs', fake_realize)
 
     result = active_mod.solve_self_consistent_power_weights(
         points,
@@ -610,7 +610,7 @@ def test_extreme_finite_weight_step_norm_is_scale_safe(monkeypatch):
         return _realization([False])
 
     monkeypatch.setattr(active_mod, 'fit_weights_from_separators', fake_fit)
-    monkeypatch.setattr(active_mod, 'match_realized_pairs', fake_realize)
+    monkeypatch.setattr(active_mod, '_match_realized_pairs', fake_realize)
 
     result = active_mod.solve_self_consistent_power_weights(
         points,

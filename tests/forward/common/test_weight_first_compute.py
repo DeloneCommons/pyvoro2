@@ -241,7 +241,7 @@ def _boundary_signature(
         cell_id = int(cell['id'])
         for boundary in cell.get(boundary_key, ()):
             shift = None
-            if shift_size is not None:
+            if shift_size is not None and boundary['adjacent_cell'] >= 0:
                 shift = tuple(int(value) for value in boundary['adjacent_shift'])
                 assert len(shift) == shift_size
             signature[(cell_id, int(boundary['adjacent_cell']), shift)] += 1
@@ -278,7 +278,7 @@ def _boundary_geometry_signature(
         )
         for boundary in cell.get(case.boundary_key, ()):
             shift = None
-            if case.shift_size is not None:
+            if case.shift_size is not None and boundary['adjacent_cell'] >= 0:
                 shift = tuple(
                     int(value) for value in boundary['adjacent_shift']
                 )

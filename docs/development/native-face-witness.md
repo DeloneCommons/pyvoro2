@@ -5,9 +5,10 @@ This is the observation prerequisite for WP5 G0 under
 [#47](https://github.com/DeloneCommons/pyvoro2/issues/47). The subsequent
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
 closes G0-N/G0-C/G0-O using this witness; the witness alone did not close those
-gates and does not implement certified face-image reconstruction. The public forward
-routes, output options, face shifts, normalization, and diagnostics do not
-consume this witness.
+gates. The [WP5 implementation](wp5-implementation.md) now consumes this witness
+for requested periodic 3D face shifts and independent exact-consistency
+diagnostics. The packet remains private; it does not expose unrequested public
+vertices, adjacency, or shift capabilities.
 
 ## Entry points and evidence
 
@@ -22,10 +23,10 @@ Its structure is private and may change at the next G0 review:
 
 | Field | Evidence |
 |---|---|
-| `context` | Native domain, periodicity, mode, construction controls, and actual triclinic seed tolerances |
-| `sites` | Every persistent dense ID, indexed by ID, with its actual stored native site and radius; standard mode has `radius=None` |
+| `context` | Native domain, periodicity, mode, construction controls, actual block widths/reciprocals, mask/image-grid bounds, and triclinic seed tolerances |
+| `sites` | Every persistent dense ID, indexed by ID, with actual stored native site/radius, primary block/index/slot; standard mode has `radius=None` |
 | `cells` | A computation record for every stored generator, including failed/empty computations |
-| `build` | Compiler and arithmetic qualification metadata |
+| `build` | Compiler, signed-native-int profile and arithmetic qualification metadata, with relevant source fingerprints |
 | Cell `origins` | Ordered origin occurrences with packet-local token, semantic owner, actual binary64 plane, and legacy label |
 | Cell `vertices_doubled` | Final `pts[4*v:4*v+3]`, indexed by the final native vertex identity |
 | Cell `vertex_orders`, `adjacency` | Native vertex degrees and ordered edge connections |

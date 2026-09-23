@@ -569,7 +569,10 @@ def test_wall_shift_metadata_is_not_required(dim: int) -> None:
         for boundary in (cell.get(case.boundary) or [])
         if int(boundary.get('adjacent_cell', -1)) < 0
     )
-    wall.pop('adjacent_shift')
+    if dim == 3:
+        assert 'adjacent_shift' not in wall
+    else:
+        wall.pop('adjacent_shift')
 
     diag = case.api.analyze_tessellation(cells, domain)
 

@@ -52,7 +52,9 @@ endif()
 include(cmake/NativeFP.cmake)
 pyvoro2_native_fp(_core)
 set(_PYVORO2_WITNESS_SOURCE_HASHES "")
-foreach(_source unitcell.cc cell.hh cell.cc v_compute.hh v_compute.cc rad_option.hh)
+foreach(_source unitcell.hh unitcell.cc cell.hh cell.cc v_compute.hh v_compute.cc
+                rad_option.hh container.hh container.cc container_prd.hh
+                container_prd.cc v_base.hh v_base.cc c_loops.hh)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${VORO_SRC_DIR}/${_source}")
   file(SHA256 "${VORO_SRC_DIR}/${_source}" _source_hash)

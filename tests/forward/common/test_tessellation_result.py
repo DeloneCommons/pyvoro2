@@ -408,6 +408,7 @@ def test_forward_result_matrix_covers_domains_modes_and_diagnostics(
             'adjacent_shift' in boundary
             for collection in boundaries
             for boundary in collection
+            if boundary['adjacent_cell'] >= 0
         )
 
     assert result.has_normalized_vertices is False

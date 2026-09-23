@@ -1,0 +1,60 @@
+{
+  "provenance": {
+    "archive": "pyvoro2-WP5-G0N-characterization-e2e520e(1).zip",
+    "sha256": "a33cf0450b2aa80594728f511edeb55ec1eb33994b9fdd54ca8de791545b1c72",
+    "source_commit": "e2e520e84619ce4300137a9b953cb9e6bddab785",
+    "references": ["fixtures.json", "exact-reference.json", "SUMMARY.md", "scripts/characterize.py"],
+    "scope": "Source input bits and independent ideal contacts are portable expectations. The historical cycle is a standalone observation-audit input, not an assertion about live native topology.",
+    "normalization": "Archive absent/redundant is represented as absent, with dimension -1 and empty-contact area squared 0."
+  },
+  "bounds": [[0, 4], [0, 4], [0, 2]],
+  "lattice": [[4, 0, 0], [0, 4, 0], [0, 0, 2]],
+  "blocks": [1, 1, 1],
+  "first_three_sites": [[1, 1, 1], [2.5, 1, 1], [1, 2.5, 1]],
+  "contact": {"source": 0, "owner": 3, "shift": [0, 0, 0]},
+  "ideal_derivation": "In ordinary source-local coordinates the first two cuts give X,Y <= 3/4 and -1 <= Z <= 1. Equal exact radius squares cancel. The fourth cut is X+Y <= 3/2+delta: delta=0 leaves a line; delta<0 leaves an extruded segment with area squared 8*delta^2; delta>0 is strictly redundant. The same-z image dominates all other z images between the self slabs, so z periodicity preserves these contacts.",
+  "cases": [
+    {"id": "std_zero", "delta_hex": "0x0.0p+0", "p3_xy_hex": "0x1.4000000000000p+1", "radius_hex": null, "periodic_z": false, "status": "zero", "dimension": 1, "area_squared": "0"},
+    {"id": "p1_zero", "delta_hex": "0x0.0p+0", "p3_xy_hex": "0x1.4000000000000p+1", "radius_hex": "0x1.0000000000000p+0", "periodic_z": false, "status": "zero", "dimension": 1, "area_squared": "0"},
+    {"id": "p2pow27_zero", "delta_hex": "0x0.0p+0", "p3_xy_hex": "0x1.4000000000000p+1", "radius_hex": "0x1.0000000000000p+27", "periodic_z": false, "status": "zero", "dimension": 1, "area_squared": "0"},
+    {"id": "p2pow27plus1_zero", "delta_hex": "0x0.0p+0", "p3_xy_hex": "0x1.4000000000000p+1", "radius_hex": "0x1.0000002000000p+27", "periodic_z": false, "status": "zero", "dimension": 1, "area_squared": "0"},
+    {"id": "p2pow27plus2_zero", "delta_hex": "0x0.0p+0", "p3_xy_hex": "0x1.4000000000000p+1", "radius_hex": "0x1.0000004000000p+27", "periodic_z": false, "status": "zero", "dimension": 1, "area_squared": "0"},
+    {"id": "p2pow27plus1_minus20", "delta_hex": "-0x1.0000000000000p-20", "p3_xy_hex": "0x1.3ffff80000000p+1", "radius_hex": "0x1.0000002000000p+27", "periodic_z": false, "status": "positive", "dimension": 2, "area_squared": "1/137438953472"},
+    {"id": "p2pow27plus1_minus26", "delta_hex": "-0x1.0000000000000p-26", "p3_xy_hex": "0x1.3fffffe000000p+1", "radius_hex": "0x1.0000002000000p+27", "periodic_z": false, "status": "positive", "dimension": 2, "area_squared": "1/562949953421312"},
+    {"id": "p2pow27plus1_plus26", "delta_hex": "0x1.0000000000000p-26", "p3_xy_hex": "0x1.4000002000000p+1", "radius_hex": "0x1.0000002000000p+27", "periodic_z": false, "status": "absent", "dimension": -1, "area_squared": "0"},
+    {"id": "p2pow27plus1_plus20", "delta_hex": "0x1.0000000000000p-20", "p3_xy_hex": "0x1.4000080000000p+1", "radius_hex": "0x1.0000002000000p+27", "periodic_z": false, "status": "absent", "dimension": -1, "area_squared": "0"},
+    {"id": "std_minus20", "delta_hex": "-0x1.0000000000000p-20", "p3_xy_hex": "0x1.3ffff80000000p+1", "radius_hex": null, "periodic_z": false, "status": "positive", "dimension": 2, "area_squared": "1/137438953472"},
+    {"id": "std_plus20", "delta_hex": "0x1.0000000000000p-20", "p3_xy_hex": "0x1.4000080000000p+1", "radius_hex": null, "periodic_z": false, "status": "absent", "dimension": -1, "area_squared": "0"},
+    {"id": "p1_minus20", "delta_hex": "-0x1.0000000000000p-20", "p3_xy_hex": "0x1.3ffff80000000p+1", "radius_hex": "0x1.0000000000000p+0", "periodic_z": false, "status": "positive", "dimension": 2, "area_squared": "1/137438953472"},
+    {"id": "p1_plus20", "delta_hex": "0x1.0000000000000p-20", "p3_xy_hex": "0x1.4000080000000p+1", "radius_hex": "0x1.0000000000000p+0", "periodic_z": false, "status": "absent", "dimension": -1, "area_squared": "0"},
+    {"id": "periodic_z_std_zero", "delta_hex": "0x0.0p+0", "p3_xy_hex": "0x1.4000000000000p+1", "radius_hex": null, "periodic_z": true, "status": "zero", "dimension": 1, "area_squared": "0"},
+    {"id": "periodic_z_p2pow27plus1_zero", "delta_hex": "0x0.0p+0", "p3_xy_hex": "0x1.4000000000000p+1", "radius_hex": "0x1.0000002000000p+27", "periodic_z": true, "status": "zero", "dimension": 1, "area_squared": "0"}
+  ],
+  "historical_projected_cycle": {
+    "source": "native-summary.json:periodic_z_p2pow27plus1_zero, primary owner-3 occurrence",
+    "normal_hex": ["0x1.8000000000000p+0", "0x1.8000000000000p+0", "0x0.0p+0"],
+    "offset_hex": "0x1.0000000000000p+2",
+    "vertices_doubled_hex": [
+      ["0x1.5555555555554p+1", "0x1.0000000000000p-51", "-0x1.2000000000002p+0"],
+      ["0x1.5555555555554p+1", "0x1.0000000000000p-51", "0x1.2000000000002p+0"],
+      ["0x1.7ffffffffffffp+0", "0x1.2aaaaaaaaaaaap+0", "0x1.0000000000000p+1"],
+      ["0x1.2aaaaaaaaaaa9p+0", "0x1.8000000000000p+0", "0x1.0000000000000p+1"],
+      ["0x1.0000000000000p-51", "0x1.5555555555554p+1", "0x1.2000000000002p+0"],
+      ["0x1.0000000000000p-51", "0x1.5555555555554p+1", "-0x1.2000000000002p+0"],
+      ["0x1.2aaaaaaaaaaa9p+0", "0x1.8000000000000p+0", "-0x1.0000000000000p+1"],
+      ["0x1.7ffffffffffffp+0", "0x1.2aaaaaaaaaaaap+0", "-0x1.0000000000000p+1"]
+    ],
+    "first_four_affine_determinant": "-1901475900342345697269922835115/11417981541647679048466287755595961091061972992",
+    "projection_derivation": "The observed support is x+y=8/3. Exact orthogonal projection is ((x-y)/2+4/3,(y-x)/2+4/3,z); its ordered projected cycle is convex and has no redundant points.",
+    "projected_vertices": [
+      ["36028797018963961/13510798882111488", "7/13510798882111488", "-2533274790395905/2251799813685248"],
+      ["36028797018963961/13510798882111488", "7/13510798882111488", "2533274790395905/2251799813685248"],
+      ["40532396646334463/27021597764222976", "31525197391593473/27021597764222976", "2"],
+      ["31525197391593467/27021597764222976", "40532396646334469/27021597764222976", "2"],
+      ["7/13510798882111488", "36028797018963961/13510798882111488", "2533274790395905/2251799813685248"],
+      ["7/13510798882111488", "36028797018963961/13510798882111488", "-2533274790395905/2251799813685248"],
+      ["31525197391593467/27021597764222976", "40532396646334469/27021597764222976", "-2"],
+      ["40532396646334463/27021597764222976", "31525197391593473/27021597764222976", "-2"]
+    ]
+  }
+}

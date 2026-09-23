@@ -1,9 +1,10 @@
 # 0021 — WP5 native occurrence and exact periodic face certification
 
-- **Status:** Accepted for WP5 implementation; not implemented
+- **Status:** Accepted; implemented on the WP5 branch; independent acceptance pending
 - **Date:** 2026-09-23
 - **Public-action amendment:** 2026-09-23 — native shift availability and
   exact E/S consistency have separate outcomes; G0-N/C/O remain closed.
+- **Implementation:** [components, verification and refusal policy](../wp5-implementation.md)
 - **Related issues:** [#68 — WP5](https://github.com/DeloneCommons/pyvoro2/issues/68),
   [#47 — v0.9 implementation](https://github.com/DeloneCommons/pyvoro2/issues/47)
 - **Prerequisite:** [PR #69 — private native face witness](https://github.com/DeloneCommons/pyvoro2/pull/69)

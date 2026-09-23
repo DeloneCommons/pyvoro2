@@ -4,6 +4,7 @@
 #include <pybind11/stl.h>
 
 #include <cfloat>
+#include <climits>
 #include <memory>
 #include <type_traits>
 
@@ -100,7 +101,52 @@ py::dict build_metadata() {
   build["tolerance"] = voro::tolerance;
   build["big_tolerance_factor"] = voro::big_tolerance_fac;
   build["max_unit_voro_shells"] = voro::max_unit_voro_shells;
+  build["int_bits"] = sizeof(int) * CHAR_BIT;
+  build["int_min"] = std::numeric_limits<int>::min();
+  build["int_max"] = std::numeric_limits<int>::max();
   return build;
+}
+
+template <class Ordinary, class Observer>
+void add_grid_context(const Ordinary& ordinary, const Observer& observer,
+                      py::dict& context) {
+  const std::array<double, 3> widths{
+      ordinary.boxx, ordinary.boxy, ordinary.boxz};
+  const std::array<double, 3> reciprocals{
+      ordinary.xsp, ordinary.ysp, ordinary.zsp};
+  const std::array<double, 3> other_widths{
+      observer.boxx, observer.boxy, observer.boxz};
+  const std::array<double, 3> other_reciprocals{
+      observer.xsp, observer.ysp, observer.zsp};
+  for (int axis = 0; axis < 3; ++axis)
+    if (!same_bits(widths[axis], other_widths[axis]) ||
+        !same_bits(reciprocals[axis], other_reciprocals[axis]))
+      throw std::runtime_error("native witness noninterference: block operands");
+  context["block_widths"] = widths;
+  context["block_reciprocals"] = reciprocals;
+  if constexpr (std::is_base_of_v<voro::container_periodic_base, Ordinary>) {
+    if (ordinary.ey != observer.ey || ordinary.ez != observer.ez ||
+        ordinary.wy != observer.wy || ordinary.wz != observer.wz ||
+        ordinary.oy != observer.oy || ordinary.oz != observer.oz ||
+        ordinary.oxyz != observer.oxyz)
+      throw std::runtime_error("native witness noninterference: image grid");
+    py::dict grid;
+    grid["ey"] = ordinary.ey;
+    grid["ez"] = ordinary.ez;
+    grid["wy"] = ordinary.wy;
+    grid["wz"] = ordinary.wz;
+    grid["oy"] = ordinary.oy;
+    grid["oz"] = ordinary.oz;
+    grid["oxyz"] = ordinary.oxyz;
+    context["image_grid"] = grid;
+    context["mask_shape"] = std::array<int, 3>{
+        2*ordinary.nx+1, 2*ordinary.ey+1, 2*ordinary.ez+1};
+  } else {
+    context["mask_shape"] = std::array<int, 3>{
+        ordinary.xperiodic ? 2*ordinary.nx+1 : ordinary.nx,
+        ordinary.yperiodic ? 2*ordinary.ny+1 : ordinary.ny,
+        ordinary.zperiodic ? 2*ordinary.nz+1 : ordinary.nz};
+  }
 }
 
 py::dict origin_dict(const Origin& origin) {
@@ -232,6 +278,12 @@ py::dict collect(Ordinary& ordinary, Observer& observer,
     if (owner != observed_owner || !same_bits(x, ox) || !same_bits(y, oy) ||
         !same_bits(z, oz) || !same_bits(r, other_radius))
       throw std::runtime_error("native witness noninterference: particle storage");
+    if (original_loop.i != observer_loop.i ||
+        original_loop.j != observer_loop.j ||
+        original_loop.k != observer_loop.k ||
+        original_loop.ijk != observer_loop.ijk ||
+        original_loop.q != observer_loop.q)
+      throw std::runtime_error("native witness noninterference: particle block");
     if (owner < 0 || static_cast<std::size_t>(owner) >= seen.size() || seen[owner])
       throw std::runtime_error("native witness invalid persistent site identity");
     seen[owner] = 1;
@@ -240,6 +292,10 @@ py::dict collect(Ordinary& ordinary, Observer& observer,
     stored["id"] = owner;
     stored["site"] = std::array<double, 3>{x,y,z};
     stored["radius"] = radius;
+    stored["block"] = std::array<int, 3>{
+        original_loop.i, original_loop.j, original_loop.k};
+    stored["block_index"] = original_loop.ijk;
+    stored["block_slot"] = original_loop.q;
     stored_sites[owner] = stored;
     if (seed) observed_cell.begin_periodic(owner, *seed);
     else observed_cell.begin_box(owner, periodic);
@@ -292,6 +348,7 @@ py::dict observe_box(const Doubles& points, const Integers& ids,
   context["periodic"] = periodic;
   context["init_mem"] = init_mem;
   context["power"] = radii != nullptr;
+  add_grid_context(*original, *observer, context);
   return collect<Ordinary, Observer, voro::c_loop_all>(
       *original, *observer, compute, points, ids, radii, periodic, nullptr, context);
 }
@@ -330,6 +387,7 @@ py::dict observe_periodic(const Doubles& points, const Integers& ids,
   seed_tolerances["tol_cu"] = original->unit_voro.tol_cu;
   seed_tolerances["big_tol"] = original->unit_voro.big_tol;
   context["seed_tolerances"] = seed_tolerances;
+  add_grid_context(*original, *observer, context);
   return collect<Ordinary, Observer, voro::c_loop_all_periodic>(
       *original, *observer, compute, points, ids, radii, {true,true,true},
       &seed.unit_voro, context);

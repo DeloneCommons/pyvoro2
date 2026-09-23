@@ -22,7 +22,8 @@ from .constraints import (
     SeparatorObservations,
 )
 from ..._internal.spatial.domain_geometry import geometry3d
-from ...api import compute as compute3d
+from ..._internal.spatial.wp5_common import WP5Failure
+from ... import api as spatial_api
 from ...diagnostics import TessellationDiagnostics as TessellationDiagnostics3D
 from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ...edge_properties import annotate_edge_properties
@@ -373,6 +374,48 @@ def match_realized_pairs(
     is checked against the set of realized cell boundaries in the power
     tessellation, including explicit periodic image shifts. Supply exactly one
     of mathematical ``weights`` (preferred) or backend-compatible ``radii``.
+
+    Periodic 3D boundaries require a complete successful WP5 semantic audit,
+    in addition to source-attributed periodic image labels. Their
+    ``boundary_measure`` is a finite numerical view of the exact semantic
+    facet area; optional returned cell face properties retain their native
+    numerical descriptor meaning. Certificate failures raise
+    :class:`~pyvoro2.TessellationError` regardless of ``tessellation_check``.
+    """
+
+    return _match_realized_pairs(
+        points,
+        domain=domain,
+        constraints=constraints,
+        weights=weights,
+        radii=radii,
+        return_boundary_measure=return_boundary_measure,
+        return_cells=return_cells,
+        return_tessellation_diagnostics=return_tessellation_diagnostics,
+        tessellation_check=tessellation_check,
+        unaccounted_pair_check=unaccounted_pair_check,
+    )
+
+
+def _match_realized_pairs(
+    points: np.ndarray,
+    *,
+    domain: DomainAny,
+    constraints: SeparatorObservations,
+    weights: np.ndarray | None = None,
+    radii: np.ndarray | None = None,
+    semantic_weights: np.ndarray | None = None,
+    return_boundary_measure: bool = False,
+    return_cells: bool = False,
+    return_tessellation_diagnostics: bool = False,
+    tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'diagnose',
+    unaccounted_pair_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'diagnose',
+) -> RealizedPairDiagnostics:
+    """Realize one state, retaining active mathematical weights beside radii.
+
+    ``semantic_weights`` is private provenance for the periodic 3D S ideal.
+    It neither selects backend radii nor changes their already chosen gauge.
+    Public callers retain the mutually exclusive ``weights``/``radii`` API.
     """
 
     tessellation_check = require_string_choice(
@@ -410,8 +453,9 @@ def match_realized_pairs(
     _require_realization_domain(constraints.dim, domain)
     _bind_full_source(constraints, pts, domain)
     dim = int(pts.shape[1])
+    certified_boundary_measures: dict[MeasureKey, float] | None = None
     if dim == 2:
-        cells, tessellation_diagnostics, periodic = _compute_planar_cells(
+        cells, tessellation_diagnostics, _ = _compute_planar_cells(
             pts,
             domain=domain,
             weights=weights,
@@ -426,12 +470,18 @@ def match_realized_pairs(
         measure_field = 'length'
         shift_dim = 2
     elif dim == 3:
-        cells, tessellation_diagnostics, periodic = _compute_3d_cells(
+        (
+            cells,
+            tessellation_diagnostics,
+            certified_boundary_measures,
+        ) = _compute_3d_cells(
             pts,
             domain=domain,
             weights=weights,
             radii=radii,
+            semantic_weights=semantic_weights,
             return_boundary_measure=return_boundary_measure_value,
+            return_cells=return_cells_value,
             return_tessellation_diagnostics=(
                 return_tessellation_diagnostics_value
             ),
@@ -451,6 +501,7 @@ def match_realized_pairs(
         shift_dim=shift_dim,
         return_boundary_measure=return_boundary_measure_value,
         measure_field=measure_field,
+        certified_boundary_measures=certified_boundary_measures,
     )
 
     m = constraints.n_constraints
@@ -538,10 +589,16 @@ def _compute_3d_cells(
     domain: DomainAny,
     weights: np.ndarray | None,
     radii: np.ndarray | None,
+    semantic_weights: np.ndarray | None,
     return_boundary_measure: bool,
+    return_cells: bool,
     return_tessellation_diagnostics: bool,
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'],
-) -> tuple[list[dict[str, Any]], TessellationDiagnostics3D | None, bool]:
+) -> tuple[
+    list[dict[str, Any]],
+    TessellationDiagnostics3D | None,
+    dict[MeasureKey, float] | None,
+]:
     if not isinstance(domain, (Box3D, OrthorhombicCell, PeriodicCell)):
         raise ValueError(
             '3D points require a 3D domain: Box, OrthorhombicCell, or '
@@ -549,13 +606,12 @@ def _compute_3d_cells(
         )
 
     periodic = geometry3d(domain).has_any_periodic_axis
-    compute_result = compute3d(
-        points,
+    compute_options = dict(
         domain=domain,
         mode='power',
         weights=weights,
         radii=radii,
-        return_vertices=True,
+        return_vertices=return_cells if periodic else True,
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=bool(periodic),
@@ -564,15 +620,52 @@ def _compute_3d_cells(
         output='cells',
         tessellation_check=tessellation_check,
     )
+    certified_boundary_measures = None
+    if periodic:
+        compute_result, certificate = spatial_api._compute_with_certificate(
+            points, semantic_weights=semantic_weights, **compute_options,
+        )
+        # Native shift attribution alone does not establish S positivity or
+        # full ideal coverage. Inverse realization always requires both,
+        # regardless of the caller's forward diagnostics policy.
+        assert certificate is not None
+        certificate.require_semantic_consistency()
+        if return_boundary_measure:
+            certified_boundary_measures = certificate.boundary_measures()
+    else:
+        compute_result = spatial_api.compute(points, **compute_options)
     if return_tessellation_diagnostics:
         cells, tessellation_diagnostics = compute_result
     else:
         cells = compute_result
         tessellation_diagnostics = None
 
-    if return_boundary_measure:
+    if return_boundary_measure and (return_cells or not periodic):
         annotate_face_properties(cells, domain)
-    return cells, tessellation_diagnostics, bool(periodic)
+        if periodic:
+            descriptor_fields = (
+                'area', 'centroid', 'normal', 'other_site', 'intersection',
+                'intersection_centroid_dist', 'intersection_edge_min_dist',
+            )
+            for cell in cells:
+                for face_index, face in enumerate(cell['faces']):
+                    for field in descriptor_fields:
+                        value = face.get(field)
+                        if value is not None and not np.all(np.isfinite(value)):
+                            spatial_api._raise_wp5_failure(
+                                WP5Failure(
+                                    'WP5_NONFINITE_OUTPUT_VIEW',
+                                    f'Requested native face {field} is nonfinite',
+                                    source_id=int(cell['id']),
+                                    face_index=face_index,
+                                    field=field,
+                                ),
+                                certificate.packet,
+                                domain,
+                                certificate.prepared,
+                                'power',
+                            )
+    return cells, tessellation_diagnostics, certified_boundary_measures
 
 
 def _compute_planar_cells(
@@ -727,6 +820,7 @@ def _collect_boundary_maps(
     shift_dim: int,
     return_boundary_measure: bool,
     measure_field: str,
+    certified_boundary_measures: dict[MeasureKey, float] | None = None,
 ) -> tuple[
     dict[int, bool],
     dict[tuple[int, int], set[ShiftTuple]],
@@ -741,7 +835,10 @@ def _collect_boundary_maps(
         ci = int(cell['id'])
         verts = np.asarray(cell.get('vertices', []), dtype=float)
         boundaries = cell.get(boundary_key, [])
-        empty_by_id[ci] = bool(verts.size == 0 or len(boundaries) == 0)
+        empty_by_id[ci] = bool(
+            len(boundaries) == 0
+            or ('vertices' in cell and verts.size == 0)
+        )
         for boundary in boundaries:
             cj = int(boundary.get('adjacent_cell', -1))
             if cj < 0:
@@ -749,8 +846,11 @@ def _collect_boundary_maps(
             shift = tuple(int(v) for v in boundary.get('adjacent_shift', zero_shift))
             shifts_by_pair.setdefault((ci, cj), set()).add(shift)
             if return_boundary_measure:
-                measure_by_pair_shift[(ci, cj, shift)] = float(
-                    boundary.get(measure_field, 0.0)
+                key = (ci, cj, shift)
+                measure_by_pair_shift[key] = (
+                    certified_boundary_measures[key]
+                    if certified_boundary_measures is not None
+                    else float(boundary.get(measure_field, 0.0))
                 )
 
     return empty_by_id, shifts_by_pair, measure_by_pair_shift
