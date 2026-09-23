@@ -151,8 +151,10 @@ Private reduced-basis coefficients are never public output.
 This section describes the generic WP4 native-translation consumer and the
 earlier cross-work-package target. For ordinary persistent **3D faces**, the
 closed WP5 contract is [ADR 0021](0021-wp5-native-occurrence-and-exact-face-certification.md):
-source-complete producer-compatible attribution followed independently by
-exact public semantic ideal reconstruction. An enclosing numerical box alone
+source-complete producer-compatible attribution of observed native support N,
+followed independently by native-effective exact ideal E and public-semantic
+exact ideal S reconstruction. Both E and S must be positive; disagreement
+fails certification. An enclosing numerical box alone
 is not the final WP5 candidate predicate or semantic positivity test. This
 clarification does not change WP4's existing explicit-box consumer or decide
 WP6/WP7 producer contracts.
@@ -176,9 +178,10 @@ WP5 source-compatible producer attribution is closed in ADR 0021; its
 implementation and the separate WP6–WP8 producer integrations remain work.
 
 For WP5 the actual binary64 normal/offset and source arithmetic identify
-producer-compatible images; the independent exact ideal uses public
-mathematical weights. The backend radii and their source-associated arithmetic
-do not become the public semantic weights. See ADR 0021 for the closed 3D
+producer-compatible images at N; exact E uses actual native radii, while
+independent exact S uses public mathematical weights. The backend radii and
+their source-associated arithmetic do not become the public semantic weights.
+See ADR 0021 for the closed 3D
 contract; producer contracts for other work packages remain separate.
 
 ### Ghost boundary identity is a tagged public record
@@ -213,7 +216,8 @@ contain an undefined temporary native ghost ID.
 
 The earlier proposed rule to delete certified-zero native faces from public
 output is **superseded for ordinary persistent 3D face certification by
-ADR 0021**. For that WP5 path, exact ideal affine dimension determines positive/zero,
+ADR 0021**. For that WP5 path, independent E/S exact ideal affine dimensions
+determine positive/zero/absent; their disagreement is a representation conflict,
 and zero, absent, unresolved or other certificate failure fails the entire
 certified call without deleting any native face. An ordinary non-certified
 result has its own numerical validity policy.

@@ -296,15 +296,19 @@ For **ordinary persistent 3D faces**, [ADR 0021](decisions/0021-wp5-native-occur
 supersedes the earlier native-envelope/zero-face-deletion target. Requested
 `return_face_shifts=True` requires periodic `return_faces=True`, works with
 `return_vertices=False, return_adjacency=False`, and must either certify the
-whole returned boundary metadata or fail atomically. Its exact public-weight
-ideal classifies positive/zero/absent independently from the actual native
-occurrence and source-compatible image attribution. A zero or absent native
-occurrence is **not silently removed**. Success returns persistent
-`adjacent_cell` and public user-basis integer `adjacent_shift` for generator
+whole returned boundary metadata or fail atomically. It separates actual
+applied support/topology N, exact native-effective ideal E built from
+stored native sites/lattice/radii, and the exact caller-semantic ideal S;
+source-complete attribution identifies N's image before both E and S are
+classified as positive/zero/absent. Successful certification requires both
+exact ideals positive, with E/S disagreement a representation conflict.
+A zero or absent native occurrence is **not silently removed**. Success
+returns persistent `adjacent_cell` and public user-basis integer
+`adjacent_shift` for generator
 faces, including nonzero self-image shifts; real walls keep wall identity
 without an applicable `adjacent_shift`. `cell['site']` and `result.sites`
 remain original persistent input sites; returned native vertices and
-`face_properties` are numerical native descriptors, not exact ideal measures.
+`face_properties` are numerical native descriptors, not exact E/S measures.
 Temporary private geometry does not set public geometry capability flags or
 leak into unrequested output. Complete positive generator coverage requires
 compatible reverse `(i,j,s) <-> (j,i,-s)`. Failed certification is separate

@@ -294,9 +294,11 @@ vendored `v_compute.cc`, `rad_option.hh`, `cell.hh` and `cell.cc`; follow seed
 provenance into `unitcell.hh`, `unitcell.cc`, and `container_prd.hh`.
 
 This prerequisite record alone did not prove the producer-compatible
-attribution, exact semantic classification, finite candidate regions,
+attribution, separate E/S exact ideal classification, finite candidate regions,
 true-assignment retention, semantic reciprocity coverage, or source-centered
-public integration. Their subsequently closed **specification** is
+public integration. Their subsequently closed **specification** separates
+actual native support N, exact native-effective ideal E and exact
+public-semantic ideal S in
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md);
 production implementation and acceptance remain pending. A final native
 polygon plus its observed support plane is evidence, not a replacement for

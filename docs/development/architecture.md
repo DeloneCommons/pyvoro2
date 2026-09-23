@@ -859,9 +859,11 @@ Production WP5 integration remains pending.
 
 Discrete user-wrap shifts are decided by exact rational arithmetic over the
 dyadic source numbers, not a rounded inverse/floor heuristic. The target
-ordinary 3D face path uses the private witness for actual native occurrences,
-source-complete binary64 image attribution, and a separate finite exact
-public-weight ideal reconstruction. Certification failure is atomic; native
+ordinary 3D face path separates actual applied native support/topology N,
+source-complete binary64 image attribution, native-effective exact ideal E
+(actual stored sites/lattice/radii), and public-semantic exact ideal S
+(caller sites/lattice/weights). Both E and S must be positive; status
+disagreement fails certification. Certification failure is atomic; native
 face area is not exact ideal measure, and zero faces are not silently deleted.
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
 defines its chart, reciprocity and public output. The implemented WP4
