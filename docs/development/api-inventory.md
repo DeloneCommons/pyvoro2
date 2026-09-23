@@ -1460,6 +1460,15 @@ change. Finite representability does not promise geometric resolution when
 squared backend radii or genuine weight ranges overwhelm squared geometry
 scales.
 
+Current 3D `_core` builds apply one explicit noncontracting binary64 arithmetic
+policy to ordinary computation and the private native observer, including
+linked clipping and seed construction. Compared with earlier builds that
+permitted contraction, this can change last-bit geometry and topology near
+degeneracy. Mathematical weight/radius input semantics and the common gauge
+remain unchanged; earlier input-parity guarantees do not promise bitwise
+geometry across build policies. This does not implement certified periodic
+boundary metadata.
+
 The current native-construction controls have one shared contract in both
 dimensions. `init_mem` and each explicit `blocks` entry must be a positive
 exact non-Boolean index-protocol scalar within the C++ `int` range; `blocks`

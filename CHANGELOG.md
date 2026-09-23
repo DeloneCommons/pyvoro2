@@ -31,6 +31,11 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Ordinary 3D computation and its private native observer now share an explicit
+  binary64 build policy with floating-point contraction disabled. This can
+  change last-bit geometry and topology near degeneracy compared with earlier
+  builds; mathematical weight/radius semantics and the common gauge are
+  unchanged.
 - Certified triclinic minimum images and duplicate buckets now use the accepted
   exact reduced proof basis. Selected shifts map back to the unchanged user
   basis before signed-int64 validation, and exact ties follow Cartesian
