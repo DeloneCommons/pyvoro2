@@ -88,6 +88,7 @@ nav:
       - v0.8 implemented / v0.9 target API inventory: development/api-inventory.md
       - Development audits:
           - Overview: development/audits/index.md
+          - Pre-Checkpoint-B Phase C downstream requirements: development/audits/phase-c-downstream-requirements-pre-b.md
           - v0.8 historical audit/remediation record: development/audits/v0.8-pre-release.md
       - Decision records:
           - Overview: development/decisions/index.md
