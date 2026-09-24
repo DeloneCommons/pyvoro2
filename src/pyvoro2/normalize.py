@@ -68,7 +68,9 @@ class NormalizedTopology:
     """Result of :func:`normalize_topology`.
 
     This extends :class:`NormalizedVertices` with globally deduplicated edges
-    and faces. These are useful for building periodic Voronoi graphs.
+    and faces. These are useful for building periodic Voronoi graphs. When a
+    periodic directed owner/image label repeats, each occurrence keeps its own
+    global face; no correspondence to reverse occurrences is inferred.
 
     All coordinates exposed here are Cartesian. Periodicity is represented via
     integer lattice shifts (na, nb, nc) relative to the domain lattice vectors.
@@ -170,7 +172,7 @@ def _prepare_vertex_cells(
                         name=f'{prefix}.adjacent_shift',
                         dim=3,
                     )
-                elif require_face_shifts:
+                elif require_face_shifts and adjacent >= 0:
                     raise ValueError(
                         'cells must include face adjacent_shift '
                         '(compute with return_face_shifts=True)'
@@ -289,7 +291,8 @@ def normalize_vertices(
     Args:
         cells: Output list from :func:`pyvoro2.compute`. Must include local
             vertices (`return_vertices=True`). For periodic domains, faces and
-            face shifts are required unless `require_face_shifts=False`.
+            generator face shifts are required unless
+            `require_face_shifts=False`; real walls have no image shift.
         domain: The domain used for the computation. Periodic vertex
             canonicalization intentionally retains ``remap_cart``'s established
             backend-primary meaning; it does not use user-cell ``wrap_cart``.
@@ -420,6 +423,9 @@ def normalize_vertices(
 
             topo_key = _canonical_incident_key(incident)
             coord_key = item['quantized'][k]
+            # Coordinate tolerance cannot merge distinct owner/image
+            # incidence: the exact integer topology key remains part of the
+            # vertex identity even for coincident numerical coordinates.
             key: Tuple[Any, ...] = ('pbc',) + topo_key + ('@',) + coord_key
 
             gid = key_to_gid.get(key)
@@ -720,6 +726,21 @@ def normalize_edges_faces(
     # Deterministic processing order
     cells_sorted = sorted(prepared, key=lambda item: item['id'])
 
+    # A repeated directed label does not identify a unique native face. Mark
+    # both directions before building the pool so even a unique reverse cannot
+    # be assigned arbitrarily to one of several fragments.
+    seen_directions: set[Tuple[Any, ...]] = set()
+    repeated_pairs: set[Tuple[Any, ...]] = set()
+    if domain_periodic:
+        for item in cells_sorted:
+            for face in item['faces']:
+                if face['adjacent'] < 0:
+                    continue
+                direction = (item['id'], face['adjacent'], face['shift'])
+                if direction in seen_directions:
+                    repeated_pairs.add(_canon_face_pair(*direction))
+                seen_directions.add(direction)
+
     # Build edges and faces
     for item in cells_sorted:
         faces = item['faces']
@@ -763,7 +784,7 @@ def normalize_edges_faces(
         # Faces -> global ids
         face_ids: List[int] = []
         cid_here = item['id']
-        for face in faces:
+        for face_index, face in enumerate(faces):
             adj = face['adjacent']
             adj_shift = (
                 face['shift']
@@ -780,12 +801,13 @@ def normalize_edges_faces(
                 poly = _canon_polygon(desc)
 
             if domain_periodic and adj >= 0:
-                # In periodic tessellations, a given (cell_id, neighbor_id,
-                # neighbor_shift) pair uniquely identifies a face (two convex
-                # polyhedra share at most one face). Use only the canonical
-                # cell-pair key for deduplication to avoid sensitivity to
-                # boundary-vertex remapping noise in polygon keys.
+                # Unique directed labels retain the existing reverse-pair
+                # normalization despite boundary-vertex remapping noise.
+                # Repeated labels retain every native occurrence, including
+                # numerically coincident cycles, using a private discriminator.
                 fkey: Tuple[Any, ...] = ('f',) + pair
+                if pair in repeated_pairs:
+                    fkey += ('occurrence', cid_here, face_index)
             else:
                 # For non-periodic domains *or* wall faces in partially periodic
                 # orthorhombic domains, adjacent_cell may be a shared wall id.

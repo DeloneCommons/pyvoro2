@@ -37,7 +37,12 @@ TEST_WHEEL_FILES = (
     'pyvoro2/_internal/spatial/__init__.py',
     'pyvoro2/_internal/spatial/domain_geometry.py',
     'pyvoro2/_internal/spatial/domain_utils.py',
-    'pyvoro2/_internal/spatial/face_shifts.py',
+    'pyvoro2/_internal/spatial/wp5_binary64.py',
+    'pyvoro2/_internal/spatial/wp5_certificate.py',
+    'pyvoro2/_internal/spatial/wp5_common.py',
+    'pyvoro2/_internal/spatial/wp5_cycle.py',
+    'pyvoro2/_internal/spatial/wp5_ideal.py',
+    'pyvoro2/_internal/spatial/wp5_producer.py',
     'pyvoro2/_internal/planar/__init__.py',
     'pyvoro2/_internal/planar/domain_geometry.py',
     'pyvoro2/_internal/planar/edge_shifts.py',
@@ -76,7 +81,12 @@ src/pyvoro2/_internal/weight_transforms.py
 src/pyvoro2/_internal/spatial/__init__.py
 src/pyvoro2/_internal/spatial/domain_geometry.py
 src/pyvoro2/_internal/spatial/domain_utils.py
-src/pyvoro2/_internal/spatial/face_shifts.py
+src/pyvoro2/_internal/spatial/wp5_binary64.py
+src/pyvoro2/_internal/spatial/wp5_certificate.py
+src/pyvoro2/_internal/spatial/wp5_common.py
+src/pyvoro2/_internal/spatial/wp5_cycle.py
+src/pyvoro2/_internal/spatial/wp5_ideal.py
+src/pyvoro2/_internal/spatial/wp5_producer.py
 src/pyvoro2/_internal/planar/__init__.py
 src/pyvoro2/_internal/planar/domain_geometry.py
 src/pyvoro2/_internal/planar/edge_shifts.py
@@ -360,7 +370,12 @@ def test_distribution_content_checks_require_internal_hierarchy(
         'pyvoro2/_internal/spatial/__init__.py',
         'pyvoro2/_internal/spatial/domain_geometry.py',
         'pyvoro2/_internal/spatial/domain_utils.py',
-        'pyvoro2/_internal/spatial/face_shifts.py',
+        'pyvoro2/_internal/spatial/wp5_binary64.py',
+        'pyvoro2/_internal/spatial/wp5_certificate.py',
+        'pyvoro2/_internal/spatial/wp5_common.py',
+        'pyvoro2/_internal/spatial/wp5_cycle.py',
+        'pyvoro2/_internal/spatial/wp5_ideal.py',
+        'pyvoro2/_internal/spatial/wp5_producer.py',
         'pyvoro2/_internal/planar/__init__.py',
         'pyvoro2/_internal/planar/domain_geometry.py',
         'pyvoro2/_internal/planar/edge_shifts.py',

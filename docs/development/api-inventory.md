@@ -312,7 +312,7 @@ without an applicable `adjacent_shift`. `cell['site']` and `result.sites`
 remain original persistent input sites; returned native vertices and
 `face_properties` are numerical native descriptors, not exact E/S measures.
 Temporary private geometry does not set public geometry capability flags or
-leak into unrequested output. For the WP5 target, `has_periodic_shifts=True`
+leak into unrequested output. For implemented WP5, `has_periodic_shifts=True`
 means all requested shifts on returned native generator faces were uniquely
 source-attributed and materialized; it does not claim E/S consistency. A result
 may have that capability true and `tessellation_diagnostics.ok=False`.
@@ -327,8 +327,9 @@ summary warning when `diagnostics.ok` is false; `'raise'` raises the existing
 established required/optional policy. Inconsistent, ambiguous, unsupported or
 resource-limited producer attribution, malformed occurrence/provenance, and
 unrepresentable public shifts still fail the requested shift call
-independently of `tessellation_check`. The currently implemented face-shift
-helper remains factual until WP5 lands.
+independently of `tessellation_check`. Periodic inverse realization requires
+semantic consistency before consuming identity or S measures. See the
+[implementation map](wp5-implementation.md); independent acceptance is pending.
 
 For WP5 until WP9, `face_shift_search`, `face_shift_tol`,
 `validate_face_shifts`, and `repair_face_shifts` keep existing strict input
@@ -2362,7 +2363,12 @@ pyvoro2._internal.validation
 pyvoro2._internal.weight_transforms
 pyvoro2._internal.spatial.domain_geometry
 pyvoro2._internal.spatial.domain_utils
-pyvoro2._internal.spatial.face_shifts
+pyvoro2._internal.spatial.wp5_binary64
+pyvoro2._internal.spatial.wp5_certificate
+pyvoro2._internal.spatial.wp5_common
+pyvoro2._internal.spatial.wp5_cycle
+pyvoro2._internal.spatial.wp5_ideal
+pyvoro2._internal.spatial.wp5_producer
 pyvoro2._internal.planar.domain_geometry
 pyvoro2._internal.planar.edge_shifts
 ```

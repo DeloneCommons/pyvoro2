@@ -27,11 +27,17 @@ INTERNAL_MODULES = (
     'pyvoro2._internal.weight_transforms',
     'pyvoro2._internal.spatial.domain_geometry',
     'pyvoro2._internal.spatial.domain_utils',
-    'pyvoro2._internal.spatial.face_shifts',
+    'pyvoro2._internal.spatial.wp5_binary64',
+    'pyvoro2._internal.spatial.wp5_certificate',
+    'pyvoro2._internal.spatial.wp5_common',
+    'pyvoro2._internal.spatial.wp5_cycle',
+    'pyvoro2._internal.spatial.wp5_ideal',
+    'pyvoro2._internal.spatial.wp5_producer',
     'pyvoro2._internal.planar.domain_geometry',
     'pyvoro2._internal.planar.edge_shifts',
 )
 OBSOLETE_MODULES = (
+    'pyvoro2._internal.spatial.face_shifts',
     'pyvoro2._cell_output',
     'pyvoro2._inputs',
     'pyvoro2._power_input',

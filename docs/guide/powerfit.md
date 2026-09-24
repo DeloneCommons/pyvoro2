@@ -847,12 +847,15 @@ print(geometry.endpoint_i_empty, geometry.endpoint_j_empty)
 print(geometry.boundary_measure, geometry.tessellation_diagnostics)
 ```
 
-Current periodic face/edge shifts are still anchored to backend-primary site
-representatives. Resolved observations use original source endpoints, so moving
-one endpoint by a lattice vector can leave the physical connector unchanged
-while realization reports another shift. Source-relative boundary metadata is
-tracked by WP5/WP6 in the [v0.9 plan](../development/plans/v0.9.md); source
-verification and a successful fixed fit do not certify that metadata.
+Periodic 3D realization uses source-attributed image shifts relative to original
+caller sites and requires the complete exact semantic audit to succeed. Its
+scientific boundary area comes from the exact public ideal S, with a scaled
+binary64 square-root view when a numerical measure is requested. Native face
+descriptors remain numerical descriptions of returned Voro++ geometry. A
+semantic conflict or incomplete audit raises a structured realization failure
+even when the forward diagnostic action is `"none"`; it cannot become empty
+adjacency or convergence. Planar source-relative boundary metadata remains WP6
+work in the [v0.9 plan](../development/plans/v0.9.md).
 
 The fit result never computes or owns a tessellation automatically.
 

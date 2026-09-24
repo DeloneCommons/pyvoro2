@@ -190,7 +190,7 @@ ownership is:
 | Ownership | Modules | Reason |
 |---|---|---|
 | Dimension-neutral | `_internal.cell_output`, `_internal.inputs`, `_internal.power_input`, `_internal.validation`, `_internal.weight_transforms` | Raw-record post-processing is parameterized by measure and boundary keys; strict scalar/array validation and input coercion are parameterized by dimension; power-input resolution and weight/radius conversion have no dimension-specific geometry. |
-| Spatial/3D | `_internal.spatial.domain_geometry`, `_internal.spatial.domain_utils`, `_internal.spatial.face_shifts` | These helpers use the 3D domain classes, three-component lattice operations, or realized face geometry. |
+| Spatial/3D | `_internal.spatial.domain_geometry`, `_internal.spatial.domain_utils`, `_internal.spatial.wp5_*` | These helpers use the 3D domain classes, three-component lattice operations, or the native face producer and exact ideal audit. |
 | Planar/2D | `_internal.planar.domain_geometry`, `_internal.planar.edge_shifts` | These helpers use the planar domain classes, two-component lattice operations, or realized edge geometry. |
 
 The obsolete root helper modules and private modules under `pyvoro2.planar`
@@ -856,13 +856,15 @@ The [private native face witness](native-face-witness.md) supplies the WP5 G0
 observation prerequisite through separate internal `_core` entry points.
 It records applied cut planes, checked face-origin tokens and final doubled-local
 vertices, with exact comparisons against the ordinary native computation.
-Public forward paths do not consume it; the G0 producer and provenance
+Requested 3D face shifts consume its matched packet; the G0 producer and provenance
 specification is closed in
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md).
-Production WP5 integration remains pending.
+The [implementation map](wp5-implementation.md) records source-route replay,
+exact ideal reconstruction, resource policy and independent tests. WP5
+independent acceptance remains pending.
 
 Discrete user-wrap shifts are decided by exact rational arithmetic over the
-dyadic source numbers, not a rounded inverse/floor heuristic. The target
+dyadic source numbers, not a rounded inverse/floor heuristic. The implemented
 ordinary 3D face path separates actual applied native support/topology N,
 source-complete binary64 image attribution, native-effective exact ideal E
 (actual stored sites/lattice/radii), and public-semantic exact ideal S
@@ -871,7 +873,8 @@ exact-consistency audit; status disagreement is a structured finding when diagno
 requested. Unique source attribution makes the native shift available even
 when that diagnostic is not okay; inability to attribute a requested shift
 remains an atomic failure. Native face area is not exact ideal measure, and
-zero faces are not silently deleted.
+zero faces are not silently deleted. Periodic inverse realization requires a
+complete successful semantic audit and derives boundary measures from S.
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
 defines its chart, reciprocity and public output. The implemented WP4
 explicit-box translation consumer is separate. WP6/WP7 producer contracts

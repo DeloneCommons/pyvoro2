@@ -210,7 +210,7 @@ def test_self_consistent_solver_detects_active_mask_cycle(monkeypatch):
             tessellation_diagnostics=None,
         )
 
-    monkeypatch.setattr(active_mod, 'match_realized_pairs', fake_match_realized_pairs)
+    monkeypatch.setattr(active_mod, '_match_realized_pairs', fake_match_realized_pairs)
 
     res = active_mod.solve_self_consistent_power_weights(
         pts,
@@ -424,7 +424,7 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
         'fit_weights_from_separators',
         fake_fit_weights_from_separators,
     )
-    monkeypatch.setattr(active_mod, 'match_realized_pairs', fake_match_realized_pairs)
+    monkeypatch.setattr(active_mod, '_match_realized_pairs', fake_match_realized_pairs)
 
     res = active_mod.solve_self_consistent_power_weights(
         pts,
@@ -551,7 +551,7 @@ def test_self_consistent_solver_tracks_transient_unaccounted_pairs(
             warnings=tuple(),
         )
 
-    monkeypatch.setattr(active_mod, 'match_realized_pairs', fake_match_realized_pairs)
+    monkeypatch.setattr(active_mod, '_match_realized_pairs', fake_match_realized_pairs)
 
     res = active_mod.solve_self_consistent_power_weights(
         pts,
@@ -636,7 +636,7 @@ def test_self_consistent_final_refit_does_not_align_positive_l2_components(
 
     monkeypatch.setattr(
         active_mod,
-        'match_realized_pairs',
+        '_match_realized_pairs',
         fake_match_realized_pairs,
     )
 

@@ -31,6 +31,18 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Requested periodic 3D face shifts now use complete native source attribution
+  and exact source-chart transport, including partial periodicity, triclinic
+  images and self faces. Public vertices and adjacency may be omitted; real
+  walls omit `adjacent_shift`. Legacy face-shift search, tolerance, validation
+  and repair controls retain validation but are correctness-neutral.
+- Exact native-effective and public-semantic face audits now report zero/absent
+  contacts, representation conflicts and coverage failures through
+  `tessellation_check`. Complete unique native attribution sets
+  `has_periodic_shifts`; semantic findings do not clear it. Unavailable shifts
+  still fail atomically. Periodic 3D inverse realization requires semantic
+  consistency and uses exact public-ideal boundary measures instead of native
+  triangulated area. Repeated native face occurrences survive normalization.
 - Ordinary 3D computation and its private native observer now share an explicit
   binary64 build policy with floating-point contraction disabled. This can
   change last-bit geometry and topology near degeneracy compared with earlier

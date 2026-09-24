@@ -9,7 +9,7 @@ def _as_tuple3(x):
     return tuple(int(v) for v in x)
 
 
-def test_return_face_shifts_requires_faces_and_vertices():
+def test_return_face_shifts_requires_faces_but_not_public_vertices():
     cell = PeriodicCell(vectors=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     pts = np.array([[0.1, 0.5, 0.5], [0.9, 0.5, 0.5]], dtype=float)
 
@@ -29,21 +29,18 @@ def test_return_face_shifts_requires_faces_and_vertices():
     except ValueError:
         pass
 
-    # Missing vertices
-    try:
-        compute(
-            pts,
-            domain=cell,
-            mode='standard',
-            output='cells',
-            return_vertices=False,
-            return_faces=True,
-            return_adjacency=False,
-            return_face_shifts=True,
-        )
-        raise AssertionError('expected ValueError')
-    except ValueError:
-        pass
+    cells = compute(
+        pts,
+        domain=cell,
+        mode='standard',
+        output='cells',
+        return_vertices=False,
+        return_faces=True,
+        return_adjacency=False,
+        return_face_shifts=True,
+    )
+    assert all('vertices' not in c and 'adjacency' not in c for c in cells)
+    assert all('adjacent_shift' in f for c in cells for f in c['faces'])
 
 
 def test_periodic_face_shifts_detect_wraparound_standard():

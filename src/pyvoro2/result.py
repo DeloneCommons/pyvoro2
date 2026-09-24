@@ -360,7 +360,13 @@ class TessellationResult:
 
     @property
     def has_periodic_shifts(self) -> bool:
-        """Whether boundary records carry requested periodic image shifts."""
+        """Whether requested periodic boundary-image metadata is available.
+
+        Spatial ``compute`` sets this only after complete, unique native image
+        attribution and materialization. Exact E/S semantic consistency is
+        reported separately in tessellation diagnostics.
+        Real spatial walls retain their wall identity without an image shift.
+        """
 
         return self._periodic_shifts_available
 
@@ -399,8 +405,9 @@ class TessellationResult:
 
         Hidden sites always have empty boundary collections, whether their raw
         records were omitted or contain an explicitly empty collection. When
-        :attr:`has_periodic_shifts` is true, returned edge or face records
-        contain ``adjacent_shift`` annotations.
+        :attr:`has_periodic_shifts` is true, generator boundaries contain
+        ``adjacent_shift`` annotations. Real spatial walls have no periodic
+        image and do not require that key.
 
         Raises:
             ValueError: If boundary geometry was not available, or if later
@@ -611,7 +618,17 @@ def _validate_boundary_records(
                 f'raw cell ID {cell_id} {boundary_key} records must be '
                 'dictionaries'
             )
-        if periodic_shifts_available and 'adjacent_shift' not in boundary:
+        adjacent = boundary.get('adjacent_cell')
+        spatial_wall = (
+            boundary_key == 'faces'
+            and isinstance(adjacent, (int, np.integer))
+            and adjacent < 0
+        )
+        if (
+            periodic_shifts_available
+            and not spatial_wall
+            and 'adjacent_shift' not in boundary
+        ):
             raise ValueError(
                 f'raw cell ID {cell_id} has a {boundary_key} record '
                 'without adjacent_shift'

@@ -7,6 +7,8 @@ The core computation in Voro++ is fast and focuses on topology/geometry of the
 cells. Many downstream geometry workflows benefit from extra per-face descriptors
 (face centroid, oriented normals, and a few boundary heuristics). These can be
 expensive, so they are provided as an explicit, opt-in post-processing step.
+They describe the returned numerical native surface; they are not exact
+semantic facet measures and do not establish certified boundary positivity.
 """
 
 from __future__ import annotations
@@ -23,11 +25,14 @@ from .diagnostics import TessellationDiagnostics
 def _poly_centroid_area_normal(
     v: np.ndarray,
 ) -> tuple[np.ndarray, float, np.ndarray] | None:
-    """Return (centroid, area, unit_normal) for a planar polygon.
+    """Return numerical centroid, vector area and normal for an ordered cycle.
 
-    The polygon is assumed to be convex and vertices are assumed to be ordered
-    around the face (either CW or CCW). If the polygon is degenerate, returns
-    None.
+    Vertices are assumed to follow a convex native face (CW or CCW). A fan
+    from the first vertex supplies triangle-magnitude weights for the
+    centroid; the summed cross-product vector supplies area and normal.
+    Returned binary64 vertices can be nonplanar, so these quantities do not
+    define a best-fit exact planar polygon. Numerically degenerate cycles
+    return None.
     """
     if v.ndim != 2 or v.shape[1] != 3 or v.shape[0] < 3:
         return None
@@ -125,6 +130,13 @@ def annotate_face_properties(
     ``normal`` always points from the cell site toward the face. Periodic
     compute transport preserves this Cartesian meaning for both proper and
     improper backend frames; face area remains unsigned.
+
+    These are numerical native surface descriptors. ``centroid`` uses the
+    magnitudes of fan-triangle areas, while ``area`` is the magnitude of
+    their vector-area sum. For nonplanar returned vertices this area need
+    not equal the sum of triangle areas, and no best-fit exact plane is
+    implied. Neither these descriptors nor ``tol`` determines certified
+    face topology or exact semantic boundary measure.
 
     Policy note:
         We preserve as much information as possible. `other_site` is only set

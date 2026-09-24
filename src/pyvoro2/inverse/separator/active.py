@@ -40,9 +40,9 @@ from .constraints import (
 )
 from .model import FitModel
 from .realize import (
+    _match_realized_pairs,
     _require_realization_domain,
     RealizedPairDiagnostics,
-    match_realized_pairs,
 )
 from .problem import (
     _build_active_set_connectivity_diagnostics,
@@ -1128,10 +1128,11 @@ def _assemble_accepted_active_set_state(
 
     if fit.weights is not None:
         accepted_weights = np.asarray(fit.weights, dtype=np.float64).copy()
-        realized = match_realized_pairs(
+        realized = _match_realized_pairs(
             points,
             domain=domain,
             radii=fit.radii,
+            semantic_weights=accepted_weights,
             constraints=constraints,
             return_boundary_measure=return_boundary_measure,
             return_cells=return_cells,
@@ -1524,10 +1525,11 @@ def solve_self_consistent_power_weights(
             r_min=r_min_value,
             weight_shift=weight_shift_value,
         )
-        diag = match_realized_pairs(
+        diag = _match_realized_pairs(
             pts,
             domain=domain,
             radii=radii_eval,
+            semantic_weights=weights_eval,
             constraints=resolved,
             return_boundary_measure=False,
             return_cells=False,

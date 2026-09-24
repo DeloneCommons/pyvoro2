@@ -11,10 +11,10 @@ def test_orthorhombic_slab_face_shifts_have_zero_z_shift():
 
     pts = np.array(
         [
-            [0.10, 0.50, 0.50],
-            [0.90, 0.50, 0.50],  # close across x-boundary
-            [0.50, 0.10, 0.50],
-            [0.50, 0.90, 0.50],  # close across y-boundary
+            [0.125, 0.50, 0.50],
+            [0.875, 0.50, 0.50],  # close across x-boundary
+            [0.50, 0.125, 0.50],
+            [0.50, 0.875, 0.50],  # close across y-boundary
         ],
         dtype=float,
     )
@@ -35,6 +35,9 @@ def test_orthorhombic_slab_face_shifts_have_zero_z_shift():
 
     for c in cells:
         for f in c.get('faces', []):
+            if int(f['adjacent_cell']) < 0:
+                assert 'adjacent_shift' not in f
+                continue
             s = f.get('adjacent_shift')
             assert s is not None
             sx, sy, sz = int(s[0]), int(s[1]), int(s[2])

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Sequence, Literal
+from dataclasses import replace
 
 import warnings
 
@@ -23,7 +24,6 @@ from ._internal.generator_preparation import (
     validate_compute_internal_ids,
 )
 from ._internal.spatial.domain_geometry import geometry3d
-from ._internal.spatial.face_shifts import _add_periodic_face_shifts_inplace
 from ._internal.power_input import (
     ResolvedPowerInput,
     resolve_ghost_power_input,
@@ -42,10 +42,13 @@ from ._internal.validation import (
 )
 from .diagnostics import (
     TessellationDiagnostics,
+    TessellationIssue,
     TessellationError,
     _analyze_tessellation,
 )
 from .result import TessellationResult, _build_tessellation_result
+from ._internal.spatial.wp5_common import WP5Failure
+from ._internal.tessellation_diagnostics import reciprocity_issue_severity
 
 # The compiled C++ extension is loaded only when a geometry operation needs it.
 # Documentation builds and inverse-only imports therefore work without a
@@ -271,6 +274,102 @@ def _finish_compute_output(
     )
 
 
+def _certify_wp5(*args, **kwargs):
+    """Load exact certification only for the explicitly requested capability."""
+    from ._internal.spatial.wp5_certificate import certify_packet
+
+    return certify_packet(*args, **kwargs)
+
+
+def _attach_wp5_findings(diag, failures, prepared, *, reciprocity_required=True):
+    """Translate proof findings into existing severity-complete diagnostics."""
+    if not failures:
+        return diag
+    expected = prepared.external_ids.tolist()
+
+    def public_id(value):
+        return expected[value] if isinstance(value, int) and (
+            0 <= value < len(expected)
+        ) else value
+
+    def public_label(label):
+        owner, shift = label
+        return (owner, shift) if owner == 'wall' else (public_id(owner), shift)
+
+    issues = []
+    for error in failures:
+        context = dict(error.context)
+        for key in ('source_id', 'owner'):
+            if key in context:
+                context[key] = public_id(context[key])
+        if 'label' in context:
+            context['label'] = public_label(context['label'])
+        if 'labels' in context:
+            context['labels'] = tuple(public_label(label)
+                                      for label in context['labels'])
+        severity = (reciprocity_issue_severity(required=reciprocity_required)
+                    if error.code == 'WP5_RECIPROCAL_MISSING' else 'error')
+        issues.append(TessellationIssue(error.code, severity, str(error), (context,)))
+    return replace(diag, issues=(*diag.issues, *issues),
+                   ok=diag.ok and not any(i.severity == 'error' for i in issues))
+
+
+def _raise_wp5_failure(error, packet, domain, prepared, mode):
+    """Attach a fatal certificate reason without judging unobserved geometry."""
+    expected = prepared.external_ids.tolist()
+    observed = None
+    if packet is not None:
+        # The refusal itself may concern malformed packet identity. Diagnostics
+        # must not index that same invalid association and mask the real reason.
+        try:
+            rows = packet['cells']
+            if any(type(cell['id']) is not int
+                   or not 0 <= cell['id'] < len(expected) for cell in rows):
+                raise ValueError('untrusted witness identity')
+            observed = [
+                {'id': expected[cell['id']], 'volume': float(cell['volume']),
+                 'empty': not cell['computed']} for cell in rows
+            ]
+        except (KeyError, IndexError, TypeError, ValueError, OverflowError):
+            observed = None
+    if observed is not None:
+        diag = _analyze_tessellation(
+            observed, domain, expected_ids=expected, mode=mode,
+            check_reciprocity=False, reciprocity_required=False,
+            check_plane_mismatch=False, mark_faces=False,
+        )
+    else:
+        # Observation or its identity was refused; validity was not assessed.
+        diag = TessellationDiagnostics(
+            domain_volume=float('nan'), sum_cell_volume=float('nan'),
+            volume_ratio=float('nan'), volume_gap=float('nan'),
+            volume_overlap=float('nan'), n_sites_expected=len(expected),
+            n_cells_returned=0, missing_ids=(), empty_ids=(),
+            face_shift_available=False, reciprocity_checked=False,
+            n_faces_total=0, n_faces_orphan=0, n_faces_mismatched=0,
+            issues=(), ok_volume=False, ok_reciprocity=False, ok=False,
+        )
+    failures = (error,) if isinstance(error, WP5Failure) else tuple(error)
+    diag = _attach_wp5_findings(diag, failures, prepared)
+    first = failures[0]
+    raise TessellationError(f'{first.code}: {first}', diag) from first
+
+
+def _compute_with_certificate(points, *, semantic_weights=None, **options):
+    """Private periodic realization channel retaining actual backend radii.
+
+    ``semantic_weights`` is used only by an internal resolved inverse state:
+    it supplies S while the unchanged supplied radii continue to define E/N.
+    The ordinary public mutually exclusive weights/radii signature is intact.
+    """
+    sink = []
+    result = _compute_impl(points, _semantic_weights=semantic_weights,
+                           _certificate_sink=sink, **options)
+    if len(sink) != 1:
+        raise RuntimeError('private certificate channel requires certified shifts')
+    return result, sink[0]
+
+
 def compute(
     points: Sequence[Sequence[float]] | np.ndarray,
     *,
@@ -374,29 +473,33 @@ def compute(
         return_faces: Include faces with adjacent cell IDs.
         return_face_shifts: For periodic domains, include an integer lattice shift
             (na, nb, nc) for each face neighbor indicating which periodic image
-            of the adjacent cell generated that face.
-            Requires `return_faces=True` and `return_vertices=True`.
-        face_shift_search: Search radius S for determining neighbor shifts.
-            Candidate shifts (na,nb,nc) in [-S..S]^3 are considered (restricted to
-            periodic axes for :class:`~pyvoro2.domains.OrthorhombicCell`).
+            of the original adjacent site generated that native face. Requires
+            ``return_faces=True``; public vertices and adjacency are optional.
+            Every generator image must be uniquely source-attributed. Real
+            walls have no ``adjacent_shift``. Exact semantic consistency is
+            reported through tessellation diagnostics and its action policy.
+        face_shift_search: Validated non-negative legacy control; has no effect
+            on source attribution, exact auditing, or returned shifts.
         include_empty: If True, include explicit empty-cell records for sites that
             do not produce a Voronoi/Laguerre cell (possible in extreme power
             settings). Empty records have 'empty': True, volume 0.0, and empty
             geometry lists.
-        validate_face_shifts: If True and return_face_shifts=True, validate that
-            each face's chosen adjacent_shift yields a near-zero plane residual,
-            and that reciprocal faces carry opposite shifts.
-        repair_face_shifts: If True and return_face_shifts=True, attempt to repair
-            rare reciprocity mismatches by enforcing opposite shifts on reciprocal
-            faces.
-        face_shift_tol: Optional absolute tolerance (in container distance units) for
-            the face-shift plane residual check. If None, a conservative default is
-            used.
-        tessellation_check: ``"none"`` disables diagnostic analysis;
+        validate_face_shifts: Validated Boolean legacy control; correctness-neutral.
+        repair_face_shifts: Validated Boolean legacy control; correctness-neutral.
+            Native faces and shifts are never repaired.
+        face_shift_tol: Validated optional non-negative finite legacy control;
+            correctness-neutral. Exact decisions use no numerical tolerance.
+        tessellation_check: ``"none"`` takes no action on diagnostic findings;
             ``"diagnose"`` attaches it without acting on failure; ``"warn"``
             emits one summary warning when the final diagnostic is not okay;
             and ``"raise"`` raises :class:`~pyvoro2.TessellationError` in the
-            same case.
+            same case. ``return_diagnostics=True`` or a check other than
+            ``"none"`` runs the exact E/S audit for periodic 3D geometry, even
+            when public shifts are omitted. A default shifts-only call performs
+            source attribution without the independent semantic audit.
+            An unavailable or ambiguous requested shift raises regardless of
+            this setting. An incomplete exact audit after attribution preserves
+            shifts and reports a resource finding through this policy.
         tessellation_require_reciprocity: Whether periodic reciprocity is a
             required invariant. ``None`` preserves the default requirement for
             periodic standard and power tessellations. Optional inspection still
@@ -415,6 +518,8 @@ def compute(
 
     Raises:
         ValueError: If inputs are inconsistent or an unknown mode is provided.
+        TessellationError: If requested shifts cannot be uniquely attributed or
+            represented, or ``tessellation_check="raise"`` rejects diagnostics.
 
     Every generator must lie in each non-periodic half-open interval
     ``[lo, hi)``; periodic axes are remapped before native dispatch. Generator
@@ -422,6 +527,81 @@ def compute(
     The public duplicate options control only additional diagnostics above this
     backend-safety floor.
     """
+
+    return _compute_impl(
+        points,
+        domain=domain,
+        ids=ids,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold,
+        duplicate_wrap=duplicate_wrap,
+        duplicate_max_pairs=duplicate_max_pairs,
+        block_size=block_size,
+        blocks=blocks,
+        init_mem=init_mem,
+        mode=mode,
+        weights=weights,
+        radii=radii,
+        return_vertices=return_vertices,
+        return_adjacency=return_adjacency,
+        return_faces=return_faces,
+        return_face_shifts=return_face_shifts,
+        face_shift_search=face_shift_search,
+        include_empty=include_empty,
+        validate_face_shifts=validate_face_shifts,
+        repair_face_shifts=repair_face_shifts,
+        face_shift_tol=face_shift_tol,
+        return_diagnostics=return_diagnostics,
+        output=output,
+        tessellation_check=tessellation_check,
+        tessellation_require_reciprocity=tessellation_require_reciprocity,
+        tessellation_volume_tol_rel=tessellation_volume_tol_rel,
+        tessellation_volume_tol_abs=tessellation_volume_tol_abs,
+        tessellation_plane_offset_tol=tessellation_plane_offset_tol,
+        tessellation_plane_angle_tol=tessellation_plane_angle_tol,
+    )
+
+
+def _compute_impl(
+    points: Sequence[Sequence[float]] | np.ndarray,
+    *,
+    domain: Box | OrthorhombicCell | PeriodicCell,
+    ids: Sequence[int] | None = None,
+    duplicate_check: Literal['off', 'warn', 'raise'] = 'off',
+    duplicate_threshold: float = 1e-5,
+    duplicate_wrap: bool = True,
+    duplicate_max_pairs: int = 10,
+    block_size: float | None = None,
+    blocks: tuple[int, int, int] | None = None,
+    init_mem: int = 8,
+    mode: Literal['standard', 'power'] = 'standard',
+    weights: Sequence[float] | np.ndarray | None = None,
+    radii: Sequence[float] | np.ndarray | None = None,
+    return_vertices: bool = True,
+    return_adjacency: bool = True,
+    return_faces: bool = True,
+    return_face_shifts: bool = False,
+    face_shift_search: int = 2,
+    include_empty: bool = False,
+    validate_face_shifts: bool = True,
+    repair_face_shifts: bool = False,
+    face_shift_tol: float | None = None,
+    return_diagnostics: bool = False,
+    output: Literal['result', 'cells'] = 'result',
+    tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'none',
+    tessellation_require_reciprocity: bool | None = None,
+    tessellation_volume_tol_rel: float = 1e-8,
+    tessellation_volume_tol_abs: float = 1e-12,
+    tessellation_plane_offset_tol: float | None = None,
+    tessellation_plane_angle_tol: float | None = None,
+    _semantic_weights: np.ndarray | None = None,
+    _certificate_sink: list | None = None,
+) -> (
+    TessellationResult
+    | list[dict[str, Any]]
+    | tuple[list[dict[str, Any]], TessellationDiagnostics]
+):
+    """Shared implementation with an explicit private certificate channel."""
     resolved_output = _validate_output(output)
     mode = validate_forward_mode(mode)  # type: ignore[assignment]
     duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
@@ -439,7 +619,7 @@ def compute(
             max_pairs=duplicate_max_pairs,
         )
     )
-    face_shift_search_value = require_nonnegative_index(
+    require_nonnegative_index(
         face_shift_search,
         name='face_shift_search',
         maximum=PY_SSIZE_T_MAX,
@@ -458,11 +638,11 @@ def compute(
         name='return_face_shifts',
     )
     include_empty_value = require_bool(include_empty, name='include_empty')
-    validate_face_shifts_value = require_bool(
+    require_bool(
         validate_face_shifts,
         name='validate_face_shifts',
     )
-    repair_face_shifts_value = require_bool(
+    require_bool(
         repair_face_shifts,
         name='repair_face_shifts',
     )
@@ -474,7 +654,7 @@ def compute(
         tessellation_require_reciprocity,
         name='tessellation_require_reciprocity',
     )
-    face_shift_tol_value = require_optional_nonnegative_finite_real(
+    require_optional_nonnegative_finite_real(
         face_shift_tol,
         name='face_shift_tol',
     )
@@ -494,8 +674,6 @@ def compute(
         tessellation_plane_angle_tol,
         name='tessellation_plane_angle_tol',
     )
-    if repair_face_shifts_value:
-        validate_face_shifts_value = True
     init_mem_value = require_positive_index(
         init_mem,
         name='init_mem',
@@ -517,6 +695,11 @@ def compute(
     rr = power_input.backend_radii
 
     geom = geometry3d(domain)
+    if return_face_shifts_value:
+        if not geom.has_any_periodic_axis:
+            raise ValueError('return_face_shifts requires a periodic domain')
+        if not return_faces_value:
+            raise ValueError('return_face_shifts requires return_faces=True')
     if isinstance(domain, (Box, OrthorhombicCell)):
         native_bounds = geom.native_bounds
         native_cell = None
@@ -562,6 +745,104 @@ def compute(
     )
 
     core = _require_core()
+    do_diag = return_diagnostics_value or tessellation_check != 'none'
+    packet = None
+
+    def observe_certificate(*, audit, materialize_shifts):
+        nonlocal packet
+        if native_cell is None:
+            packet = core._observe_box(
+                pts_native, ids_internal, native_bounds, (nx, ny, nz),
+                geom.periodic_axes, init_mem_value, radii=rr,
+            )
+        else:
+            packet = core._observe_periodic(
+                pts_native, ids_internal, native_params, (nx, ny, nz),
+                init_mem_value, radii=rr,
+            )
+        return _certify_wp5(
+            packet, prepared=prepared, power_input=power_input,
+            domain=domain, snapshot=native_cell,
+            semantic_weights=_semantic_weights, audit=audit,
+            materialize_shifts=materialize_shifts,
+        )
+
+    def native_failure(exc):
+        message = str(exc)
+        profile = any(word in message.lower() for word in
+                      ('round', 'binary64', 'underflow', 'fp profile'))
+        return WP5Failure('WP5_UNSUPPORTED_FP_PROFILE' if profile
+                          else 'WP5_SOURCE_PROFILE_MISMATCH', message)
+
+    wp5_findings = ()
+    if do_diag and geom.has_any_periodic_axis and not return_face_shifts_value:
+        # This audit has no public image/geometry capability. Its failures are
+        # findings under the ordinary action policy, since no shift was asked for.
+        try:
+            wp5_findings = observe_certificate(
+                audit=True, materialize_shifts=False,
+            ).issues
+        except WP5Failure as exc:
+            wp5_findings = (exc,)
+        except RuntimeError as exc:
+            wp5_findings = (native_failure(exc),)
+
+    if return_face_shifts_value:
+        certificate = None
+        try:
+            certificate = observe_certificate(
+                audit=do_diag or _certificate_sink is not None,
+                materialize_shifts=True,
+            )
+            cells = certificate.public_cells(
+                return_vertices=return_vertices_value,
+                return_adjacency=return_adjacency_value,
+                include_empty=include_empty_value,
+            )
+        except WP5Failure as exc:
+            _raise_wp5_failure(exc, packet, domain, prepared, mode)
+        except RuntimeError as exc:
+            _raise_wp5_failure(native_failure(exc), packet, domain, prepared, mode)
+        assert certificate is not None
+        if ids_user is not None:
+            _remap_ids_inplace(cells, ids_user)
+        diag = None
+        # Attribution is always complete. Independent semantic auditing follows
+        # the existing request lifecycle and never selects or changes a shift.
+        if do_diag:
+            expected = ids_user.tolist() if ids_user is not None else list(range(n))
+            required = (True if tessellation_require_reciprocity_value is None
+                        else tessellation_require_reciprocity_value)
+            diag = _analyze_tessellation(
+                cells, domain, expected_ids=expected, mode=mode,
+                volume_tol_rel=volume_tol_rel_value,
+                volume_tol_abs=volume_tol_abs_value,
+                check_reciprocity=True, reciprocity_required=required,
+                check_plane_mismatch=return_vertices_value,
+                plane_offset_tol=plane_offset_tol_value,
+                plane_angle_tol=plane_angle_tol_value, mark_faces=True,
+            )
+            diag = _attach_wp5_findings(diag, certificate.issues, prepared,
+                                        reciprocity_required=required)
+            diag = replace(diag, face_shift_available=True)
+            if not diag.ok and tessellation_check in ('warn', 'raise'):
+                reasons = ', '.join(dict.fromkeys(
+                    issue.code for issue in diag.issues if issue.severity == 'error'
+                ))
+                message = f'tessellation_check failed (mode={mode!r}): {reasons}'
+                if tessellation_check == 'raise':
+                    raise TessellationError(message, diag)
+                warnings.warn(message, stacklevel=2)
+        result = _finish_compute_output(
+            output=resolved_output,
+            return_diagnostics=return_diagnostics_value,
+            dimension=3, domain=domain, mode=mode, sites=pts, ids=ids_user,
+            cells=cells, power_input=power_input, diagnostics=diag,
+            boundaries_available=True, periodic_shifts_available=True,
+        )
+        if _certificate_sink is not None:
+            _certificate_sink.append(certificate)
+        return result
 
     # --- Rectangular containers (Box / OrthorhombicCell) ---
     if isinstance(domain, (Box, OrthorhombicCell)):
@@ -569,16 +850,6 @@ def compute(
         bounds = native_bounds
         periodic_flags = geom.periodic_axes
         is_periodic = geom.has_any_periodic_axis
-        if return_face_shifts_value:
-            if not is_periodic:
-                raise ValueError(
-                    'return_face_shifts is only supported for periodic domains '
-                    '(PeriodicCell, or OrthorhombicCell with any periodic axis)'
-                )
-            if not return_faces_value:
-                raise ValueError('return_face_shifts requires return_faces=True')
-            if not return_vertices_value:
-                raise ValueError('return_face_shifts requires return_vertices=True')
 
         if mode == 'standard':
             cells = core.compute_box_standard(
@@ -613,20 +884,6 @@ def compute(
             sites_for_empty = prepared.primary_points_cart
             _add_empty_cells_inplace(cells, n=n, sites=sites_for_empty, opts=opts)
 
-        if return_face_shifts_value:
-            assert isinstance(domain, OrthorhombicCell)
-            a, b, cvec = domain.lattice_vectors
-            _add_periodic_face_shifts_inplace(
-                cells,
-                lattice_vectors=(a, b, cvec),
-                periodic_mask=periodic_flags,
-                mode=mode,
-                radii=rr,
-                search=face_shift_search_value,
-                tol=face_shift_tol_value,
-                validate=validate_face_shifts_value,
-                repair=repair_face_shifts_value,
-            )
         if ids_user is not None:
             _remap_ids_inplace(cells, ids_user)
 
@@ -654,6 +911,10 @@ def compute(
                 plane_offset_tol=plane_offset_tol_value,
                 plane_angle_tol=plane_angle_tol_value,
                 mark_faces=bool(is_periodic),
+            )
+            diag = _attach_wp5_findings(
+                diag, wp5_findings, prepared,
+                reciprocity_required=bool(tessellation_require_reciprocity_value),
             )
 
             if tessellation_check in ('warn', 'raise'):
@@ -693,12 +954,6 @@ def compute(
     bx, bxy, by, bxz, byz, bz = native_params
     pts_i = pts_native
 
-    if return_face_shifts_value:
-        if not return_faces_value:
-            raise ValueError('return_face_shifts requires return_faces=True')
-        if not return_vertices_value:
-            raise ValueError('return_face_shifts requires return_vertices=True')
-
     if mode == 'standard':
         cells = core.compute_periodic_standard(
             pts_i,
@@ -733,22 +988,6 @@ def compute(
         sites_for_empty = pts_i
         _add_empty_cells_inplace(cells, n=n, sites=sites_for_empty, opts=opts)
 
-    if return_face_shifts_value:
-        a = np.array([bx, 0.0, 0.0], dtype=np.float64)
-        b = np.array([bxy, by, 0.0], dtype=np.float64)
-        cvec = np.array([bxz, byz, bz], dtype=np.float64)
-        _add_periodic_face_shifts_inplace(
-            cells,
-            lattice_vectors=(a, b, cvec),
-            periodic_mask=(True, True, True),
-            mode=mode,
-            radii=rr,
-            search=face_shift_search_value,
-            tol=face_shift_tol_value,
-            validate=validate_face_shifts_value,
-            repair=repair_face_shifts_value,
-        )
-
     # Remap ids (and face neighbor ids) to user ids if requested
     if ids_user is not None:
         _remap_ids_inplace(cells, ids_user)
@@ -776,6 +1015,10 @@ def compute(
             plane_offset_tol=plane_offset_tol_value,
             plane_angle_tol=plane_angle_tol_value,
             mark_faces=True,
+        )
+        diag = _attach_wp5_findings(
+            diag, wp5_findings, prepared,
+            reciprocity_required=bool(tessellation_require_reciprocity_value),
         )
 
         if tessellation_check in ('warn', 'raise'):

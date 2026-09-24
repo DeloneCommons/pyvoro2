@@ -35,6 +35,26 @@ cells = result.cells
 
 For `PeriodicCell`, the shift is expressed in the $(a,b,c)$ lattice basis.
 For `OrthorhombicCell`, the shift is expressed in axis-aligned lattice units.
+Shifts refer to the original supplied sites, including sites translated outside
+the primary periodic cell. A self-image face has the same owner and a nonzero
+shift; real nonperiodic walls retain their negative wall ID and omit the shift.
+
+The 3D implementation source-attributes the native faces and separately audits
+their exact native-effective and public-semantic ideals. `has_periodic_shifts`
+reports complete native image attribution. It does not assert that every native
+face has positive exact ideal area. Request `return_diagnostics=True` or a
+`tessellation_check` other than `"none"` for the independent audit, including
+when public shifts are omitted. Findings appear in
+`result.tessellation_diagnostics`: use `tessellation_check="raise"` to require
+OK diagnostics, `"warn"` to warn, or `"none"`/`"diagnose"` to return without
+raising for findings. A default shifts-only call skips the independent audit.
+Unresolved or unrepresentable requested images always
+raise `TessellationError`.
+
+Public vertex and adjacency arrays may both be disabled while requesting
+shifts. The legacy `face_shift_search`, `face_shift_tol`,
+`validate_face_shifts`, and `repair_face_shifts` arguments still validate their
+inputs but do not change source attribution, auditing, or returned shifts.
 
 ## Building a periodic graph in practice
 

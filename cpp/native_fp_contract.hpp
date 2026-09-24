@@ -4,6 +4,7 @@
 // CMake force-includes this binding-owned guard in every participating 3D
 // translation unit, including unchanged vendor sources and standalone tests.
 #include <cfloat>
+#include <climits>
 #include <limits>
 
 #if defined(__FAST_MATH__) || defined(_M_FP_FAST)
@@ -19,5 +20,9 @@ static_assert(sizeof(double) == 8 &&
               "the 3D native FP contract requires IEC binary64 double");
 static_assert(FLT_EVAL_METHOD == 0,
               "the 3D native FP contract forbids excess expression precision");
+static_assert(sizeof(int) * CHAR_BIT == 32 &&
+                  std::numeric_limits<int>::min() == -2147483647 - 1 &&
+                  std::numeric_limits<int>::max() == 2147483647,
+              "the 3D native source contract requires signed 32-bit int");
 
 #endif

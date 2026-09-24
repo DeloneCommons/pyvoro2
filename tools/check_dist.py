@@ -64,7 +64,12 @@ REQUIRED_WHEEL_FILES = {
     'pyvoro2/_internal/spatial/__init__.py',
     'pyvoro2/_internal/spatial/domain_geometry.py',
     'pyvoro2/_internal/spatial/domain_utils.py',
-    'pyvoro2/_internal/spatial/face_shifts.py',
+    'pyvoro2/_internal/spatial/wp5_binary64.py',
+    'pyvoro2/_internal/spatial/wp5_certificate.py',
+    'pyvoro2/_internal/spatial/wp5_common.py',
+    'pyvoro2/_internal/spatial/wp5_cycle.py',
+    'pyvoro2/_internal/spatial/wp5_ideal.py',
+    'pyvoro2/_internal/spatial/wp5_producer.py',
     'pyvoro2/_internal/planar/__init__.py',
     'pyvoro2/_internal/planar/domain_geometry.py',
     'pyvoro2/_internal/planar/edge_shifts.py',
@@ -93,7 +98,12 @@ REQUIRED_SDIST_FILES = {
     'src/pyvoro2/_internal/spatial/__init__.py',
     'src/pyvoro2/_internal/spatial/domain_geometry.py',
     'src/pyvoro2/_internal/spatial/domain_utils.py',
-    'src/pyvoro2/_internal/spatial/face_shifts.py',
+    'src/pyvoro2/_internal/spatial/wp5_binary64.py',
+    'src/pyvoro2/_internal/spatial/wp5_certificate.py',
+    'src/pyvoro2/_internal/spatial/wp5_common.py',
+    'src/pyvoro2/_internal/spatial/wp5_cycle.py',
+    'src/pyvoro2/_internal/spatial/wp5_ideal.py',
+    'src/pyvoro2/_internal/spatial/wp5_producer.py',
     'src/pyvoro2/_internal/planar/__init__.py',
     'src/pyvoro2/_internal/planar/domain_geometry.py',
     'src/pyvoro2/_internal/planar/edge_shifts.py',
@@ -158,6 +168,7 @@ REQUIRED_SDIST_FILES = {
 }
 
 FORBIDDEN_WHEEL_MARKERS = (
+    'pyvoro2/_internal/spatial/face_shifts.py',
     'pyvoro2/powerfit/',
     'pyvoro2/planar/result.py',
     'pyvoro2/_cell_output.py',
@@ -172,6 +183,7 @@ FORBIDDEN_WHEEL_MARKERS = (
 )
 
 FORBIDDEN_SDIST_MARKERS = (
+    'src/pyvoro2/_internal/spatial/face_shifts.py',
     'src/pyvoro2/powerfit/',
     'src/pyvoro2/planar/result.py',
     'src/pyvoro2/_cell_output.py',
