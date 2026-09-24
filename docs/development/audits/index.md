@@ -5,6 +5,14 @@ before release qualification. They are not substitutes for tests, issues, or rel
 artifacts; they preserve the reasoning, reproductions, and remediation contracts that
 connect those layers.
 
+## Active evidence notes
+
+- [Pre-Checkpoint-B Phase C downstream-requirements review](phase-c-downstream-requirements-pre-b.md) —
+  source-controlled ChemVoro-focused evidence for the mandatory post-Checkpoint-B
+  Phase C revalidation. It records the early row-wise separator findings,
+  integration obligations, non-goals, testing implications, and unresolved
+  questions without amending ADR 0019 before the required post-B review.
+
 ## Historical audits
 
 - [v0.8.0 pre-release audit and remediation record](v0.8-pre-release.md) —
