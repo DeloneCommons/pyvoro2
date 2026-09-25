@@ -4,6 +4,8 @@
 - **Date:** 2026-09-01
 - **WP5 clarification/amendment:** 2026-09-23;
   [ADR 0021](0021-wp5-native-occurrence-and-exact-face-certification.md)
+- **Ordinary planar clarification:** 2026-09-24;
+  [ADR 0022](0022-wp6-source-certified-planar-edge-provenance.md)
 - **Related issue:** [#46 — Activate the v0.9.0 functional/API stabilization plan](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **Related plan:** [active v0.9.0 development plan](../plans/v0.9.md)
 - **Related decisions:** [ADR 0002](0002-weights-radii-and-gauge.md),
@@ -158,8 +160,9 @@ and public-semantic exact ideal S reconstruction. E/S positivity and any
 disagreement determine exact-consistency diagnostics, not availability of a
 uniquely source-attributed native shift. An enclosing numerical box alone
 is not the final WP5 candidate predicate or semantic positivity test. This
-clarification does not change WP4's existing explicit-box consumer or decide
-WP6/WP7 producer contracts.
+clarification does not change WP4's existing explicit-box consumer. Ordinary
+planar WP6 source-token attribution is defined separately by ADR 0022; WP7
+ghost producer contracts remain separate.
 
 Approximate Cartesian image positions returned by native code may be converted
 to a public integer lattice translation only when exactly one user-lattice
@@ -176,8 +179,9 @@ Its candidate ceiling is 1,000,000 per call; admitted enumeration completes
 before unique/inconsistent/ambiguous outcome selection. Resource and invariant
 errors remain separate. No universal numerical tolerance or producer envelope
 is claimed, and the kernel does not select the reference anchor. Deriving the
-WP5 source-compatible producer attribution is closed in ADR 0021; its
-implementation and the separate WP6–WP8 producer integrations remain work.
+WP5 source-compatible producer attribution and its accepted implementation are
+recorded in ADR 0021. ADR 0022 closes the distinct ordinary planar WP6 contract;
+WP7–WP8 producer integrations remain work.
 
 For WP5 the actual binary64 normal/offset and source arithmetic identify
 producer-compatible images at N; exact E uses actual native radii, while
@@ -290,4 +294,6 @@ Rejected as an automatic semantic-boundary rule. The former proposal to drop
 zero-measure native artifacts from packaged output is superseded for WP5 by
 ADR 0021: an exact-zero/absent mismatch is a requested consistency diagnostic,
 while a uniquely source-attributed native shift remains available.
-The planar and ghost packages must specify their own policy.
+ADR 0022 now fixes the ordinary planar policy: retain truthful raw occurrences,
+distinguish internal collapse from public rounding and audit complete exact
+E/S contacts/coverage separately. The ghost package must specify its own policy.

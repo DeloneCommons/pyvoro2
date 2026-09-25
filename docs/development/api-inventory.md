@@ -6,9 +6,10 @@
 - **Previous contract:** v0.7.0
 - **Implemented release:** v0.8.0
 - **Active target:** v0.9.0 — WP0 contract activated 2026-09-01; WP1 query-input
-  parity, WP2 user/backend lattice separation, and WP4 exact proof geometry are
-  implemented; WP3/WP4 add no public surface, and later public feature work
-  remains target-only until its owning work package lands
+  parity, WP2 user/backend lattice separation, WP4 exact proof geometry and
+  WP5 face certification are accepted; WP6 ordinary planar certification is
+  implemented on its issue branch with independent acceptance pending;
+  WP3/WP4 add no public surface and later feature work remains target-only
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
 - **v0.9 activation:** [issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **v0.9 execution tracker:** [issue #47](https://github.com/DeloneCommons/pyvoro2/issues/47)
@@ -32,11 +33,13 @@
   [ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md),
   [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md),
   [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md),
-  and [ADR 0020](decisions/0020-exact-private-lattice-reduction.md)
+  [ADR 0020](decisions/0020-exact-private-lattice-reduction.md),
+  [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md),
+  and [ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md)
 
 This inventory has two explicit authority layers. The current implemented
-sections record accepted behavior in the tree, including completed v0.9 work
-packages. The active v0.9 ledger freezes remaining pre-implementation public
+sections record behavior implemented in the tree, including v0.9 work
+packages whose acceptance status is stated separately. The active v0.9 ledger freezes remaining pre-implementation public
 names, removals, result/report semantics, and lifecycle classifications. A
 target entry never overrides factual implemented behavior before its owning
 implementation is accepted.
@@ -69,8 +72,9 @@ fact.
 
 This section is the implementation/target ledger activated by issue
 [#46](https://github.com/DeloneCommons/pyvoro2/issues/46). It freezes the public
-contract choices needed by WP1–WP11 and records WP1–WP4 as implemented. Entries for
-later public work packages remain target-only until accepted; the
+contract choices needed by WP1–WP11 and records WP1–WP5 as accepted and WP6 as
+implemented on its issue branch, pending independent acceptance. Entries for
+later public work packages remain target-only; the
 [current implemented contract](#current-implemented-contract) remains factual
 authority. Issue
 [#47](https://github.com/DeloneCommons/pyvoro2/issues/47) tracks substantive
@@ -79,7 +83,8 @@ WP1–WP13 execution.
 The target follows [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md),
 [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md),
 [ADR 0020](decisions/0020-exact-private-lattice-reduction.md), and the
-closed WP5-specific [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md).
+closed WP5-specific [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
+and ordinary planar [ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md).
 D9 in the active plan remains unresolved by design; nothing in this ledger
 adopts a backend-fork policy.
 
@@ -96,6 +101,7 @@ adopts a backend-fork policy.
 | Advanced active-set options/path/history and `solve_self_consistent_power_weights` | Experimental | Remain under `pyvoro2.inverse.separator`; not promoted by WP11. |
 | `ghost_radius` | Removed — implemented by WP1 | Immediate pre-1.0 removal; no deprecated alias period. |
 | Finite face/edge reconstruction search/validation/repair/matching-tolerance keywords | Removed when implemented | Immediate pre-1.0 removal at the later owning work package; no deprecated alias period. |
+| Ordinary planar `compute` edge reconstruction controls | Removed by WP6 | The four keywords below have no aliases; planar ghost controls remain legacy WP7-owned inputs. |
 
 WP13 performs the final pre-1.0 lifecycle audit after implementation and public
 qualification. The facade/result row is ordinary supported public API with the existing
@@ -162,6 +168,8 @@ Generic approximate-native translation consumers require a uniquely compatible
 shift within an explicitly justified certified compatibility region. Ordinary
 persistent 3D WP5 faces use [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)'s
 complete source-compatible producer attribution and independent E/S exact ideals.
+Ordinary planar WP6 edges use direct source-associated native owner/image tokens
+and separately reconstruct exact E/S ideals under ADR 0022.
 Ambiguous/inconsistent recovery is structured failure, never nearest-residual
 selection. Exact periodic ties use ADR 0012's amended physical Cartesian
 displacement order.
@@ -187,8 +195,9 @@ explicit exact Cartesian compatibility box. It has structured inconsistency,
 ambiguity, reduction-invariant, and resource outcomes, arbitrary Python-integer
 successful shifts, and no default native tolerance. It adds no public API and
 does not implement WP5–WP8 boundary or query/ghost metadata. The WP5
-producer-specific contract is closed in ADR 0021, but production integration
-and WP6–WP8 producer qualification remain pending.
+producer-specific contract and accepted integration are recorded in ADR 0021;
+ordinary planar WP6 follows ADR 0022. WP7–WP8 producer integrations remain
+separate work.
 
 ### Implemented WP1 forward input signatures and target removals
 
@@ -216,14 +225,13 @@ families are rejected. One weight call computes a single common gauge across
 persistent and temporary ghost weights. `ghost_radius` is removed with no
 alias.
 
-After certified boundary reconstruction lands, the following exact public
-keywords are removed rather than deprecated:
+The reconstruction-control removal ledger is:
 
-| Operation | Removed v0.9 keywords |
-|---|---|
-| `pyvoro2.compute` | `face_shift_search`, `validate_face_shifts`, `repair_face_shifts`, `face_shift_tol` |
-| `pyvoro2.planar.compute` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` |
-| `pyvoro2.planar.ghost_cells` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` |
+| Operation | Keywords | Current status |
+|---|---|---|
+| `pyvoro2.compute` | `face_shift_search`, `validate_face_shifts`, `repair_face_shifts`, `face_shift_tol` | Validated correctness-neutral WP5 inputs; removal remains WP9-owned. |
+| `pyvoro2.planar.compute` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` | Removed by WP6 without aliases or ignored keyword handling. |
+| `pyvoro2.planar.ghost_cells` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` | Legacy inputs remain until the separate WP7 replacement. |
 
 Output-selection switches such as `return_face_shifts`/`return_edge_shifts`,
 general tessellation diagnostic tolerances, and separator `image_search` are
@@ -329,14 +337,89 @@ resource-limited producer attribution, malformed occurrence/provenance, and
 unrepresentable public shifts still fail the requested shift call
 independently of `tessellation_check`. Periodic inverse realization requires
 semantic consistency before consuming identity or S measures. See the
-[implementation map](wp5-implementation.md); independent acceptance is pending.
+[implementation map](wp5-implementation.md); PR #72 was independently accepted
+and merged on 2026-09-24.
 
 For WP5 until WP9, `face_shift_search`, `face_shift_tol`,
 `validate_face_shifts`, and `repair_face_shifts` keep existing strict input
 validation but are no-ops for the certified result. WP9 still owns their
-removal. WP6/WP7 require separate producer-specific contracts for planar edges
-and ghost boundary identity; this WP5 decision does not silently determine
-their zero-boundary output policy.
+removal. Ordinary planar edges follow the separate ADR 0022 contract below;
+ghost boundary identity and output policy remain WP7-owned.
+
+### Ordinary planar WP6 contract and branch implementation
+
+The [#74](https://github.com/DeloneCommons/pyvoro2/issues/74) G1–G4 prerequisite
+gates are closed. The branch implements
+[ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md);
+independent production acceptance, WP6 completion and Checkpoint B remain
+pending. Existing public operation/result names retain their lifecycle status;
+no new public certificate class or boundary schema is added.
+
+Ordinary planar compute obtains final outgoing-edge owner/image provenance
+from the native execution producing its geometry. Trusted initialization sides
+become real walls on nonperiodic axes or nonzero persistent self images on
+periodic axes. Particle origins retain the actual persistent owner and native
+image. Every persistent input must appear in actual native storage before
+computed/hidden disposition is interpreted; insertion omission fails in both
+standard and power mode.
+
+For original caller points `P`, preparation `k`, actual insertion `h`, and
+native image `sigma`, the public shift is
+`s_ij = sigma + (k_i+h_i) - (k_j+h_j)`, with
+`boundary_image = P_j + s_ij @ A`. Transport uses arbitrary-precision integers
+for private `k`, `K` and `s`, without an earlier signed-int64 preparation gate.
+Only a requested public edge-shift view requires signed-int64 range; a large
+common preparation translation may cancel. `cell['site']` and `result.sites`
+refer to original inputs. Requested vertices are source-centered numerical
+native views. Valid external IDs relabel output only.
+
+Attribution is mandatory whenever ordinary periodic owner-bearing edges are
+returned or consumed, even with `return_edge_shifts=False`. Generator edges
+receive requested `adjacent_shift`; real walls omit it. Requested shifts work
+with public vertices and vertex adjacency both omitted. Temporary proof
+geometry does not set public capabilities. `has_periodic_shifts` denotes all
+requested generator shifts available, including available-but-empty output,
+not positive exact semantic contact.
+
+`return_diagnostics=True` or `tessellation_check != 'none'` additionally audits
+the complete exact E and S cells. E uses actual stored native sites/periods and
+exact backend-radius squares. S uses original caller sites, public spans and
+mathematical weights, or exact squares of supplied radii. Neither ideal picks
+or repairs a native image. Full-cell contact, positive provenance coverage,
+internal collapse, degeneracy and required reciprocity are checked separately
+from numerical raw geometry and occurrence multiplicity.
+
+After a complete exact audit, `tessellation_line_offset_tol` and
+`tessellation_line_angle_tol` control numerical reciprocal segment-union checks
+for classes positive in both E and S. Exact translation of native-local
+coordinates supplies a common chart without public vertices or int64 shift
+views. Neither tolerance determines an image or exact positivity. Separate
+numerical resource/representation refusals attach error findings and preserve
+attributed shifts when the diagnostic action permits a result.
+
+Truthfully attributed raw collapsed occurrences remain. An extra internally
+collapsed occurrence with consistently nonpositive E/S contact is nonfatal
+when positive coverage is otherwise complete. Noncollapsed nonpositive
+occurrences, E/S status conflict, missing positive provenance and positive
+coverage represented only by collapsed occurrences are errors. Coincident
+labels stay distinct. Public-rounding collapse is not internal native collapse.
+
+ADR 0016 controls `'none'`, `'diagnose'`, `'warn'` and `'raise'` on completed
+diagnostics. Hard source/profile, insertion, attribution/resource and required
+public-representation failures abort atomically regardless of that action.
+Independent audit exhaustion preserves attributed shifts when the requested
+action permits a result, but reports incomplete consistency. No checked prefix
+is success. Qualified native support has an explicit source/build/evaluation
+boundary; unsupported profiles refuse rather than inheriting certification
+from a source hash.
+
+Planar realization requires a complete successful exact audit and consumes all
+positive S boundary classes, deriving length once per exact segment/class.
+Native edge descriptors do not supply semantic measure. Normalization retains
+source/provenance associations or refuses an unrepresentable view; raw-only
+standalone helpers cannot recreate full E/S or native-collapse evidence from
+mutable dictionaries. No inverse solver, report schema or ghost contract is
+redesigned.
 
 ### Target separator measurement-space model
 
@@ -1427,8 +1510,7 @@ pyvoro2.planar.compute(
     block_size=None, blocks=None, init_mem=8,
     mode='standard', weights=None, radii=None,
     return_vertices=True, return_adjacency=True, return_edges=True,
-    return_edge_shifts=False, edge_shift_search=2, include_empty=False,
-    validate_edge_shifts=True, repair_edge_shifts=False, edge_shift_tol=None,
+    return_edge_shifts=False, include_empty=False,
     return_diagnostics=False, output='result',
     normalize='none', normalization_tol=None,
     tessellation_check='none', tessellation_require_reciprocity=None,
@@ -1501,8 +1583,17 @@ linked clipping and seed construction. Compared with earlier builds that
 permitted contraction, this can change last-bit geometry and topology near
 degeneracy. Mathematical weight/radius input semantics and the common gauge
 remain unchanged; earlier input-parity guarantees do not promise bitwise
-geometry across build policies. This does not implement certified periodic
-boundary metadata.
+geometry across build policies. WP5 attribution is a separate consumer of that
+qualified native evidence.
+
+WP6 likewise applies a noncontracting binary64 policy to the ordinary planar
+producer and its compact observer. Its initial supported cohort is Linux
+x86_64/GCC 13.3 with baseline SSE2 and no AVX/FMA; schema, measured/reviewed
+source identity, effective target and runtime evaluation checks are enforced.
+Other package platforms do not inherit planar proof support. This explicit
+profile boundary is separate from mathematical validity and exact E/S
+geometry. No bitwise equality is promised with earlier builds that permitted
+different arithmetic.
 
 The current native-construction controls have one shared contract in both
 dimensions. `init_mem` and each explicit `blocks` entry must be a positive
@@ -1541,9 +1632,12 @@ or non-finite data before reduction and accepts non-negative padding only when
 the resulting bounds remain finite and strictly ordered. WP2 supersedes the
 older `PeriodicCell` validity sentence in ADR 0011: either handedness is valid
 when the finite binary64 basis has an exact non-zero determinant, while
-conditioning remains a warning-only diagnostic. Existing backend remap helpers
+conditioning remains a warning-only diagnostic. Public backend remap methods
 still validate exact Boolean flags, finite non-negative `eps`, and finite
 points, and reject a lattice shift that cannot fit signed int64 before casting.
+Ordinary planar compute privately reuses rectangular numerical remapping with
+Python-integer shift storage until final edge-shift materialization; public
+remapping and ghost/locate policies are unchanged.
 
 All 18 internal native construction routes repeat converted-value checks and
 checked constructor arithmetic before allocation. An aggregate source-derived
@@ -1570,11 +1664,11 @@ the certified displacement view; explicit `delta` is
 lattice basis. Distances retain the canonical derivation from `delta`; source
 equality and the version-1 identity vocabulary remain unchanged.
 
-Current realization matching consumes backend-primary-relative face/edge
-metadata. For independently lattice-translated endpoints it can report another
-shift despite an unchanged physical connector; source-relative boundary
-metadata remains WP5/WP6 work. The separator source correction does not claim
-that later boundary contract is already implemented.
+Periodic realization matching uses source-relative face/edge metadata under
+WP5/WP6. It requires complete successful exact consistency and consumes
+positive S boundary classes; source attribution alone does not establish a
+realized positive separator. The fixed-observation source/identity and solver
+contracts remain unchanged.
 
 The public `image_search` parameter remains a non-negative exact integer with
 default one in all three separator entry points below. It is now only a capped
@@ -2146,7 +2240,7 @@ The following convenience surface remains **provisional**:
 | `measure_kind` | Provisional | `"area"` in 2D or `"volume"` in 3D. |
 | `boundary_kind` | Provisional | `"edges"` in 2D or `"faces"` in 3D. |
 | `has_tessellation_diagnostics`, `has_normalized_vertices`, `has_normalized_topology` | Provisional | Distinguish absent optional objects from present objects. |
-| `has_boundaries`, `has_periodic_shifts` | Provisional | Report explicit builder capabilities, including available-but-empty geometry. For the WP5 target, the latter means complete source-attributed availability of requested native generator-face shifts, not exact E/S consistency; inspect diagnostics for that separate question. |
+| `has_boundaries`, `has_periodic_shifts` | Provisional | Report explicit builder capabilities, including available-but-empty geometry. For WP5/WP6, the latter means complete source-attributed availability of requested native generator shifts, not exact E/S consistency; proven walls need no shift. Inspect diagnostics for consistency. |
 | `require_tessellation_diagnostics()`, `require_normalized_vertices()`, `require_normalized_topology()` | Provisional | Return optional objects or raise a clear `ValueError`. |
 | `require_boundaries()` | Provisional | Return input-order-aligned edge/face collections, using an empty collection for hidden sites, or raise when boundaries were unavailable. |
 | `global_vertices`, `global_edges` | Provisional conveniences | Forward to available planar normalized objects; otherwise `None`. |

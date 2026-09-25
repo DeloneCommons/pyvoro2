@@ -3,14 +3,15 @@
 This document has three roles. It describes the **factual v0.6.3
 implementation**, which is the software baseline used by the separator-inverse
 manuscript, records the **v0.7.0 release architecture**, and explains
-the **current v0.8 implementation** and accepted extension boundaries.
+the **current implementation** and accepted extension boundaries, including
+v0.9 periodic work.
 
 !!! note "Current and historical documentation"
     The v0.6.3 section remains a historical manuscript baseline. The v0.7
     sections explain the architecture established by the released v0.7.0
-    contract. Current sections describe the feature-free v0.8 cleanup fixed by
-    ADR 0006. Lifecycle status is finalized in the
-    [v0.8 API inventory](api-inventory.md).
+    contract. The v0.8 foundation and later v0.9 changes are identified
+    separately below. Implementation and acceptance status are recorded in the
+    [API inventory](api-inventory.md) and active plan.
 
 ## Architectural principles
 
@@ -191,7 +192,7 @@ ownership is:
 |---|---|---|
 | Dimension-neutral | `_internal.cell_output`, `_internal.inputs`, `_internal.power_input`, `_internal.validation`, `_internal.weight_transforms` | Raw-record post-processing is parameterized by measure and boundary keys; strict scalar/array validation and input coercion are parameterized by dimension; power-input resolution and weight/radius conversion have no dimension-specific geometry. |
 | Spatial/3D | `_internal.spatial.domain_geometry`, `_internal.spatial.domain_utils`, `_internal.spatial.wp5_*` | These helpers use the 3D domain classes, three-component lattice operations, or the native face producer and exact ideal audit. |
-| Planar/2D | `_internal.planar.domain_geometry`, `_internal.planar.edge_shifts` | These helpers use the planar domain classes, two-component lattice operations, or realized edge geometry. |
+| Planar/2D | `_internal.planar.domain_geometry`, `_internal.planar.wp6_certificate`, `_internal.planar.wp6_ideal`, `_internal.planar.wp6_profile`, `_internal.planar.edge_shifts` | Ordinary compute uses source-associated native provenance and separate exact E/S auditing; the legacy edge-shift helper remains ghost-only. |
 
 The obsolete root helper modules and private modules under `pyvoro2.planar`
 are absent rather than retained as forwarding shims. `_internal` is not public
@@ -264,7 +265,7 @@ solver-created result graphs. `PeriodicCell` accepts either handedness and
 requires an exact non-zero determinant over its finite binary64 source values;
 conditioning is diagnostic rather than a validity test. User-coordinate
 wrapping chooses exact floor shifts and checks signed-int64 range only when a
-public shift array is requested. Established backend remapping still proves
+public shift array is requested. Public backend remapping still proves
 every returned lattice shift representable as signed int64 before conversion.
 Normalization treats
 mutable raw cell records as a fresh public boundary, validates all consumed
@@ -334,6 +335,13 @@ metadata. Box points are not wrapped; rectangular/orthorhombic periodic axes
 use their domain remapper; a triclinic operation reuses one validated periodic
 snapshot for Cartesian/internal conversion and coupled remapping.
 
+Ordinary planar compute alone requests Python-integer preparation shifts in
+an owned object array. The shared private `RectangularCell._remap_cart` keeps
+the existing numerical quotient/multiply/snap arithmetic; public `remap_cart`
+and ghost/locate integer policies are unchanged. Private `k`, `K=k+h` and
+transported `s` remain unbounded until a requested public edge-shift view is
+checked for signed-int64 range, so large common translations may cancel.
+
 Non-periodic inserted coordinates satisfy `lo <= x < hi`; triclinic native
 coordinates satisfy `[0, bx) × [0, by) × [0, bz)`. Locate queries are not
 inserted and remain outside this containment rule. Mandatory pair safety uses
@@ -352,7 +360,9 @@ shared exact core for
 final periodic classification and avoid unconditional all-pairs work for
 ordinary well-separated inputs. Raw standard compute output must contain every
 internal ID exactly once; raw power output may contain a unique subset for
-hidden cells. ADR 0013 fixes this preparation, policy, provenance, ghost,
+hidden cells. WP6 additionally validates every ordinary planar input against
+the actual native inserted population before interpreting hidden/deleted cells;
+an insertion omission fails in either mode. ADR 0013 fixes preparation, policy, provenance, ghost,
 native-backstop, and R5/R8 boundary.
 
 ### Neutral weight/radius transforms
@@ -848,8 +858,9 @@ separate native-recovery resources. The WP4 primitive accepts an explicitly
 justified exact compatibility box, not a producer tolerance. WP5's separate
 source-complete producer predicate is fixed by
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md),
-not a generic numerical envelope; WP6–WP8 must justify their own complete
-producer predicates/regions and reference anchors. The kernel currently has no
+not a generic numerical envelope. WP6's direct source-associated planar
+provenance is fixed separately by ADR 0022; WP7–WP8 must justify their own
+producer contracts and reference anchors. The kernel currently has no
 boundary/metadata call sites.
 
 The [private native face witness](native-face-witness.md) supplies the WP5 G0
@@ -860,8 +871,8 @@ Requested 3D face shifts consume its matched packet; the G0 producer and provena
 specification is closed in
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md).
 The [implementation map](wp5-implementation.md) records source-route replay,
-exact ideal reconstruction, resource policy and independent tests. WP5
-independent acceptance remains pending.
+exact ideal reconstruction, resource policy and independent tests. WP5 was
+independently accepted and squash-merged through PR #72 on 2026-09-24.
 
 Discrete user-wrap shifts are decided by exact rational arithmetic over the
 dyadic source numbers, not a rounded inverse/floor heuristic. The implemented
@@ -877,10 +888,125 @@ zero faces are not silently deleted. Periodic inverse realization requires a
 complete successful semantic audit and derives boundary measures from S.
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
 defines its chart, reciprocity and public output. The implemented WP4
-explicit-box translation consumer is separate. WP6/WP7 producer contracts
-require their own qualification. Ghost semantics do not trust native integer
+explicit-box translation consumer is separate. WP6 follows the separately
+qualified planar contract below. Ghost semantics do not trust native integer
 sign/value alone, and the 3D bridge must prevent uninitialized temporary ghost
 IDs from being read.
+
+### Ordinary planar provenance and exact consistency
+
+[ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md) records
+the independently closed WP6 contract. Its branch implementation is under
+[#74](https://github.com/DeloneCommons/pyvoro2/issues/74); independent production
+acceptance and Checkpoint B remain pending.
+
+| Component | Responsibility |
+|---|---|
+| `cpp/planar_witness.cpp` and private headers | Run the unchanged ordinary rectangular producer with compact outgoing-edge tokens, actual insertion/storage snapshots and internal collapse evidence. |
+| `cmake/PlanarWitness.cmake` and `_internal/planar/wp6_profile.py` | Bind the measured source closure and schema to an admitted effective build/evaluation profile; refuse unsupported profiles. |
+| `_internal/planar/wp6_certificate.py` | Validate insertion and final source associations, transport native images into the original-source/user-basis chart, and combine exact audit findings with public output/actions. |
+| `_internal/planar/wp6_ideal.py` | Reconstruct complete exact planar cells and labeled contacts independently for E and S, with complete-family and exact-arithmetic guards. |
+| `_internal/planar/wp6_numerical.py` | After complete E/S auditing, compare reciprocal native segment unions for classes positive in both ideals, using exact native-local chart translation before a checked numerical view. |
+| `planar/api.py`, result and planar normalization/diagnostics | Keep proof geometry private, preserve raw occurrences/provenance, accept walls without shifts and apply ADR 0016 severity. |
+| `inverse/separator/realize.py` | Require successful exact consistency and consume the complete positive S boundary classes and requested semantic length views. |
+
+The native adapter tags initialization sides and actual particle attempts;
+stock `ne` propagation associates final slot `k` with `[k, ed[2*k]]`. It
+observes discrete candidate identity/image rather than reconstructing a plane
+from public vertices. Full cut journals and a second unchecked positional
+matching computation are unnecessary. Every input must actually be inserted;
+native hidden/deleted disposition is interpreted only afterward.
+
+Preparation `k` and actual insertion `h` yield `K=k+h`, then public
+`s_ij=sigma+K_i-K_j` with Python integers before required int64 views.
+Original caller sites anchor public cells and source-centered native vertices.
+Real walls omit shifts; periodic initialization sides name nonzero self images.
+Ordinary compute performs attribution for every periodic mask and output
+selection, even when public edges or shifts are omitted. Every call enforces
+insertion integrity; unrequested public proof geometry is not materialized.
+
+Exact E uses actual stored native sites, periods/walls and exact backend-radius
+squares. S uses original caller sites, represented public spans and mathematical
+weights or supplied-radius exact squares. Independent centered image families
+and rational clipping classify complete cells and contacts. Neither ideal
+selects N's owner/image. Internally collapsed occurrences remain distinct from
+public-rounding collapse, and raw occurrence multiplicity is separate from
+positive semantic class coverage. Harmless consistently nonpositive collapsed
+extras are nonfatal when positive coverage is complete; noncollapsed
+nonpositive, conflict, missing and collapsed-only positive coverage are errors.
+
+Requested diagnostics audit exact E/S consistency independently of successful
+attribution. Audit exhaustion is an incomplete audit, while source/profile,
+insertion, attribution and required public-representation failures are hard
+atomic failures. Strict planar realization requires the complete successful
+audit and uses positive S classes once per exact segment. Standalone mutable
+raw-record utilities cannot recover missing private provenance or original
+weight operands and retain their numerical/raw-record scope.
+
+The retained `tessellation_line_offset_tol` and `tessellation_line_angle_tol`
+control the separate numerical reciprocal-union check after complete exact
+auditing. It uses noncollapsed native occurrences in classes positive in both
+E and S, with no fragment pairing, public vertices or public int64 shift view.
+Its resource/representation refusal is an error diagnostic independent of the
+exact audit; attributed raw shifts survive when the requested action permits.
+These tolerances never choose an image or establish exact positivity.
+
+The four obsolete ordinary `planar.compute` reconstruction controls are removed
+in WP6. `_internal.planar.edge_shifts` remains isolated to the legacy ghost
+route pending WP7. No new public result hierarchy, ghost schema, inverse
+algorithm or mandatory dependency is introduced.
+
+The occurrence schema is private `pyvoro2.planar.occurrences.v1`. CMake hashes
+the complete linked planar vendor closure plus adapter/binding/precondition and
+effective build-control sources; its measured digest must match separately
+reviewed literals in the native contract header and Python profile module.
+Runtime checks additionally require the admitted cohort, binary64
+`FLT_EVAL_METHOD == 0`, 32-bit native integers, round-to-nearest and gradual
+underflow. The initial admitted production cohort is Linux x86_64/GCC 13.3
+baseline SSE2, with no AVX/FMA, fast-math, contraction or LTO. Other package
+platforms do not inherit that proof and refuse until qualified.
+
+The full source-install CI gate uses Ubuntu 24.04 and `CXX=g++-13`, then checks
+the actual supported profile; compiler drift does not expand qualification.
+macOS 15 and Windows build the package and run spatial/pure-Python checks plus
+explicit ordinary-planar profile-refusal checks. Installed-artifact checks
+retain source/schema and native-profile/binary identities in either mode;
+successful unsupported-platform refusal is not planar geometry qualification.
+All current cibuildwheel release cohorts (manylinux x86_64, Windows AMD64,
+macOS arm64 and macOS x86_64) explicitly test ordinary-planar refusal across
+CPython 3.10–3.14. The separately built Linux GCC 13.3 source wheel is the
+admitted ordinary-planar wheel; release-wheel 3D/algebra checks do not extend
+that support boundary.
+
+Current private refusal ceilings remain separate:
+
+| Resource | Default ceiling | Meaning |
+|---|---:|---|
+| Native eager construction | 1 GiB | Existing source-derived preflight from ADR 0010. |
+| Additional observing producer storage | 64 MiB | Extra mask, queue and worklist allocation, checked before construction. |
+| Persistent insertion records | 1,000,000 | Bound on native snapshot materialization. |
+| Native/Python final occurrences | 262,144 | Complete-packet metadata bound, checked before expanded packet materialization; no partial result is returned. |
+| Exact E/S candidate images | 250,000 | Cumulative complete-family work, separate from native image provenance. |
+| Exact E/S charged rational operations | 10,000,000 | Incomplete audit on exhaustion; known native attribution remains available when public action permits. |
+| Exact numerator/denominator size | 16,384 bits | Bound on normalized exact operands/results. |
+| Numerical reciprocal segment comparisons | 262,144 | Complete sum of directional segment-pair comparisons, preflighted separately from exact E/S work. |
+
+The native token family has the checked upper bound `9*n+4` within native
+signed-int range. Exact candidate families have `n*(n*3**p-1)` images for
+`n` sources and `p` periodic axes per ideal; cached source cells do not consume
+the family twice. These are complete-family counts, not finite search windows.
+
+Measured fully periodic grid audits of E and S together used 73,600 images and
+4,064,352 charged operations for 64 sites. A 100-site grid reached the work
+ceiling during S after 170,810 images; a 144-site grid reached it during E.
+Those cases document explicit incomplete-audit behavior, not a fixed maximum
+supported site count independent of geometry. The separately reconstructed
+archive cohort matched 402 exact cells and 9,776 nonidentity labeled contacts;
+two insertion-incomplete E populations were excluded rather than invented.
+The optimized witness and actual built artifacts still require independent
+production acceptance.
+
+### Remaining v0.9 stabilization
 
 The normal "points + separator observations -> fitted weighted tessellation"
 workflow should be promoted to a supported public inverse contract. The

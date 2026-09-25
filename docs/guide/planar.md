@@ -33,8 +33,12 @@ periodicity into built-in-Boolean tuples. Public flags require Python or NumPy
 Boolean scalars; IDs and counts require exact non-Boolean integers; and
 explicit tolerances must be finite in their documented positive or
 non-negative range. `Box.from_points` rejects empty/non-finite inputs before
-reduction. Rectangular remapping validates finite points and `eps` and checks
-signed-int64 shift range before conversion.
+reduction. Public rectangular remapping validates finite points and `eps` and
+checks signed-int64 shift range before conversion. Ordinary `compute` keeps
+its private preparation and transport shifts as Python integers; only a
+requested final public edge shift must fit signed int64. Large common
+translations can therefore cancel without an earlier preparation-range
+failure. Public remapping and ghost/locate integer policies are unchanged.
 
 Every inserted planar generator must lie in `[lo, hi)` on non-periodic axes;
 periodic axes are remapped first. Generator pairs at squared distance at most
@@ -42,6 +46,11 @@ periodic axes are remapped first. Generator pairs at squared distance at most
 threshold, and wrap options control only optional diagnostics above that floor.
 `ghost_cells` queries are temporary generators and follow the same rule, while
 `locate` queries are not inserted.
+
+Ordinary `compute` also verifies that every persistent input reached native
+storage. An insertion omission raises in both standard and power mode; it is
+not a hidden power cell. A successfully inserted power cell may still become
+hidden during cell computation.
 
 ## Basic compute
 
@@ -89,12 +98,15 @@ result = pv2.compute(
 
 The convention is \(\pi_i(x)=\lVert x-p_i\rVert^2-w_i\). Weights have
 squared-length units and may be negative. Internally, one common global shift
-converts them to non-negative length-unit backend radii, so a common additive
-change to all weights leaves areas, adjacency, realized edges, and periodic
-image shifts unchanged within numerical tolerance. Existing `radii=` calls
-remain valid and numerically unchanged in power mode, but supplying both
+converts them to non-negative length-unit backend radii. One common additive
+weight shift preserves the exact diagram when the represented weight
+differences are preserved; radius conversion and native arithmetic can still
+lose those differences. Existing `radii=` calls remain supported in power
+mode, but supplying both
 representations is an error. Standard mode rejects either representation.
-`weights=` is currently a `compute(...)` argument only. The input and converted
+`locate` also accepts `weights=`; power `ghost_cells` accepts either
+`weights=`/`ghost_weights=` or `radii=`/`ghost_radii=` as a complete family.
+The input and converted
 representation must remain finite; non-finite input or overflow during
 conversion raises `ValueError` before native computation.
 Finite representability is necessary for conversion but does not guarantee a
@@ -121,15 +133,38 @@ cell = pv2.RectangularCell(
 result = pv2.compute(
     pts,
     domain=cell,
-    return_vertices=True,
+    return_vertices=False,
+    return_adjacency=False,
     return_edges=True,
     return_edge_shifts=True,
 )
 ```
 
-The planar wrapper reconstructs these edge shifts in Python and also repairs a
-legacy backend quirk where some fully periodic adjacencies can otherwise appear
-with negative neighbor ids.
+Each ordinary edge's owner and image come from its native source occurrence.
+They are not selected by a residual, finite search window or nearest image.
+For lattice rows `A`, an edge from source `i` with neighbor `j` and shift `s`
+identifies `points[j] + s @ A` relative to the original source `points[i]`.
+This remains true when input representatives lie outside the primary periodic
+cell. `cell['site']` is the original input site; returned vertices, when
+requested, are numerical native geometry centered on that source chart.
+
+A self-image edge names the same persistent owner and has a nonzero shift.
+Real walls keep their negative side code and omit `adjacent_shift`; a zero
+tuple is not a wall image. Ownership remains certified when
+`return_edge_shifts=False`. Public vertices and vertex adjacency may both be
+omitted while requesting edge shifts. `has_periodic_shifts` reports requested
+shift availability, including available-but-empty output; it does not assert
+that every native edge is a positive exact semantic boundary.
+
+Ordinary planar computation currently admits the qualified Linux x86_64
+GCC 13.3 baseline-SSE2 native profile, with binary64 evaluation, contraction and
+fast-math disabled, and no LTO or AVX/FMA target. Unsupported source/build or
+runtime arithmetic profiles fail explicitly. Package support on another
+platform does not by itself qualify this planar certification path.
+
+The ordinary `compute` keywords `edge_shift_search`, `validate_edge_shifts`,
+`repair_edge_shifts` and `edge_shift_tol` are removed. See the
+[v0.9 planar migration guide](migration-v0.9.md).
 
 ## `locate(...)` and `ghost_cells(...)`
 
@@ -153,6 +188,11 @@ So the same three high-level questions exist in both dimensions:
 2. locate the owner of a query point,
 3. compute the hypothetical cell of a query point without inserting it.
 
+Ghost edge reconstruction remains a separate legacy path. Its reconstruction
+controls and requirement for public vertices when requesting ghost shifts are
+unchanged; ordinary compute's source certification does not certify ghost
+boundary identity.
+
 ## Diagnostics and wrapper-level convenience
 
 Planar `compute(...)` supports the same kind of post-compute convenience that
@@ -171,6 +211,41 @@ For periodic domains, the wrapper automatically computes the temporary geometry
 needed for reciprocity checks and then strips it back out of `result.cells`
 unless you explicitly requested it. The result's boundary and periodic-shift
 capability flags describe only that final user-visible geometry.
+
+Requested compute diagnostics also reconstruct two complete exact ideals:
+E from actual stored native sites, periods and exact backend-radius squares;
+S from original sites, public periods and mathematical weights (or exact
+supplied-radius squares). They audit contact status, positive boundary coverage
+and required reciprocity without changing native ownership or shifts.
+
+After a complete exact audit, `tessellation_line_offset_tol` and
+`tessellation_line_angle_tol` control a separate numerical comparison of
+reciprocal native segment unions in classes positive in both ideals. This
+check uses internal local coordinates and needs no public vertices. These
+tolerances do not choose images or define exact positivity.
+
+Raw collapsed occurrences are retained. An internally collapsed extra record
+with consistently nonpositive E/S contact is nonfatal when positive coverage
+is complete. Noncollapsed nonpositive records, E/S status conflicts, missing
+positive boundaries and positive boundaries represented only by collapsed
+records are errors. Collapse inside the native computation differs from
+distinct internal endpoints rounding to the same public coordinate.
+
+Use `tessellation_check='raise'` to require an okay completed diagnostic, or
+`'warn'` to warn when it is not okay. `'diagnose'` attaches findings without
+raising; `'none'` takes no diagnostic action, though `return_diagnostics=True`
+still requests the audit. Unavailable provenance, insertion failure,
+unsupported profile or an unrepresentable required public view always fails
+atomically. Exact-audit resource exhaustion is reported as an incomplete audit
+and can preserve already attributed shifts under non-raising actions.
+Numerical reciprocal inspection has its own work and representation refusals;
+these attach error findings without changing the completed exact audit or
+discarding attributed shifts under an action that permits return.
+
+Standalone `analyze_tessellation` and validation of public dictionaries check
+the supplied numerical records. Those dictionaries alone do not contain the
+stored native population, original weight operands or internal occurrence
+witness needed for compute's exact E/S audit.
 
 The same holds for normalization convenience:
 
@@ -218,6 +293,16 @@ The dedicated planar normalization helpers are:
 In planar topology work, the globally deduplicated boundary objects are
 **edges**, not faces.
 
+Normalization keeps wall/generator kind and owner/image provenance separate
+before geometric pooling and preserves each local occurrence association,
+including repeated occurrences. `normalize_edges` and `normalize_topology`
+refuse a mapping that collapses distinct public edge endpoints, whether caused
+by tolerance pooling or periodic seam remapping. Equal public endpoints can be
+retained but do not by themselves prove native internal collapse.
+`normalize_vertices` alone remains a numerical vertex pool with raw vertices
+and local mappings. Normalization tolerance never determines exact semantic
+positivity.
+
 ## Planar plotting
 
 For quick inspection, use the optional matplotlib helper:
@@ -251,6 +336,14 @@ of the realized boundary measure:
 
 - face area in 3D,
 - edge length in 2D.
+
+Planar realization requires a complete successful exact consistency audit and
+uses the complete positive S boundary-class set. It derives length once per
+exact segment/class rather than counting every raw edge occurrence. A requested
+numerical length that cannot be represented as a finite nonzero binary64 value
+fails as a representation problem; it does not turn a positive exact segment
+into an absent boundary. Numerical edge annotations remain descriptors of
+native output.
 
 The current planar domain restriction still applies here: rectangular periodic
 cells are supported, but there is no planar oblique-periodic `PeriodicCell`

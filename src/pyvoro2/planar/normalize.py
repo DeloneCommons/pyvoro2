@@ -53,13 +53,15 @@ class NormalizedTopology:
 
     Attributes:
         global_vertices: Unique planar vertices in Cartesian coordinates.
-        global_edges: Unique geometric edges. Each edge dict contains:
+        global_edges: Edges pooled by owner/image or wall provenance and then
+            numerical geometry. Each edge dict contains:
             - cells: (cid0, cid1)
             - cell_shifts: ((0, 0), (sx, sy))
             - vertices: (gid0, gid1)
             - vertex_shifts: ((0, 0), (sx, sy))
         cells: Per-cell dictionaries including ``vertex_global_id``,
             ``vertex_shift``, and ``edge_global_id`` aligned with local edges.
+            Repeated raw edge occurrences retain repeated aligned entries.
     """
 
     global_vertices: np.ndarray
@@ -75,6 +77,33 @@ def _domain_length_scale(domain: Domain2D) -> float:
 
 def _is_periodic_domain(domain: Domain2D) -> bool:
     return bool(geometry2d(domain).has_any_periodic_axis)
+
+
+def _is_wall_reference(
+    adjacent: int, *, domain: Domain2D, name: str,
+) -> bool:
+    """Check public wall schema only, without asserting native provenance."""
+
+    if adjacent >= 0:
+        return False
+    periodic = geometry2d(domain).periodic_axes
+    if adjacent not in (-1, -2, -3, -4) or periodic[(-adjacent - 1) // 2]:
+        raise ValueError(
+            f'{name} is not a planar wall on a nonperiodic axis'
+        )
+    return True
+
+
+def _validate_edge_shift(
+    shift: tuple[int, int], *, adjacent: int, domain: Domain2D, name: str,
+) -> None:
+    """Refuse metadata that pooling would otherwise silently discard."""
+
+    if adjacent < 0 and any(shift):
+        raise ValueError(f'{name}: a planar wall has no image shift')
+    periodic = geometry2d(domain).periodic_axes
+    if any(value != 0 and not periodic[axis] for axis, value in enumerate(shift)):
+        raise ValueError(f'{name} must be zero on nonperiodic axes')
 
 
 def _prepare_vertex_cells(
@@ -145,19 +174,26 @@ def _prepare_vertex_cells(
                     edge['adjacent_cell'],
                     name=f'{prefix}.adjacent_cell',
                 )
+                wall = _is_wall_reference(
+                    adjacent, domain=domain, name=f'{prefix}.adjacent_cell',
+                )
                 if 'adjacent_shift' in edge:
                     adjacent_shift = require_shift(
                         edge['adjacent_shift'],
                         name=f'{prefix}.adjacent_shift',
                         dim=2,
                     )
-                elif require_edge_shifts:
+                elif require_edge_shifts and not wall:
                     raise ValueError(
                         'cells must include edge adjacent_shift '
                         '(compute with return_edge_shifts=True)'
                     )
                 else:
                     adjacent_shift = (0, 0)
+                _validate_edge_shift(
+                    adjacent_shift, adjacent=adjacent, domain=domain,
+                    name=f'{prefix}.adjacent_shift',
+                )
                 edge_data.append(
                     {
                         'vertices': vertices_local,
@@ -170,7 +206,7 @@ def _prepare_vertex_cells(
                 incident_shifts = [(0, 0)] + [
                     edge['shift']
                     for edge in edge_data
-                    if vertex_index in edge['vertices']
+                    if edge['adjacent'] >= 0 and vertex_index in edge['vertices']
                 ]
                 validate_pairwise_shift_differences(
                     incident_shifts,
@@ -251,7 +287,13 @@ def normalize_vertices(
     require_edge_shifts: bool = True,
     copy_cells: bool = True,
 ) -> NormalizedVertices:
-    """Build a global planar vertex pool and per-cell vertex mappings."""
+    """Build a numerical vertex pool with aligned raw vertex mappings.
+
+    Periodic pooling respects incident generator images and wall side codes.
+    Walls need no ``adjacent_shift``. Tolerance controls only this numerical
+    view: mutable public records cannot certify native endpoint collapse or
+    exact positive boundary classes.
+    """
 
     require_edge_shifts = require_bool(
         require_edge_shifts,
@@ -351,12 +393,16 @@ def normalize_vertices(
             incident: list[tuple[int, tuple[int, int]]] = []
             cid_here = item['id']
             incident.append((cid_here, (0, 0)))
+            walls = set()
             for edge in v_edges[k]:
-                incident.append((edge['adjacent'], edge['shift']))
+                if edge['adjacent'] < 0:
+                    walls.add(edge['adjacent'])
+                else:
+                    incident.append((edge['adjacent'], edge['shift']))
 
             topo_key = _canonical_incident_key(incident)
             coord_key = item['quantized'][k]
-            key: tuple[Any, ...] = ('pbc',) + topo_key + ('@',) + coord_key
+            key = ('pbc', topo_key, tuple(sorted(walls)), coord_key)
             gid = key_to_gid.get(key)
             if gid is None:
                 gid = len(global_vertices)
@@ -436,6 +482,7 @@ def _canon_cell_pair(
 def _prepare_topology_cells(
     nv: NormalizedVertices,
     *,
+    domain: Domain2D,
     periodic: bool,
 ) -> tuple[np.ndarray, list[dict[str, Any]]]:
     """Validate every record consumed by planar edge construction."""
@@ -511,6 +558,9 @@ def _prepare_topology_cells(
                 edge['adjacent_cell'],
                 name=f'{edge_prefix}.adjacent_cell',
             )
+            _is_wall_reference(
+                adjacent, domain=domain, name=f'{edge_prefix}.adjacent_cell',
+            )
             if 'adjacent_shift' in edge:
                 adjacent_shift = require_shift(
                     edge['adjacent_shift'],
@@ -524,6 +574,10 @@ def _prepare_topology_cells(
                 )
             else:
                 adjacent_shift = (0, 0)
+            _validate_edge_shift(
+                adjacent_shift, adjacent=adjacent, domain=domain,
+                name=f'{edge_prefix}.adjacent_shift',
+            )
             effective_shift = (
                 adjacent_shift
                 if periodic and adjacent >= 0
@@ -538,6 +592,16 @@ def _prepare_topology_cells(
                 [vertex_shifts[value] for value in vertices_local],
                 name=f'{edge_prefix}.vertex_shift',
             )
+            u, v = vertices_local
+            if (
+                np.array_equal(global_vertices[gids[u]], global_vertices[gids[v]])
+                and vertex_shifts[u] == vertex_shifts[v]
+                and not np.array_equal(vertices[u], vertices[v])
+            ):
+                raise ValueError(
+                    f'{edge_prefix} normalization collapses distinct public '
+                    'edge endpoints; this numerical topology is not representable'
+                )
             edge_data.append(
                 {
                     'vertices': vertices_local,
@@ -565,7 +629,14 @@ def normalize_edges(
     tol: float | None = None,
     copy_cells: bool = True,
 ) -> NormalizedTopology:
-    """Build a global edge pool based on an existing planar normalization."""
+    """Pool numerical edges only within canonical provenance classes.
+
+    Local occurrences remain aligned through ``edge_global_id`` even when
+    repeated records share a global edge. A mapping that collapses distinct
+    public endpoints is refused. Already coincident public endpoints remain
+    representable; they are not evidence of native collapse or zero exact
+    semantic length. This utility has no private native/ideal witness.
+    """
 
     copy_cells = require_bool(copy_cells, name='copy_cells')
     if tol is not None:
@@ -593,6 +664,7 @@ def normalize_edges(
     periodic = _is_periodic_domain(domain)
     _global_vertices, prepared = _prepare_topology_cells(
         nv,
+        domain=domain,
         periodic=periodic,
     )
     sorted_cells = sorted(prepared, key=lambda item: item['id'])
@@ -616,11 +688,13 @@ def normalize_edges(
                 (gids[u], vsh[u]),
                 (gids[v], vsh[v]),
             )
+            pair = _canon_cell_pair(cid_here, adj, adj_shift)
+            kind = 'wall' if adj < 0 else 'generator'
+            ekey = (kind, pair, ekey)
             eid = edge_key_to_id.get(ekey)
             if eid is None:
                 eid = len(global_edges)
                 edge_key_to_id[ekey] = eid
-                pair = _canon_cell_pair(cid_here, adj, adj_shift)
                 global_edges.append(
                     {
                         'cells': (int(pair[0]), int(pair[3])),
@@ -654,7 +728,12 @@ def normalize_topology(
     require_edge_shifts: bool = True,
     copy_cells: bool = True,
 ) -> NormalizedTopology:
-    """Convenience wrapper: normalize vertices, then deduplicate edges."""
+    """Construct a numerical topology view while retaining raw provenance.
+
+    Distinct owner/image and wall classes are never merged by tolerance. Raw
+    occurrence associations are retained; native collapse and exact semantic
+    positivity require compute's private certificate rather than this view.
+    """
 
     copy_cells = require_bool(copy_cells, name='copy_cells')
     nv = normalize_vertices(

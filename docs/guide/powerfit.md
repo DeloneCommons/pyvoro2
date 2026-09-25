@@ -854,8 +854,17 @@ binary64 square-root view when a numerical measure is requested. Native face
 descriptors remain numerical descriptions of returned Voro++ geometry. A
 semantic conflict or incomplete audit raises a structured realization failure
 even when the forward diagnostic action is `"none"`; it cannot become empty
-adjacency or convergence. Planar source-relative boundary metadata remains WP6
-work in the [v0.9 plan](../development/plans/v0.9.md).
+adjacency or convergence.
+
+Ordinary planar realization likewise uses original-source shifts and requires
+complete successful exact E/S consistency. It consumes every positive S
+boundary class and derives its edge length once per exact segment/class,
+independently of how many raw native occurrences carry that label. A retained
+collapsed native artifact is not itself a realized positive separator. Requested
+lengths use checked binary64 views; representation failure does not change
+exact positivity. Mathematical weight provenance is retained when the active
+workflow passes backend radii privately. The existing fixed solver and atomic
+active-state contracts are unchanged.
 
 The fit result never computes or owns a tessellation automatically.
 

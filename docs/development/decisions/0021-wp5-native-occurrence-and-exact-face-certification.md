@@ -1,6 +1,6 @@
 # 0021 — WP5 native occurrence and exact periodic face certification
 
-- **Status:** Accepted; implemented on the WP5 branch; independent acceptance pending
+- **Status:** Accepted; implementation independently accepted and merged 2026-09-24
 - **Date:** 2026-09-23
 - **Public-action amendment:** 2026-09-23 — native shift availability and
   exact E/S consistency have separate outcomes; G0-N/C/O remain closed.
@@ -17,14 +17,17 @@
 ## Status and scope
 
 The independent WP5 mathematical gate is **G0-N CLOSED, G0-C CLOSED,
-G0-O CLOSED**. Production WP5 implementation is authorized, but is pending.
-Neither WP5 acceptance, issue #68 closure, Checkpoint B acceptance nor v0.9.0
-readiness follows from this decision. This ADR is the detailed normative WP5
+G0-O CLOSED**. Production implementation subsequently passed independent
+acceptance at [PR #72](https://github.com/DeloneCommons/pyvoro2/pull/72) head
+`e070fb5c4b962d971cb0b3e017d203db1c5a7c89`, tree
+`b70c67a9df6ef854cfe6a2c3da28c1f2c25e8749`, and was squash-merged as
+`67395af35cbcdacc9d6202489fcc45f750a0d8a6` on 2026-09-24; #68 is complete.
+Checkpoint B acceptance and v0.9.0 readiness remain separate. This ADR is the detailed normative WP5
 contract for **ordinary persistent 3D faces**; WP6 planar edges and WP7 ghost
 boundaries have separate implementation gates. It supersedes the WP5-specific
 envelope, native-area, zero-face deletion and optional-reciprocity assumptions
-in earlier target documents. Existing source and tests still define current
-implemented behavior until WP5 lands.
+in earlier target documents. Source and tests define current implemented
+behavior. The source identity below remains the historical G0 review baseline.
 
 The reviewed starting point is `dev`
 `e2e520e84619ce4300137a9b953cb9e6bddab785`, tree
@@ -743,9 +746,8 @@ field requires a float; the native triangulated face `area` is not that
 measure. An audit failure is a structured realization failure, not
 an empty realized adjacency, a successful fit, or convergence. Preserve the
 existing atomic active-state behavior and unrelated nonperiodic inverse
-behavior. The current realization implementation reads native face area;
-WP5 production integration must replace that scientific authority for
-periodic 3D without silently changing the public native descriptor.
+behavior. The accepted WP5 integration uses S for periodic 3D scientific
+measure without changing the public native descriptor.
 
 `face_shift_search`, `face_shift_tol`, `validate_face_shifts` and
 `repair_face_shifts` retain their existing input validation until WP9 but
@@ -759,6 +761,7 @@ positive-measure authority, native polygon-area positivity, automatic
 zero-face deletion, optional reciprocity repair and backend-effective radii
 as the exact public ideal are superseded **for WP5**. The characterization
 showed why each can misclassify a native occurrence. The witness remains
-private observation, not production certification. Implement WP5 in a
-separate PR, test exact and producer-specific adversarial cases, then seek
-independent mathematical/native/API acceptance before closing #68.
+private observation consumed by production certification. PR #72 subsequently
+implemented this contract and passed independent mathematical/native/API
+acceptance; the prerequisite evidence and accepted mathematics above are
+unchanged by that status update.

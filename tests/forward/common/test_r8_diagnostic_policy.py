@@ -569,10 +569,7 @@ def test_wall_shift_metadata_is_not_required(dim: int) -> None:
         for boundary in (cell.get(case.boundary) or [])
         if int(boundary.get('adjacent_cell', -1)) < 0
     )
-    if dim == 3:
-        assert 'adjacent_shift' not in wall
-    else:
-        wall.pop('adjacent_shift')
+    assert 'adjacent_shift' not in wall
 
     diag = case.api.analyze_tessellation(cells, domain)
 
@@ -994,7 +991,8 @@ def test_compute_warn_and_raise_consume_final_diag_ok(
             tessellation_check='diagnose',
         )
     assert diagnosed_warnings == []
-    assert diagnosed.tessellation_diagnostics is diagnostic
+    assert diagnostic.issues[0] in diagnosed.tessellation_diagnostics.issues
+    assert diagnosed.tessellation_diagnostics.ok is False
 
     with pytest.warns(UserWarning, match='tessellation_check failed') as records:
         case.api.compute(
@@ -1010,4 +1008,5 @@ def test_compute_warn_and_raise_consume_final_diag_ok(
             domain=case.domain,
             tessellation_check='raise',
         )
-    assert exc_info.value.diagnostics is diagnostic
+    assert diagnostic.issues[0] in exc_info.value.diagnostics.issues
+    assert exc_info.value.diagnostics.ok is False

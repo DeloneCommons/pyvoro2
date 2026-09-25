@@ -72,7 +72,9 @@ target_include_directories(_core PRIVATE
   "${VORO_SRC_DIR}"
 )
 
-pybind11_add_module(_core2d
+list(REMOVE_ITEM VORO2D_SOURCES "${VORO2D_SRC_DIR}/v_compute_2d.cc")
+pybind11_add_module(_core2d NO_EXTRAS
+  cpp/planar_witness.cpp
   cpp/bindings2d.cpp
   ${VORO2D_SOURCES}
 )
@@ -107,5 +109,7 @@ endfunction()
 
 configure_pyvoro_module(_core)
 configure_pyvoro_module(_core2d)
+include(cmake/PlanarWitness.cmake)
+pyvoro2_planar_witness(_core2d)
 
 install(TARGETS _core _core2d DESTINATION pyvoro2)

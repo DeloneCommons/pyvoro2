@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+  pull_request:
+    branches: [dev, main]
   workflow_dispatch:
 
 env:
@@ -12,14 +14,18 @@ env:
     *-manylinux_{aarch64,ppc64le,s390x,armv7l,riscv64}
     *-win32 *-win_arm64 *-macosx_universal2
   CIBW_TEST_EXTRAS: "test"
+  # These distributed compiler/target cohorts have no ordinary planar
+  # qualification. Require explicit refusal and record each exact native
+  # profile/module hash in the wheel test log. Qualified Ubuntu/GCC 13.3 source
+  # wheels instead pass the default success gate in CI's build-dist job.
   CIBW_TEST_COMMAND: >-
     python -m pip check &&
     python "{project}/tools/check_installed_package.py"
-    --repo-root "{project}" --require-scipy
+    --repo-root "{project}" --require-scipy --planar-refusal
 
 jobs:
   wheels-manylinux-x86_64:
-    name: Wheels (manylinux x86_64)
+    name: Wheels (manylinux x86_64, planar refusal)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -45,9 +51,11 @@ jobs:
           if-no-files-found: error
 
   wheels-windows-amd64:
-    name: Wheels (Windows AMD64)
+    name: Wheels (Windows AMD64, planar refusal)
     runs-on: windows-latest
     steps:
+      - name: Preserve reviewed source bytes on checkout
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v6
@@ -70,7 +78,7 @@ jobs:
           if-no-files-found: error
 
   wheels-macos-arm64:
-    name: Wheels (macOS arm64)
+    name: Wheels (macOS arm64, planar refusal)
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
@@ -95,7 +103,7 @@ jobs:
           if-no-files-found: error
 
   wheels-macos-x86_64:
-    name: Wheels (macOS x86_64)
+    name: Wheels (macOS x86_64, planar refusal)
     runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v5
@@ -179,7 +187,8 @@ jobs:
       - name: Create clean aggregate-wheel environment
         run: python -m venv "${{ runner.temp }}/pyvoro2-wheel-venv"
 
-      - name: Install and check aggregate manylinux wheel
+      - name: Check aggregate manylinux wheel and explicit planar refusal
+        shell: bash
         run: |
           "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" \
             -m pip install --upgrade pip
@@ -189,7 +198,15 @@ jobs:
           "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" -m pip check
           "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" \
             tools/check_installed_package.py \
-            --repo-root "${{ github.workspace }}" --forbid-scipy
+            --repo-root "${{ github.workspace }}" --forbid-scipy --planar-refusal \
+            | tee aggregate-wheel-profile.txt
+
+      - name: Preserve aggregate wheel profile and refusal evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: aggregate-wheel-planar-refusal-profile
+          path: aggregate-wheel-profile.txt
 
       - name: Upload release-ready distributions
         uses: actions/upload-artifact@v6

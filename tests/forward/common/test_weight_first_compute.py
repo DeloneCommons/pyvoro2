@@ -80,7 +80,6 @@ INTEGRATION_CASES = (
         shift_size=2,
         kwargs={
             'return_edge_shifts': True,
-            'edge_shift_search': 2,
             'return_diagnostics': True,
             'tessellation_check': 'raise',
         },

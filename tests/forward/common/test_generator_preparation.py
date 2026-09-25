@@ -37,6 +37,25 @@ import pyvoro2.planar.api as api2d
 
 
 @dataclass
+class PreparationOnlyPlanarRows:
+    """A dispatch-test sentinel; supplies no native provenance or geometry."""
+
+    rows: list[dict[str, object]]
+
+    def public_cells(self, **selection):
+        assert not any(selection.values()), 'preparation tests request no geometry'
+        return self.rows
+
+
+def _preparation_only_certificate(rows, packet, *args, **options):
+    """Stop these unit tests at dispatch, outside WP6 certification scope."""
+
+    assert packet is None
+    assert options['audit'] is False
+    return PreparationOnlyPlanarRows(rows)
+
+
+@dataclass
 class RecordingSafeCore:
     calls: list[tuple[str, tuple[Any, ...]]] = field(default_factory=list)
     compute_rows: list[dict[str, object]] | None = None
@@ -44,10 +63,15 @@ class RecordingSafeCore:
     def __getattr__(self, name: str):
         def call(*args: Any):
             self.calls.append((name, args))
-            if name.startswith('compute_'):
+            planar_witness = name in (
+                '_compute_box_standard_witness', '_compute_box_power_witness',
+            )
+            if name.startswith('compute_') or planar_witness:
                 if self.compute_rows is not None:
-                    return list(self.compute_rows)
-                return [{'id': int(value)} for value in np.asarray(args[1])]
+                    rows = list(self.compute_rows)
+                else:
+                    rows = [{'id': int(value)} for value in np.asarray(args[1])]
+                return (rows, None) if planar_witness else rows
             if name.startswith('locate_'):
                 queries = np.asarray(args[-1], dtype=np.float64)
                 return (
@@ -67,6 +91,9 @@ def _install_core(monkeypatch, dim: int, core: object) -> None:
     else:
         monkeypatch.setattr(api2d, '_core2d', core)
         monkeypatch.setattr(api2d, '_CORE2D_IMPORT_ERROR', None)
+        # These tests inspect prepared inputs and validation before dispatch;
+        # WP6 witness/profile/attribution behavior has independent test suites.
+        monkeypatch.setattr(api2d, '_certify_wp6', _preparation_only_certificate)
 
 
 def _package(dim: int):

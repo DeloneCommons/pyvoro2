@@ -5,7 +5,7 @@ removed in a later wrapper release, limits inherited from the backend or
 binary64 arithmetic, unsupported geometry, and architecture decisions that are
 still open. A limitation in one category does not imply a promise in another.
 
-## Supported v0.8 contracts
+## Supported current contracts
 
 pyvoro2 supports bounded 3D boxes, partially or fully periodic orthorhombic 3D
 cells, fully periodic triclinic 3D cells, bounded planar boxes, and rectangular
@@ -32,25 +32,36 @@ authoritative; an omitted shift is inferred with a certified nearest-image
 solve. Algebraic fit, realized geometry, and the empirical active-set outer
 algorithm remain separate result layers.
 
-## Wrapper restrictions and stabilization candidates
+## Periodic certification and remaining wrapper work
 
-Some current restrictions are properties of the v0.8 Python wrapper rather
-than mathematical impossibilities or permanent backend limits. Examples include
-radius-only power input for `locate(...)` and `ghost_cells(...)`, orientation
-restrictions on triclinic user bases, and public-output/search conditions used
-by periodic boundary image reconstruction.
+Weight-first `locate` and `ghost_cells` and either-handed nondegenerate
+`PeriodicCell` input are implemented. Ordinary 3D face and planar edge images
+use their separately qualified source contracts. Their exact native-effective
+and public-semantic consistency audits remain distinct from native attribution.
+Raw boundary occurrences are not automatically positive semantic boundaries.
 
-In particular, certified nearest/minimum-image resolution for separator
-observations does not make every boundary-image reconstruction path certified.
-The remaining periodic boundary-image and search-window limitations are
-candidate v0.9 functional-stabilization work. Current search controls must be
-read according to their individual contracts: separator `image_search` is only
-a performance seed and never a correctness radius, while current forward
-face/edge reconstruction controls may still bound supported reconstruction
-behavior.
+The initial ordinary planar compute profile is Linux x86_64, GCC 13.3 and the
+qualified baseline-SSE2 binary64 evaluation policy, without fast-math,
+contraction, LTO or AVX/FMA targets. Other compiler/platform profiles require
+qualification and currently refuse; the broader package distribution matrix
+does not imply planar-certification support. Source/profile, insertion,
+attribution, exact-audit resource and public-representation failures remain
+distinct.
 
-The [roadmap](../project/roadmap.md) preserves these candidates without
-promising their exact issue grouping or implementation.
+CI runs the full success gate on Ubuntu 24.04 with the actual GCC 13.3 profile
+checked. macOS 15 and Windows build and run spatial/pure-Python checks plus
+explicit unsupported-planar refusal checks; those passes do not qualify
+ordinary planar geometry on those platforms.
+The current manylinux, Windows and macOS release-wheel cohorts also test
+explicit ordinary-planar refusal. Ordinary planar computation is admitted on
+the separately built Linux GCC 13.3 source wheel.
+
+Ordinary planar reconstruction search, validation, repair and matching-tolerance
+keywords are removed. WP5's corresponding 3D controls remain validated no-ops
+until WP9. Planar ghost reconstruction is still a separate legacy path pending
+WP7, and unified query/owner/ghost metadata remains WP8 work. Separator
+`image_search` stays a performance seed, never a correctness radius. These
+boundaries are recorded in the [active plan](../development/plans/v0.9.md).
 
 ## Backend and binary64 limits
 

@@ -117,25 +117,28 @@ def test_certified_result_does_not_treat_malformed_owner_as_wall() -> None:
         _build_certified_result(cells)
 
 
-def test_spatial_wall_exemption_does_not_change_planar_packaging() -> None:
-    with pytest.raises(ValueError, match='without adjacent_shift'):
-        _build_tessellation_result(
-            dimension=2,
-            domain=RectangularCell(
-                ((0.0, 1.0), (0.0, 1.0)), periodic=(True, False),
-            ),
-            mode='standard',
-            sites=np.array([[0.25, 0.5]]),
-            ids=np.array([41]),
-            cells=[{
-                'id': 41,
-                'area': 1.0,
-                'edges': [{'adjacent_cell': -3, 'vertices': [0, 1]}],
-            }],
-            power_input=ResolvedPowerInput(None, None, None),
-            boundaries_available=True,
-            periodic_shifts_available=True,
-        )
+def test_wp6_planar_wall_exemption_uses_its_own_side_and_mask() -> None:
+    result = _build_tessellation_result(
+        dimension=2,
+        domain=RectangularCell(
+            ((0.0, 1.0), (0.0, 1.0)), periodic=(True, False),
+        ),
+        mode='standard',
+        sites=np.array([[0.25, 0.5]]),
+        ids=np.array([41]),
+        cells=[{
+            'id': 41,
+            'area': 1.0,
+            'edges': [{'adjacent_cell': -3, 'vertices': [0, 1]}],
+        }],
+        power_input=ResolvedPowerInput(None, None, None),
+        boundaries_available=True,
+        periodic_shifts_available=True,
+    )
+    assert result.has_periodic_shifts
+    result.cells[0]['edges'][0]['adjacent_cell'] = -1
+    with pytest.raises(ValueError, match='not a planar wall'):
+        result.require_boundaries()
 
 
 def test_normalization_accepts_wall_identity_without_image_shift() -> None:

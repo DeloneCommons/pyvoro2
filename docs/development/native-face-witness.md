@@ -301,6 +301,7 @@ public integration. Their subsequently closed **specification** separates
 actual native support N, exact native-effective ideal E and exact
 public-semantic ideal S in
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md);
-production implementation and acceptance remain pending. A final native
+production subsequently passed independent acceptance and merged through
+[PR #72](https://github.com/DeloneCommons/pyvoro2/pull/72). A final native
 polygon plus its observed support plane is evidence, not a replacement for
 that contract.

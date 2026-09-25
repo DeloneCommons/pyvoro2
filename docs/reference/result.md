@@ -31,5 +31,13 @@ versions.
 The provisional `global_vertices` and `global_edges` conveniences forward to
 available normalized planar objects.
 
+`has_periodic_shifts` reports complete availability of requested native
+generator-image metadata, including available-but-empty output. Proven real
+walls need no `adjacent_shift`. For source-certified ordinary 3D faces and
+planar edges this capability is independent of the exact E/S consistency
+diagnostic: it can be true while `tessellation_diagnostics.ok` is false.
+Unrequested private shifts do not enable it. Mutable raw records do not become
+authenticated native certificates merely by containing shift fields.
+
 ::: pyvoro2.result.TessellationResult
 :::
