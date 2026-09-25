@@ -6,8 +6,6 @@ from dataclasses import InitVar, KW_ONLY, dataclass, fields
 import inspect
 from typing import Any, Literal, Sequence
 
-import warnings
-
 import numpy as np
 
 from ..._internal.inputs import coerce_point_array
@@ -29,11 +27,10 @@ from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ...edge_properties import annotate_edge_properties
 from ...face_properties import annotate_face_properties
 from ..._internal.planar.domain_geometry import geometry2d
-from ...planar.api import compute as compute2d
+from ...planar import api as planar_api
+from ..._internal.planar.wp6_certificate import WP6Failure
 from ...planar.diagnostics import (
     TessellationDiagnostics as TessellationDiagnostics2D,
-    TessellationError as TessellationError2D,
-    analyze_tessellation as analyze_tessellation2d,
 )
 from ...planar.domains import Box as Box2D, RectangularCell
 from ._identity import (
@@ -375,10 +372,10 @@ def match_realized_pairs(
     tessellation, including explicit periodic image shifts. Supply exactly one
     of mathematical ``weights`` (preferred) or backend-compatible ``radii``.
 
-    Periodic 3D boundaries require a complete successful WP5 semantic audit,
+    Planar and periodic 3D boundaries require a complete successful semantic audit,
     in addition to source-attributed periodic image labels. Their
     ``boundary_measure`` is a finite numerical view of the exact semantic
-    facet area; optional returned cell face properties retain their native
+    boundary measure; optional returned cell boundary properties retain their native
     numerical descriptor meaning. Certificate failures raise
     :class:`~pyvoro2.TessellationError` regardless of ``tessellation_check``.
     """
@@ -413,7 +410,7 @@ def _match_realized_pairs(
 ) -> RealizedPairDiagnostics:
     """Realize one state, retaining active mathematical weights beside radii.
 
-    ``semantic_weights`` is private provenance for the periodic 3D S ideal.
+    ``semantic_weights`` is private provenance for the exact public S ideal.
     It neither selects backend radii nor changes their already chosen gauge.
     Public callers retain the mutually exclusive ``weights``/``radii`` API.
     """
@@ -454,13 +451,17 @@ def _match_realized_pairs(
     _bind_full_source(constraints, pts, domain)
     dim = int(pts.shape[1])
     certified_boundary_measures: dict[MeasureKey, float] | None = None
+    certified_boundary_classes: set[MeasureKey] | None = None
     if dim == 2:
-        cells, tessellation_diagnostics, _ = _compute_planar_cells(
+        (cells, tessellation_diagnostics, certified_boundary_classes,
+         certified_boundary_measures) = _compute_planar_cells(
             pts,
             domain=domain,
             weights=weights,
             radii=radii,
+            semantic_weights=semantic_weights,
             return_boundary_measure=return_boundary_measure_value,
+            return_cells=return_cells_value,
             return_tessellation_diagnostics=(
                 return_tessellation_diagnostics_value
             ),
@@ -502,6 +503,7 @@ def _match_realized_pairs(
         return_boundary_measure=return_boundary_measure_value,
         measure_field=measure_field,
         certified_boundary_measures=certified_boundary_measures,
+        certified_boundary_classes=certified_boundary_classes,
     )
 
     m = constraints.n_constraints
@@ -674,10 +676,15 @@ def _compute_planar_cells(
     domain: DomainAny,
     weights: np.ndarray | None,
     radii: np.ndarray | None,
+    semantic_weights: np.ndarray | None,
     return_boundary_measure: bool,
+    return_cells: bool,
     return_tessellation_diagnostics: bool,
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'],
-) -> tuple[list[dict[str, Any]], TessellationDiagnostics2D | None, bool]:
+) -> tuple[
+    list[dict[str, Any]], TessellationDiagnostics2D | None,
+    set[MeasureKey], dict[MeasureKey, float] | None,
+]:
     if not isinstance(domain, (Box2D, RectangularCell)):
         raise ValueError(
             '2D points require a planar domain: pyvoro2.planar.Box or '
@@ -685,52 +692,39 @@ def _compute_planar_cells(
         )
 
     periodic = geometry2d(domain).has_any_periodic_axis
-    cells = compute2d(
-        points,
-        domain=domain,
-        mode='power',
-        weights=weights,
-        radii=radii,
-        return_vertices=True,
-        return_edges=True,
-        return_adjacency=False,
-        return_edge_shifts=bool(periodic),
-        include_empty=True,
-        output='cells',
+    compute_result, certificate = planar_api._compute_with_certificate(
+        points, domain=domain, mode='power', weights=weights, radii=radii,
+        semantic_weights=semantic_weights, return_vertices=return_cells,
+        return_edges=True, return_adjacency=False,
+        return_edge_shifts=bool(periodic), include_empty=True, output='cells',
+        return_diagnostics=return_tessellation_diagnostics,
+        tessellation_check=tessellation_check,
     )
-
-    if return_boundary_measure:
+    # Every raw native occurrence keeps its provenance, including artifacts.
+    # Realization instead consumes the complete positive public-semantic ideal.
+    certificate.require_semantic_consistency()
+    classes = set(certificate.positive_boundaries())
+    measures = certificate.boundary_measures() if return_boundary_measure else None
+    if return_tessellation_diagnostics:
+        cells, diagnostics = compute_result
+    else:
+        cells, diagnostics = compute_result, None
+    if return_boundary_measure and return_cells:
         annotate_edge_properties(cells, domain)
-
-    do_diag = bool(return_tessellation_diagnostics) or tessellation_check != 'none'
-    tessellation_diagnostics = None
-    if do_diag:
-        expected = list(range(int(points.shape[0])))
-        tessellation_diagnostics = analyze_tessellation2d(
-            cells,
-            domain,
-            expected_ids=expected,
-            mode='power',
-            check_reciprocity=bool(periodic),
-            check_line_mismatch=bool(periodic),
-            mark_edges=bool(periodic),
-        )
-        if tessellation_check in ('warn', 'raise'):
-            if not tessellation_diagnostics.ok:
-                msg = (
-                    "tessellation_check failed (mode='power'): "
-                    f'area_ratio={tessellation_diagnostics.area_ratio:g}, '
-                    f'orphan_edges={tessellation_diagnostics.n_edges_orphan}, '
-                    'mismatched_edges='
-                    f'{tessellation_diagnostics.n_edges_mismatched}'
-                )
-                if tessellation_check == 'raise':
-                    raise TessellationError2D(msg, tessellation_diagnostics)
-                warnings.warn(msg, stacklevel=2)
-
-    if not return_tessellation_diagnostics:
-        tessellation_diagnostics = None
-    return cells, tessellation_diagnostics, bool(periodic)
+        for cell in cells:
+            for edge_index, edge in enumerate(cell['edges']):
+                for field in ('length', 'midpoint', 'tangent', 'normal', 'other_site'):
+                    value = edge.get(field)
+                    if value is not None and not np.all(np.isfinite(value)):
+                        planar_api._raise_wp6_failure(
+                            WP6Failure(
+                                'WP6_NONFINITE_OUTPUT_VIEW',
+                                f'Requested native edge {field} is nonfinite',
+                                source_id=int(cell['id']), edge_index=edge_index,
+                                field=field, stage='representation',
+                            ), domain, certificate.prepared, 'power',
+                        )
+    return cells, diagnostics, classes, measures
 
 
 def _canonical_pair_and_shift(
@@ -821,6 +815,7 @@ def _collect_boundary_maps(
     return_boundary_measure: bool,
     measure_field: str,
     certified_boundary_measures: dict[MeasureKey, float] | None = None,
+    certified_boundary_classes: set[MeasureKey] | None = None,
 ) -> tuple[
     dict[int, bool],
     dict[tuple[int, int], set[ShiftTuple]],
@@ -839,6 +834,8 @@ def _collect_boundary_maps(
             len(boundaries) == 0
             or ('vertices' in cell and verts.size == 0)
         )
+        if certified_boundary_classes is not None:
+            continue
         for boundary in boundaries:
             cj = int(boundary.get('adjacent_cell', -1))
             if cj < 0:
@@ -853,4 +850,10 @@ def _collect_boundary_maps(
                     else float(boundary.get(measure_field, 0.0))
                 )
 
+    if certified_boundary_classes is not None:
+        for i, j, shift in certified_boundary_classes:
+            shifts_by_pair.setdefault((i, j), set()).add(shift)
+            if return_boundary_measure:
+                measure_by_pair_shift[i, j,
+                                      shift] = certified_boundary_measures[i, j, shift]
     return empty_by_id, shifts_by_pair, measure_by_pair_shift

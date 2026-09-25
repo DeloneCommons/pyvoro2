@@ -63,6 +63,7 @@ nav:
       - Topology and graphs: guide/topology.md
       - Separator fitting: guide/powerfit.md
       - v0.6.3–v0.8 migration: guide/migration-v0.7.md
+      - v0.9 planar migration: guide/migration-v0.9.md
       - Visualization: guide/visualization.md
       - Notebooks: guide/notebooks.md
   - Theory:
@@ -113,6 +114,7 @@ nav:
           - Separator measurement spaces and supported realization-aware fitting: development/decisions/0019-separator-measurement-spaces-and-supported-realization.md
           - Exact private rank-3 lattice reduction: development/decisions/0020-exact-private-lattice-reduction.md
           - WP5 native occurrence and exact face certification: development/decisions/0021-wp5-native-occurrence-and-exact-face-certification.md
+          - WP6 source-certified planar edge provenance: development/decisions/0022-wp6-source-certified-planar-edge-provenance.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

@@ -141,6 +141,17 @@ The activation boundary is:
   The active plan explicitly chooses immediate pre-1.0 removal rather than a
   deprecated alias period for these surfaces.
 
+WP6 applies that immediate removal to ordinary `pyvoro2.planar.compute`:
+`edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, and
+`edge_shift_tol` are absent, with no alias or ignored-keyword transition.
+The same spellings on `planar.ghost_cells` retain their legacy behavior until
+WP7; separator `image_search` and diagnostic/normalization tolerances are
+unchanged. [ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md)
+fixes the ordinary planar provenance and audit semantics. Source attribution,
+exact consistency, optional geometry availability and structured failure are
+scientific API meanings even though the witness/profile machinery is private.
+WP6 branch implementation does not itself complete independent acceptance.
+
 D9, the backend-fork policy, is not silently assigned a lifecycle category by
 WP0. It remains the explicit decision gate in the active plan and must be
 resolved by its stated trigger/deadline.

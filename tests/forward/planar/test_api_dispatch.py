@@ -11,9 +11,83 @@ import pyvoro2.planar.api as api2d
 
 @dataclass
 class FakeCore2D:
+    """Dispatch double with explicit test-constructed occurrence packets.
+
+    The rectangles and labels below are hand-specified test records, not
+    native evidence. Only build/profile facts come from the installed backend.
+    The real Python attribution and exact audit still consume these packets.
+    """
+
     last_call: tuple[str, tuple] | None = None
 
-    def compute_box_standard(
+    @staticmethod
+    def _constructed_witness(points, ids, radii, bounds, blocks, periodic,
+                             opts, polygons):
+        from pyvoro2 import _core2d
+
+        assert ids.tolist() == list(range(len(points)))
+        periods = tuple(float(hi - lo) for lo, hi in bounds)
+        packet = {
+            'profile': _core2d._planar_witness_profile(),
+            'bounds': bounds,
+            'periods': periods,
+            'periodic': tuple(bool(value) for value in periodic),
+            'inserted': [],
+            'sources': [],
+        }
+        occupied = {}
+        cells = []
+        for cid, point in enumerate(points):
+            block_axes = [
+                min(blocks[axis] - 1,
+                    int((point[axis] - bounds[axis][0])
+                        * blocks[axis] / periods[axis]))
+                for axis in range(2)
+            ]
+            block = block_axes[0] + blocks[0] * block_axes[1]
+            slot = occupied.get(block, 0)
+            occupied[block] = slot + 1
+            packet['inserted'].append({
+                'id': cid, 'point': point.tolist(), 'radius': float(radii[cid]),
+                'h': (0, 0), 'block': block, 'slot': slot,
+            })
+            if cid not in polygons:
+                packet['sources'].append({
+                    'id': cid, 'present': False, 'local2': [],
+                    'next': [], 'origins': [],
+                })
+                continue
+            area, vertices, labels = polygons[cid]
+            outgoing = [1, 2, 3, 0]
+            origins = []
+            for edge_slot, (owner, sigma) in enumerate(labels):
+                origin = {'source': cid, 'slot': edge_slot,
+                          'next': outgoing[edge_slot]}
+                if sigma is None:
+                    origin.update(kind='initialization', side=owner)
+                else:
+                    origin.update(kind='particle', owner=owner, sigma=sigma)
+                origins.append(origin)
+            packet['sources'].append({
+                'id': cid, 'present': True,
+                'local2': (2.0 * (np.asarray(vertices) - point)).tolist(),
+                'next': outgoing, 'origins': origins,
+            })
+            cell = {'id': cid, 'area': area, 'site': point.tolist()}
+            if opts[0]:
+                cell['vertices'] = vertices
+            if opts[1]:
+                cell['adjacency'] = [[1, 3], [2, 0], [3, 1], [0, 2]]
+            if opts[2]:
+                cell['edges'] = [
+                    {'adjacent_cell': owner,
+                     'vertices': [edge_slot, outgoing[edge_slot]]}
+                    for edge_slot, (owner, _sigma) in enumerate(labels)
+                ]
+            cells.append(cell)
+        return cells, packet
+
+    def _compute_box_standard_witness(
         self,
         points,
         ids,
@@ -24,39 +98,23 @@ class FakeCore2D:
         opts,
     ):
         self.last_call = (
-            'compute_box_standard',
+            '_compute_box_standard_witness',
             (bounds, blocks, periodic, init_mem, opts),
         )
-        return [
-            {
-                'id': 0,
-                'area': 0.5,
-                'site': [0.1, 0.5],
-                'vertices': [[0.0, 0.0], [0.5, 0.0], [0.5, 1.0], [0.0, 1.0]],
-                'adjacency': [[1, 3], [2, 0], [3, 1], [0, 2]],
-                'edges': [
-                    {'adjacent_cell': -1, 'vertices': [0, 1]},
-                    {'adjacent_cell': 1, 'vertices': [1, 2]},
-                    {'adjacent_cell': -2, 'vertices': [2, 3]},
-                    {'adjacent_cell': 1, 'vertices': [3, 0]},
-                ],
-            },
-            {
-                'id': 1,
-                'area': 0.5,
-                'site': [0.9, 0.5],
-                'vertices': [[0.5, 0.0], [1.0, 0.0], [1.0, 1.0], [0.5, 1.0]],
-                'adjacency': [[1, 3], [2, 0], [3, 1], [0, 2]],
-                'edges': [
-                    {'adjacent_cell': -1, 'vertices': [0, 1]},
-                    {'adjacent_cell': 0, 'vertices': [1, 2]},
-                    {'adjacent_cell': -2, 'vertices': [2, 3]},
-                    {'adjacent_cell': 0, 'vertices': [3, 0]},
-                ],
-            },
-        ]
+        assert np.array_equal(points, [[0.1, 0.5], [0.9, 0.5]])
+        polygons = {
+            0: (0.5, [[0., 0.], [0.5, 0.], [0.5, 1.], [0., 1.]],
+                [(-3, None), (1, (0, 0)), (-4, None),
+                 (1, (-1, 0)) if periodic[0] else (-1, None)]),
+            1: (0.5, [[0.5, 0.], [1., 0.], [1., 1.], [0.5, 1.]],
+                [(-3, None), (0, (1, 0)) if periodic[0] else (-2, None),
+                 (-4, None), (0, (0, 0))]),
+        }
+        return self._constructed_witness(
+            points, ids, np.zeros(2), bounds, blocks, periodic, opts, polygons,
+        )
 
-    def compute_box_power(
+    def _compute_box_power_witness(
         self,
         points,
         ids,
@@ -67,17 +125,18 @@ class FakeCore2D:
         init_mem,
         opts,
     ):
-        self.last_call = ('compute_box_power', (radii.copy(), bounds, blocks, periodic))
-        return [
-            {
-                'id': 1,
-                'area': 1.0,
-                'site': [0.7, 0.7],
-                'vertices': [],
-                'adjacency': [],
-                'edges': [],
-            }
-        ]
+        self.last_call = (
+            '_compute_box_power_witness', (radii.copy(), bounds, blocks, periodic),
+        )
+        assert np.array_equal(points, [[0., 0.], [1., 0.]])
+        assert np.array_equal(radii, [1., 2.])
+        polygons = {
+            1: (2.0, [[0., 0.], [2., 0.], [2., 1.], [0., 1.]],
+                [(-3, None), (-2, None), (-4, None), (-1, None)]),
+        }
+        return self._constructed_witness(
+            points, ids, radii, bounds, blocks, periodic, opts, polygons,
+        )
 
     def locate_box_standard(
         self,
@@ -196,12 +255,11 @@ def test_planar_compute_remaps_ids_and_adds_edge_shifts(fake_core) -> None:
         domain=pv2.RectangularCell(((0.0, 1.0), (0.0, 1.0)), periodic=(True, False)),
         ids=[10, 20],
         return_edge_shifts=True,
-        edge_shift_search=1,
         output='cells',
     )
 
     assert fake_core.last_call is not None
-    assert fake_core.last_call[0] == 'compute_box_standard'
+    assert fake_core.last_call[0] == '_compute_box_standard_witness'
     assert [cell['id'] for cell in out] == [10, 20]
 
     c0 = out[0]
@@ -232,7 +290,7 @@ def test_planar_compute_power_inserts_empty_cells(fake_core) -> None:
     )
 
     assert fake_core.last_call is not None
-    assert fake_core.last_call[0] == 'compute_box_power'
+    assert fake_core.last_call[0] == '_compute_box_power_witness'
     assert len(out) == 2
     assert out[0]['id'] == 0
     assert out[0]['empty'] is True
@@ -297,7 +355,7 @@ def test_planar_compute_return_diagnostics(fake_core) -> None:
     )
 
     assert fake_core.last_call is not None
-    assert fake_core.last_call[0] == 'compute_box_standard'
+    assert fake_core.last_call[0] == '_compute_box_standard_witness'
     assert isinstance(cells, list)
     assert diag.ok is True
     assert diag.ok_area is True
@@ -332,8 +390,8 @@ def test_planar_compute_normalize_vertices_returns_result(fake_core) -> None:
 
     assert isinstance(result, pv2.TessellationResult)
     assert fake_core.last_call is not None
-    assert fake_core.last_call[0] == 'compute_box_standard'
-    assert fake_core.last_call[1][-1] == (True, False, False)
+    assert fake_core.last_call[0] == '_compute_box_standard_witness'
+    assert fake_core.last_call[1][-1] == (False, False, True)
     assert set(result.cells[0].keys()) == {'id', 'area', 'site'}
     assert result.has_normalized_vertices is True
     assert result.global_vertices is not None
@@ -359,8 +417,8 @@ def test_planar_compute_normalize_topology_periodic_returns_result(
 
     assert isinstance(result, pv2.TessellationResult)
     assert fake_core.last_call is not None
-    assert fake_core.last_call[0] == 'compute_box_standard'
-    assert fake_core.last_call[1][-1] == (True, False, True)
+    assert fake_core.last_call[0] == '_compute_box_standard_witness'
+    assert fake_core.last_call[1][-1] == (False, False, True)
     assert set(result.cells[0].keys()) == {'id', 'area', 'site'}
     assert result.has_normalized_vertices is True
     assert result.has_normalized_topology is True
@@ -394,8 +452,8 @@ def test_planar_compute_periodic_diagnostics_strip_internal_geometry(
     )
 
     assert fake_core.last_call is not None
-    assert fake_core.last_call[0] == 'compute_box_standard'
-    assert fake_core.last_call[1][-1] == (True, False, True)
+    assert fake_core.last_call[0] == '_compute_box_standard_witness'
+    assert fake_core.last_call[1][-1] == (False, False, False)
 
     assert isinstance(result, pv2.TessellationResult)
     assert 'vertices' not in result.cells[0]
@@ -409,33 +467,14 @@ def test_planar_compute_periodic_diagnostics_strip_internal_geometry(
 
 
 def test_planar_compute_tessellation_check_raise(fake_core) -> None:
-    def broken_compute_box_standard(*args, **kwargs):
-        fake_core.last_call = ('compute_box_standard', tuple())
-        return [
-            {
-                'id': 0,
-                'area': 0.25,
-                'site': [0.1, 0.5],
-                'vertices': [[0.0, 0.0], [0.5, 0.0], [0.5, 1.0], [0.0, 1.0]],
-                'adjacency': [[1, 3], [2, 0], [3, 1], [0, 2]],
-                'edges': [
-                    {'adjacent_cell': -1, 'vertices': [0, 1]},
-                    {'adjacent_cell': -1, 'vertices': [1, 2]},
-                    {'adjacent_cell': -1, 'vertices': [2, 3]},
-                    {'adjacent_cell': -1, 'vertices': [3, 0]},
-                ],
-            },
-            {
-                'id': 1,
-                'area': 0.0,
-                'site': [0.9, 0.5],
-                'vertices': [],
-                'adjacency': [],
-                'edges': [],
-            },
-        ]
+    complete_witness = fake_core._compute_box_standard_witness
 
-    fake_core.compute_box_standard = broken_compute_box_standard
+    def broken_area(*args, **kwargs):
+        cells, packet = complete_witness(*args, **kwargs)
+        cells[0]['area'] = 0.25
+        return cells, packet
+
+    fake_core._compute_box_standard_witness = broken_area
 
     pts = np.array([[0.1, 0.5], [0.9, 0.5]], dtype=float)
     with pytest.raises(pv2.TessellationError, match='tessellation_check failed'):
@@ -444,6 +483,24 @@ def test_planar_compute_tessellation_check_raise(fake_core) -> None:
             domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
             tessellation_check='raise',
         )
+
+
+@pytest.mark.parametrize('action', ['none', 'diagnose', 'warn', 'raise'])
+def test_missing_source_witness_refuses_before_publishing_provenance(
+    fake_core, action,
+) -> None:
+    fake_core._compute_box_standard_witness = None
+
+    with pytest.raises(pv2.TessellationError) as caught:
+        pv2.compute(
+            [[0.1, 0.5], [0.9, 0.5]],
+            domain=pv2.RectangularCell(((0., 1.), (0., 1.))),
+            tessellation_check=action,
+        )
+
+    assert any(issue.code == 'WP6_PROFILE_UNSUPPORTED'
+               for issue in caught.value.diagnostics.issues)
+    assert fake_core.last_call is None
 
 
 def test_planar_compute_invalid_tessellation_check(fake_core) -> None:

@@ -8,6 +8,13 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Ordinary planar computation retains arbitrary-precision private preparation
+  shifts, allowing large common translations to cancel before checking the
+  signed-int64 range of requested public edge shifts.
+- Ordinary planar computation now rejects actual insertion omissions in both
+  standard and power mode instead of allowing a missing insertion to appear as
+  a hidden power cell.
+
 - Backend-primary `PeriodicCell.remap_internal(..., eps=0)` now repairs rounded
   upper endpoints with coupled lattice shifts and negative remainders whose
   normalized quotient underflows to negative zero, returning stable half-open
@@ -31,6 +38,17 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Ordinary planar edges now carry source-certified owner/image provenance with
+  original-site user-basis shifts, optional public vertices, nonzero self-image
+  shifts and absent wall shifts. Compact native evidence is qualified against
+  an explicit source/build profile; unsupported profiles fail explicitly.
+- Planar compute diagnostics separately audit complete exact native-effective
+  and public-semantic geometry. Raw artifacts and repeated occurrences remain
+  visible; exact contact/coverage errors follow `tessellation_check`, while
+  attribution failures remain atomic. Planar separator realization requires
+  successful exact consistency and uses positive public-ideal boundary classes
+  and exact-derived lengths. Topology normalization preserves provenance
+  associations and refuses mappings that collapse distinct public endpoints.
 - Requested periodic 3D face shifts now use complete native source attribution
   and exact source-chart transport, including partial periodicity, triclinic
   images and self faces. Public vertices and adjacency may be omitted; real
@@ -77,6 +95,12 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - Made current development-process documentation tool-neutral and removed the
   standalone development-tool attribution page; repository contracts, evidence,
   review, validation, and maintainer decisions remain explicit.
+
+### Removed
+
+- Removed `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts` and
+  `edge_shift_tol` from ordinary `pyvoro2.planar.compute` without aliases. The
+  same controls on legacy `planar.ghost_cells` remain unchanged.
 
 ## [0.8.0] - 2026-08-17
 

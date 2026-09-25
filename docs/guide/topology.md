@@ -58,6 +58,15 @@ inputs but do not change source attribution, auditing, or returned shifts.
 
 ## Building a periodic graph in practice
 
+Planar `compute` uses the corresponding source-certified `adjacent_cell` and
+two-component `adjacent_shift` fields on edges. Its four former reconstruction
+controls are removed; see the [planar guide](planar.md). Real walls omit the
+shift. Native edge occurrences, including collapsed artifacts and repeated
+provenance, are retained and must not each be interpreted as an independent
+positive semantic edge. Requested compute diagnostics audit complete E/S
+boundary coverage separately. Planar separator realization consumes the
+complete positive public-semantic class set after that audit succeeds.
+
 A minimal workflow looks like this:
 
 1) Compute a tessellation with face shifts
@@ -127,5 +136,8 @@ wrappers can inspect it optionally through their existing
 clears the analyzer-owned `orphan`, `reciprocal_missing`, and
 `reciprocal_mismatch` flags before recording current failures.
 
-This is not “proving correctness”, but it is extremely effective at catching mistakes
-in downstream graph code.
+Standalone analysis of mutable public dictionaries checks their numerical/raw
+record consistency. It does not recreate compute's private source witness or
+complete exact E/S audit. A small or zero numerical edge length is not proof of
+exact semantic absence, and repeated provenance keys alone are not invalid
+fragments.

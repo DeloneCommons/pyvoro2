@@ -108,19 +108,88 @@ def _is_periodic_domain(domain: Domain2D) -> bool:
     return bool(geometry2d(domain).has_any_periodic_axis)
 
 
-def _line_from_vertices(v: np.ndarray) -> tuple[np.ndarray, float] | None:
-    """Return (unit normal, d) for the line n·x = d, or None if degenerate."""
+def _normal_from_vertices(v: np.ndarray) -> np.ndarray | None:
+    """Return a numerical normal, or None for coincident public endpoints."""
 
     if v.shape[0] < 2:
         return None
     dv = v[1] - v[0]
-    nn = float(np.linalg.norm(dv))
+    nn = float(np.hypot(dv[0], dv[1]))
     if nn == 0.0:
         return None
     tangent = dv / nn
-    normal = np.array([-tangent[1], tangent[0]], dtype=np.float64)
-    d = float(np.mean(v @ normal))
-    return normal, d
+    return np.array([-tangent[1], tangent[0]], dtype=np.float64)
+
+
+def _segment_union_covers(
+    source: list[np.ndarray],
+    target: list[np.ndarray],
+    *,
+    offset_tol: float,
+    angle_tol: float,
+    coordinate_tol: float,
+) -> bool:
+    """Compare numerical segment coverage without pairing raw occurrences.
+
+    Projection intervals from every compatible target segment form a union.
+    Tolerances describe only public-coordinate agreement, never exact contact
+    status, native collapse, or positivity.
+    """
+
+    for segment in source:
+        direction = segment[1] - segment[0]
+        length = float(np.hypot(direction[0], direction[1]))
+        if length == 0.0:
+            covered = False
+            for other in target:
+                delta = other[1] - other[0]
+                other_length = float(np.hypot(delta[0], delta[1]))
+                if other_length == 0.0:
+                    distance = segment[0] - other[0]
+                else:
+                    tangent = delta / other_length
+                    position = float(np.dot(segment[0] - other[0], tangent))
+                    position = min(other_length, max(0.0, position))
+                    distance = segment[0] - (other[0] + position * tangent)
+                if float(np.hypot(distance[0], distance[1])) <= coordinate_tol:
+                    covered = True
+                    break
+            if not covered:
+                return False
+            continue
+
+        tangent = direction / length
+        normal = np.array([-tangent[1], tangent[0]])
+        intervals: list[tuple[float, float]] = []
+        for other in target:
+            relative = other - segment[0]
+            other_normal = _normal_from_vertices(other)
+            if other_normal is not None:
+                dot = abs(float(np.dot(normal, other_normal)))
+                cross = abs(float(
+                    normal[0] * other_normal[1] - normal[1] * other_normal[0]
+                ))
+                if float(np.arctan2(cross, dot)) > angle_tol:
+                    continue
+            if float(np.max(np.abs(relative @ normal))) > offset_tol:
+                continue
+            projected = relative @ tangent
+            intervals.append((float(np.min(projected)), float(np.max(projected))))
+
+        covered_until = 0.0
+        started = False
+        for lo, hi in sorted(intervals):
+            if hi < -coordinate_tol:
+                continue
+            if lo > covered_until + coordinate_tol:
+                break
+            started = True
+            covered_until = max(covered_until, hi)
+            if covered_until >= length - coordinate_tol:
+                break
+        if not started or covered_until < length - coordinate_tol:
+            return False
+    return True
 
 
 def analyze_tessellation(
@@ -144,6 +213,15 @@ def analyze_tessellation(
     reciprocity is required. Invalid cell areas and closure failures are
     explicit errors. When marking is enabled, analyzer-owned edge flags are
     reset before current findings are marked.
+
+    This standalone utility inspects mutable raw records, area closure, and
+    numerical reciprocal class coverage. It does not have the stored native
+    population, mathematical weights, or private occurrence witness needed for
+    an exact N/E/S audit. All generator occurrences, including tiny or publicly
+    coincident segments, count as raw records. Repeated owner/image labels are
+    compared as segment unions when public geometry is available, without
+    requiring one-to-one fragment pairing. No tolerance establishes semantic
+    positivity or certifies native collapse.
     """
 
     return _analyze_tessellation(
@@ -339,21 +417,38 @@ def _analyze_tessellation(
 
     edge_shift_available = False
     reciprocity_checked = False
-    n_edges_total = 0
+    relevant_edges: list[dict[str, Any]] = []
+    invalid_adjacency: list[tuple[int, int, int]] = []
+    periodic_axes = geometry2d(domain).periodic_axes
+    for cell in cells:
+        for edge_index, edge in enumerate(cell.get('edges') or []):
+            adjacent = int(edge.get('adjacent_cell', -999999))
+            if adjacent >= 0:
+                relevant_edges.append(edge)
+            elif (
+                adjacent not in (-1, -2, -3, -4)
+                or periodic_axes[(-adjacent - 1) // 2]
+            ):
+                invalid_adjacency.append(
+                    (int(cell.get('id', -1)), edge_index, adjacent)
+                )
+    if invalid_adjacency:
+        issues.append(
+            TessellationIssue(
+                'INVALID_EDGE_ADJACENCY', 'error',
+                f'{len(invalid_adjacency)} negative edge references are not known '
+                'planar wall sides on nonperiodic axes',
+                examples=tuple(invalid_adjacency[:10]),
+            )
+        )
+    n_edges_total = len(relevant_edges)
     n_orphan = 0
     n_mismatch = 0
 
     if _is_periodic_domain(domain) and check_reciprocity:
-        relevant_edges = [
-            edge
-            for cell in cells
-            for edge in (cell.get('edges') or [])
-            if int(edge.get('adjacent_cell', -999999)) >= 0
-        ]
-        if relevant_edges:
-            edge_shift_available = all(
-                'adjacent_shift' in edge for edge in relevant_edges
-            )
+        edge_shift_available = all(
+            'edges' in cell or bool(cell.get('empty', False)) for cell in cells
+        ) and all('adjacent_shift' in edge for edge in relevant_edges)
 
         if not edge_shift_available:
             issues.append(
@@ -396,46 +491,26 @@ def _analyze_tessellation(
             off_tol = (1e-6 * L) if line_offset_tol is None else float(line_offset_tol)
             ang_tol = 1e-6 if line_angle_tol is None else float(line_angle_tol)
             eps_f = float(np.finfo(float).eps)
-            size_tol = float(max(1000.0 * off_tol, 128.0 * eps_f * L))
+            coord_tol = float(max(1000.0 * off_tol, 128.0 * eps_f * L))
 
             def _skey(s: Any) -> tuple[int, int]:
                 return int(s[0]), int(s[1])
 
-            edge_map: dict[tuple[int, int, tuple[int, int]], tuple[int, int]] = {}
+            edge_map: dict[
+                tuple[int, int, tuple[int, int]], list[tuple[int, int]]
+            ] = {}
             for cell in cells:
                 i = int(cell.get('id', -1))
                 if i < 0:
                     continue
-                verts = np.asarray(cell.get('vertices', []), dtype=np.float64)
-                if verts.size == 0:
-                    verts = verts.reshape((0, 2))
                 edges = cell.get('edges') or []
                 for ei, edge in enumerate(edges):
                     j = int(edge.get('adjacent_cell', -999999))
                     if j < 0:
                         continue
                     s = _skey(edge['adjacent_shift'])
-                    n_edges_total += 1
-
-                    idx = np.asarray(edge.get('vertices', []), dtype=np.int64)
-                    if idx.shape != (2,) or verts.size == 0:
-                        continue
-                    vv = verts[idx]
-                    size = float(np.linalg.norm(vv[1] - vv[0]))
-                    if size < size_tol:
-                        continue
-
                     key = (i, j, s)
-                    if key in edge_map:
-                        issues.append(
-                            TessellationIssue(
-                                'DUPLICATE_DIRECTED_EDGE',
-                                'error',
-                                f'Duplicate directed edge key encountered: {key}',
-                            )
-                        )
-                    else:
-                        edge_map[key] = (i, ei)
+                    edge_map.setdefault(key, []).append((i, ei))
 
             def _edge_segment(
                 cell_id: int,
@@ -464,70 +539,50 @@ def _analyze_tessellation(
             examples_missing: list[tuple[int, int, tuple[int, int]]] = []
             examples_mismatch: list[tuple[int, int, tuple[int, int]]] = []
 
-            for (i, j, s), loc in list(edge_map.items()):
+            for (i, j, s), locations in edge_map.items():
                 if (i, j, s) in checked:
                     continue
                 recip = (j, i, (-s[0], -s[1]))
                 checked.add((i, j, s))
                 checked.add(recip)
                 if recip not in edge_map:
-                    n_orphan += 1
+                    n_orphan += len(locations)
                     if len(examples_missing) < 10:
                         examples_missing.append((i, j, s))
                     if mark_edges:
-                        ci, ei = loc
-                        try:
+                        for ci, ei in locations:
                             cell_by_id[ci]['edges'][ei]['orphan'] = True
                             cell_by_id[ci]['edges'][ei]['reciprocal_missing'] = True
-                        except Exception:
-                            pass
                     continue
 
                 if not check_line_mismatch:
                     continue
 
-                (ci, ei) = loc
-                (cj, ej) = edge_map[recip]
+                reciprocal_locations = edge_map[recip]
                 T = s[0] * avec + s[1] * bvec
-                seg1 = _edge_segment(ci, ei)
-                seg2 = _edge_segment(cj, ej, translate=T)
-                if seg1 is None or seg2 is None:
+                segments1 = [_edge_segment(ci, ei) for ci, ei in locations]
+                segments2 = [
+                    _edge_segment(cj, ej, translate=T)
+                    for cj, ej in reciprocal_locations
+                ]
+                if any(segment is None for segment in segments1 + segments2):
                     continue
-                line1 = _line_from_vertices(seg1)
-                line2 = _line_from_vertices(seg2)
-                if line1 is None or line2 is None:
-                    continue
-
-                n1, d1 = line1
-                n2, d2 = line2
-                dot = float(np.dot(n1, n2))
-                if dot < 0.0:
-                    n2 = -n2
-                    d2 = -d2
-                    dot = -dot
-                dot = max(-1.0, min(1.0, dot))
-                ang = float(np.arccos(dot))
-                off = float(abs(d1 - d2))
-                dist_same = max(
-                    float(np.linalg.norm(seg1[0] - seg2[0])),
-                    float(np.linalg.norm(seg1[1] - seg2[1])),
+                union1 = [segment for segment in segments1 if segment is not None]
+                union2 = [segment for segment in segments2 if segment is not None]
+                matching = all(
+                    _segment_union_covers(
+                        source, target, offset_tol=off_tol,
+                        angle_tol=ang_tol, coordinate_tol=coord_tol,
+                    )
+                    for source, target in ((union1, union2), (union2, union1))
                 )
-                dist_flip = max(
-                    float(np.linalg.norm(seg1[0] - seg2[1])),
-                    float(np.linalg.norm(seg1[1] - seg2[0])),
-                )
-                coord_mismatch = min(dist_same, dist_flip)
-
-                if ang > ang_tol or off > off_tol or coord_mismatch > size_tol:
+                if not matching:
                     n_mismatch += 1
                     if len(examples_mismatch) < 10:
                         examples_mismatch.append((i, j, s))
                     if mark_edges:
-                        try:
+                        for ci, ei in locations + reciprocal_locations:
                             cell_by_id[ci]['edges'][ei]['reciprocal_mismatch'] = True
-                            cell_by_id[cj]['edges'][ej]['reciprocal_mismatch'] = True
-                        except Exception:
-                            pass
 
             if n_orphan:
                 issues.append(
@@ -536,7 +591,7 @@ def _analyze_tessellation(
                         reciprocity_issue_severity(
                             required=reciprocity_required,
                         ),
-                        f'{n_orphan} edges are missing a reciprocal',
+                        f'{n_orphan} raw edge occurrences have no reciprocal class',
                         examples=tuple(examples_missing),
                     )
                 )
@@ -547,7 +602,8 @@ def _analyze_tessellation(
                         reciprocity_issue_severity(
                             required=reciprocity_required,
                         ),
-                        f'{n_mismatch} reciprocal edge pairs disagree geometrically',
+                        f'{n_mismatch} reciprocal edge class pairs have '
+                        'disagreeing numerical segment unions',
                         examples=tuple(examples_mismatch),
                     )
                 )
@@ -557,6 +613,7 @@ def _analyze_tessellation(
         not reciprocity_requested
         or (
             reciprocity_checked
+            and not invalid_adjacency
             and n_orphan == 0
             and n_mismatch == 0
         )
@@ -612,7 +669,9 @@ def validate_tessellation(
 
     Optional reciprocity inspection emits warning/info findings, while required
     reciprocity emits errors. Strict validation raises exactly when the returned
-    diagnostics have ``ok=False``.
+    diagnostics have ``ok=False``. Like :func:`analyze_tessellation`, this checks
+    raw-record and numerical consistency, not exact N/E/S contact or native
+    collapse. Repeated labels do not require equal occurrence counts.
     """
 
     level = require_string_choice(

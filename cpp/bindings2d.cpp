@@ -11,6 +11,7 @@
 
 #include "voro++_2d.hh"
 #include "native_preconditions.hpp"
+#include "planar_witness.hpp"
 
 namespace py = pybind11;
 using namespace voro;
@@ -124,6 +125,9 @@ py::list compute_cells_impl(ContainerT& con, const OutputOpts& opts) {
 
   if (loop.start()) {
     do {
+      pyvoro2::planar_witness::require_selector(
+          con, con.p[loop.ij][con.ps * loop.q],
+          con.p[loop.ij][con.ps * loop.q + 1], loop.i, loop.j);
       if (con.compute_cell(cell, loop)) {
         int pid;
         double x, y, r;
@@ -170,6 +174,7 @@ bool append_ghost_cell(
 }  // namespace
 
 PYBIND11_MODULE(_core2d, m) {
+  pyvoro2::planar_witness::bind(m);
   m.doc() = "pyvoro2 planar core bindings (legacy 2D Voro++)";
 
   m.def(
@@ -183,6 +188,7 @@ PYBIND11_MODULE(_core2d, m) {
          std::tuple<bool, bool, bool> opts_tuple) {
         native::preflight_box<2>(points, ids, nullptr, bounds, blocks,
                                  periodic, init_mem, 2);
+        pyvoro2::planar_witness::require_evaluation();
         const auto n = points.shape(0);
         const auto opts = parse_opts(opts_tuple);
 
@@ -203,6 +209,7 @@ PYBIND11_MODULE(_core2d, m) {
           con.put(id(i), p(i, 0), p(i, 1));
         }
 
+        pyvoro2::planar_witness::require_population(con, n);
         return compute_cells_impl(con, opts);
       },
       py::arg("points"),
@@ -225,6 +232,7 @@ PYBIND11_MODULE(_core2d, m) {
          std::tuple<bool, bool, bool> opts_tuple) {
         native::preflight_box<2>(points, ids, &radii, bounds, blocks,
                                  periodic, init_mem, 3);
+        pyvoro2::planar_witness::require_evaluation();
         const auto n = points.shape(0);
         const auto opts = parse_opts(opts_tuple);
 
@@ -246,6 +254,7 @@ PYBIND11_MODULE(_core2d, m) {
           con.put(id(i), p(i, 0), p(i, 1), r(i));
         }
 
+        pyvoro2::planar_witness::require_population(con, n);
         return compute_cells_impl(con, opts);
       },
       py::arg("points"),

@@ -17,6 +17,25 @@ from pyvoro2._internal.validation import CPP_INT_MAX
 
 
 @dataclass
+class DispatchOnlyPlanarRows:
+    """A wrapper-boundary sentinel; never represents native certification."""
+
+    rows: list[dict[str, object]]
+
+    def public_cells(self, **selection):
+        assert not any(selection.values()), 'dispatch tests request no geometry'
+        return self.rows
+
+
+def _dispatch_only_certificate(rows, packet, *args, **options):
+    """Isolate native argument validation from the private witness consumer."""
+
+    assert packet is None
+    assert options['audit'] is False
+    return DispatchOnlyPlanarRows(rows)
+
+
+@dataclass
 class RecordingCore:
     calls: list[tuple[str, tuple[Any, ...]]] = field(default_factory=list)
 
@@ -32,9 +51,13 @@ class RecordingCore:
                     np.full(count, -1, dtype=np.int32),
                     np.full((count, dim), np.nan, dtype=np.float64),
                 )
-            if name.startswith('compute_'):
+            planar_witness = name in (
+                '_compute_box_standard_witness', '_compute_box_power_witness',
+            )
+            if name.startswith('compute_') or planar_witness:
                 points = np.asarray(args[0])
-                return [{'id': i} for i in range(len(points))]
+                rows = [{'id': i} for i in range(len(points))]
+                return (rows, None) if planar_witness else rows
             return []
 
         return call
@@ -77,6 +100,9 @@ def _install_core(monkeypatch, dim: int, core: object) -> None:
     else:
         monkeypatch.setattr(api2d, '_core2d', core)
         monkeypatch.setattr(api2d, '_CORE2D_IMPORT_ERROR', None)
+        # Accepted arguments are only recorded here. Invalid inputs must still
+        # stop before invoking NoNativeCalls; no witness is fabricated.
+        monkeypatch.setattr(api2d, '_certify_wp6', _dispatch_only_certificate)
 
 
 def _default_points(dim: int) -> np.ndarray:

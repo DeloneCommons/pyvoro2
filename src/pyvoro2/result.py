@@ -273,6 +273,7 @@ class TessellationResult:
 
         raw_measures, raw_empty_mask = _aligned_raw_state(
             dimension=self.dimension,
+            domain=self.domain,
             ids=ids,
             cells=self.cells,
             boundaries_available=boundaries_available,
@@ -362,10 +363,12 @@ class TessellationResult:
     def has_periodic_shifts(self) -> bool:
         """Whether requested periodic boundary-image metadata is available.
 
-        Spatial ``compute`` sets this only after complete, unique native image
+        Ordinary ``compute`` sets this only after complete native image
         attribution and materialization. Exact E/S semantic consistency is
         reported separately in tessellation diagnostics.
-        Real spatial walls retain their wall identity without an image shift.
+        Real walls retain their wall identity without an image shift. This
+        describes constructed output availability, including an empty set of
+        generator boundaries; it does not certify later raw-record mutations.
         """
 
         return self._periodic_shifts_available
@@ -406,8 +409,10 @@ class TessellationResult:
         Hidden sites always have empty boundary collections, whether their raw
         records were omitted or contain an explicitly empty collection. When
         :attr:`has_periodic_shifts` is true, generator boundaries contain
-        ``adjacent_shift`` annotations. Real spatial walls have no periodic
-        image and do not require that key.
+        ``adjacent_shift`` annotations. Real walls have no periodic image and
+        do not require that key. For mutable planar records, only known wall
+        side codes on nonperiodic axes are schema-compatible wall references;
+        this check does not recover or certify native provenance.
 
         Raises:
             ValueError: If boundary geometry was not available, or if later
@@ -450,6 +455,7 @@ class TessellationResult:
             boundaries = cell[self.boundary_kind]
             _validate_boundary_records(
                 boundaries,
+                domain=self.domain,
                 cell_id=cell_id,
                 boundary_key=self.boundary_kind,
                 is_empty=is_empty,
@@ -597,6 +603,7 @@ def _raw_cell_measure(
 def _validate_boundary_records(
     boundaries: object,
     *,
+    domain: object,
     cell_id: int,
     boundary_key: str,
     is_empty: bool,
@@ -619,14 +626,37 @@ def _validate_boundary_records(
                 'dictionaries'
             )
         adjacent = boundary.get('adjacent_cell')
-        spatial_wall = (
+        wall = (
             boundary_key == 'faces'
             and isinstance(adjacent, (int, np.integer))
             and adjacent < 0
         )
         if (
+            boundary_key == 'edges'
+            and isinstance(adjacent, (int, np.integer))
+            and adjacent < 0
+        ):
+            # Import at use time: the planar namespace imports this result.
+            from .planar.domains import Box, RectangularCell
+
+            periodic = (
+                (False, False) if isinstance(domain, Box)
+                else domain.periodic if isinstance(domain, RectangularCell)
+                else None
+            )
+            wall = bool(
+                periodic is not None
+                and adjacent in (-1, -2, -3, -4)
+                and not periodic[(-int(adjacent) - 1) // 2]
+            )
+            if not wall:
+                raise ValueError(
+                    f'raw cell ID {cell_id} has adjacent_cell={adjacent} '
+                    'which is not a planar wall on a nonperiodic axis'
+                )
+        if (
             periodic_shifts_available
-            and not spatial_wall
+            and not wall
             and 'adjacent_shift' not in boundary
         ):
             raise ValueError(
@@ -643,6 +673,7 @@ def _validate_boundary_records(
 def _aligned_raw_state(
     *,
     dimension: Literal[2, 3],
+    domain: object,
     ids: np.ndarray,
     cells: list[dict[str, Any]],
     boundaries_available: bool,
@@ -689,6 +720,7 @@ def _aligned_raw_state(
                 )
             _validate_boundary_records(
                 cell.get(boundary_key, []),
+                domain=domain,
                 cell_id=cell_id,
                 boundary_key=boundary_key,
                 is_empty=is_empty,
@@ -764,6 +796,7 @@ def _build_tessellation_result(
 
     measures, empty_mask = _aligned_raw_state(
         dimension=dimension,
+        domain=domain,
         ids=ids_array,
         cells=cells,
         boundaries_available=boundaries_available,

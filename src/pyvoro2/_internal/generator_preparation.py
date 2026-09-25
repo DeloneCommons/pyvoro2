@@ -70,6 +70,7 @@ def _prepare_coordinates(
     geometry,
     periodic_snapshot,
     name: str,
+    unbounded_planar_shifts: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     dim = int(geometry.dim)
     input_points = coerce_point_array(points, name=name, dim=dim)
@@ -102,10 +103,14 @@ def _prepare_coordinates(
         return input_points, primary_cart, native_points, shifts
 
     if geometry.has_any_periodic_axis:
-        primary_cart, shifts = geometry.domain.remap_cart(
-            input_points,
-            return_shifts=True,
-        )
+        if unbounded_planar_shifts:
+            primary_cart, shifts = geometry.domain._remap_cart(
+                input_points, return_shifts=True, integer_view=False,
+            )
+        else:
+            primary_cart, shifts = geometry.domain.remap_cart(
+                input_points, return_shifts=True,
+            )
         primary_cart = coerce_point_array(
             primary_cart,
             name=f'primary {name}',
@@ -314,10 +319,13 @@ def prepare_generators(
     duplicate_max_pairs: object,
     periodic_snapshot=None,
     reserve_ghost_id: bool = False,
+    unbounded_planar_shifts: bool = False,
 ) -> PreparedGenerators:
     """Validate, remap, contain, de-duplicate, and assign native IDs."""
 
     mode = validate_duplicate_check_mode(duplicate_check)
+    if unbounded_planar_shifts and (int(geometry.dim) != 2 or operation != 'compute'):
+        raise ValueError('unbounded planar preparation is ordinary compute only')
     threshold, wrap, max_pairs = validate_duplicate_options(
         threshold=duplicate_threshold,
         wrap=duplicate_wrap,
@@ -328,6 +336,7 @@ def prepare_generators(
         geometry=geometry,
         periodic_snapshot=periodic_snapshot,
         name='points',
+        unbounded_planar_shifts=unbounded_planar_shifts,
     )
     n = int(input_points.shape[0])
     if reserve_ghost_id and int(geometry.dim) == 2:
@@ -366,7 +375,8 @@ def prepare_generators(
         input_points_cart=owned_readonly_array(input_points, dtype=np.float64),
         primary_points_cart=owned_readonly_array(primary_cart, dtype=np.float64),
         native_points=owned_readonly_array(native_points, dtype=np.float64),
-        remap_shifts=owned_readonly_array(shifts, dtype=np.int64),
+        remap_shifts=owned_readonly_array(
+            shifts, dtype=object if unbounded_planar_shifts else np.int64),
         internal_ids=owned_readonly_array(
             np.arange(n, dtype=np.int32),
             dtype=np.int32,

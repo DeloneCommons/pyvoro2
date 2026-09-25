@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from typing import Any, Literal, Sequence
+from dataclasses import replace
 
 import warnings
 
 import numpy as np
 
-from .._internal.cell_output import add_empty_cells_inplace, remap_ids_inplace
+from .._internal.cell_output import remap_ids_inplace
 from .._internal.inputs import (
     coerce_native_block_parameters,
     coerce_point_array,
@@ -44,9 +45,11 @@ from .._internal.planar.edge_shifts import _add_periodic_edge_shifts_inplace
 from .diagnostics import (
     TessellationDiagnostics,
     TessellationError,
+    TessellationIssue,
     _analyze_tessellation,
 )
 from .domains import Box, RectangularCell
+from .._internal.planar.wp6_certificate import WP6Failure
 from .normalize import normalize_edges, normalize_vertices
 
 _core2d = None
@@ -223,6 +226,91 @@ def _finish_compute_output(
     )
 
 
+def _certify_wp6(*args, **kwargs):
+    from .._internal.planar.wp6_certificate import certify_packet
+    return certify_packet(*args, **kwargs)
+
+
+def _native_wp6_failure(exc):
+    parts = str(exc).split(':', 3)
+    stage = parts[1] if len(
+        parts) > 2 and parts[0] == 'planar_certification' else 'native'
+    codes = {
+        'profile': 'WP6_PROFILE_UNSUPPORTED',
+        'insertion': 'WP6_INSERTION_FAILED',
+        'provenance': 'WP6_PROVENANCE_INVALID',
+        'resource': 'WP6_ATTRIBUTION_RESOURCE',
+        'native': 'WP6_BACKEND_FAILURE',
+    }
+    return WP6Failure(codes.get(stage, 'WP6_BACKEND_FAILURE'), str(exc), stage=stage)
+
+
+def _attach_wp6_findings(diag, findings, prepared):
+    ids = prepared.external_ids.tolist()
+
+    def public_id(value):
+        return ids[value] if type(value) is int and 0 <= value < len(ids) else value
+
+    issues = []
+    for finding in findings:
+        context = dict(finding.context)
+        if 'source_id' in context:
+            context['source_id'] = public_id(context['source_id'])
+        if 'label' in context and isinstance(context['label'], tuple):
+            owner, shift = context['label']
+            context['label'] = (public_id(owner), shift)
+        issues.append(TessellationIssue(finding.code, finding.severity,
+                                        str(finding), (context,)))
+    return replace(diag, issues=(*diag.issues, *issues),
+                   ok=diag.ok and not any(i.severity == 'error' for i in issues))
+
+
+def _raise_wp6_failure(failure, domain, prepared, mode):
+    """Abort atomically without claiming that unobserved native geometry passed."""
+    findings = (failure,) if isinstance(failure, WP6Failure) else tuple(failure)
+    diag = TessellationDiagnostics(
+        domain_area=float('nan'), sum_cell_area=float('nan'), area_ratio=float('nan'),
+        area_gap=float('nan'), area_overlap=float('nan'),
+        n_sites_expected=len(prepared.internal_ids), n_cells_returned=0,
+        missing_ids=(), empty_ids=(), edge_shift_available=False,
+        reciprocity_checked=False, n_edges_total=0, n_edges_orphan=0,
+        n_edges_mismatched=0, issues=(), ok_area=False, ok_reciprocity=False, ok=False,
+    )
+    diag = _attach_wp6_findings(diag, findings, prepared)
+    first = findings[0]
+    raise TessellationError(f'{first.code}: {first}', diag) from first
+
+
+def _wp6_reciprocal_occurrences(cells, certificate, numerical_findings):
+    """Count raw missing opposite classes without assigning error severity."""
+    occurrences = [o for o in certificate.occurrences if o.shift is not None]
+    keys = {(o.source, o.owner, o.shift) for o in occurrences}
+    orphan_keys = {key for key in keys
+                   if (key[1], key[0], tuple(-s for s in key[2])) not in keys}
+    by_id = {cell['id']: cell for cell in cells}
+
+    def mark(source, slots, field):
+        public_id = int(certificate.prepared.external_ids[source])
+        edges = by_id.get(public_id, {}).get('edges', ())
+        if edges:
+            for slot in slots:
+                edges[slot][field] = True
+
+    count = 0
+    for o in occurrences:
+        if (o.source, o.owner, o.shift) in orphan_keys:
+            count += 1
+            mark(o.source, (o.slot,), 'orphan')
+            mark(o.source, (o.slot,), 'reciprocal_missing')
+    for issue in numerical_findings:
+        if issue.code == 'RECIPROCAL_MISMATCH':
+            context = issue.context
+            mark(context['source_id'], context['source_slots'], 'reciprocal_mismatch')
+            mark(context['label'][0], context['reciprocal_slots'],
+                 'reciprocal_mismatch')
+    return count
+
+
 def compute(
     points: Sequence[Sequence[float]] | np.ndarray,
     *,
@@ -242,11 +330,7 @@ def compute(
     return_adjacency: bool = True,
     return_edges: bool = True,
     return_edge_shifts: bool = False,
-    edge_shift_search: int = 2,
     include_empty: bool = False,
-    validate_edge_shifts: bool = True,
-    repair_edge_shifts: bool = False,
-    edge_shift_tol: float | None = None,
     return_diagnostics: bool = False,
     output: Literal['result', 'cells'] = _DEFAULT_OUTPUT,
     normalize: Literal['none', 'vertices', 'topology'] = 'none',
@@ -326,6 +410,58 @@ def compute(
     its threshold/wrap options control only diagnostics above that floor.
     """
 
+    return _compute_impl(**locals())
+
+
+def _compute_with_certificate(points, *, semantic_weights=None, **options):
+    """Private resolved-state channel keeping mathematical weights beside radii."""
+    sink = []
+    result = _compute_impl(points, _semantic_weights=semantic_weights,
+                           _certificate_sink=sink, **options)
+    if len(sink) != 1:
+        raise RuntimeError('private planar certificate channel was not completed')
+    return result, sink[0]
+
+
+def _compute_impl(
+    points: Sequence[Sequence[float]] | np.ndarray,
+    *,
+    domain: Domain2D,
+    ids: Sequence[int] | None = None,
+    duplicate_check: Literal['off', 'warn', 'raise'] = 'off',
+    duplicate_threshold: float = 1e-5,
+    duplicate_wrap: bool = True,
+    duplicate_max_pairs: int = 10,
+    block_size: float | None = None,
+    blocks: tuple[int, int] | None = None,
+    init_mem: int = 8,
+    mode: Literal['standard', 'power'] = 'standard',
+    weights: Sequence[float] | np.ndarray | None = None,
+    radii: Sequence[float] | np.ndarray | None = None,
+    return_vertices: bool = True,
+    return_adjacency: bool = True,
+    return_edges: bool = True,
+    return_edge_shifts: bool = False,
+    include_empty: bool = False,
+    return_diagnostics: bool = False,
+    output: Literal['result', 'cells'] = _DEFAULT_OUTPUT,
+    normalize: Literal['none', 'vertices', 'topology'] = 'none',
+    normalization_tol: float | None = None,
+    tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'none',
+    tessellation_require_reciprocity: bool | None = None,
+    tessellation_area_tol_rel: float = 1e-8,
+    tessellation_area_tol_abs: float = 1e-12,
+    tessellation_line_offset_tol: float | None = None,
+    tessellation_line_angle_tol: float | None = None,
+    _semantic_weights=None,
+    _certificate_sink=None,
+) -> (
+    list[dict[str, Any]]
+    | tuple[list[dict[str, Any]], TessellationDiagnostics]
+    | TessellationResult
+):
+    """Validated implementation shared with private semantic consumers."""
+
     resolved_output, normalize = _resolve_compute_output(
         output=output,
         normalize=normalize,
@@ -346,11 +482,6 @@ def compute(
             max_pairs=duplicate_max_pairs,
         )
     )
-    edge_shift_search_value = require_nonnegative_index(
-        edge_shift_search,
-        name='edge_shift_search',
-        maximum=PY_SSIZE_T_MAX,
-    )
     user_return_vertices = require_bool(
         return_vertices,
         name='return_vertices',
@@ -365,14 +496,6 @@ def compute(
         name='return_edge_shifts',
     )
     include_empty_value = require_bool(include_empty, name='include_empty')
-    validate_edge_shifts_value = require_bool(
-        validate_edge_shifts,
-        name='validate_edge_shifts',
-    )
-    repair_edge_shifts_value = require_bool(
-        repair_edge_shifts,
-        name='repair_edge_shifts',
-    )
     return_diagnostics_value = require_bool(
         return_diagnostics,
         name='return_diagnostics',
@@ -380,10 +503,6 @@ def compute(
     tessellation_require_reciprocity_value = require_optional_bool(
         tessellation_require_reciprocity,
         name='tessellation_require_reciprocity',
-    )
-    edge_shift_tol_value = require_optional_nonnegative_finite_real(
-        edge_shift_tol,
-        name='edge_shift_tol',
     )
     normalization_tol_value = (
         None
@@ -409,8 +528,6 @@ def compute(
         tessellation_line_angle_tol,
         name='tessellation_line_angle_tol',
     )
-    if repair_edge_shifts_value:
-        validate_edge_shifts_value = True
     init_mem_value = require_positive_index(
         init_mem,
         name='init_mem',
@@ -437,6 +554,7 @@ def compute(
         pts,
         geometry=geom,
         operation='compute',
+        unbounded_planar_shifts=True,
         external_ids=ids,
         backend_radii=rr,
         duplicate_check=duplicate_check,
@@ -461,23 +579,11 @@ def compute(
     need_norm_vertices = normalize in ('vertices', 'topology')
     need_norm_topology = normalize == 'topology'
 
-    need_periodic_diag_geometry = bool(need_diag and periodic)
-    need_periodic_norm_geometry = bool(need_norm_vertices and periodic)
-
-    internal_return_vertices = (
-        user_return_vertices or need_periodic_diag_geometry or need_norm_vertices
-    )
+    internal_return_vertices = user_return_vertices or need_norm_vertices
     internal_return_adjacency = user_return_adjacency
-    internal_return_edges = (
-        user_return_edges
-        or need_periodic_diag_geometry
-        or need_norm_topology
-        or need_periodic_norm_geometry
-    )
-    internal_return_edge_shifts = (
-        user_return_edge_shifts
-        or need_periodic_diag_geometry
-        or need_periodic_norm_geometry
+    internal_return_edges = user_return_edges or need_norm_vertices
+    internal_return_edge_shifts = user_return_edge_shifts or (
+        need_norm_vertices and periodic
     )
 
     if user_return_edge_shifts:
@@ -488,70 +594,50 @@ def compute(
             )
         if not user_return_edges:
             raise ValueError('return_edge_shifts requires return_edges=True')
-        if not user_return_vertices:
-            raise ValueError('return_edge_shifts requires return_vertices=True')
 
-    if internal_return_edge_shifts:
-        if repair_edge_shifts_value:
-            validate_edge_shifts_value = True
-
-    periodic_flags = geom.periodic_axes
-    opts = (
-        internal_return_vertices,
-        internal_return_adjacency,
-        internal_return_edges,
-    )
+    opts = (False, internal_return_adjacency, internal_return_edges)
     core = _require_core2d()
-
-    if mode == 'standard':
-        cells = core.compute_box_standard(
-            pts_native,
-            ids_internal,
-            bounds,
-            (nx, ny),
-            periodic_flags,
-            init_mem_value,
-            opts,
+    packet = None
+    try:
+        name = ('_compute_box_standard_witness' if mode == 'standard'
+                else '_compute_box_power_witness')
+        native_compute = getattr(core, name, None)
+        if native_compute is None:
+            raise WP6Failure('WP6_PROFILE_UNSUPPORTED',
+                             'The planar extension has no supported source witness',
+                             stage='profile')
+        args = [pts_native, ids_internal]
+        if mode == 'power':
+            args.append(rr)
+        native_result = native_compute(
+            *args, bounds, (nx, ny), geom.periodic_axes, init_mem_value, opts)
+        if not isinstance(native_result, tuple) or len(native_result) != 2:
+            raise WP6Failure('WP6_PROVENANCE_INVALID',
+                             'Native computation returned no associated witness',
+                             stage='attribution')
+        native_cells, packet = native_result
+        certificate = _certify_wp6(
+            native_cells, packet, prepared, domain, power_input, mode,
+            semantic_weights=_semantic_weights,
+            audit=need_diag or _certificate_sink is not None,
+            reciprocity_required=(
+                periodic if tessellation_require_reciprocity_value is None
+                else tessellation_require_reciprocity_value
+            ),
         )
-    elif mode == 'power':
-        assert rr is not None
-        cells = core.compute_box_power(
-            pts_native,
-            ids_internal,
-            rr,
-            bounds,
-            (nx, ny),
-            periodic_flags,
-            init_mem_value,
-            opts,
+        cells = certificate.public_cells(
+            vertices=internal_return_vertices, adjacency=internal_return_adjacency,
+            edges=internal_return_edges, shifts=internal_return_edge_shifts,
+            include_empty=include_empty_value,
         )
         validate_compute_internal_ids(cells, n=n, mode=mode)
-        if include_empty_value:
-            add_empty_cells_inplace(
-                cells,
-                n=n,
-                sites=prepared.primary_points_cart,
-                opts=opts,
-                measure_key='area',
-                boundary_key='edges',
-            )
-    else:
-        raise ValueError(f'unknown mode: {mode}')
-    if mode == 'standard':
-        validate_compute_internal_ids(cells, n=n, mode=mode)
-
-    if internal_return_edge_shifts:
-        _add_periodic_edge_shifts_inplace(
-            cells,
-            lattice_vectors=geom.lattice_vectors_cart,
-            periodic_mask=geom.periodic_axes,
-            mode=mode,
-            radii=rr,
-            search=edge_shift_search_value,
-            tol=edge_shift_tol_value,
-            validate=validate_edge_shifts_value,
-            repair=repair_edge_shifts_value,
-        )
+    except WP6Failure as exc:
+        _raise_wp6_failure(exc, domain, prepared, mode)
+    except RuntimeError as exc:
+        error = _native_wp6_failure(exc)
+        _raise_wp6_failure(error, domain, prepared, mode)
+    if _certificate_sink is not None:
+        _certificate_sink.append(certificate)
 
     if ids_user is not None:
         remap_ids_inplace(cells, ids_user, boundary_key='edges')
@@ -571,14 +657,41 @@ def compute(
             mode=mode,
             area_tol_rel=area_tol_rel_value,
             area_tol_abs=area_tol_abs_value,
-            check_reciprocity=bool(periodic),
+            check_reciprocity=False,
             reciprocity_required=bool(
                 tessellation_require_reciprocity_value
             ),
-            check_line_mismatch=bool(periodic),
+            check_line_mismatch=False,
             line_offset_tol=line_offset_tol_value,
             line_angle_tol=line_angle_tol_value,
             mark_edges=bool(periodic),
+        )
+
+        numerical_findings = ()
+        if periodic and certificate.audit_complete:
+            from .._internal.planar.wp6_numerical import numeric_findings
+            numerical_findings = numeric_findings(
+                certificate, offset_tol=line_offset_tol_value,
+                angle_tol=line_angle_tol_value,
+                required=tessellation_require_reciprocity_value,
+            )
+        findings = certificate.issues + numerical_findings
+        diag = _attach_wp6_findings(diag, findings, prepared)
+        reciprocal_complete = certificate.audit_complete and all(
+            issue.context.get('audit_complete') is not False
+            for issue in numerical_findings)
+        orphan_count = _wp6_reciprocal_occurrences(
+            cells, certificate, numerical_findings)
+        diag = replace(
+            diag, edge_shift_available=bool(periodic),
+            reciprocity_checked=bool(periodic and reciprocal_complete),
+            n_edges_total=sum(o.shift is not None for o in certificate.occurrences),
+            n_edges_orphan=orphan_count,
+            n_edges_mismatched=sum(
+                issue.code == 'RECIPROCAL_MISMATCH' for issue in numerical_findings),
+            ok_reciprocity=reciprocal_complete and not any(
+                issue.code in ('WP6_RECIPROCAL_CONTACT', 'RECIPROCAL_MISMATCH')
+                for issue in findings),
         )
 
         if tessellation_check in ('warn', 'raise'):
@@ -595,21 +708,30 @@ def compute(
 
     normalized_vertices = None
     normalized_topology = None
-    if need_norm_vertices:
-        normalized_vertices = normalize_vertices(
-            cells,
-            domain=domain,
-            tol=normalization_tol_value,
-            require_edge_shifts=True,
-            copy_cells=True,
-        )
-        if need_norm_topology:
-            normalized_topology = normalize_edges(
-                normalized_vertices,
+    try:
+        if need_norm_vertices:
+            normalized_vertices = normalize_vertices(
+                cells,
                 domain=domain,
                 tol=normalization_tol_value,
-                copy_cells=False,
+                require_edge_shifts=True,
+                copy_cells=True,
             )
+            if need_norm_topology:
+                normalized_topology = normalize_edges(
+                    normalized_vertices,
+                    domain=domain,
+                    tol=normalization_tol_value,
+                    copy_cells=False,
+                )
+    except (ValueError, OverflowError) as exc:
+        _raise_wp6_failure(
+            WP6Failure('WP6_NORMALIZATION_REPRESENTATION',
+                       'Required planar normalization has no valid representation',
+                       stage='representation', normalization=normalize,
+                       detail=str(exc)),
+            domain, prepared, mode,
+        )
 
     _strip_internal_geometry_inplace(
         cells,

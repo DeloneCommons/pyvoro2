@@ -1,6 +1,10 @@
 # WP5 implementation architecture and verification map
 
-Status: implemented on the WP5 branch; independent acceptance pending.
+Status: independently accepted and squash-merged through
+[PR #72](https://github.com/DeloneCommons/pyvoro2/pull/72) as
+`67395af35cbcdacc9d6202489fcc45f750a0d8a6` on 2026-09-24; #68 is complete.
+Checkpoint B remains pending. The source identities below describe the
+implementation's historical starting and rebase points.
 
 This engineering note implements [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md).
 Its public action layer follows the maintainer amendment: complete native shift

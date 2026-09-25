@@ -83,6 +83,16 @@ class RectangularCell:
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Remap Cartesian points into the primary rectangular domain."""
 
+        return self._remap_cart(points, return_shifts=return_shifts, eps=eps,
+                                integer_view=True)
+
+    def _remap_cart(self, points, *, return_shifts, eps=None, integer_view=True):
+        """Shared numerical preparation; private WP6 transport keeps Python ints.
+
+        Coordinate arithmetic and seam snapping match the public remapper.
+        Only the unrequested private integer storage can exceed signed int64.
+        """
+
         return_shifts_value = require_bool(
             return_shifts,
             name='return_shifts',
@@ -105,7 +115,8 @@ class RectangularCell:
 
         x = pts[:, 0].astype(float, copy=True)
         y = pts[:, 1].astype(float, copy=True)
-        shifts = np.zeros((pts.shape[0], 2), dtype=np.int64)
+        shifts = np.zeros((pts.shape[0], 2),
+                          dtype=np.int64 if integer_view else object)
 
         for axis, (lo, hi, length, is_periodic) in enumerate(
             (
@@ -118,9 +129,16 @@ class RectangularCell:
             coord = x if axis == 0 else y
             with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
                 quotient = (coord - lo) / length
-            s = floor_to_int64(quotient, name=f'points axis {axis} shift')
+            if integer_view:
+                s = floor_to_int64(quotient, name=f'points axis {axis} shift')
+                numerical_s = s
+            else:
+                if not np.all(np.isfinite(quotient)):
+                    raise ValueError('native preparation quotient must be finite')
+                numerical_s = np.floor(quotient)
+                s = np.array([int(value) for value in numerical_s], dtype=object)
             with np.errstate(over='ignore', invalid='ignore'):
-                coord -= s * length
+                coord -= numerical_s * length
             if not np.all(np.isfinite(coord)):
                 raise ValueError('remapped points must contain only finite values')
             shifts[:, axis] = s
@@ -131,7 +149,7 @@ class RectangularCell:
                     coord[m0] = lo
                 m1 = coord >= (hi - eps_val)
                 if np.any(m1):
-                    if np.any(shifts[m1, axis] == INT64_MAX):
+                    if integer_view and np.any(shifts[m1, axis] == INT64_MAX):
                         raise ValueError(
                             'remap shifts must be representable as signed int64'
                         )

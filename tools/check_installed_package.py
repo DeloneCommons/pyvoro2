@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib
+import itertools
 from importlib import metadata as importlib_metadata
 import importlib.util
 import json
@@ -30,6 +32,10 @@ INTERNAL_HELPER_MODULES = (
     'pyvoro2._internal.spatial.wp5_producer',
     'pyvoro2._internal.planar.domain_geometry',
     'pyvoro2._internal.planar.edge_shifts',
+    'pyvoro2._internal.planar.wp6_profile',
+    'pyvoro2._internal.planar.wp6_ideal',
+    'pyvoro2._internal.planar.wp6_certificate',
+    'pyvoro2._internal.planar.wp6_numerical',
 )
 OBSOLETE_PRIVATE_MODULES = (
     'pyvoro2._internal.spatial.face_shifts',
@@ -184,7 +190,14 @@ def _check_removed_compatibility() -> None:
         raise InstalledPackageCheckError(
             'the removed planar return_result parameter is still accepted'
         )
-    print('removed v0.7 compatibility surfaces: absent')
+    for name in ('edge_shift_search', 'validate_edge_shifts',
+                 'repair_edge_shifts', 'edge_shift_tol'):
+        if name in inspect.signature(pv2.compute).parameters:
+            raise InstalledPackageCheckError(
+                f'the removed ordinary planar {name} parameter is still accepted'
+            )
+    print('removed v0.7 compatibility and ordinary planar reconstruction '
+          'surfaces: absent')
 
 
 def _check_private_helper_layout() -> None:
@@ -227,10 +240,103 @@ def _check_private_helper_layout() -> None:
     print('private helper imports: native extensions remained lazy')
 
 
+def _check_planar_profile(core: ModuleType, *, refusal: bool) -> dict:
+    """Require either reviewed production support or explicit cohort refusal."""
+    from pyvoro2._internal.planar.wp6_profile import (
+        SCHEMA, SOURCE_SHA256, validate_profile,
+    )
+
+    try:
+        profile = core._planar_witness_profile()
+    except AttributeError as exc:
+        raise InstalledPackageCheckError(
+            'installed planar extension has no WP6 native profile'
+        ) from exc
+    if refusal:
+        # A stale/mismatched package is never evidence of intended platform
+        # refusal.  Its schema and reviewed source binding must still agree.
+        if (profile.get('schema') != SCHEMA
+                or profile.get('source_sha256') != SOURCE_SHA256
+                or profile.get('source_supported') is not True):
+            raise InstalledPackageCheckError(
+                'planar refusal check found a mismatched source/schema package'
+            )
+        if (profile.get('cohort_supported') is not False
+                or profile.get('qualified') is not False):
+            raise InstalledPackageCheckError(
+                '--planar-refusal requires an unsupported native cohort'
+            )
+    else:
+        try:
+            validate_profile(profile)
+        except RuntimeError as exc:
+            raise InstalledPackageCheckError(
+                f'installed planar production profile is unsupported: {exc}'
+            ) from exc
+    native_path = module_location(core, 'pyvoro2._core2d')
+    manifest = {
+        'profile': profile,
+        'native_module': str(native_path),
+        'native_sha256': hashlib.sha256(native_path.read_bytes()).hexdigest(),
+        'expected_planar_refusal': refusal,
+    }
+    print('planar native manifest: ' + json.dumps(manifest, sort_keys=True))
+    return profile
+
+
+def _check_planar_refusals(core: ModuleType, planar: ModuleType) -> None:
+    """Demand atomic native and structured public refusal for all masks/modes."""
+    import numpy as np
+
+    points = np.array([[0.25, 0.5]])
+    ids = np.array([0], dtype=np.int32)
+    bounds = ((0.0, 1.0), (0.0, 1.0))
+    representations = ({}, {'mode': 'power', 'radii': [0.5]},
+                       {'mode': 'power', 'weights': [0.25]})
+    for periodic in itertools.product((False, True), repeat=2):
+        for representation in representations:
+            mode = representation.get('mode', 'standard')
+            native = getattr(core, f'_compute_box_{mode}_witness')
+            args = [points, ids]
+            if mode == 'power':
+                args.append(np.array([0.5]))
+            try:
+                native(*args, bounds, (1, 1), periodic, 1, (True, True, True))
+            except RuntimeError as exc:
+                if not str(exc).startswith('planar_certification:profile:cohort:'):
+                    raise InstalledPackageCheckError(
+                        f'native refused for an unexpected reason: {exc}'
+                    ) from exc
+            else:
+                raise InstalledPackageCheckError(
+                    'an unsupported native cohort returned a planar witness'
+                )
+            try:
+                planar.compute(
+                    points, domain=planar.RectangularCell(bounds, periodic=periodic),
+                    return_edges=True, return_edge_shifts=any(periodic),
+                    tessellation_check='none', **representation,
+                )
+            except planar.TessellationError as exc:
+                diagnostics = exc.diagnostics
+                if ({issue.code for issue in diagnostics.issues}
+                        != {'WP6_PROFILE_UNSUPPORTED'}
+                        or diagnostics.n_cells_returned != 0):
+                    raise InstalledPackageCheckError(
+                        'public unsupported-planar refusal lost its structured reason'
+                    ) from exc
+            else:
+                raise InstalledPackageCheckError(
+                    'an unsupported cohort returned an ordinary planar result'
+                )
+    print('planar refusal workflows: 12 native and 12 public cohort refusals')
+
+
 def _run_workflows(
     repository_root: Path,
     *,
     require_scipy: bool,
+    planar_refusal: bool = False,
 ) -> None:
     import numpy as np
     import pyvoro2 as pv
@@ -250,6 +356,9 @@ def _run_workflows(
             repository_root,
         )
         print(f'{module_name}: {location}')
+
+    core2d = importlib.import_module('pyvoro2._core2d')
+    _check_planar_profile(core2d, refusal=planar_refusal)
 
     points3 = np.array(
         [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
@@ -273,40 +382,43 @@ def _run_workflows(
         [[0.25, 0.5], [0.75, 0.5]],
         dtype=float,
     )
-    result2 = pv2.compute(
-        points2,
-        domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
-        return_edges=True,
-    )
-    if not isinstance(result2, pv.TessellationResult):
-        raise InstalledPackageCheckError(
-            'the planar smoke workflow did not return TessellationResult'
+    if planar_refusal:
+        _check_planar_refusals(core2d, pv2)
+    else:
+        result2 = pv2.compute(
+            points2,
+            domain=pv2.Box(((0.0, 1.0), (0.0, 1.0))),
+            return_edges=True,
         )
-    if len(result2.cells) != 2:
-        raise InstalledPackageCheckError(
-            f'the planar smoke workflow returned {len(result2.cells)} cells'
-        )
+        if not isinstance(result2, pv.TessellationResult):
+            raise InstalledPackageCheckError(
+                'the planar smoke workflow did not return TessellationResult'
+            )
+        if len(result2.cells) != 2:
+            raise InstalledPackageCheckError(
+                f'the planar smoke workflow returned {len(result2.cells)} cells'
+            )
 
-    periodic_points = np.array(
-        [[0.12, 0.2], [0.75, 0.25], [0.35, 0.72], [0.88, 0.82]],
-        dtype=float,
-    )
-    periodic_result = pv2.compute(
-        periodic_points,
-        domain=pv2.RectangularCell(
-            ((0.0, 1.0), (0.0, 1.0)),
-            periodic=(True, True),
-        ),
-        return_edge_shifts=True,
-    )
-    if not periodic_result.has_periodic_shifts:
-        raise InstalledPackageCheckError(
-            'the periodic planar workflow did not expose image shifts'
+        periodic_points = np.array(
+            [[0.12, 0.2], [0.75, 0.25], [0.35, 0.72], [0.88, 0.82]],
+            dtype=float,
         )
-    if not np.isclose(np.sum(periodic_result.cell_measures), 1.0):
-        raise InstalledPackageCheckError(
-            'the periodic planar workflow did not cover the unit cell'
+        periodic_result = pv2.compute(
+            periodic_points,
+            domain=pv2.RectangularCell(
+                ((0.0, 1.0), (0.0, 1.0)),
+                periodic=(True, True),
+            ),
+            return_edge_shifts=True,
         )
+        if not periodic_result.has_periodic_shifts:
+            raise InstalledPackageCheckError(
+                'the periodic planar workflow did not expose image shifts'
+            )
+        if not np.isclose(np.sum(periodic_result.cell_measures), 1.0):
+            raise InstalledPackageCheckError(
+                'the periodic planar workflow did not cover the unit cell'
+            )
 
     public_weights = np.array([-2.5, 0.25, 4.0])
     backend_radii, representation_shift = pv.weights_to_radii(public_weights)
@@ -384,8 +496,9 @@ def _run_workflows(
             )
 
     print('spatial workflow: TessellationResult with 2 cells')
-    print('planar workflow: TessellationResult with 2 cells')
-    print('periodic workflow: planar unit-cell coverage with image shifts')
+    if not planar_refusal:
+        print('planar workflow: TessellationResult with 2 cells')
+        print('periodic workflow: planar unit-cell coverage with image shifts')
     print('weight/radius transforms: public routes round-trip finite values')
     print('inverse workflow: optimal direct+dense fit with finite values')
     print('report workflow: schema 1 power_weight_fit strict JSON round trip')
@@ -402,6 +515,10 @@ def main() -> int:
         type=Path,
         default=REPO_ROOT,
         help='repository checkout that imports must resolve outside',
+    )
+    parser.add_argument(
+        '--planar-refusal', action='store_true',
+        help='require an unsupported planar cohort and verify explicit refusals',
     )
     scipy_group = parser.add_mutually_exclusive_group(required=True)
     scipy_group.add_argument(
@@ -420,7 +537,8 @@ def main() -> int:
     _check_scipy(require_scipy=args.require_scipy)
     _check_removed_compatibility()
     _check_private_helper_layout()
-    _run_workflows(args.repo_root, require_scipy=args.require_scipy)
+    _run_workflows(args.repo_root, require_scipy=args.require_scipy,
+                   planar_refusal=args.planar_refusal)
     return 0
 
 
