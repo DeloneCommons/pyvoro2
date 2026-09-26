@@ -286,8 +286,7 @@ def test_periodic_ghost_permutation_matches_independent_geometry(basis, mode, bl
     ghost_weights = np.array([-.03125, .046875, .015625])
     radii = _common_radii(weights, ghost_weights)
     options = dict(domain=pyvoro2.PeriodicCell(basis), blocks=blocks, mode=mode,
-                   return_faces=(mode == 'standard'
-                                 or np.array_equal(basis, np.eye(3))))
+                   return_faces=np.array_equal(basis, np.eye(3)))
     # Keep this native geometry parity test independent of S eligibility.
     # Raw native face parity remains covered by the direct isolation test below.
     # Hold the complete batch's explicit radii fixed in every reference call.
@@ -369,7 +368,7 @@ def test_native_periodic_ghost_batch_isolation(mode):
     queries = np.array([[.375, .125, .125], [.875, .125, .125], [.625, .125, .125]])
     options = dict(points=points, ids=np.array([0], dtype=np.int32),
                    cell_params=(1., 0., 1., 0., 0., 1.), blocks=(1, 1, 1),
-                   init_mem=8, opts=(False, False, False))
+                   init_mem=8, opts=(True, True, True))
     if mode == 'power':
         call = _core.ghost_periodic_power
         options.update(radii=np.array([0.]))

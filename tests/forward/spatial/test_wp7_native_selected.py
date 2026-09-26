@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 import ctypes
-import os
+import platform
 import sys
 
 from pyvoro2 import _core
@@ -119,7 +119,10 @@ def test_geometry_only_all_native_routes_replay_augmented_storage(
                for face in cells[0]['faces'])
 
 
-@pytest.mark.skipif(os.name != 'posix', reason='fenv probe uses libc')
+@pytest.mark.skipif(
+    sys.platform != 'linux' or platform.machine().lower() not in ('x86_64', 'amd64'),
+    reason='FE_UPWARD constant belongs to the qualified Linux x86_64 cohort',
+)
 def test_selected_environment_refusal_and_zero_query_validation():
     libc = ctypes.CDLL(None)
     if not hasattr(libc, 'fegetround') or not hasattr(libc, 'fesetround'):
