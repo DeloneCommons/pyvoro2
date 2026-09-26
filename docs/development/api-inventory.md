@@ -7,9 +7,10 @@
 - **Implemented release:** v0.8.0
 - **Active target:** v0.9.0 — WP0 contract activated 2026-09-01; WP1 query-input
   parity, WP2 user/backend lattice separation, WP4 exact proof geometry and
-  WP5 face certification are accepted; WP6 ordinary planar certification is
-  implemented on its issue branch with independent acceptance pending;
-  WP3/WP4 add no public surface and later feature work remains target-only
+  WP5 face and WP6 ordinary planar certification are independently accepted;
+  WP7 ghost certification is in implementation with independent acceptance
+  pending; WP3/WP4 add no public surface and later feature work remains
+  target-only
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
 - **v0.9 activation:** [issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **v0.9 execution tracker:** [issue #47](https://github.com/DeloneCommons/pyvoro2/issues/47)
@@ -35,7 +36,8 @@
   [ADR 0019](decisions/0019-separator-measurement-spaces-and-supported-realization.md),
   [ADR 0020](decisions/0020-exact-private-lattice-reduction.md),
   [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md),
-  and [ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md)
+  [ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md),
+  and [ADR 0023](decisions/0023-wp7-certified-ghost-boundaries.md)
 
 This inventory has two explicit authority layers. The current implemented
 sections record behavior implemented in the tree, including v0.9 work
@@ -72,9 +74,10 @@ fact.
 
 This section is the implementation/target ledger activated by issue
 [#46](https://github.com/DeloneCommons/pyvoro2/issues/46). It freezes the public
-contract choices needed by WP1–WP11 and records WP1–WP5 as accepted and WP6 as
-implemented on its issue branch, pending independent acceptance. Entries for
-later public work packages remain target-only; the
+contract choices needed by WP1–WP11 and records WP1–WP6 as independently
+accepted. WP7's closed contract is under implementation; independent
+acceptance remains pending. Entries for later public work packages remain
+target-only; the
 [current implemented contract](#current-implemented-contract) remains factual
 authority. Issue
 [#47](https://github.com/DeloneCommons/pyvoro2/issues/47) tracks substantive
@@ -85,6 +88,8 @@ The target follows [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-
 [ADR 0020](decisions/0020-exact-private-lattice-reduction.md), and the
 closed WP5-specific [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
 and ordinary planar [ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md).
+[ADR 0023](decisions/0023-wp7-certified-ghost-boundaries.md) fixes the
+distinct ghost eligibility and failure actions.
 D9 in the active plan remains unresolved by design; nothing in this ledger
 adopts a backend-fork policy.
 
@@ -101,7 +106,8 @@ adopts a backend-fork policy.
 | Advanced active-set options/path/history and `solve_self_consistent_power_weights` | Experimental | Remain under `pyvoro2.inverse.separator`; not promoted by WP11. |
 | `ghost_radius` | Removed — implemented by WP1 | Immediate pre-1.0 removal; no deprecated alias period. |
 | Finite face/edge reconstruction search/validation/repair/matching-tolerance keywords | Removed when implemented | Immediate pre-1.0 removal at the later owning work package; no deprecated alias period. |
-| Ordinary planar `compute` edge reconstruction controls | Removed by WP6 | The four keywords below have no aliases; planar ghost controls remain legacy WP7-owned inputs. |
+| Ordinary planar `compute` edge reconstruction controls | Removed by WP6 | The four keywords below have no aliases. |
+| Planar `ghost_cells` edge reconstruction controls | Removed by WP7 | The same four ghost-only keywords have no aliases or ignored-keyword transition. |
 
 WP13 performs the final pre-1.0 lifecycle audit after implementation and public
 qualification. The facade/result row is ordinary supported public API with the existing
@@ -231,7 +237,7 @@ The reconstruction-control removal ledger is:
 |---|---|---|
 | `pyvoro2.compute` | `face_shift_search`, `validate_face_shifts`, `repair_face_shifts`, `face_shift_tol` | Validated correctness-neutral WP5 inputs; removal remains WP9-owned. |
 | `pyvoro2.planar.compute` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` | Removed by WP6 without aliases or ignored keyword handling. |
-| `pyvoro2.planar.ghost_cells` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` | Legacy inputs remain until the separate WP7 replacement. |
+| `pyvoro2.planar.ghost_cells` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` | Removed by WP7 without aliases or ignored keyword handling. |
 
 Output-selection switches such as `return_face_shifts`/`return_edge_shifts`,
 general tessellation diagnostic tolerances, and separator `image_search` are
@@ -261,23 +267,26 @@ all-NaN rows and `owner_shift` uses the all-zero integer sentinel. Those owner
 fields are semantically valid only where `found` is true. External `ids` change
 labels, not geometric shift calculation.
 
-### Target ghost metadata and boundary identity
+### WP7 ghost boundary identity and later WP8 metadata target
 
-Spatial and planar ghost cell records both retain/add `query_index` and the
-original Cartesian `query`. For a periodic domain they additionally carry:
+WP7 retains `query_index` in both dimensions and the original Cartesian
+`query` in spatial records. It does not add that key to planar records. WP8
+later adds the original Cartesian `query` to planar records and the following
+periodic query fields in both dimensions:
 
 | Key | Semantics |
 |---|---|
 | `query_wrapped` | User-cell wrapped query. |
 | `query_shift` | User-basis shift satisfying `query = query_wrapped + query_shift @ A`. |
-| `site` | Active backend-primary/cell-site Cartesian ghost representative anchoring returned geometry; never the original unwrapped query by definition. |
+| `site` | Actual stored ghost's materialized Cartesian representative anchoring returned geometry; never the original unwrapped query by definition. This WP7 rule already applies before the remaining WP8 metadata. |
 
 `TessellationResult.sites` remains the original persistent input array. A raw
 periodic cell record's `site` is a geometry anchor and must not be substituted
 for that original-input contract.
 
-Every ghost face/edge for which certified semantic boundary identity is
-returned uses the exact nested key `boundary_reference`:
+WP7 keeps `ghost_cells` returning `list[dict]`. Every requested 3D face or 2D
+edge has `boundary_reference`, with the exact nested four-field record for a
+noncollapsed, source-attributed and S-positive occurrence:
 
 ```text
 {
@@ -292,15 +301,42 @@ The valid payload combinations are:
 
 | Kind | Generator ID | User-basis shift | Wall ID |
 |---|---|---|---|
-| `generator` | required | required for a periodic domain; otherwise `None` | `None` |
-| `ghost_self` | `None` | required and non-zero | `None` |
-| `wall` | `None` | `None` | required where the domain exposes wall identity |
+| `generator` | Persistent external ID | User-basis integer tuple in any periodic domain, including zero; otherwise `None` | `None` |
+| `ghost_self` | `None` | Required nonzero user-basis tuple, zero on nonperiodic axes | `None` |
+| `wall` | `None` | `None` | Existing source-qualified physical side ID |
+
+The entire `boundary_reference` value is `None` only for a proved internally
+collapsed raw occurrence. Public-coordinate rounding alone is not collapse;
+unresolved provenance or incomplete certification raises a hard error instead.
+Every noncollapsed native occurrence must have positive contact on the complete
+exact public-semantic S cell; every positive geometric S facet needs eligible
+native coverage. Native deletion is accepted as empty only when S has no
+full-dimensional cell. The private native-effective E ideal is optional
+explanatory evidence, not mandatory positive-reference authority. Geometry-only
+calls retain native empty disposition without claiming a full S certificate.
 
 No public `BoundaryReference` class is added. Existing ordinary `compute`
 `adjacent_cell`/`adjacent_shift` fields remain their operation-specific
-contract. A ghost `adjacent_cell` may be retained only when it has a defined
-persistent-generator or wall compatibility meaning and must never expose a
-temporary/undefined native ghost ID.
+contract. A ghost `adjacent_cell` remains only for a source-qualified
+persistent generator or real wall and is omitted for ghost self. A collapsed
+occurrence may retain only qualified persistent/wall adjacency for compatibility,
+without claiming semantic positivity. For planar ghosts, `return_edge_shifts`
+still requires a periodic domain and requested edges but no longer requires
+public vertices. A positive generator/self reference contains its periodic
+shift regardless of this selector; requested `adjacent_shift` is only a
+matching compatibility view. Walls and collapsed occurrences omit it. There
+is no ghost `has_periodic_shifts` capability flag or result-class addition.
+
+Hard ghost certificate failures are `ValueError`-compatible with `code`,
+`stage`, `query_index` and bounded `details`: `GHOST_BACKEND_INSERTION`,
+`GHOST_NATIVE_UNSUPPORTED`, `GHOST_PROVENANCE_AMBIGUOUS`,
+`GHOST_PROVENANCE_INCONSISTENT`, `GHOST_SEMANTIC_INCONSISTENT`,
+`GHOST_CERTIFICATION_RESOURCE` and `GHOST_SHIFT_UNREPRESENTABLE`. They abort
+the batch before `include_empty` filtering. Generic partition normalization
+must reject independent ghost batches rather than treating their `id=-1`
+records as one ordinary tessellation. See
+[ADR 0023](decisions/0023-wp7-certified-ghost-boundaries.md); exact-head
+implementation acceptance is pending.
 
 For **ordinary persistent 3D faces**, [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
 supersedes the earlier native-envelope/zero-face-deletion target. Requested
@@ -344,16 +380,16 @@ For WP5 until WP9, `face_shift_search`, `face_shift_tol`,
 `validate_face_shifts`, and `repair_face_shifts` keep existing strict input
 validation but are no-ops for the certified result. WP9 still owns their
 removal. Ordinary planar edges follow the separate ADR 0022 contract below;
-ghost boundary identity and output policy remain WP7-owned.
+ghost boundary identity and output policy are fixed separately by ADR 0023.
 
-### Ordinary planar WP6 contract and branch implementation
+### Ordinary planar WP6 contract and accepted implementation
 
 The [#74](https://github.com/DeloneCommons/pyvoro2/issues/74) G1–G4 prerequisite
-gates are closed. The branch implements
-[ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md);
-independent production acceptance, WP6 completion and Checkpoint B remain
-pending. Existing public operation/result names retain their lifecycle status;
-no new public certificate class or boundary schema is added.
+gates are closed. The independently accepted implementation of
+[ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md) is
+merged on `dev`; Checkpoint B remains pending. Existing public operation/result
+names retain their lifecycle status; no new public certificate class or
+boundary schema is added.
 
 Ordinary planar compute obtains final outgoing-edge owner/image provenance
 from the native execution producing its geometry. Trusted initialization sides
@@ -1557,8 +1593,7 @@ pyvoro2.planar.ghost_cells(
     mode='standard', weights=None, radii=None,
     ghost_weights=None, ghost_radii=None,
     return_vertices=True, return_adjacency=True, return_edges=True,
-    return_edge_shifts=False, edge_shift_search=2, include_empty=True,
-    validate_edge_shifts=True, repair_edge_shifts=False, edge_shift_tol=None,
+    return_edge_shifts=False, include_empty=True,
 )
 ```
 
@@ -1637,7 +1672,9 @@ still validate exact Boolean flags, finite non-negative `eps`, and finite
 points, and reject a lattice shift that cannot fit signed int64 before casting.
 Ordinary planar compute privately reuses rectangular numerical remapping with
 Python-integer shift storage until final edge-shift materialization; public
-remapping and ghost/locate policies are unchanged.
+remapping and locate policies are unchanged. WP7 selected ghosts separately
+verify actual insertion and transport private integer translations into
+required public shifts.
 
 All 18 internal native construction routes repeat converted-value checks and
 checked constructor arithmetic before allocation. An aggregate source-derived

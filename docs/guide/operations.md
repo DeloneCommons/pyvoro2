@@ -219,7 +219,9 @@ consistently with the query point.
 
 > What would the cell of $q$ look like if $q$ were inserted as an additional site?
 
-This wraps the Voro++ routine `compute_ghost_cell`.
+For each query, pyvoro2 computes only the selected cell in a fresh native
+population containing the persistent generators and one initialized temporary
+generator. The query does not remain in a persistent container.
 
 ```python
 ghost = pyvoro2.ghost_cells(points, queries, domain=cell)
@@ -232,13 +234,51 @@ non-periodic half-open interval and be safely distinct from the persistent
 generators. An outside non-periodic ghost now raises `ValueError`; a valid
 inserted ghost may still produce an empty cell geometrically.
 
+`ghost_cells` returns a list of raw dictionaries, rather than a
+`TessellationResult`. Records retain `id=-1` and the input `query_index`.
+Every requested 3D face (or 2D edge) has a `boundary_reference` describing
+the source-certified native boundary when it is positive in the complete
+exact public-semantic ghost cell:
+
+```python
+{
+    'kind': 'generator',  # or 'ghost_self' or 'wall'
+    'generator_id': 7,    # external persistent ID, otherwise None
+    'shift': (0, -1, 0),  # user-basis image; None without periodicity
+    'wall_id': None,      # existing physical side ID for a wall
+}
+```
+
+A `generator` reference uses the original persistent site and has a user-basis
+integer shift in every periodic domain, including `(0, 0, 0)`. A
+`ghost_self` reference names another image of this query, with a nonzero
+shift and no generator ID. A real nonperiodic `wall` has its source-qualified
+side ID and no shift. The entire value is `None` only when the retained raw
+native occurrence is proved internally collapsed; public rounding alone does
+not remove a positive reference. `adjacent_cell` is a compatibility view for
+qualified persistent generators and walls; ghost self has no
+`adjacent_cell`. Requested public vertices are not needed for certification.
+
+Certificate-bearing calls are initially qualified on Linux x86_64 GCC 13.3
+under the reviewed strict binary64 native profile. Unsupported source/build
+profiles and incomplete or inconsistent certificates raise a
+`ValueError`-compatible error with `code`, `stage`, `query_index` and bounded
+`details`; no partial batch is returned. Geometry-only calls use the safe
+initialized native route without claiming this boundary certificate. This
+WP7 implementation remains subject to independent exact-head acceptance.
+
 ### `query` vs `site` in periodic domains
 
-For periodic domains, pyvoro2 wraps each query into the primary cell before calling Voro++.
-Therefore each record contains:
+For periodic domains, preparation remaps each query before native insertion.
+The spatial record contains:
 
 - `query`: the original coordinate you supplied
-- `site`: the coordinate actually used for the computation (a wrapped periodic representative)
+- `site`: the actual stored ghost's materialized Cartesian representative
+  anchoring returned native geometry
 
-They are in the same coordinate system and differ only by an integer lattice translation.
-This wrapping makes results easier to compare and visualize.
+The original query and stored site need not be exactly separated by an integer
+lattice translation as binary64 values: preparation, insertion and frame
+conversion can round separately. Generator boundary images reconstruct as
+`original_generator_site + shift @ A`; ghost self images reconstruct as
+`site + shift @ A`. The original planar `query` field and unified periodic
+query metadata remain WP8 work.

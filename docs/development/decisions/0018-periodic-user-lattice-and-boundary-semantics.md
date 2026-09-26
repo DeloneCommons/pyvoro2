@@ -6,6 +6,8 @@
   [ADR 0021](0021-wp5-native-occurrence-and-exact-face-certification.md)
 - **Ordinary planar clarification:** 2026-09-24;
   [ADR 0022](0022-wp6-source-certified-planar-edge-provenance.md)
+- **Ghost clarification:** 2026-09-26;
+  [ADR 0023](0023-wp7-certified-ghost-boundaries.md)
 - **Related issue:** [#46 — Activate the v0.9.0 functional/API stabilization plan](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **Related plan:** [active v0.9.0 development plan](../plans/v0.9.md)
 - **Related decisions:** [ADR 0002](0002-weights-radii-and-gauge.md),
@@ -141,9 +143,11 @@ ghost self-image:
 ```
 
 `owner_site`/`generator_site` refer to original caller-supplied persistent
-coordinates. `ghost_site` is the active backend-primary/cell-site Cartesian
-representative that anchors the returned ghost geometry; it is not the original
-unwrapped query. A non-periodic wall has no periodic shift.
+coordinates. `ghost_site` is the actual stored ghost's materialized Cartesian
+representative that anchors returned ghost geometry; it is not the original
+unwrapped query. ADR 0023 fixes its distinct transport: generator
+`shift=sigma-K_j`, ghost self `shift=sigma != 0`. A non-periodic wall has no
+periodic shift.
 
 Equivalent exact unimodular user bases may therefore return different integer
 tuples, but those tuples must reconstruct the same qualified physical image.
@@ -181,7 +185,8 @@ errors remain separate. No universal numerical tolerance or producer envelope
 is claimed, and the kernel does not select the reference anchor. Deriving the
 WP5 source-compatible producer attribution and its accepted implementation are
 recorded in ADR 0021. ADR 0022 closes the distinct ordinary planar WP6 contract;
-WP7–WP8 producer integrations remain work.
+ADR 0023 fixes the selected-ghost contract. WP8 metadata integration remains
+separate.
 
 For WP5 the actual binary64 normal/offset and source arithmetic identify
 producer-compatible images at N; exact E uses actual native radii, while
@@ -212,6 +217,14 @@ The fields are validated together:
 | `generator` | required | required for a periodic domain; otherwise `None` | `None` |
 | `ghost_self` | `None` | required, user-basis, non-zero | `None` |
 | `wall` | `None` | `None` | required where the domain exposes wall identity |
+
+ADR 0023 fixes the stronger WP7 eligibility rule: every requested noncollapsed
+ghost occurrence requires source-attributed N and positive complete exact
+public-semantic S contact. A proved internally collapsed raw occurrence retains
+`boundary_reference=None`; unqualified provenance and noncollapsed nonpositive
+S contact fail rather than returning a partial reference. Native deletion is
+accepted as empty after verified insertion only if S has no full-dimensional
+cell. E is optional explanatory evidence for ghosts.
 
 This record is the ghost semantic authority. No new top-level
 `BoundaryReference` class/export is introduced by this decision. Existing
@@ -294,6 +307,6 @@ Rejected as an automatic semantic-boundary rule. The former proposal to drop
 zero-measure native artifacts from packaged output is superseded for WP5 by
 ADR 0021: an exact-zero/absent mismatch is a requested consistency diagnostic,
 while a uniquely source-attributed native shift remains available.
-ADR 0022 now fixes the ordinary planar policy: retain truthful raw occurrences,
+ADR 0022 fixes the ordinary planar policy: retain truthful raw occurrences,
 distinguish internal collapse from public rounding and audit complete exact
-E/S contacts/coverage separately. The ghost package must specify its own policy.
+E/S contacts/coverage separately. ADR 0023 fixes the distinct ghost policy.

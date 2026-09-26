@@ -1306,8 +1306,8 @@ def ghost_cells(
 ) -> list[dict[str, Any]]:
     """Compute ghost Voronoi/Laguerre cells at arbitrary query positions.
 
-    This is a stateless wrapper around Voro++'s ``compute_ghost_cell`` routine.
-    Each query is temporarily inserted, so it uses the same containment and
+    Each query is an initialized selected generator in its own augmented
+    native container, with the same containment and
     mandatory duplicate-safety rules as persistent generators. An outside
     non-periodic query therefore raises before native dispatch; a contained,
     distinct query may still have an empty cell geometrically.
@@ -1318,9 +1318,16 @@ def ghost_cells(
     tessellation and therefore:
 
       - Ghost cells are returned with ``id = -1``.
-      - The returned faces' ``adjacent_cell`` values refer to *generator* IDs
-        (0..n-1, or remapped to `ids` if provided).
-      - No periodic face-shift annotation is performed.
+      - Every requested face has a four-field ``boundary_reference`` identifying
+        a persistent generator, periodic ghost-self image or physical wall.
+      - Proved internally collapsed raw faces have ``boundary_reference=None``.
+      - ``adjacent_cell`` is a compatibility view for generators and walls;
+        ghost-self faces omit it.
+      - Positive references require native attribution and exact public-semantic
+        positivity and coverage. Public vertices and adjacency are optional.
+
+    Hard certification failures are ValueError-compatible with inspectable
+    ``code``, ``stage``, ``query_index`` and bounded ``details`` attributes.
 
     Args:
         points: Generator coordinates, shape (n, 3).
@@ -1353,7 +1360,7 @@ def ghost_cells(
             per query.
         return_vertices: Include vertex coordinates.
         return_adjacency: Include vertex adjacency.
-        return_faces: Include faces with adjacent generator IDs.
+        return_faces: Include raw faces with certified boundary references.
         include_empty: If True, return an explicit empty record for queries for
             which Voro++ cannot compute a cell. Outside non-periodic queries
             are rejected before native dispatch. Empty records have
@@ -1461,7 +1468,6 @@ def ghost_cells(
     pts_native = prepared.native_points
     q_native = temporary.native_points
     ids_internal = prepared.internal_ids
-    ids_user = prepared.external_ids if ids is not None else None
     rr = prepared.backend_radii
     gr = temporary.backend_radii
     native_scale = (
@@ -1484,91 +1490,129 @@ def ghost_cells(
     )
     core = _require_core()
 
-    # --- Rectangular containers (Box / OrthorhombicCell) ---
-    if isinstance(domain, (Box, OrthorhombicCell)):
-        assert native_bounds is not None
-        bounds = native_bounds
-        periodic_flags = geom.periodic_axes
+    from ._internal.ghost import (GhostFailure, from_native_failure,
+                                  validate_materialized_cells)
 
-        q_call = q_native
+    try:
+        if return_faces_value:
+            from ._internal.spatial.ghost_certificate import certify_ghost_packets
 
-        if mode == 'standard':
-            cells = core.ghost_box_standard(
-                pts_native,
-                ids_internal,
-                bounds,
-                (nx, ny, nz),
-                periodic_flags,
-                init_mem_value,
-                opts,
-                q_call,
+            name = ('_observe_ghost_box' if isinstance(domain, (Box, OrthorhombicCell))
+                    else '_observe_ghost_periodic')
+            if not hasattr(core, name):
+                raise GhostFailure('GHOST_NATIVE_UNSUPPORTED',
+                                   'Installed native module lacks ghost witness',
+                                   stage='native', dimension=3)
+            if isinstance(domain, (Box, OrthorhombicCell)):
+                packets = core._observe_ghost_box(
+                    pts_native, ids_internal, native_bounds, (nx, ny, nz),
+                    geom.periodic_axes, init_mem_value, q_native,
+                    radii=rr, ghost_radii=gr,
+                )
+            else:
+                packets = core._observe_ghost_periodic(
+                    pts_native, ids_internal, native_params, (nx, ny, nz),
+                    init_mem_value, q_native, radii=rr, ghost_radii=gr,
+                )
+            cells = certify_ghost_packets(
+                packets, prepared=prepared, temporary=temporary,
+                power_input=power_input, domain=domain, snapshot=native_cell,
+                return_vertices=return_vertices_value,
+                return_adjacency=return_adjacency_value,
             )
-
-        elif mode == 'power':
-            assert rr is not None
-            assert gr is not None
-
-            cells = core.ghost_box_power(
-                pts_native,
-                ids_internal,
-                rr,
-                bounds,
-                (nx, ny, nz),
-                periodic_flags,
-                init_mem_value,
-                opts,
-                q_call,
-                gr,
-            )
-
         else:
-            raise ValueError(f'unknown mode: {mode}')
+            # --- Rectangular containers (Box / OrthorhombicCell) ---
+            if isinstance(domain, (Box, OrthorhombicCell)):
+                assert native_bounds is not None
+                bounds = native_bounds
+                periodic_flags = geom.periodic_axes
 
-    # --- PeriodicCell (triclinic) ---
-    else:
-        cell = native_cell
-        assert cell is not None
-        assert native_params is not None
-        bx, bxy, by, bxz, byz, bz = native_params
+                q_call = q_native
 
-        pts_i = pts_native
-        q_i = q_native
+                if mode == 'standard':
+                    cells = core.ghost_box_standard(
+                        pts_native,
+                        ids_internal,
+                        bounds,
+                        (nx, ny, nz),
+                        periodic_flags,
+                        init_mem_value,
+                        opts,
+                        q_call,
+                    )
 
-        if mode == 'standard':
-            cells = core.ghost_periodic_standard(
-                pts_i,
-                ids_internal,
-                (bx, bxy, by, bxz, byz, bz),
-                (nx, ny, nz),
-                init_mem_value,
-                opts,
-                q_i,
-            )
+                elif mode == 'power':
+                    assert rr is not None
+                    assert gr is not None
 
-        elif mode == 'power':
-            assert rr is not None
-            assert gr is not None
+                    cells = core.ghost_box_power(
+                        pts_native,
+                        ids_internal,
+                        rr,
+                        bounds,
+                        (nx, ny, nz),
+                        periodic_flags,
+                        init_mem_value,
+                        opts,
+                        q_call,
+                        gr,
+                    )
 
-            cells = core.ghost_periodic_power(
-                pts_i,
-                ids_internal,
-                rr,
-                (bx, bxy, by, bxz, byz, bz),
-                (nx, ny, nz),
-                init_mem_value,
-                opts,
-                q_i,
-                gr,
-            )
+                else:
+                    raise ValueError(f'unknown mode: {mode}')
 
-        else:
-            raise ValueError(f'unknown mode: {mode}')
+            # --- PeriodicCell (triclinic) ---
+            else:
+                cell = native_cell
+                assert cell is not None
+                assert native_params is not None
+                bx, bxy, by, bxz, byz, bz = native_params
 
-        _transport_periodic_cells_to_cart_inplace(cells, cell)
+                pts_i = pts_native
+                q_i = q_native
 
-    # Remap generator IDs on faces to user IDs if requested.
-    if ids_user is not None:
-        _remap_ids_inplace(cells, ids_user)
+                if mode == 'standard':
+                    cells = core.ghost_periodic_standard(
+                        pts_i,
+                        ids_internal,
+                        (bx, bxy, by, bxz, byz, bz),
+                        (nx, ny, nz),
+                        init_mem_value,
+                        opts,
+                        q_i,
+                    )
+
+                elif mode == 'power':
+                    assert rr is not None
+                    assert gr is not None
+
+                    cells = core.ghost_periodic_power(
+                        pts_i,
+                        ids_internal,
+                        rr,
+                        (bx, bxy, by, bxz, byz, bz),
+                        (nx, ny, nz),
+                        init_mem_value,
+                        opts,
+                        q_i,
+                        gr,
+                    )
+
+                else:
+                    raise ValueError(f'unknown mode: {mode}')
+
+                _transport_periodic_cells_to_cart_inplace(cells, cell)
+
+    except GhostFailure:
+        raise
+    except RuntimeError as exc:
+        raise from_native_failure(exc, 3, None, 'native') from exc
+    except ValueError as exc:
+        if not str(exc).startswith('ghost_native:'):
+            raise
+        raise from_native_failure(exc, 3, None, 'native') from exc
+
+    validate_materialized_cells(cells, 3)
 
     # Add original query coordinates (Cartesian) to each record.
     q_list = q.tolist()

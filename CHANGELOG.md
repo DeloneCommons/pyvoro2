@@ -8,6 +8,11 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Ghost queries use initialized, verified per-query native insertion before a
+  temporary ID can be read or copied. Certificate-bearing ghost boundaries
+  distinguish persistent generators, periodic ghost self-images and physical
+  walls without relying on undefined native IDs or finite image matching.
+
 - Ordinary planar computation retains arbitrary-precision private preparation
   shifts, allowing large common translations to cancel before checking the
   signed-int64 range of requested public edge shifts.
@@ -38,6 +43,17 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Requested 2D ghost edges and 3D ghost faces expose source-attributed
+  `boundary_reference` with user-basis shifts only for exact positive
+  public-semantic contacts; proved internally collapsed raw occurrences retain
+  `boundary_reference=None`. The ghost `site` uses the actual stored Cartesian
+  representative, and hard certificate failures expose structured `GHOST_*`
+  codes. Initial certified support is qualified Linux x86_64 GCC 13.3;
+  unsupported certificate-bearing profiles refuse explicitly. The WP7
+  implementation still awaits independent exact-head acceptance.
+- Planar ghost `return_edge_shifts=True` no longer requires public vertices;
+  eligible positive generator/self references contain their shifts regardless
+  of that optional `adjacent_shift` compatibility view.
 - Ordinary planar edges now carry source-certified owner/image provenance with
   original-site user-basis shifts, optional public vertices, nonzero self-image
   shifts and absent wall shifts. Compact native evidence is qualified against
@@ -99,8 +115,8 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 ### Removed
 
 - Removed `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts` and
-  `edge_shift_tol` from ordinary `pyvoro2.planar.compute` without aliases. The
-  same controls on legacy `planar.ghost_cells` remain unchanged.
+  `edge_shift_tol` from ordinary `pyvoro2.planar.compute` and
+  `pyvoro2.planar.ghost_cells` without aliases.
 
 ## [0.8.0] - 2026-08-17
 

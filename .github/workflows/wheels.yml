@@ -14,14 +14,14 @@ env:
     *-manylinux_{aarch64,ppc64le,s390x,armv7l,riscv64}
     *-win32 *-win_arm64 *-macosx_universal2
   CIBW_TEST_EXTRAS: "test"
-  # These distributed compiler/target cohorts have no ordinary planar
-  # qualification. Require explicit refusal and record each exact native
-  # profile/module hash in the wheel test log. Qualified Ubuntu/GCC 13.3 source
-  # wheels instead pass the default success gate in CI's build-dist job.
+  # Distributed cohorts have neither ordinary planar nor selected ghost
+  # qualification. Require both explicit refusals while preserving safe
+  # geometry-only ghost and ordinary spatial coverage. Qualified Ubuntu/GCC
+  # 13.3 source wheels pass the default success gate in CI's build-dist job.
   CIBW_TEST_COMMAND: >-
     python -m pip check &&
     python "{project}/tools/check_installed_package.py"
-    --repo-root "{project}" --require-scipy --planar-refusal
+    --repo-root "{project}" --require-scipy --planar-refusal --ghost-refusal
 
 jobs:
   wheels-manylinux-x86_64:
@@ -187,7 +187,7 @@ jobs:
       - name: Create clean aggregate-wheel environment
         run: python -m venv "${{ runner.temp }}/pyvoro2-wheel-venv"
 
-      - name: Check aggregate manylinux wheel and explicit planar refusal
+      - name: Check aggregate manylinux wheel and explicit ghost/planar refusal
         shell: bash
         run: |
           "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" \
@@ -198,7 +198,8 @@ jobs:
           "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" -m pip check
           "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" \
             tools/check_installed_package.py \
-            --repo-root "${{ github.workspace }}" --forbid-scipy --planar-refusal \
+            --repo-root "${{ github.workspace }}" --forbid-scipy \
+            --planar-refusal --ghost-refusal \
             | tee aggregate-wheel-profile.txt
 
       - name: Preserve aggregate wheel profile and refusal evidence

@@ -87,6 +87,10 @@ class ObservedCell : public voro::voronoicell_neighbor {
     replay_ = false;
   }
 
+  // A selected ghost must not grow an unbounded cut journal. Ordinary WP5
+  // cells retain their existing capacity policy.
+  void limit_ghost_origins(std::size_t maximum) { ghost_origin_limit_ = maximum; }
+
   ObservedCell& operator=(ObservedCell& other) {
     if (this != &other) {
       voro::voronoicell_neighbor::operator=(other);
@@ -227,6 +231,7 @@ class ObservedCell : public voro::voronoicell_neighbor {
   std::array<bool, 3> periodic_{};
   ObservedCell* seed_ = nullptr;
   bool replay_ = false;
+  std::size_t ghost_origin_limit_ = std::numeric_limits<std::size_t>::max();
 
   int append(const char* kind, int owner, const std::array<double, 3>& normal,
              double offset, int legacy_owner, int axis = -1, int sense = 0,
@@ -234,6 +239,8 @@ class ObservedCell : public voro::voronoicell_neighbor {
     if (!std::isfinite(offset) || !std::isfinite(normal[0]) ||
         !std::isfinite(normal[1]) || !std::isfinite(normal[2]))
       throw std::runtime_error("native witness non-finite native plane");
+    if (origins.size() >= ghost_origin_limit_)
+      throw std::runtime_error("GHOST_CERTIFICATION_RESOURCE: native origin limit");
     const int token = checked_next_token(origins.size());
     origins.push_back(Origin{token, kind, owner, normal, offset, legacy_owner,
                              axis, sense, periodic, side});

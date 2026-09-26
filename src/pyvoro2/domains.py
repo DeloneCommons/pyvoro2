@@ -180,6 +180,12 @@ class OrthorhombicCell:
                 (remapped_points, shifts) where shifts has shape (n, 3)
                 and contains integer (nx, ny, nz).
         """
+        return self._remap_cart(
+            points, return_shifts=return_shifts, eps=eps, integer_view=True,
+        )
+
+    def _remap_cart(self, points, *, return_shifts, eps=None, integer_view=True):
+        """Use the same remap arithmetic with private unbounded coefficients."""
         return_shifts_value = require_bool(
             return_shifts,
             name='return_shifts',
@@ -208,7 +214,8 @@ class OrthorhombicCell:
         y = pts[:, 1].astype(float, copy=True)
         z = pts[:, 2].astype(float, copy=True)
 
-        shifts = np.zeros((pts.shape[0], 3), dtype=np.int64)
+        shifts = np.zeros((pts.shape[0], 3),
+                          dtype=np.int64 if integer_view else object)
 
         for axis, (lo, hi, L, is_per) in enumerate(
             (
@@ -223,9 +230,16 @@ class OrthorhombicCell:
             # Wrap into [lo, hi) using floor.
             with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
                 quotient = (coord - lo) / L
-            s = floor_to_int64(quotient, name=f'points axis {axis} shift')
+            if integer_view:
+                s = floor_to_int64(quotient, name=f'points axis {axis} shift')
+                numerical_s = s
+            else:
+                if not np.all(np.isfinite(quotient)):
+                    raise ValueError('native preparation quotient must be finite')
+                numerical_s = np.floor(quotient)
+                s = np.array([int(value) for value in numerical_s], dtype=object)
             with np.errstate(over='ignore', invalid='ignore'):
-                coord -= s * L
+                coord -= numerical_s * L
             if not np.all(np.isfinite(coord)):
                 raise ValueError('remapped points must contain only finite values')
             shifts[:, axis] = s
@@ -238,7 +252,7 @@ class OrthorhombicCell:
                 # Snap near the upper boundary to lo with shift increment.
                 m1 = coord >= (hi - eps_val)
                 if np.any(m1):
-                    if np.any(shifts[m1, axis] == INT64_MAX):
+                    if integer_view and np.any(shifts[m1, axis] == INT64_MAX):
                         raise ValueError(
                             'remap shifts must be representable as signed int64'
                         )
@@ -610,6 +624,16 @@ class PeriodicCell:
                 (remapped_points, shifts) where shifts has shape (n, 3)
                 and contains integer (na, nb, nc).
         """
+        return self._remap_internal(
+            points_internal, return_shifts=return_shifts, eps=eps,
+            integer_view=True,
+        )
+
+    def _remap_internal(
+        self, points_internal, *, return_shifts=False, eps=None,
+        integer_view=True,
+    ):
+        """Established lower-triangular remap with private integer storage."""
         return_shifts_value = require_bool(
             return_shifts,
             name='return_shifts',
@@ -635,9 +659,25 @@ class PeriodicCell:
         else:
             eps_val = explicit_eps
 
-        na = np.zeros_like(x, dtype=np.int64)
-        nb = np.zeros_like(x, dtype=np.int64)
-        nc = np.zeros_like(x, dtype=np.int64)
+        shift_dtype = np.int64 if integer_view else object
+        na = np.zeros_like(x, dtype=shift_dtype)
+        nb = np.zeros_like(x, dtype=shift_dtype)
+        nc = np.zeros_like(x, dtype=shift_dtype)
+
+        def floor_shift(quotient, *, name):
+            if integer_view:
+                coefficient = floor_to_int64(quotient, name=name)
+                return coefficient, coefficient
+            if not np.all(np.isfinite(quotient)):
+                raise ValueError(f'{name} must contain only finite values')
+            numerical = np.floor(quotient)
+            coefficient = np.array([int(v) for v in numerical], dtype=object)
+            return numerical, coefficient
+
+        def add_shifts(left, right, *, name):
+            if integer_view:
+                return checked_int64_add(left, right, name=name)
+            return left + right
 
         # Iterate several times: remap -> (optional) snap upper boundary.
         # In normal cases, this converges in 1 iteration. Extra iterations
@@ -647,7 +687,8 @@ class PeriodicCell:
             # Remap into [0,b) using lower-triangular lattice steps.
             with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
                 dc_quotient = z / bz
-            dc = floor_to_int64(dc_quotient, name='points_internal c shift')
+            dc, dc_coeff = floor_shift(dc_quotient,
+                                       name='points_internal c shift')
             with np.errstate(over='ignore', invalid='ignore'):
                 z -= dc * bz
                 y -= dc * byz
@@ -656,7 +697,8 @@ class PeriodicCell:
 
             with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
                 db_quotient = y / by
-            db = floor_to_int64(db_quotient, name='points_internal b shift')
+            db, db_coeff = floor_shift(db_quotient,
+                                       name='points_internal b shift')
             with np.errstate(over='ignore', invalid='ignore'):
                 y -= db * by
                 x -= db * bxy
@@ -664,14 +706,15 @@ class PeriodicCell:
 
             with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
                 da_quotient = x / bx
-            da = floor_to_int64(da_quotient, name='points_internal a shift')
+            da, da_coeff = floor_shift(da_quotient,
+                                       name='points_internal a shift')
             with np.errstate(over='ignore', invalid='ignore'):
                 x -= da * bx
             _require_finite_remap_coordinates(x, y, z)
 
-            na = checked_int64_add(na, da, name='remap a shifts')
-            nb = checked_int64_add(nb, db, name='remap b shifts')
-            nc = checked_int64_add(nc, dc, name='remap c shifts')
+            na = add_shifts(na, da_coeff, name='remap a shifts')
+            nb = add_shifts(nb, db_coeff, name='remap b shifts')
+            nc = add_shifts(nc, dc_coeff, name='remap c shifts')
 
             if eps_val == 0.0:
                 break
@@ -694,7 +737,7 @@ class PeriodicCell:
                 x[mz] -= bxz
                 increment = np.zeros_like(nc)
                 increment[mz] = 1
-                nc = checked_int64_add(nc, increment, name='remap c shifts')
+                nc = add_shifts(nc, increment, name='remap c shifts')
                 changed = True
 
             my = (y >= (by - eps_val)) & (y <= (by + eps_val))
@@ -703,7 +746,7 @@ class PeriodicCell:
                 x[my] -= bxy
                 increment = np.zeros_like(nb)
                 increment[my] = 1
-                nb = checked_int64_add(nb, increment, name='remap b shifts')
+                nb = add_shifts(nb, increment, name='remap b shifts')
                 changed = True
 
             mx = (x >= (bx - eps_val)) & (x <= (bx + eps_val))
@@ -711,7 +754,7 @@ class PeriodicCell:
                 x[mx] = 0.0
                 increment = np.zeros_like(na)
                 increment[mx] = 1
-                na = checked_int64_add(na, increment, name='remap a shifts')
+                na = add_shifts(na, increment, name='remap a shifts')
                 changed = True
 
             _require_finite_remap_coordinates(x, y, z)
@@ -726,52 +769,67 @@ class PeriodicCell:
         # underflow; canonicalize it without snapping other negative values.
         with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
             dc_quotient = z / bz
-        dc = floor_to_int64(dc_quotient, name='points_internal c shift')
+        dc, dc_coeff = floor_shift(dc_quotient,
+                                   name='points_internal c shift')
         with np.errstate(over='ignore', invalid='ignore'):
             z -= dc * bz
             if eps_val == 0.0:
                 z[(z < 0.0) & (dc_quotient == 0.0)] = 0.0
                 upper = z == bz
                 z[upper] = 0.0
-                dc = checked_int64_add(
-                    dc, upper.astype(np.int64), name='remap c shifts',
-                )
+                dc = add_shifts(dc, upper.astype(np.int64),
+                                name='remap c shifts')
+                if integer_view:
+                    dc_coeff = dc
+                else:
+                    dc_coeff = add_shifts(dc_coeff, upper.astype(np.int64),
+                                          name='remap c shifts')
             y -= dc * byz
             x -= dc * bxz
         _require_finite_remap_coordinates(x, y, z)
 
         with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
             db_quotient = y / by
-        db = floor_to_int64(db_quotient, name='points_internal b shift')
+        db, db_coeff = floor_shift(db_quotient,
+                                   name='points_internal b shift')
         with np.errstate(over='ignore', invalid='ignore'):
             y -= db * by
             if eps_val == 0.0:
                 y[(y < 0.0) & (db_quotient == 0.0)] = 0.0
                 upper = y == by
                 y[upper] = 0.0
-                db = checked_int64_add(
-                    db, upper.astype(np.int64), name='remap b shifts',
-                )
+                db = add_shifts(db, upper.astype(np.int64),
+                                name='remap b shifts')
+                if integer_view:
+                    db_coeff = db
+                else:
+                    db_coeff = add_shifts(db_coeff, upper.astype(np.int64),
+                                          name='remap b shifts')
             x -= db * bxy
         _require_finite_remap_coordinates(x, y, z)
 
         with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
             da_quotient = x / bx
-        da = floor_to_int64(da_quotient, name='points_internal a shift')
+        da, da_coeff = floor_shift(da_quotient,
+                                   name='points_internal a shift')
         with np.errstate(over='ignore', invalid='ignore'):
             x -= da * bx
             if eps_val == 0.0:
                 x[(x < 0.0) & (da_quotient == 0.0)] = 0.0
                 upper = x == bx
                 x[upper] = 0.0
-                da = checked_int64_add(
-                    da, upper.astype(np.int64), name='remap a shifts',
-                )
+                da = add_shifts(da, upper.astype(np.int64),
+                                name='remap a shifts')
+                if integer_view:
+                    da_coeff = da
+                else:
+                    da_coeff = add_shifts(da_coeff, upper.astype(np.int64),
+                                          name='remap a shifts')
         _require_finite_remap_coordinates(x, y, z)
 
-        na = checked_int64_add(na, da, name='remap a shifts')
-        nb = checked_int64_add(nb, db, name='remap b shifts')
-        nc = checked_int64_add(nc, dc, name='remap c shifts')
+        na = add_shifts(na, da_coeff, name='remap a shifts')
+        nb = add_shifts(nb, db_coeff, name='remap b shifts')
+        nc = add_shifts(nc, dc_coeff, name='remap c shifts')
 
         # Snap tiny values to 0 again for cleanliness.
         if eps_val > 0.0:
@@ -783,7 +841,7 @@ class PeriodicCell:
 
         if not return_shifts_value:
             return remapped
-        shifts = np.stack([na, nb, nc], axis=1).astype(np.int64)
+        shifts = np.stack([na, nb, nc], axis=1).astype(shift_dtype)
         return remapped, shifts
 
     def wrap_internal(self, points_internal: np.ndarray) -> np.ndarray:

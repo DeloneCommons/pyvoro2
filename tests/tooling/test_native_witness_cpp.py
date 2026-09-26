@@ -88,3 +88,16 @@ def test_native_witness_cpp(native_witness_executable: Path, case: str) -> None:
         [str(native_witness_executable), case], os.environ.copy(),
     )
     assert f'native witness: {case} passed' in output
+
+
+def test_wp7_initialized_selected_reference(native_witness_executable: Path) -> None:
+    executable = native_witness_executable.with_name(
+        'test_wp7_ghost_reference.exe' if os.name == 'nt'
+        else 'test_wp7_ghost_reference'
+    )
+    output = _run([str(executable)], os.environ.copy())
+    assert 'box standard periodic=0 poison_read=0 selected_equal=1' in output
+    assert 'box power periodic=1 poison_read=1 selected_equal=1' in output
+    assert 'triclinic standard poison_read=1 lazy_copy=1 selected_equal=1' in output
+    assert 'triclinic power poison_read=1 lazy_copy=1 selected_equal=1' in output
+    assert 'growth initialized_before_read=1 self_image_copy=1' in output

@@ -22,8 +22,19 @@ The [planar guide](../../guide/planar.md) records the qualified native profile
 and exact/native distinction.
 
 `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts` and
-`edge_shift_tol` are removed from ordinary `compute`. Their legacy ghost
-counterparts remain; the ghost route does not inherit ordinary certification.
+`edge_shift_tol` are removed from ordinary `compute` and `ghost_cells`.
+Ghost calls return raw record lists. Every requested edge carries a nested
+`boundary_reference` for its N-source-attributed, exact S-positive boundary,
+or `None` only for proved internal collapse. Its four keys are `kind`,
+`generator_id`, `shift` and `wall_id`. A periodic generator shift can be zero;
+ghost self shifts are nonzero; physical walls have no shift. The reference
+exists independently of `return_edge_shifts`, whose `adjacent_shift`
+compatibility view requires periodic requested edges but no public vertices.
+Ghost self omits `adjacent_cell`. A hard `GHOST_*` certificate failure is
+`ValueError`-compatible with `code`, `stage`, `query_index` and bounded
+`details`. Initially only the qualified Linux x86_64 GCC 13.3 strict native
+profile admits certificate-bearing calls; other profiles refuse explicitly.
+The WP7 implementation awaits independent exact-head acceptance.
 
 ::: pyvoro2.planar.api
 :::

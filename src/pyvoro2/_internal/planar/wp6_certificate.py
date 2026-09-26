@@ -222,7 +222,8 @@ class EdgeCertificate:
         return result
 
 
-def _checked_packet(cells, packet, prepared, domain, mode, limits):
+def _checked_packet(cells, packet, prepared, domain, mode, limits,
+                    *, selected_sources=None):
     from .wp6_profile import validate_profile
 
     try:
@@ -284,7 +285,14 @@ def _checked_packet(cells, packet, prepared, domain, mode, limits):
         if i not in storage or i in rows or type(row['present']) is not bool:
             raise ValueError('invalid source computation identity/disposition')
         rows[i] = row
-    if set(rows) != set(storage):
+    expected_sources = set(storage)
+    if selected_sources is not None:
+        selected_sources = tuple(selected_sources)
+        expected_sources = {_integer(i) for i in selected_sources}
+        if (len(expected_sources) != len(selected_sources)
+                or not expected_sources <= set(storage)):
+            raise ValueError('invalid selected source scope')
+    if set(rows) != expected_sources:
         raise ValueError('source computation population is incomplete')
     count = sum(len(row.get('origins', ())) for row in rows.values())
     if count > limits.max_occurrences:
@@ -301,7 +309,10 @@ def _checked_packet(cells, packet, prepared, domain, mode, limits):
         i = _integer(cell['id'])
         if i not in rows or i in native_cells or not rows[i]['present']:
             raise ValueError('returned geometry does not match source disposition')
-        if _finite(cell['area']) < 0:
+        # Selected ghost disposition is decided against S after attribution.
+        # A native retained near-degenerate polygon may have negative rounded
+        # area; its sign cannot replace that exact full-dimension check.
+        if _finite(cell['area']) < 0 and selected_sources is None:
             raise ValueError('negative native area')
         if any(
             _bits(cell['site'][k]) != _bits(storage[i]['point'][k]) for k in range(2)

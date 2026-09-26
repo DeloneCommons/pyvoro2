@@ -129,6 +129,17 @@ class _NativePeriodicSnapshot:
             eps=eps,
         )
 
+    def _remap_internal(
+        self, points_internal, *, return_shifts=False, eps=None,
+        integer_view=True,
+    ):
+        """Use the same remap with private unbounded coefficient storage."""
+
+        return PeriodicCell._remap_internal(
+            self, points_internal, return_shifts=return_shifts, eps=eps,
+            integer_view=integer_view,
+        )
+
     def remap_cart(
         self,
         points: np.ndarray,

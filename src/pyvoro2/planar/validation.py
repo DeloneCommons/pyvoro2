@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .._internal.ghost import reject_ghost_records
+
 from dataclasses import dataclass
 import sys
 from typing import Any, Literal
@@ -137,6 +139,7 @@ def validate_normalized_topology(
     example_probe_limit = max(max_examples, 1)
 
     cells = list(normalized.cells)
+    reject_ghost_records(cells)
     n_cells = len(cells)
     n_global_vertices = int(normalized.global_vertices.shape[0])
     n_global_edges: int | None = None

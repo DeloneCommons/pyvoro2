@@ -16,6 +16,8 @@ The public entry point is :func:`analyze_tessellation`.
 
 from __future__ import annotations
 
+from ._internal.ghost import reject_ghost_records
+
 from dataclasses import dataclass
 from typing import Any, Literal, Sequence
 
@@ -305,6 +307,7 @@ def _analyze_tessellation(
         if expected_ids is None
         else coerce_external_id_array(expected_ids, name='expected_ids')
     )
+    reject_ghost_records(cells)
 
     issues: list[TessellationIssue] = []
 

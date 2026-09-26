@@ -190,9 +190,9 @@ ownership is:
 
 | Ownership | Modules | Reason |
 |---|---|---|
-| Dimension-neutral | `_internal.cell_output`, `_internal.inputs`, `_internal.power_input`, `_internal.validation`, `_internal.weight_transforms` | Raw-record post-processing is parameterized by measure and boundary keys; strict scalar/array validation and input coercion are parameterized by dimension; power-input resolution and weight/radius conversion have no dimension-specific geometry. |
-| Spatial/3D | `_internal.spatial.domain_geometry`, `_internal.spatial.domain_utils`, `_internal.spatial.wp5_*` | These helpers use the 3D domain classes, three-component lattice operations, or the native face producer and exact ideal audit. |
-| Planar/2D | `_internal.planar.domain_geometry`, `_internal.planar.wp6_certificate`, `_internal.planar.wp6_ideal`, `_internal.planar.wp6_profile`, `_internal.planar.edge_shifts` | Ordinary compute uses source-associated native provenance and separate exact E/S auditing; the legacy edge-shift helper remains ghost-only. |
+| Dimension-neutral | `_internal.cell_output`, `_internal.inputs`, `_internal.power_input`, `_internal.validation`, `_internal.weight_transforms`, `_internal.ghost` | Raw-record post-processing, strict input values and weight conversion remain neutral; the ghost helper owns the common fixed failure protocol and exact public-semantic S decisions. |
+| Spatial/3D | `_internal.spatial.domain_geometry`, `_internal.spatial.domain_utils`, `_internal.spatial.wp5_*`, `_internal.spatial.ghost_certificate` | Dimension-specific native face attribution and selected-ghost projection/chart checks use spatial geometry and the accepted producer machinery. |
+| Planar/2D | `_internal.planar.domain_geometry`, `_internal.planar.wp6_certificate`, `_internal.planar.wp6_ideal`, `_internal.planar.wp6_profile`, `_internal.planar.ghost_certificate` | Ordinary compute and selected ghosts share qualified source-token machinery but retain distinct exact-audit and ghost N+S action policies. |
 
 The obsolete root helper modules and private modules under `pyvoro2.planar`
 are absent rather than retained as forwarding shims. `_internal` is not public
@@ -362,8 +362,10 @@ ordinary well-separated inputs. Raw standard compute output must contain every
 internal ID exactly once; raw power output may contain a unique subset for
 hidden cells. WP6 additionally validates every ordinary planar input against
 the actual native inserted population before interpreting hidden/deleted cells;
-an insertion omission fails in either mode. ADR 0013 fixes preparation, policy, provenance, ghost,
-native-backstop, and R5/R8 boundary.
+an insertion omission fails in either mode. WP7 requires actual population
+verification for each selected augmented ghost before native deletion can mean
+an empty cell. ADR 0013 fixes preparation, policy, provenance, ghost and
+native-backstop boundaries.
 
 ### Neutral weight/radius transforms
 
@@ -859,8 +861,9 @@ justified exact compatibility box, not a producer tolerance. WP5's separate
 source-complete producer predicate is fixed by
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md),
 not a generic numerical envelope. WP6's direct source-associated planar
-provenance is fixed separately by ADR 0022; WP7–WP8 must justify their own
-producer contracts and reference anchors. The kernel currently has no
+provenance is fixed separately by ADR 0022; the selected-ghost producer and
+stored-ghost reference anchor are fixed by ADR 0023, while WP8 metadata
+remains separate. The kernel currently has no
 boundary/metadata call sites.
 
 The [private native face witness](native-face-witness.md) supplies the WP5 G0
@@ -889,16 +892,16 @@ complete successful semantic audit and derives boundary measures from S.
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
 defines its chart, reciprocity and public output. The implemented WP4
 explicit-box translation consumer is separate. WP6 follows the separately
-qualified planar contract below. Ghost semantics do not trust native integer
-sign/value alone, and the 3D bridge must prevent uninitialized temporary ghost
-IDs from being read.
+qualified planar contract below. Ghost semantics follow ADR 0023: initialized
+selected-cell execution, same-computation source attribution and complete
+public-semantic S eligibility/coverage. Native sign/value is never ghost
+boundary authority.
 
 ### Ordinary planar provenance and exact consistency
 
 [ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md) records
-the independently closed WP6 contract. Its branch implementation is under
-[#74](https://github.com/DeloneCommons/pyvoro2/issues/74); independent production
-acceptance and Checkpoint B remain pending.
+the independently accepted WP6 contract and merged implementation under
+[#74](https://github.com/DeloneCommons/pyvoro2/issues/74). Checkpoint B remains pending.
 
 | Component | Responsibility |
 |---|---|
@@ -952,9 +955,8 @@ exact audit; attributed raw shifts survive when the requested action permits.
 These tolerances never choose an image or establish exact positivity.
 
 The four obsolete ordinary `planar.compute` reconstruction controls are removed
-in WP6. `_internal.planar.edge_shifts` remains isolated to the legacy ghost
-route pending WP7. No new public result hierarchy, ghost schema, inverse
-algorithm or mandatory dependency is introduced.
+in WP6; WP7 removes their planar `ghost_cells` counterparts. No new public
+result hierarchy, inverse algorithm or mandatory dependency is introduced.
 
 The occurrence schema is private `pyvoro2.planar.occurrences.v1`. CMake hashes
 the complete linked planar vendor closure plus adapter/binding/precondition and
@@ -1003,8 +1005,48 @@ Those cases document explicit incomplete-audit behavior, not a fixed maximum
 supported site count independent of geometry. The separately reconstructed
 archive cohort matched 402 exact cells and 9,776 nonidentity labeled contacts;
 two insertion-incomplete E populations were excluded rather than invented.
-The optimized witness and actual built artifacts still require independent
-production acceptance.
+The optimized WP6 witness and artifacts were independently accepted on their
+reviewed head; changed WP7 binding bytes require renewed closure qualification.
+
+### Selected ghost cells and boundary certification
+
+[ADR 0023](decisions/0023-wp7-certified-ghost-boundaries.md) closes the WP7
+scientific and API contract; the [implementation map](wp7-implementation.md)
+records selected native routes, private components and refusal budgets. Its
+implementation and independent exact-head acceptance remain separate.
+
+Each query gets one fresh augmented native population with all persistent
+generators and exactly one initialized temporary generator. A dense internal
+temporary ID is assigned before any native read or image copy, but never
+becomes a public owner. Actual native insertion/storage is checked before a
+deleted selected cell can be treated as empty. The selected 3D observer reuses
+qualified WP5 source/support/topology machinery in selected-source scope; the
+planar observer carries WP6-style outgoing-edge tokens and doubled-local
+endpoints from the same selected computation. Geometry-only calls use the
+initialized route without claiming the positive-boundary certificate.
+
+The certificate first assigns source-associated native occurrence N. It then
+builds the complete exact public-semantic S cell from original persistent
+sites, the **actual stored ghost** Cartesian site, public lattice and
+mathematical weights. Positive references require an eligible N class with
+positive S contact and complete geometric facet coverage. E may explain
+native representation effects but is not a mandatory successful-call layer.
+Generator shifts use `sigma-K_j`, where `K_j` includes preparation and actual
+insertion translation; ghost self shifts use nonzero `sigma`. A qualified
+physical side has no shift. Proven internally collapsed raw boundaries remain
+with `boundary_reference=None` and cannot cover a positive facet. Noncollapsed
+nonpositive occurrences, incomplete attribution and contradictory native/S
+empty dispositions fail the whole batch with the fixed `GHOST_*` protocol.
+
+The public result remains `list[dict]`. Both dimensions retain `id=-1` and
+`query_index`; spatial output retains its original `query`, while planar
+original-query metadata remains WP8 work. The four planar ghost numerical
+reconstruction controls are removed. Generic whole-tessellation normalization
+rejects independent ghost batches. Initially only the qualified Linux x86_64
+GCC 13.3 strict binary64 cohort admits certificate-bearing calls; other
+cohorts explicitly refuse pending qualification. WP6's binding source closure
+must be requalified when the shared binding changes. Safe identity alone does
+not settle the still-open D9 vendor policy.
 
 ### Remaining v0.9 stabilization
 

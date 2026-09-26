@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .._internal.ghost import reject_ghost_records
+
 from dataclasses import dataclass
 from typing import Any, Sequence
 
@@ -118,6 +120,7 @@ def _prepare_vertex_cells(
 
     if not isinstance(cells, list):
         raise ValueError('cells must be a list of dicts')
+    reject_ghost_records(cells)
     if periodic and not isinstance(domain, RectangularCell):
         raise ValueError('periodic planar normalization requires RectangularCell')
 
@@ -494,6 +497,7 @@ def _prepare_topology_cells(
     )
     if not isinstance(nv.cells, list):
         raise ValueError('normalized.cells must be a list of dicts')
+    reject_ghost_records(nv.cells)
 
     prepared: list[dict[str, Any]] = []
     seen_ids: set[int] = set()

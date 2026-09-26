@@ -64,9 +64,29 @@ endforeach()
 # string passed to the compiler.
 string(REPLACE ";" "," _PYVORO2_WITNESS_SOURCE_HASHES
   "${_PYVORO2_WITNESS_SOURCE_HASHES}")
+set(_PYVORO2_GHOST_SOURCE_HASHES "${_PYVORO2_WITNESS_SOURCE_HASHES}")
+file(GLOB _PYVORO2_GHOST_VENDOR_SOURCES CONFIGURE_DEPENDS
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "vendor/voro++/src/*")
+list(SORT _PYVORO2_GHOST_VENDOR_SOURCES)
+foreach(_source IN LISTS _PYVORO2_GHOST_VENDOR_SOURCES)
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/${_source}")
+  file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${_source}" _source_hash)
+  string(APPEND _PYVORO2_GHOST_SOURCE_HASHES "${_source}:${_source_hash},")
+endforeach()
+foreach(_source cpp/bindings.cpp cpp/native_witness.cpp cpp/native_witness.hpp
+                cpp/native_preconditions.hpp cpp/native_fp_contract.hpp
+                CMakeLists.txt cmake/NativeFP.cmake pyproject.toml)
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/${_source}")
+  file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${_source}" _source_hash)
+  string(APPEND _PYVORO2_GHOST_SOURCE_HASHES "${_source}:${_source_hash},")
+endforeach()
+string(SHA256 _PYVORO2_GHOST_SOURCE_SHA256
+  "${_PYVORO2_GHOST_SOURCE_HASHES}")
 set_source_files_properties(cpp/native_witness.cpp PROPERTIES
   COMPILE_DEFINITIONS
-  "PYVORO2_WITNESS_SOURCE_SHA256=\"${_PYVORO2_WITNESS_SOURCE_HASHES}\";PYVORO2_WITNESS_COMPILER_VERSION=\"${CMAKE_CXX_COMPILER_VERSION}\"")
+  "PYVORO2_WITNESS_SOURCE_SHA256=\"${_PYVORO2_WITNESS_SOURCE_HASHES}\";PYVORO2_WITNESS_COMPILER_VERSION=\"${CMAKE_CXX_COMPILER_VERSION}\";PYVORO2_WITNESS_COMPILER_ID=\"${CMAKE_CXX_COMPILER_ID}\";PYVORO2_GHOST_SOURCE_SHA256=\"${_PYVORO2_GHOST_SOURCE_SHA256}\"")
 
 target_include_directories(_core PRIVATE
   "${VORO_SRC_DIR}"

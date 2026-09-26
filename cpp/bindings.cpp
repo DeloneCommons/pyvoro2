@@ -5,8 +5,10 @@
 #include <array>
 #include <cstddef>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "voro++.hh"
@@ -24,6 +26,81 @@ struct OutputOpts {
   bool adjacency;
   bool faces;
 };
+
+[[noreturn]] void ghost_bridge_failure(int query_index,
+                                       const std::exception& error) {
+  const std::string message = error.what();
+  const bool insertion = message.find("GHOST_BACKEND_INSERTION:") == 0;
+  const bool resource = dynamic_cast<const std::bad_alloc*>(&error) != nullptr ||
+      message.find("GHOST_CERTIFICATION_RESOURCE:") == 0;
+  const std::string code = insertion ? "GHOST_BACKEND_INSERTION" :
+      resource ? "GHOST_CERTIFICATION_RESOURCE" : "GHOST_NATIVE_UNSUPPORTED";
+  const std::string stage = insertion ? "insertion" : resource ? "provenance" :
+      "native";
+  throw py::value_error("ghost_native:" + stage + ":" +
+      std::to_string(query_index) + ":" + code + ":" +
+      message.substr(0, 240));
+}
+
+struct ReplayedGhostInsertion {
+  int block;
+  std::array<double, 3> site;
+};
+
+// voro_base keeps these stepping helpers protected. Use the same expressions
+// as v_base.hh to replay the locator independently of the producing put().
+int replay_step_int(double a) { return a < 0 ? int(a)-1 : int(a); }
+int replay_step_mod(int a, int b) { return a >= 0 ? a%b : b-1-(b-1-a)%b; }
+int replay_step_div(int a, int b) { return a >= 0 ? a/b : -1+(a+1)/b; }
+
+// Replay the unchanged source locator's arithmetic without changing the
+// producing container. The check below compares every replayed block/slot,
+// remapped coordinate, ID and radius against actual primary storage.
+template <class ContainerT>
+ReplayedGhostInsertion replay_ghost_insertion(const ContainerT& con,
+                                               std::array<double, 3> site) {
+  double &x = site[0], &y = site[1], &z = site[2];
+  if constexpr (std::is_base_of_v<voro::container_periodic_base, ContainerT>) {
+    int k = replay_step_int(z * con.zsp);
+    if (k < 0 || k >= con.nz) {
+      const int ak = replay_step_div(k, con.nz);
+      z -= ak * con.bz; y -= ak * con.byz; x -= ak * con.bxz;
+      k -= ak * con.nz;
+    }
+    int j = replay_step_int(y * con.ysp);
+    if (j < 0 || j >= con.ny) {
+      const int aj = replay_step_div(j, con.ny);
+      y -= aj * con.by; x -= aj * con.bxy; j -= aj * con.ny;
+    }
+    int i = replay_step_int(x * con.xsp);
+    if (i < 0 || i >= con.nx) {
+      const int ai = replay_step_div(i, con.nx);
+      x -= ai * con.bx; i -= ai * con.nx;
+    }
+    j += con.ey; k += con.ez;
+    return {i + con.nx * (j + con.oy * k), site};
+  } else {
+    int i = replay_step_int((x - con.ax) * con.xsp);
+    if (con.xperiodic) {
+      const int mapped = replay_step_mod(i, con.nx);
+      x += con.boxx * (mapped - i); i = mapped;
+    } else if (i < 0 || i >= con.nx)
+      throw std::runtime_error("GHOST_BACKEND_INSERTION: x locator rejected input");
+    int j = replay_step_int((y - con.ay) * con.ysp);
+    if (con.yperiodic) {
+      const int mapped = replay_step_mod(j, con.ny);
+      y += con.boxy * (mapped - j); j = mapped;
+    } else if (j < 0 || j >= con.ny)
+      throw std::runtime_error("GHOST_BACKEND_INSERTION: y locator rejected input");
+    int k = replay_step_int((z - con.az) * con.zsp);
+    if (con.zperiodic) {
+      const int mapped = replay_step_mod(k, con.nz);
+      z += con.boxz * (mapped - k); k = mapped;
+    } else if (k < 0 || k >= con.nz)
+      throw std::runtime_error("GHOST_BACKEND_INSERTION: z locator rejected input");
+    return {i + con.nx * j + con.nxy * k, site};
+  }
+}
 
 OutputOpts parse_opts(const std::tuple<bool, bool, bool>& opts) {
   return OutputOpts{std::get<0>(opts), std::get<1>(opts), std::get<2>(opts)};
@@ -180,6 +257,132 @@ py::list compute_cells_impl(ContainerT& con, LoopT& loop, const OutputOpts& opts
     } while (loop.inc());
 
   return cells;
+}
+
+// The ghost is one initialized member of a fresh augmented container. The
+// ordering overload writes its ID before incrementing occupancy and uses the
+// same native locator as the obsolete compute_ghost_cell template. The latter
+// never initialized the ID and is never called from these bindings.
+template <class ContainerT>
+py::dict safe_selected_ghost(ContainerT& con,
+                             const py::array_t<double, py::array::c_style |
+                                                  py::array::forcecast>& points,
+                             const py::array_t<int, py::array::c_style |
+                                               py::array::forcecast>& ids,
+                             const py::array_t<double, py::array::c_style |
+                                                  py::array::forcecast>* radii,
+                             const std::array<double, 3>& query,
+                             double ghost_radius, int query_index,
+                             const OutputOpts& opts) {
+  const int count = native::checked_int(points.shape(0), "ghost internal ID");
+  native::checked_int_add(count, 1, "augmented ghost count");
+  auto p = points.unchecked<2>();
+  auto id = ids.unchecked<1>();
+  for (int i = 0; i < count; ++i) {
+    if constexpr (std::is_base_of_v<voro::radius_poly, ContainerT>) {
+      con.put(id(i), p(i, 0), p(i, 1), p(i, 2),
+              radii->unchecked<1>()(i));
+    } else {
+      con.put(id(i), p(i, 0), p(i, 1), p(i, 2));
+    }
+  }
+  voro::particle_order selected_order(2);
+  if constexpr (std::is_base_of_v<voro::radius_poly, ContainerT>) {
+    con.put(selected_order, count, query[0], query[1], query[2], ghost_radius);
+  } else {
+    con.put(selected_order, count, query[0], query[1], query[2]);
+  }
+
+  const int block_count = [&] {
+    if constexpr (std::is_base_of_v<voro::container_periodic_base, ContainerT>)
+      return con.oxyz;
+    else return con.nxyz;
+  }();
+  std::vector<int> expected_slots(static_cast<std::size_t>(block_count), 0);
+  auto check_storage = [&](int owner, const std::array<double, 3>& supplied,
+                           double supplied_radius) {
+    const ReplayedGhostInsertion expected = replay_ghost_insertion(con, supplied);
+    const int block = expected.block;
+    if (block < 0 || block >= block_count)
+      throw std::runtime_error("GHOST_BACKEND_INSERTION: replayed block outside grid");
+    int& slot = expected_slots[block];
+    if (slot < 0 || slot >= con.co[block] || con.id[block][slot] != owner)
+      throw std::runtime_error("GHOST_BACKEND_INSERTION: replayed ID/block/slot differs");
+    const double* actual = con.p[block] + con.ps * slot;
+    for (int axis = 0; axis < 3; ++axis)
+      if (!pyvoro2::native_witness::same_bits(actual[axis], expected.site[axis]))
+        throw std::runtime_error("GHOST_BACKEND_INSERTION: stored coordinate differs");
+    if constexpr (std::is_base_of_v<voro::radius_poly, ContainerT>)
+      if (!pyvoro2::native_witness::same_bits(actual[3], supplied_radius))
+        throw std::runtime_error("GHOST_BACKEND_INSERTION: stored radius differs");
+    slot = native::checked_int_add(slot, 1, "ghost insertion slot");
+  };
+  for (int i = 0; i < count; ++i)
+    check_storage(id(i), {p(i, 0), p(i, 1), p(i, 2)},
+                  radii ? radii->unchecked<1>()(i) : 0.0);
+  check_storage(count, query, ghost_radius);
+  for (int block = 0; block < block_count; ++block)
+    if (expected_slots[block] != con.co[block])
+      throw std::runtime_error("GHOST_BACKEND_INSERTION: unaccounted native storage");
+
+  // Count actual primary storage, not attempts at put(). In particular a
+  // rectangular put can silently omit an out-of-block particle.
+  std::vector<unsigned char> seen(static_cast<std::size_t>(count + 1), 0);
+  int stored = 0;
+  auto verify = [&](auto& loop) {
+    if (loop.start()) do {
+      int owner;
+      double x, y, z, r;
+      loop.pos(owner, x, y, z, r);
+      if (owner < 0 || owner > count || seen[owner]++)
+        throw std::runtime_error("GHOST_BACKEND_INSERTION: invalid augmented identity");
+      ++stored;
+    } while (loop.inc());
+  };
+  if constexpr (std::is_base_of_v<voro::container_periodic_base, ContainerT>) {
+    voro::c_loop_all_periodic all(con);
+    verify(all);
+  } else {
+    voro::c_loop_all all(con);
+    verify(all);
+  }
+  if (stored != count + 1)
+    throw std::runtime_error("GHOST_BACKEND_INSERTION: missing augmented storage");
+
+  voro::voronoicell_neighbor cell;
+  auto compute = [&](auto& selected) -> py::dict {
+    if (!selected.start() || selected.inc())
+      throw std::runtime_error("GHOST_BACKEND_INSERTION: selected slot missing");
+    int owner;
+    double x, y, z, r;
+    selected.pos(owner, x, y, z, r);
+    if (owner != count || !seen[count])
+      throw std::runtime_error("GHOST_BACKEND_INSERTION: selected identity differs");
+    py::dict result;
+    if (con.compute_cell(cell, selected)) {
+      result = build_cell_dict(cell, -1, x, y, z, opts);
+      // The selected private identity may occur on periodic self faces. It
+      // never becomes a public adjacent_cell, even on geometry-only routes.
+      if (opts.faces)
+        for (py::handle item : result["faces"].cast<py::list>()) {
+          py::dict face = py::reinterpret_borrow<py::dict>(item);
+          if (face["adjacent_cell"].cast<int>() == count)
+            face.attr("pop")("adjacent_cell");
+        }
+      result["empty"] = false;
+      result["query_index"] = query_index;
+    } else {
+      result = build_empty_ghost_dict(query_index, x, y, z, opts);
+    }
+    return result;
+  };
+  if constexpr (std::is_base_of_v<voro::container_periodic_base, ContainerT>) {
+    voro::c_loop_order_periodic selected(con, selected_order);
+    return compute(selected);
+  } else {
+    voro::c_loop_order selected(con, selected_order);
+    return compute(selected);
+  }
 }
 
 }  // namespace
@@ -797,44 +1000,21 @@ m.def(
 
       const auto opts = parse_opts(opts_tuple);
 
-      auto p = points.unchecked<2>();
-      auto id = ids.unchecked<1>();
       auto q = queries.unchecked<2>();
       const py::ssize_t m = queries.shape(0);
-
-      container con(bounds[0][0],
-                    bounds[0][1],
-                    bounds[1][0],
-                    bounds[1][1],
-                    bounds[2][0],
-                    bounds[2][1],
-                    blocks[0],
-                    blocks[1],
-                    blocks[2],
-                    periodic[0],
-                    periodic[1],
-                    periodic[2],
-                    init_mem);
-
-      for (py::ssize_t i = 0; i < n; i++) {
-        con.put(id(i), p(i, 0), p(i, 1), p(i, 2));
-      }
+      native::checked_int_add(static_cast<int>(n), 1, "augmented ghost count");
 
       py::list out;
-      voronoicell_neighbor cell;
-
       for (py::ssize_t i = 0; i < m; i++) {
-        const double x = q(i, 0);
-        const double y = q(i, 1);
-        const double z = q(i, 2);
-
-        if (con.compute_ghost_cell(cell, x, y, z)) {
-          py::dict d = build_cell_dict(cell, -1, x, y, z, opts);
-          d["empty"] = false;
-          d["query_index"] = static_cast<int>(i);
-          out.append(d);
-        } else {
-          out.append(build_empty_ghost_dict(static_cast<int>(i), x, y, z, opts));
+        try {
+          container con(bounds[0][0], bounds[0][1], bounds[1][0], bounds[1][1],
+                        bounds[2][0], bounds[2][1], blocks[0], blocks[1],
+                        blocks[2], periodic[0], periodic[1], periodic[2], init_mem);
+          out.append(safe_selected_ghost(con, points, ids, nullptr,
+                                        {q(i, 0), q(i, 1), q(i, 2)}, 0.0,
+                                        static_cast<int>(i), opts));
+        } catch (const std::exception& error) {
+          ghost_bridge_failure(static_cast<int>(i), error);
         }
       }
 
@@ -869,46 +1049,21 @@ m.def(
 
       const auto opts = parse_opts(opts_tuple);
 
-      auto p = points.unchecked<2>();
-      auto id = ids.unchecked<1>();
-      auto r = radii.unchecked<1>();
       auto q = queries.unchecked<2>();
       auto gr = ghost_radii.unchecked<1>();
-
-      container_poly con(bounds[0][0],
-                         bounds[0][1],
-                         bounds[1][0],
-                         bounds[1][1],
-                         bounds[2][0],
-                         bounds[2][1],
-                         blocks[0],
-                         blocks[1],
-                         blocks[2],
-                         periodic[0],
-                         periodic[1],
-                         periodic[2],
-                         init_mem);
-
-      for (py::ssize_t i = 0; i < n; i++) {
-        con.put(id(i), p(i, 0), p(i, 1), p(i, 2), r(i));
-      }
+      native::checked_int_add(static_cast<int>(n), 1, "augmented ghost count");
 
       py::list out;
-      voronoicell_neighbor cell;
-
       for (py::ssize_t i = 0; i < m; i++) {
-        const double x = q(i, 0);
-        const double y = q(i, 1);
-        const double z = q(i, 2);
-        const double rg = gr(i);
-
-        if (con.compute_ghost_cell(cell, x, y, z, rg)) {
-          py::dict d = build_cell_dict(cell, -1, x, y, z, opts);
-          d["empty"] = false;
-          d["query_index"] = static_cast<int>(i);
-          out.append(d);
-        } else {
-          out.append(build_empty_ghost_dict(static_cast<int>(i), x, y, z, opts));
+        try {
+          container_poly con(bounds[0][0], bounds[0][1], bounds[1][0], bounds[1][1],
+                             bounds[2][0], bounds[2][1], blocks[0], blocks[1],
+                             blocks[2], periodic[0], periodic[1], periodic[2], init_mem);
+          out.append(safe_selected_ghost(con, points, ids, &radii,
+                                        {q(i, 0), q(i, 1), q(i, 2)}, gr(i),
+                                        static_cast<int>(i), opts));
+        } catch (const std::exception& error) {
+          ghost_bridge_failure(static_cast<int>(i), error);
         }
       }
 
@@ -942,19 +1097,15 @@ m.def(
 
       const auto opts = parse_opts(opts_tuple);
 
-      auto p = points.unchecked<2>();
-      auto id = ids.unchecked<1>();
       auto q = queries.unchecked<2>();
       const py::ssize_t m = queries.shape(0);
+      native::checked_int_add(static_cast<int>(n), 1, "augmented ghost count");
 
       py::list out;
 
       for (py::ssize_t i = 0; i < m; i++) {
-        // compute_ghost_cell removes the primary temporary particle, but
-        // leaves its lazily generated periodic images in the container.
-        // Own all mutable native state per query; reuse only validated
-        // inputs (including the batch-wide power radii) across queries.
-        container_periodic con(cell_params[0],
+        try {
+          container_periodic con(cell_params[0],
                                cell_params[1],
                                cell_params[2],
                                cell_params[3],
@@ -965,22 +1116,11 @@ m.def(
                                blocks[2],
                                init_mem);
 
-        for (py::ssize_t j = 0; j < n; j++) {
-          con.put(id(j), p(j, 0), p(j, 1), p(j, 2));
-        }
-        voronoicell_neighbor cell;
-
-        const double x = q(i, 0);
-        const double y = q(i, 1);
-        const double z = q(i, 2);
-
-        if (con.compute_ghost_cell(cell, x, y, z)) {
-          py::dict d = build_cell_dict(cell, -1, x, y, z, opts);
-          d["empty"] = false;
-          d["query_index"] = static_cast<int>(i);
-          out.append(d);
-        } else {
-          out.append(build_empty_ghost_dict(static_cast<int>(i), x, y, z, opts));
+          out.append(safe_selected_ghost(con, points, ids, nullptr,
+                                        {q(i, 0), q(i, 1), q(i, 2)}, 0.0,
+                                        static_cast<int>(i), opts));
+        } catch (const std::exception& error) {
+          ghost_bridge_failure(static_cast<int>(i), error);
         }
       }
 
@@ -1013,20 +1153,15 @@ m.def(
 
       const auto opts = parse_opts(opts_tuple);
 
-      auto p = points.unchecked<2>();
-      auto id = ids.unchecked<1>();
-      auto r = radii.unchecked<1>();
       auto q = queries.unchecked<2>();
       auto gr = ghost_radii.unchecked<1>();
+      native::checked_int_add(static_cast<int>(n), 1, "augmented ghost count");
 
       py::list out;
 
       for (py::ssize_t i = 0; i < m; i++) {
-        // compute_ghost_cell removes the primary temporary particle, but
-        // leaves its lazily generated periodic images in the container.
-        // Own all mutable native state per query; reuse only validated
-        // inputs (including the batch-wide power radii) across queries.
-        container_periodic_poly con(cell_params[0],
+        try {
+          container_periodic_poly con(cell_params[0],
                                     cell_params[1],
                                     cell_params[2],
                                     cell_params[3],
@@ -1037,23 +1172,11 @@ m.def(
                                     blocks[2],
                                     init_mem);
 
-        for (py::ssize_t j = 0; j < n; j++) {
-          con.put(id(j), p(j, 0), p(j, 1), p(j, 2), r(j));
-        }
-        voronoicell_neighbor cell;
-
-        const double x = q(i, 0);
-        const double y = q(i, 1);
-        const double z = q(i, 2);
-        const double rg = gr(i);
-
-        if (con.compute_ghost_cell(cell, x, y, z, rg)) {
-          py::dict d = build_cell_dict(cell, -1, x, y, z, opts);
-          d["empty"] = false;
-          d["query_index"] = static_cast<int>(i);
-          out.append(d);
-        } else {
-          out.append(build_empty_ghost_dict(static_cast<int>(i), x, y, z, opts));
+          out.append(safe_selected_ghost(con, points, ids, &radii,
+                                        {q(i, 0), q(i, 1), q(i, 2)}, gr(i),
+                                        static_cast<int>(i), opts));
+        } catch (const std::exception& error) {
+          ghost_bridge_failure(static_cast<int>(i), error);
         }
       }
 

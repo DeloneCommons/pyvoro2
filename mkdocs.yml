@@ -115,6 +115,7 @@ nav:
           - Exact private rank-3 lattice reduction: development/decisions/0020-exact-private-lattice-reduction.md
           - WP5 native occurrence and exact face certification: development/decisions/0021-wp5-native-occurrence-and-exact-face-certification.md
           - WP6 source-certified planar edge provenance: development/decisions/0022-wp6-source-certified-planar-edge-provenance.md
+          - WP7 source-certified ghost boundaries: development/decisions/0023-wp7-certified-ghost-boundaries.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

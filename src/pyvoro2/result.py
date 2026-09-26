@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ._internal.ghost import reject_ghost_records
+
 from dataclasses import dataclass, field
 from operator import index
 from typing import Any, Literal, Sequence
@@ -552,6 +554,8 @@ def _restore_tessellation_result_state(
 
 def _raw_cell_id(cell: dict[str, Any]) -> int:
     """Return a raw cell ID without accepting truncating conversions."""
+
+    reject_ghost_records((cell,))
 
     if 'id' not in cell:
         raise ValueError('raw cell record is missing its id')

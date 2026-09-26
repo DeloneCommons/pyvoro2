@@ -95,9 +95,9 @@ def test_native_insertion_omission_is_never_a_hidden_power_cell(mode):
         'edge_shift_tol',
     ],
 )
-def test_obsolete_ordinary_controls_are_removed_but_ghost_controls_remain(name):
+def test_obsolete_planar_reconstruction_controls_are_removed(name):
     assert name not in inspect.signature(compute).parameters
-    assert name in inspect.signature(api.ghost_cells).parameters
+    assert name not in inspect.signature(api.ghost_cells).parameters
     with pytest.raises(TypeError, match=name):
         compute([[0.5, 0.5]], domain=Box(((0.0, 1.0), (0.0, 1.0))), **{name: 1})
 
