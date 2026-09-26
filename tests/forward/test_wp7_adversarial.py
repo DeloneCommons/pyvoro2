@@ -398,51 +398,57 @@ def test_fresh_subprocess_allocator_churn_preserves_public_semantic_classes():
                     by_query[query] = signature
 
 
-@pytest.mark.parametrize(('basis', 'target', 'wrapped', 'defect', 'expected_s',
-                          'expected_n', 'micro_span'), (
+@pytest.mark.parametrize(('basis', 'query', 'expected_n'), (
     (
         ((1., 1., 0.), (0., 1., 0.), (0., 0., 1.)),
-        1, (-.125, .125, .125),
-        (-F(5, 2**55), F(3, 2**54), F(0)),
-        {(-1, 1, 0), (-1, 2, 0), (0, 0, 0), (0, 1, 0)},
-        {(-1, 1, 0), (0, 0, 0)}, F(3, 2**54),
+        (.875, .125, .125), {(-1, 1, 0), (0, 0, 0)},
     ),
     (
         ((-1., -1., 0.), (0., 1., 0.), (0., 0., 1.)),
-        0, (-.625, .125, .125),
-        (-F(1, 2**53), -F(3, 2**56), F(0)),
-        {(0, -1, 0), (0, 0, 0), (1, 0, 0), (1, 1, 0)},
-        {(0, 0, 0), (1, 1, 0)}, F(3, 2**56),
+        (.375, .125, .125), {(0, 0, 0), (1, 1, 0)},
     ),
 ), ids=('right-handed-roundtrip', 'left-handed-roundtrip'))
 def test_triclinic_stored_roundtrip_has_exact_microfacets_missing_from_n(
-        monkeypatch, basis, target, wrapped, defect, expected_s, expected_n,
-        micro_span):
+        monkeypatch, basis, query, expected_n):
     """S uses actual stored g; native six-face geometry cannot cover S eight.
 
     The 2D rational interval oracle independently cross-checks the 3D plane
     intersection's Cartesian XY supports. The N labels are observed from this
     selected public invocation; they are never oracle input or tie breakers.
+    BLAS implementations can change the last bits of the Cartesian roundtrip,
+    so S must be checked at this invocation's actual stored-site operand.
     """
     import pyvoro2._internal.spatial.ghost_certificate as cert
 
     domain = pyvoro2.PeriodicCell(basis)
     point = (.125, .125, .125)
-    queries = ((.375, .125, .125), (.875, .125, .125))
     common = dict(domain=domain, blocks=(1, 1, 1),
                   return_vertices=False, return_adjacency=False)
-    geometry = pyvoro2.ghost_cells([point], queries, return_faces=False,
-                                   **common)[target]
-    g = tuple(map(F, geometry['site']))
-    assert tuple(a - F(b) for a, b in zip(g, wrapped)) == defect
+    geometry, = pyvoro2.ghost_cells([point], [query], return_faces=False,
+                                    **common)
     assert geometry['volume'] == pytest.approx(.5, abs=1e-12, rel=0)
+
+    observed = {}
+    original = cert.certify_semantics
+
+    def capture(**kwargs):
+        observed.update(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(cert, 'certify_semantics', capture)
+    with pytest.raises(ValueError) as caught:
+        pyvoro2.ghost_cells([point], [query], return_faces=True, **common)
+    g = tuple(map(F, observed['ghost_site']))
+    assert g == tuple(map(F, geometry['site']))
+    micro_span = abs(g[1] - F(point[1]))
+    assert g[2] == F(1, 8) and 0 < micro_span < F(1, 2**40)
 
     ideal3 = ghost_ideal([point], g, None, None, (True,) * 3,
                          lattice=basis)
     generator_s = {key[2] for key in ideal3.positive
                    if key[0] == 'generator'}
     assert ideal3.dimension == 3 and ideal3.measure == F(1, 2)
-    assert len(ideal3.facets) == 8 and generator_s == expected_s
+    assert len(ideal3.facets) == 8 and len(generator_s) == 4
 
     ideal2 = ghost_ideal([point[:2]], g[:2], ((0, 1), (0, 1)),
                          (1, 1), (True, True))
@@ -452,30 +458,20 @@ def test_triclinic_stored_roundtrip_has_exact_microfacets_missing_from_n(
                  if key[0] == 'generator'}
     assert physical3 == physical2 and len(physical2) == 4
 
-    missing = generator_s - expected_n
+    native_s = {o.shift for o in observed['occurrences']
+                if o.owner == 0 and not o.collapsed}
+    assert native_s == expected_n
+    missing = generator_s - native_s
     assert len(missing) == 2
     for shift in missing:
         contact = ideal3.contact('generator', 0, shift)
         xy = {vertex[:2] for vertex in contact.vertices}
-        ys = {point[1] for point in xy}
+        ys = {vertex[1] for vertex in xy}
         assert contact.status == 'positive' and len(xy) == 2
         assert max(ys) - min(ys) == micro_span
 
-    observed = {}
-    original = cert.certify_semantics
-
-    def capture(**kwargs):
-        observed[kwargs['query_index']] = kwargs['occurrences']
-        return original(**kwargs)
-
-    monkeypatch.setattr(cert, 'certify_semantics', capture)
-    with pytest.raises(ValueError) as caught:
-        pyvoro2.ghost_cells([point], queries, return_faces=True, **common)
-    native_s = {o.shift for o in observed[target]
-                if o.owner == 0 and not o.collapsed}
-    assert native_s == expected_n
     assert caught.value.code == 'GHOST_SEMANTIC_INCONSISTENT'
-    assert caught.value.stage == 'semantic' and caught.value.query_index == target
+    assert caught.value.stage == 'semantic' and caught.value.query_index == 0
     assert caught.value.details['invariant'] == 'positive_facet_coverage'
     assert caught.value.details['required_count'] == 8
     assert caught.value.details['covered_count'] == 6
