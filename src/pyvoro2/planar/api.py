@@ -784,6 +784,18 @@ def locate(
     Generator points use the same half-open containment and mandatory duplicate
     safety as :func:`compute`; locate queries themselves are not inserted and
     retain their existing query semantics.
+
+    Periodic results always include owned ``query``, ``query_wrapped`` and
+    signed-int64 ``query_shift`` arrays of shape (m, d). Wrapping uses exact
+    binary64 affine operands and nearest-even float views. With the owner
+    selector, also return original ``owner_site``, native ``owner_pos`` and
+    exact ``owner_shift``. The exact image is ``owner_site+owner_shift@A``;
+    ``owner_pos`` retains native storage/frame rounding. Never add the query
+    shift to the owner shift. Not-found owner rows use ID -1, NaN coordinates
+    and zero shifts. Zero-query batches retain shapes and skip native geometry.
+    New ValueError-compatible failures expose ``code``, ``stage``,
+    ``query_index`` and bounded ``details``. Metadata/failure additions remain
+    Provisional; native selection and existing Stable operations are preserved.
     """
 
     mode = validate_forward_mode(mode)  # type: ignore[assignment]
@@ -823,7 +835,6 @@ def locate(
     )
     rr = power_input.backend_radii
     geom = geometry2d(domain)
-    bounds = geom.native_bounds
     prepared = prepare_generators(
         pts,
         geometry=geom,
@@ -836,10 +847,6 @@ def locate(
         duplicate_max_pairs=duplicate_max_pairs_value,
     )
     pts = prepared.input_points_cart
-    pts_native = prepared.native_points
-    ids_internal = prepared.internal_ids
-    ids_user = prepared.external_ids if ids is not None else None
-    rr = prepared.backend_radii
     _warn_if_scale_suspicious(pts=pts, domain=domain)
     nx, ny = geom.resolve_block_counts(
         n_sites=n,
@@ -847,50 +854,14 @@ def locate(
         block_size=block_size_value,
     )
 
-    periodic_flags = geom.periodic_axes
-    core = _require_core2d()
+    from .._internal.locate import locate_prepared
 
-    if mode == 'standard':
-        found, owner_id, owner_pos = core.locate_box_standard(
-            pts_native,
-            ids_internal,
-            bounds,
-            (nx, ny),
-            periodic_flags,
-            init_mem_value,
-            q,
-        )
-    elif mode == 'power':
-        assert rr is not None
-        found, owner_id, owner_pos = core.locate_box_power(
-            pts_native,
-            ids_internal,
-            rr,
-            bounds,
-            (nx, ny),
-            periodic_flags,
-            init_mem_value,
-            q,
-        )
-    else:
-        raise ValueError(f'unknown mode: {mode}')
-
-    owner_id = np.asarray(owner_id)
-    found = np.asarray(found, dtype=bool)
-    if ids_user is not None:
-        out_ids = owner_id.astype(np.int64, copy=True)
-        mask = out_ids >= 0
-        if np.any(mask):
-            out_ids[mask] = ids_user[out_ids[mask]]
-        owner_id = out_ids
-
-    out: dict[str, np.ndarray] = {
-        'found': found,
-        'owner_id': owner_id,
-    }
-    if return_owner_position_value:
-        out['owner_pos'] = np.asarray(owner_pos, dtype=np.float64)
-    return out
+    return locate_prepared(
+        prepared, q, geometry=geom, snapshot=None,
+        blocks=(nx, ny), init_mem=init_mem_value, mode=mode,
+        return_owner_position=return_owner_position_value,
+        core_loader=_require_core2d, external_ids=ids is not None,
+    )
 
 
 def ghost_cells(
@@ -938,6 +909,14 @@ def ghost_cells(
     containment and mandatory duplicate safety. Periodic axes are remapped;
     an outside non-periodic ghost query raises instead of producing an empty
     ghost cell.
+
+    Every record includes original ``query`` and its input ``query_index``.
+    Periodic records add ``query_wrapped`` (float list) and ``query_shift``
+    (integer tuple representable in int64). ``site`` remains the actual stored
+    ghost anchor; boundary shifts never include query wrapping. All required
+    certification precedes empty filtering, and only retained records need the
+    new query views materialized. A retained unrepresentable query view raises
+    ``GHOST_SHIFT_UNREPRESENTABLE`` at materialization with its index/field.
     """
 
     mode = validate_forward_mode(mode)  # type: ignore[assignment]
@@ -1082,6 +1061,8 @@ def ghost_cells(
         raise from_native_failure(exc, 2, None, 'native') from exc
 
     validate_materialized_cells(cells, 2)
-    if not include_empty_value:
-        cells = [cell for cell in cells if not bool(cell.get('empty', False))]
-    return cells
+    from .._internal.query_metadata import ghost_query_views
+
+    return ghost_query_views(
+        cells, q, geom, None, include_empty_value,
+    )

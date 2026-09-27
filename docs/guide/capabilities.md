@@ -63,8 +63,9 @@ references use same-computation native provenance plus complete exact
 public-semantic positivity/coverage; their initial qualified certificate
 profile is Linux x86_64 GCC 13.3 under strict binary64 settings. Other
 certificate-bearing cohorts refuse pending qualification; safe geometry-only
-ghost calls have separate availability. Unified query/owner/ghost metadata
-remains WP8 work. WP7 independent exact-head acceptance remains pending. Separator
+ghost calls have separate availability. WP8 adds exact user query views and
+certified owner-image metadata while preserving native owner positions and the
+WP7 ghost chart. WP7 is accepted; WP8 awaits separate exact-head review. Separator
 `image_search` stays a performance seed, never a correctness radius. These
 boundaries are recorded in the [active plan](../development/plans/v0.9.md).
 

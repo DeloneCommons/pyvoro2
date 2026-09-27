@@ -63,7 +63,7 @@ def _ghost_case():
                   ghost_internal_id=1)
     packet['build']['ghost_selected_route'] = 'wp7-initialized-selected-v1'
     packet['build']['ghost_source_sha256'] = (
-        'a58520644947526a312eda64c947fa56b5eeef77e2da942eb945ad43a911dbdc'
+        'ab3a064a2b44b18236d1f1300ff12610d32463fc049d02d1499aea17e66098ea'
     )
     packet['build'].update(compiler_id='GNU', x86_64=True, sse2=True,
                            avx=False, fma=False)
@@ -219,7 +219,7 @@ def test_constructed_empty_population_box_has_six_wall_references():
                   ghost_internal_id=0)
     packet['build']['ghost_selected_route'] = 'wp7-initialized-selected-v1'
     packet['build']['ghost_source_sha256'] = (
-        'a58520644947526a312eda64c947fa56b5eeef77e2da942eb945ad43a911dbdc'
+        'ab3a064a2b44b18236d1f1300ff12610d32463fc049d02d1499aea17e66098ea'
     )
     packet['build'].update(compiler_id='GNU', x86_64=True, sse2=True,
                            avx=False, fma=False)

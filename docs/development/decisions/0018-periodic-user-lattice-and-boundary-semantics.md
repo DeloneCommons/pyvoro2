@@ -8,6 +8,7 @@
   [ADR 0022](0022-wp6-source-certified-planar-edge-provenance.md)
 - **Ghost clarification:** 2026-09-26;
   [ADR 0023](0023-wp7-certified-ghost-boundaries.md)
+- **WP8 clarification:** 2026-09-27; [issue #79](https://github.com/DeloneCommons/pyvoro2/issues/79)
 - **Related issue:** [#46 — Activate the v0.9.0 functional/API stabilization plan](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **Related plan:** [active v0.9.0 development plan](../plans/v0.9.md)
 - **Related decisions:** [ADR 0002](0002-weights-radii-and-gauge.md),
@@ -129,10 +130,11 @@ minimum image:
     displacement = p_j - p_i + image_shift @ A
 
 query wrapping:
-    query = query_wrapped + query_shift @ A
+    query = query_wrapped_exact + query_shift @ A
+    query_wrapped = RN64(query_wrapped_exact)
 
 located owner image:
-    owner_pos = owner_site + owner_shift @ A
+    owner_image_exact = owner_site + owner_shift @ A
 
 persistent generator boundary:
     boundary_image = generator_site + shift @ A
@@ -194,6 +196,56 @@ independent exact S uses public mathematical weights. The backend radii and
 their source-associated arithmetic do not become the public semantic weights.
 See ADR 0021 for the closed 3D
 contract; producer contracts for other work packages remain separate.
+
+### WP8 query and native-owner views
+
+Issue #79 closes and authorizes the metadata contract. For validated binary64
+`q`, `o` and row basis `A`, solve `(q-o) @ inverse(A)` exactly, floor its
+periodic components and set other components to zero. Public `query_wrapped`
+is RN64 of `q - query_shift @ A`; the identity uses the exact pre-rounded
+representative. Rectangular spans use the domain's exposed **binary64 span**
+as an exact operand, not an independently evaluated rational endpoint difference.
+Thus a supplied binary64 upper bound need not be the exact user seam.
+
+The located owner remains the native-selected input row. Its original
+`owner_site` and exact `owner_shift` identify an image in the original query
+chart. `owner_pos` preserves the native Cartesian result, including the
+triclinic output transform; it is neither an exact reconstruction nor forced to
+RN64 of that reconstruction. With unit period, original `P_x=nextafter(1,0)`
+and `q_x=0`, native `owner_pos_x=0` accompanies `owner_shift_x=-1`, although
+the exact original-coordinate image is `-2**-53`.
+
+Private transport obeys `owner_shift=t+sigma-(k_j+h_j)`: preparation removal
+`k_j`, verified insertion removal `h_j`, complete native image coefficient
+`sigma`, and execution-chart coefficient `t`. Existing native calls use the
+original query, so `t=0`; public `query_shift` is never added again. Copied
+triclinic storage contributes to `sigma`. Either complete source-associated
+integer transport or WP4 uniqueness over a complete, non-circular,
+producer-derived box may establish identity. The implementation chooses WP4;
+its [source derivation](../wp8-implementation.md) includes storage and frame
+rounding without changing selection or the native float view.
+
+Actual population insertion and selected internal owner association are checked
+before external-ID mapping. Omitted input is an integrity failure, never
+not-found. Native integer conversions are guarded independently of public
+int64 limits. Validated zero-query calls construct no native geometry.
+New query fields are always present in periodic locate; requesting owner
+position adds `owner_site`, `owner_pos`, and `owner_shift` together. Not-found
+owner rows use ID -1, NaN coordinates and zero shifts. Nonperiodic schemas
+remain unchanged except for the narrow integrity/safety failures.
+
+Both dimensions' ghost records expose the original `query`; periodic records
+also expose the exact user-wrap views. The WP7 `site` and boundary charts do
+not change: no query-wrap coefficient is added to a boundary shift. All WP7
+checks precede empty filtering; only retained rows need the new public query
+shift's int64 materialization. No `site_shift` or aggregate result is added.
+
+Metadata and the ValueError-compatible `LOCATE_*` protocol remain Provisional
+through v0.9.x. Errors expose `code`, `stage`, `query_index` and bounded
+`details`; ambiguity, inconsistency, proof resources, native support/insertion
+and public representation are distinct. Invariant defects retain their reason
+and cause. Existing Stable forward operations remain Stable; WP9 cleanup and
+independent WP8 acceptance remain separate.
 
 ### Ghost boundary identity is a tagged public record
 

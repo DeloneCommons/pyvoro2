@@ -42,8 +42,8 @@ carry user-basis shifts in a periodic domain even when
 compatibility view. Requesting it no longer requires public vertices. Ghost
 self edges have a nonzero shift and omit `adjacent_cell`; walls have a side ID
 and no shift. The public ghost `site` is the actual stored Cartesian anchor.
-Spatial records retain original `query`; planar records do not gain it until
-WP8. Incomplete native/source/S certification raises a `ValueError`-compatible
+Both dimensions now include original `query`; periodic records add
+`query_wrapped` and `query_shift` while retaining the WP7 stored-site anchor. Incomplete native/source/S certification raises a `ValueError`-compatible
 `GHOST_*` failure with `code`, `stage`, `query_index` and bounded `details`.
 
 ## Interpret provenance and consistency separately
@@ -84,4 +84,24 @@ See the [planar guide](planar.md) for current workflows and
 [ADR 0022](../development/decisions/0022-wp6-source-certified-planar-edge-provenance.md)
 for the ordinary scientific and failure contract. WP6 has been independently
 accepted; [ADR 0023](../development/decisions/0023-wp7-certified-ghost-boundaries.md)
-defines the ghost contract, whose implementation acceptance remains pending.
+defines the independently accepted ghost contract. WP8 acceptance remains
+pending its separate exact-head review.
+
+## Consume query and owner metadata directly
+
+Periodic locate now always returns `(m,d)` `query`, `query_wrapped` and
+`query_shift` arrays. `return_owner_position=True` adds `owner_site`,
+`owner_pos` and `owner_shift` together. Use the exact image equation
+`owner_site+owner_shift@A` for image identity; keep `owner_pos` when you need the
+existing native Cartesian view. Do not add query wrapping to the owner shift
+or canonicalize the native position to the exact-image float reconstruction.
+Not-found owner fields use ID -1, NaN coordinates and zero shifts.
+
+Ghost records retain their list/dict structure, `id=-1`, original input index
+and stored-site boundary chart. Empty filtering follows all WP7 checks;
+new query metadata materializes only retained rows. Code that enumerates dict
+keys should allow these additive fields. Nonperiodic locate keys are unchanged.
+Insertion omission and unsafe native queries now raise structured `LOCATE_*`
+errors rather than silently losing a generator or entering unsafe conversion.
+The added fields/failure protocol remain Provisional during v0.9.x; existing
+forward operations stay Stable. Remaining WP9 controls are unchanged.

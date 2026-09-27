@@ -61,7 +61,7 @@ class RecordingSafeCore:
     compute_rows: list[dict[str, object]] | None = None
 
     def __getattr__(self, name: str):
-        def call(*args: Any):
+        def call(*args: Any, **kwargs: Any):
             self.calls.append((name, args))
             planar_witness = name in (
                 '_compute_box_standard_witness', '_compute_box_power_witness',
@@ -79,6 +79,12 @@ class RecordingSafeCore:
                     np.full(len(queries), -1, dtype=np.int32),
                     np.full(queries.shape, np.nan, dtype=np.float64),
                 )
+            if name.startswith('ghost_'):
+                queries = np.asarray(args[-2] if name.endswith('power') else args[-1])
+                dim = queries.shape[1]
+                return [dict(id=-1, query_index=i, site=q.tolist(), empty=True,
+                             **{'area' if dim == 2 else 'volume': 0.})
+                        for i, q in enumerate(queries)]
             return []
 
         return call

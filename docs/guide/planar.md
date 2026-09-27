@@ -380,3 +380,12 @@ yet.
 
 
 See [Choosing an API](choosing-api.md) and [Separator fitting](powerfit.md) for the canonical imports and lifecycle status.
+
+Periodic planar locate uses the same query and owner metadata as spatial locate:
+`query`, `query_wrapped`, `query_shift`, and, when requested, original
+`owner_site`, native `owner_pos`, and exact `owner_shift`. Planar ghost records
+now include original `query` in every domain and periodic wrap views, while
+`site` and boundary shifts retain the stored-ghost chart. See the
+[operations guide](operations.md#2-locate-assign-query-points-to-sites) for
+sentinels, rounding and filtering, and the [reference](../reference/api.md)
+for the Provisional field/failure schema.

@@ -153,7 +153,10 @@ class FakeCore2D:
         periodic,
         init_mem,
         queries,
+        *,
+        return_source=False,
     ):
+        assert return_source is False
         self.last_call = ('locate_box_standard', (bounds, blocks, periodic, init_mem))
         return (
             np.array([True, False]),
@@ -171,7 +174,10 @@ class FakeCore2D:
         periodic,
         init_mem,
         queries,
+        *,
+        return_source=False,
     ):
+        assert return_source is False
         self.last_call = ('locate_box_power', (radii.copy(), bounds, blocks, periodic))
         return np.array([True]), np.array([0]), np.array([[0.0, 0.0]])
 

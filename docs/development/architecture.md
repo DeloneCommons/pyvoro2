@@ -335,12 +335,12 @@ metadata. Box points are not wrapped; rectangular/orthorhombic periodic axes
 use their domain remapper; a triclinic operation reuses one validated periodic
 snapshot for Cartesian/internal conversion and coupled remapping.
 
-Ordinary planar compute alone requests Python-integer preparation shifts in
-an owned object array. The shared private `RectangularCell._remap_cart` keeps
+Ordinary planar compute, locate and ghost preparation retain Python-integer
+removal coefficients in owned object arrays until a fixed-width view is needed. The shared private `RectangularCell._remap_cart` keeps
 the existing numerical quotient/multiply/snap arithmetic; public `remap_cart`
-and ghost/locate integer policies are unchanged. Private `k`, `K=k+h` and
-transported `s` remain unbounded until a requested public edge-shift view is
-checked for signed-int64 range, so large common translations may cancel.
+retains its existing fixed-width view. Private `k`, `K=k+h` and transported
+`s` stay unbounded until a requested public edge/owner/boundary shift view is
+checked for signed-int64 range, so large translations may cancel exactly.
 
 Non-periodic inserted coordinates satisfy `lo <= x < hi`; triclinic native
 coordinates satisfy `[0, bx) × [0, by) × [0, bz)`. Locate queries are not
@@ -862,9 +862,10 @@ source-complete producer predicate is fixed by
 [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md),
 not a generic numerical envelope. WP6's direct source-associated planar
 provenance is fixed separately by ADR 0022; the selected-ghost producer and
-stored-ghost reference anchor are fixed by ADR 0023, while WP8 metadata
-remains separate. The kernel currently has no
-boundary/metadata call sites.
+stored-ghost reference anchor are fixed by ADR 0023. WP8 `_internal.locate`
+consumes WP4's explicit-box kernel with the source-derived complete enclosure
+in [the implementation note](wp8-implementation.md). It does not reinterpret
+WP5/6/7 boundary source predicates as generic position tolerances.
 
 The [private native face witness](native-face-witness.md) supplies the WP5 G0
 observation prerequisite through separate internal `_core` entry points.
@@ -1039,14 +1040,38 @@ nonpositive occurrences, incomplete attribution and contradictory native/S
 empty dispositions fail the whole batch with the fixed `GHOST_*` protocol.
 
 The public result remains `list[dict]`. Both dimensions retain `id=-1` and
-`query_index`; spatial output retains its original `query`, while planar
-original-query metadata remains WP8 work. The four planar ghost numerical
+`query_index`; WP8 adds original `query` in both dimensions and periodic
+`query_wrapped`/`query_shift` after all required checks and empty filtering. The four planar ghost numerical
 reconstruction controls are removed. Generic whole-tessellation normalization
 rejects independent ghost batches. Initially only the qualified Linux x86_64
 GCC 13.3 strict binary64 cohort admits certificate-bearing calls; other
 cohorts explicitly refuse pending qualification. WP6's binding source closure
 must be requalified when the shared binding changes. Safe identity alone does
 not settle the still-open D9 vendor policy.
+
+### Locate integrity and query metadata (WP8)
+
+`_internal.query_metadata` computes exact user affine wrapping from original
+validated binary64 operands, then creates owned public float/int64 views.
+`_internal.locate` validates native shapes, found/ID consistency and original-row
+association before external mapping. It packages sentinels and skips native
+construction for zero queries. Periodic owner certification is selector-gated.
+
+`cpp/locate_source.hpp` verifies actual insertion around the unchanged six native
+locate calls, guards integer conversions/worklist indices, and observes actual
+stored rows, native lattice/grid bounds and original-query remap coefficients.
+The Python producer enclosure retains preparation/storage and frame defects
+exactly, bounds all copied-image/final assembly arithmetic, and invokes WP4
+uniqueness. Exact owner image and native float presentation are separate; query
+wrapping is never counted again. The `LOCATE_*` protocol distinguishes native
+integrity, support, proof and materialization failures. Finite private budgets
+bound complete observation/certification and never allow partial success.
+
+Ghost metadata integration preserves all WP7 source/S checks, stored site and
+boundary transport. It validates original query association even on filtered
+rows and materializes new query views only for retained records. It does not
+add S certification to geometry-only calls. Existing normalization and result
+consumers keep their ghost rejection/availability policies. WP9 is separate.
 
 ### Remaining v0.9 stabilization
 

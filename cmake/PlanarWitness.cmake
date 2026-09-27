@@ -11,7 +11,7 @@ function(pyvoro2_planar_witness target_name)
   # a separately reviewed literal, not the just-computed digest itself.
   file(GLOB _sources CONFIGURE_DEPENDS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "vendor/voro++/2d/src/*")
-  list(APPEND _sources cpp/bindings2d.cpp cpp/native_preconditions.hpp
+  list(APPEND _sources cpp/bindings2d.cpp cpp/native_preconditions.hpp cpp/locate_source.hpp
     cpp/native_fp_contract.hpp cpp/planar_witness.cpp cpp/planar_witness.hpp
     CMakeLists.txt cmake/NativeFP.cmake cmake/PlanarWitness.cmake pyproject.toml)
   list(SORT _sources)

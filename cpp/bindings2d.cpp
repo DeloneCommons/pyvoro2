@@ -10,6 +10,7 @@
 
 #include "voro++_2d.hh"
 #include "native_preconditions.hpp"
+#include "locate_source.hpp"
 #include "planar_witness.hpp"
 
 namespace py = pybind11;
@@ -219,7 +220,8 @@ PYBIND11_MODULE(_core2d, m) {
          std::array<int, 2> blocks,
          std::array<bool, 2> periodic,
          int init_mem,
-         py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
+         py::array_t<double, py::array::c_style | py::array::forcecast> queries, bool return_source) -> py::tuple {
+      pyvoro2::locate_source::profile(return_source);
         native::preflight_box<2>(points, ids, nullptr, bounds, blocks,
                                  periodic, init_mem, 2, &queries);
         const auto n = points.shape(0);
@@ -239,9 +241,12 @@ PYBIND11_MODULE(_core2d, m) {
                          periodic[1],
                          init_mem);
 
+        auto source = pyvoro2::locate_source::rectangle<2>(con, points, ids, nullptr, queries, bounds, blocks, periodic, return_source);
         for (py::ssize_t i = 0; i < n; ++i) {
           con.put(id(i), p(i, 0), p(i, 1));
         }
+
+        pyvoro2::locate_source::verify_population(con, points, ids, nullptr, source, source.expected_blocks, source.storage_blocks);
 
         py::array_t<bool> found_arr(m_q);
         py::array_t<int> pid_arr(m_q);
@@ -257,6 +262,7 @@ PYBIND11_MODULE(_core2d, m) {
           double rx = nan;
           double ry = nan;
           int pid = -1;
+          pyvoro2::locate_source::guard_query(source, queries, static_cast<int>(i), false);
           const bool ok = con.find_voronoi_cell(q(i, 0), q(i, 1), rx, ry, pid);
           found(i) = ok;
           pid_out(i) = ok ? pid : -1;
@@ -264,6 +270,7 @@ PYBIND11_MODULE(_core2d, m) {
           pos_out(i, 1) = ry;
         }
 
+        if (return_source) return py::make_tuple(found_arr, pid_arr, pos_arr, source.packet());
         return py::make_tuple(found_arr, pid_arr, pos_arr);
       },
       py::arg("points"),
@@ -272,7 +279,7 @@ PYBIND11_MODULE(_core2d, m) {
       py::arg("blocks"),
       py::arg("periodic") = std::array<bool, 2>{false, false},
       py::arg("init_mem"),
-      py::arg("queries"));
+      py::arg("queries"), py::arg("return_source") = false);
 
   m.def(
       "locate_box_power",
@@ -283,7 +290,8 @@ PYBIND11_MODULE(_core2d, m) {
          std::array<int, 2> blocks,
          std::array<bool, 2> periodic,
          int init_mem,
-         py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
+         py::array_t<double, py::array::c_style | py::array::forcecast> queries, bool return_source) -> py::tuple {
+      pyvoro2::locate_source::profile(return_source);
         native::preflight_box<2>(points, ids, &radii, bounds, blocks,
                                  periodic, init_mem, 3, &queries);
         const auto n = points.shape(0);
@@ -304,9 +312,12 @@ PYBIND11_MODULE(_core2d, m) {
                               periodic[1],
                               init_mem);
 
+        auto source = pyvoro2::locate_source::rectangle<2>(con, points, ids, &radii, queries, bounds, blocks, periodic, return_source);
         for (py::ssize_t i = 0; i < n; ++i) {
           con.put(id(i), p(i, 0), p(i, 1), r(i));
         }
+
+        pyvoro2::locate_source::verify_population(con, points, ids, &radii, source, source.expected_blocks, source.storage_blocks);
 
         py::array_t<bool> found_arr(m_q);
         py::array_t<int> pid_arr(m_q);
@@ -322,6 +333,7 @@ PYBIND11_MODULE(_core2d, m) {
           double rx = nan;
           double ry = nan;
           int pid = -1;
+          pyvoro2::locate_source::guard_query(source, queries, static_cast<int>(i), false);
           const bool ok = con.find_voronoi_cell(q(i, 0), q(i, 1), rx, ry, pid);
           found(i) = ok;
           pid_out(i) = ok ? pid : -1;
@@ -329,6 +341,7 @@ PYBIND11_MODULE(_core2d, m) {
           pos_out(i, 1) = ry;
         }
 
+        if (return_source) return py::make_tuple(found_arr, pid_arr, pos_arr, source.packet());
         return py::make_tuple(found_arr, pid_arr, pos_arr);
       },
       py::arg("points"),
@@ -338,7 +351,7 @@ PYBIND11_MODULE(_core2d, m) {
       py::arg("blocks"),
       py::arg("periodic") = std::array<bool, 2>{false, false},
       py::arg("init_mem"),
-      py::arg("queries"));
+      py::arg("queries"), py::arg("return_source") = false);
 
   // The two ghost entry points are registered by planar_witness::bind above.
   // They share the fresh selected-source route with the witnessed entry points.
