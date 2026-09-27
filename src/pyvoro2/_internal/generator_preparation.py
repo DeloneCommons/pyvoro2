@@ -71,12 +71,12 @@ def _prepare_coordinates(
     periodic_snapshot,
     name: str,
     unbounded_planar_shifts: bool = False,
-    unbounded_ghost_shifts: bool = False,
+    unbounded_query_shifts: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     dim = int(geometry.dim)
     input_points = coerce_point_array(points, name=name, dim=dim)
     n = int(input_points.shape[0])
-    shifts = np.zeros((n, dim), dtype=object if unbounded_ghost_shifts else np.int64)
+    shifts = np.zeros((n, dim), dtype=object if unbounded_query_shifts else np.int64)
 
     if getattr(geometry, 'is_triclinic', False):
         if periodic_snapshot is None:
@@ -86,7 +86,7 @@ def _prepare_coordinates(
         with np.errstate(over='ignore', invalid='ignore'):
             internal = periodic_snapshot.cart_to_internal(input_points)
         internal = coerce_point_array(internal, name=name, dim=dim)
-        if unbounded_ghost_shifts:
+        if unbounded_query_shifts:
             primary_internal, shifts = periodic_snapshot._remap_internal(
                 internal, return_shifts=True, integer_view=False,
             )
@@ -108,7 +108,7 @@ def _prepare_coordinates(
         return input_points, primary_cart, native_points, shifts
 
     if geometry.has_any_periodic_axis:
-        if unbounded_planar_shifts or unbounded_ghost_shifts:
+        if unbounded_planar_shifts or unbounded_query_shifts:
             primary_cart, shifts = geometry.domain._remap_cart(
                 input_points, return_shifts=True, integer_view=False,
             )
@@ -331,7 +331,7 @@ def prepare_generators(
     mode = validate_duplicate_check_mode(duplicate_check)
     if unbounded_planar_shifts and (int(geometry.dim) != 2 or operation != 'compute'):
         raise ValueError('unbounded planar preparation is ordinary compute only')
-    unbounded_ghost_shifts = operation == 'ghost_cells'
+    unbounded_query_shifts = operation in ('ghost_cells', 'locate')
     threshold, wrap, max_pairs = validate_duplicate_options(
         threshold=duplicate_threshold,
         wrap=duplicate_wrap,
@@ -343,7 +343,7 @@ def prepare_generators(
         periodic_snapshot=periodic_snapshot,
         name='points',
         unbounded_planar_shifts=unbounded_planar_shifts,
-        unbounded_ghost_shifts=unbounded_ghost_shifts,
+        unbounded_query_shifts=unbounded_query_shifts,
     )
     n = int(input_points.shape[0])
     if reserve_ghost_id and int(geometry.dim) == 2:
@@ -383,7 +383,7 @@ def prepare_generators(
         primary_points_cart=owned_readonly_array(primary_cart, dtype=np.float64),
         native_points=owned_readonly_array(native_points, dtype=np.float64),
         remap_shifts=owned_readonly_array(
-            shifts, dtype=object if unbounded_planar_shifts or unbounded_ghost_shifts
+            shifts, dtype=object if unbounded_planar_shifts or unbounded_query_shifts
             else np.int64),
         internal_ids=owned_readonly_array(
             np.arange(n, dtype=np.int32),
@@ -435,7 +435,7 @@ def prepare_temporary_generators(
         geometry=geometry,
         periodic_snapshot=periodic_snapshot,
         name='queries',
-        unbounded_ghost_shifts=True,
+        unbounded_query_shifts=True,
     )
     m = int(input_points.shape[0])
     require_query_index_range(m)

@@ -6,7 +6,24 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+### Added
+
+- Periodic spatial/planar locate now returns original and exact-user-wrapped
+  query views and int64 query shifts. Requesting owner position also returns
+  original owner sites and certified exact user-basis image shifts while
+  preserving native `owner_pos`, including storage/frame rounding.
+- Both dimensions' ghost records expose original `query`; periodic records add
+  `query_wrapped` and `query_shift` without changing WP7 stored-site/boundary
+  charts. New query views materialize only retained rows after certification.
+  Added fields and the inspectable `LOCATE_*` failure protocol are Provisional.
+
 ### Fixed
+
+- Locate verifies actual persistent native insertion, rejects unsafe native
+  integer execution, validates internal owner association before external IDs,
+  and skips native construction for zero queries. Missing insertion cannot
+  masquerade as not-found. Private shifts remain unbounded through cancellation.
+
 
 - Ghost queries use initialized, verified per-query native insertion before a
   temporary ID can be read or copied. Certificate-bearing ghost boundaries

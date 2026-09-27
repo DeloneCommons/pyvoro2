@@ -13,6 +13,7 @@
 
 #include "voro++.hh"
 #include "native_preconditions.hpp"
+#include "locate_source.hpp"
 #include "native_witness.hpp"
 
 namespace py = pybind11;
@@ -726,7 +727,8 @@ m.def(
        std::array<int, 3> blocks,
        std::array<bool, 3> periodic,
        int init_mem,
-       py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
+       py::array_t<double, py::array::c_style | py::array::forcecast> queries, bool return_source) -> py::tuple {
+      pyvoro2::locate_source::profile(return_source);
       native::preflight_box<3>(points, ids, nullptr, bounds, blocks, periodic,
                                init_mem, 3, &queries);
       const auto n = points.shape(0);
@@ -750,9 +752,12 @@ m.def(
                     periodic[2],
                     init_mem);
 
+      auto source = pyvoro2::locate_source::rectangle<3>(con, points, ids, nullptr, queries, bounds, blocks, periodic, return_source);
       for (py::ssize_t i = 0; i < n; i++) {
         con.put(id(i), p(i, 0), p(i, 1), p(i, 2));
       }
+
+      pyvoro2::locate_source::verify_population(con, points, ids, nullptr, source, source.expected_blocks, source.storage_blocks);
 
       py::array_t<bool> found_arr(m);
       py::array_t<int> pid_arr(m);
@@ -767,6 +772,7 @@ m.def(
       for (py::ssize_t i = 0; i < m; i++) {
         double rx = nan, ry = nan, rz = nan;
         int pid = -1;
+        pyvoro2::locate_source::guard_query(source, queries, static_cast<int>(i), false);
         const bool ok = con.find_voronoi_cell(q(i, 0), q(i, 1), q(i, 2), rx, ry, rz, pid);
         found(i) = ok;
         pid_out(i) = ok ? pid : -1;
@@ -775,6 +781,7 @@ m.def(
         pos_out(i, 2) = rz;
       }
 
+      if (return_source) return py::make_tuple(found_arr, pid_arr, pos_arr, source.packet());
       return py::make_tuple(found_arr, pid_arr, pos_arr);
     },
     py::arg("points"),
@@ -783,7 +790,7 @@ m.def(
     py::arg("blocks"),
     py::arg("periodic") = std::array<bool, 3>{false, false, false},
     py::arg("init_mem"),
-    py::arg("queries"));
+    py::arg("queries"), py::arg("return_source") = false);
 
 m.def(
     "locate_box_power",
@@ -794,7 +801,8 @@ m.def(
        std::array<int, 3> blocks,
        std::array<bool, 3> periodic,
        int init_mem,
-       py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
+       py::array_t<double, py::array::c_style | py::array::forcecast> queries, bool return_source) -> py::tuple {
+      pyvoro2::locate_source::profile(return_source);
       native::preflight_box<3>(points, ids, &radii, bounds, blocks, periodic,
                                init_mem, 4, &queries);
       const auto n = points.shape(0);
@@ -819,9 +827,12 @@ m.def(
                          periodic[2],
                          init_mem);
 
+      auto source = pyvoro2::locate_source::rectangle<3>(con, points, ids, &radii, queries, bounds, blocks, periodic, return_source);
       for (py::ssize_t i = 0; i < n; i++) {
         con.put(id(i), p(i, 0), p(i, 1), p(i, 2), r(i));
       }
+
+      pyvoro2::locate_source::verify_population(con, points, ids, &radii, source, source.expected_blocks, source.storage_blocks);
 
       py::array_t<bool> found_arr(m);
       py::array_t<int> pid_arr(m);
@@ -836,6 +847,7 @@ m.def(
       for (py::ssize_t i = 0; i < m; i++) {
         double rx = nan, ry = nan, rz = nan;
         int pid = -1;
+        pyvoro2::locate_source::guard_query(source, queries, static_cast<int>(i), false);
         const bool ok = con.find_voronoi_cell(q(i, 0), q(i, 1), q(i, 2), rx, ry, rz, pid);
         found(i) = ok;
         pid_out(i) = ok ? pid : -1;
@@ -844,6 +856,7 @@ m.def(
         pos_out(i, 2) = rz;
       }
 
+      if (return_source) return py::make_tuple(found_arr, pid_arr, pos_arr, source.packet());
       return py::make_tuple(found_arr, pid_arr, pos_arr);
     },
     py::arg("points"),
@@ -853,7 +866,7 @@ m.def(
     py::arg("blocks"),
     py::arg("periodic") = std::array<bool, 3>{false, false, false},
     py::arg("init_mem"),
-    py::arg("queries"));
+    py::arg("queries"), py::arg("return_source") = false);
 
 m.def(
     "locate_periodic_standard",
@@ -862,7 +875,8 @@ m.def(
        std::array<double, 6> cell_params,
        std::array<int, 3> blocks,
        int init_mem,
-       py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
+       py::array_t<double, py::array::c_style | py::array::forcecast> queries, bool return_source) -> py::tuple {
+      pyvoro2::locate_source::profile(return_source);
       native::preflight_periodic_3d(points, ids, nullptr, cell_params, blocks,
                                     init_mem, 3, &queries);
       const auto n = points.shape(0);
@@ -883,9 +897,12 @@ m.def(
                              blocks[2],
                              init_mem);
 
+      auto source = pyvoro2::locate_source::triclinic(con, points, ids, nullptr, queries, return_source);
       for (py::ssize_t i = 0; i < n; i++) {
         con.put(id(i), p(i, 0), p(i, 1), p(i, 2));
       }
+
+      pyvoro2::locate_source::verify_population(con, points, ids, nullptr, source, source.expected_blocks, source.storage_blocks);
 
       py::array_t<bool> found_arr(m);
       py::array_t<int> pid_arr(m);
@@ -900,6 +917,7 @@ m.def(
       for (py::ssize_t i = 0; i < m; i++) {
         double rx = nan, ry = nan, rz = nan;
         int pid = -1;
+        pyvoro2::locate_source::guard_query(source, queries, static_cast<int>(i), true);
         const bool ok = con.find_voronoi_cell(q(i, 0), q(i, 1), q(i, 2), rx, ry, rz, pid);
         found(i) = ok;
         pid_out(i) = ok ? pid : -1;
@@ -908,6 +926,7 @@ m.def(
         pos_out(i, 2) = rz;
       }
 
+      if (return_source) return py::make_tuple(found_arr, pid_arr, pos_arr, source.packet());
       return py::make_tuple(found_arr, pid_arr, pos_arr);
     },
     py::arg("points"),
@@ -915,7 +934,7 @@ m.def(
     py::arg("cell_params"),
     py::arg("blocks"),
     py::arg("init_mem"),
-    py::arg("queries"));
+    py::arg("queries"), py::arg("return_source") = false);
 
 m.def(
     "locate_periodic_power",
@@ -925,7 +944,8 @@ m.def(
        std::array<double, 6> cell_params,
        std::array<int, 3> blocks,
        int init_mem,
-       py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
+       py::array_t<double, py::array::c_style | py::array::forcecast> queries, bool return_source) -> py::tuple {
+      pyvoro2::locate_source::profile(return_source);
       native::preflight_periodic_3d(points, ids, &radii, cell_params, blocks,
                                     init_mem, 4, &queries);
       const auto n = points.shape(0);
@@ -947,9 +967,12 @@ m.def(
                                   blocks[2],
                                   init_mem);
 
+      auto source = pyvoro2::locate_source::triclinic(con, points, ids, &radii, queries, return_source);
       for (py::ssize_t i = 0; i < n; i++) {
         con.put(id(i), p(i, 0), p(i, 1), p(i, 2), r(i));
       }
+
+      pyvoro2::locate_source::verify_population(con, points, ids, &radii, source, source.expected_blocks, source.storage_blocks);
 
       py::array_t<bool> found_arr(m);
       py::array_t<int> pid_arr(m);
@@ -964,6 +987,7 @@ m.def(
       for (py::ssize_t i = 0; i < m; i++) {
         double rx = nan, ry = nan, rz = nan;
         int pid = -1;
+        pyvoro2::locate_source::guard_query(source, queries, static_cast<int>(i), true);
         const bool ok = con.find_voronoi_cell(q(i, 0), q(i, 1), q(i, 2), rx, ry, rz, pid);
         found(i) = ok;
         pid_out(i) = ok ? pid : -1;
@@ -972,6 +996,7 @@ m.def(
         pos_out(i, 2) = rz;
       }
 
+      if (return_source) return py::make_tuple(found_arr, pid_arr, pos_arr, source.packet());
       return py::make_tuple(found_arr, pid_arr, pos_arr);
     },
     py::arg("points"),
@@ -980,7 +1005,7 @@ m.def(
     py::arg("cell_params"),
     py::arg("blocks"),
     py::arg("init_mem"),
-    py::arg("queries"));
+    py::arg("queries"), py::arg("return_source") = false);
 
 
 // Batch ghost-cell computations (compute_ghost_cell)

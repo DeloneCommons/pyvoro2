@@ -40,7 +40,7 @@ class RecordingCore:
     calls: list[tuple[str, tuple[Any, ...]]] = field(default_factory=list)
 
     def __getattr__(self, name: str):
-        def call(*args: Any):
+        def call(*args: Any, **kwargs: Any):
             self.calls.append((name, args))
             if name.startswith('locate_'):
                 queries = np.asarray(args[-1])
@@ -58,6 +58,12 @@ class RecordingCore:
                 points = np.asarray(args[0])
                 rows = [{'id': i} for i in range(len(points))]
                 return (rows, None) if planar_witness else rows
+            if name.startswith('ghost_'):
+                queries = np.asarray(args[-2] if name.endswith('power') else args[-1])
+                dim = queries.shape[1]
+                return [dict(id=-1, query_index=i, site=q.tolist(), empty=True,
+                             **{'area' if dim == 2 else 'volume': 0.})
+                        for i, q in enumerate(queries)]
             return []
 
         return call
@@ -68,7 +74,7 @@ class NoNativeCalls:
     count: int = 0
 
     def __getattr__(self, name: str):
-        def call(*args: Any):
+        def call(*args: Any, **kwargs: Any):
             self.count += 1
             raise AssertionError(f'native method {name} was called')
 

@@ -5,6 +5,6 @@
 // to make an incompatible native binary appear supported.  The qualification
 // tool records the compiled source closure and checks A/B and B/C separately.
 #define PYVORO2_PLANAR_SCHEMA "pyvoro2.planar.occurrences.v1"
-#define PYVORO2_PLANAR_APPROVED_SHA256 "818a6de67e32e9e85efafa0f833bacf4139a8636342aaecf4423f48adf7dfc10"
+#define PYVORO2_PLANAR_APPROVED_SHA256 "9bac785e9d4145a6a65ba4cc732c33c6a1578d7f7d1f9be4095083ead6a5ee18"
 
 #endif

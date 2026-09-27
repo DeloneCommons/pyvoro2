@@ -1112,6 +1112,18 @@ def locate(
         For periodic domains, Voro++ may return the owner position in a periodic
         image of the primary domain. This is useful when you need a consistent
         nearest-image geometry for a given query.
+
+    Periodic results always include owned ``query``, ``query_wrapped`` and
+    signed-int64 ``query_shift`` arrays of shape (m, d). Wrapping uses exact
+    binary64 affine operands and nearest-even float views. With the owner
+    selector, also return original ``owner_site``, native ``owner_pos`` and
+    exact ``owner_shift``. The exact image is ``owner_site+owner_shift@A``;
+    ``owner_pos`` retains native storage/frame rounding. Never add the query
+    shift to the owner shift. Not-found owner rows use ID -1, NaN coordinates
+    and zero shifts. Zero-query batches retain shapes and skip native geometry.
+    New ValueError-compatible failures expose ``code``, ``stage``,
+    ``query_index`` and bounded ``details``. Metadata/failure additions remain
+    Provisional; native selection and existing Stable operations are preserved.
     """
     mode = validate_forward_mode(mode)  # type: ignore[assignment]
     duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
@@ -1151,13 +1163,9 @@ def locate(
     rr = power_input.backend_radii
     geom = geometry3d(domain)
     if isinstance(domain, (Box, OrthorhombicCell)):
-        native_bounds = geom.native_bounds
         native_cell = None
-        native_params = None
     else:
-        native_bounds = None
         native_cell = geom.native_periodic_snapshot()
-        native_params = native_cell.params
     prepared = prepare_generators(
         pts,
         geometry=geom,
@@ -1171,10 +1179,6 @@ def locate(
         periodic_snapshot=native_cell,
     )
     pts = prepared.input_points_cart
-    pts_native = prepared.native_points
-    ids_internal = prepared.internal_ids
-    ids_user = prepared.external_ids if ids is not None else None
-    rr = prepared.backend_radii
     native_scale = (
         native_cell.length_scale
         if native_cell is not None
@@ -1188,97 +1192,14 @@ def locate(
         periodic_snapshot=native_cell,
     )
 
-    core = _require_core()
+    from ._internal.locate import locate_prepared
 
-    # --- Rectangular containers (Box / OrthorhombicCell) ---
-    if isinstance(domain, (Box, OrthorhombicCell)):
-        assert native_bounds is not None
-        bounds = native_bounds
-        periodic_flags = geom.periodic_axes
-
-        if mode == 'standard':
-            found, owner_id, owner_pos = core.locate_box_standard(
-                pts_native,
-                ids_internal,
-                bounds,
-                (nx, ny, nz),
-                periodic_flags,
-                init_mem_value,
-                q,
-            )
-        elif mode == 'power':
-            assert rr is not None
-            found, owner_id, owner_pos = core.locate_box_power(
-                pts_native,
-                ids_internal,
-                rr,
-                bounds,
-                (nx, ny, nz),
-                periodic_flags,
-                init_mem_value,
-                q,
-            )
-        else:
-            raise ValueError(f'unknown mode: {mode}')
-
-    # --- PeriodicCell (triclinic) ---
-    else:
-        cell = native_cell
-        assert cell is not None
-        assert native_params is not None
-        bx, bxy, by, bxz, byz, bz = native_params
-        with np.errstate(over='ignore', invalid='ignore'):
-            q_i = cell.cart_to_internal(q)
-        pts_i = pts_native
-        q_i = coerce_point_array(q_i, name='queries', dim=3)
-
-        if mode == 'standard':
-            found, owner_id, owner_pos = core.locate_periodic_standard(
-                pts_i,
-                ids_internal,
-                (bx, bxy, by, bxz, byz, bz),
-                (nx, ny, nz),
-                init_mem_value,
-                q_i,
-            )
-        elif mode == 'power':
-            assert rr is not None
-            found, owner_id, owner_pos = core.locate_periodic_power(
-                pts_i,
-                ids_internal,
-                rr,
-                (bx, bxy, by, bxz, byz, bz),
-                (nx, ny, nz),
-                init_mem_value,
-                q_i,
-            )
-        else:
-            raise ValueError(f'unknown mode: {mode}')
-
-        # Convert owner positions back to Cartesian if requested.
-        # Note: owner_pos may already be outside the primary cell due to
-        # periodic images.
-        if return_owner_position_value:
-            owner_pos = cell.internal_to_cart(np.asarray(owner_pos, dtype=np.float64))
-
-    # Remap owner IDs to user IDs if requested.
-    owner_id = np.asarray(owner_id)
-    found = np.asarray(found, dtype=bool)
-
-    if ids_user is not None:
-        out_ids = owner_id.astype(np.int64, copy=True)
-        mask = out_ids >= 0
-        if np.any(mask):
-            out_ids[mask] = ids_user[out_ids[mask]]
-        owner_id = out_ids
-
-    out: dict[str, Any] = {
-        'found': found,
-        'owner_id': owner_id,
-    }
-    if return_owner_position_value:
-        out['owner_pos'] = np.asarray(owner_pos, dtype=np.float64)
-    return out
+    return locate_prepared(
+        prepared, q, geometry=geom, snapshot=native_cell,
+        blocks=(nx, ny, nz), init_mem=init_mem_value, mode=mode,
+        return_owner_position=return_owner_position_value,
+        core_loader=_require_core, external_ids=ids is not None,
+    )
 
 
 def ghost_cells(
@@ -1382,6 +1303,14 @@ def ghost_cells(
 
     Raises:
         ValueError: if inputs are inconsistent.
+
+    Every record includes original ``query`` and its input ``query_index``.
+    Periodic records add ``query_wrapped`` (float list) and ``query_shift``
+    (integer tuple representable in int64). ``site`` remains the actual stored
+    ghost anchor; boundary shifts never include query wrapping. All required
+    certification precedes empty filtering, and only retained records need the
+    new query views materialized. A retained unrepresentable query view raises
+    ``GHOST_SHIFT_UNREPRESENTABLE`` at materialization with its index/field.
     """
     mode = validate_forward_mode(mode)  # type: ignore[assignment]
     duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
@@ -1613,17 +1542,8 @@ def ghost_cells(
         raise from_native_failure(exc, 3, None, 'native') from exc
 
     validate_materialized_cells(cells, 3)
+    from ._internal.query_metadata import ghost_query_views
 
-    # Add original query coordinates (Cartesian) to each record.
-    q_list = q.tolist()
-    for c in cells:
-        qi = int(c.get('query_index', -1))
-        if 0 <= qi < m:
-            c['query'] = q_list[qi]
-        else:
-            c['query'] = None
-
-    if not include_empty_value:
-        cells = [c for c in cells if not bool(c.get('empty', False))]
-
-    return cells
+    return ghost_query_views(
+        cells, q, geom, native_cell, include_empty_value,
+    )

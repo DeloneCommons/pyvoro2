@@ -209,9 +209,31 @@ out = pyvoro2.locate(points, queries, domain=cell, return_owner_position=True)
 owner_ids = out['owner_id']
 ```
 
-If `return_owner_position=True`, the output also contains `owner_pos`.
-In periodic domains this position may be a **periodic image** of the generator, chosen
-consistently with the query point.
+Periodic locate always includes `query`, `query_wrapped` and `query_shift`,
+with `(m,d)` shapes. Wrapping solves the affine problem exactly over the
+validated binary64 operands; `query_wrapped` is its nearest-even float view.
+Rectangular spans use the domain's binary64 span. A rounded upper endpoint or
+backend seam snap does not change the exact user shift.
+
+With `return_owner_position=True`, periodic calls also include original
+`owner_site`, native `owner_pos`, and exact user-basis `owner_shift`. The exact
+image is `owner_site + owner_shift @ A` in the original query chart. The native
+`owner_pos` preserves storage and frame rounding and may differ from the
+rounded exact image. For example, unit-period `P_x=nextafter(1,0)` and `q_x=0`
+return native position 0 with shift -1; the exact image is `-2**-53`.
+Do not add `query_shift` to `owner_shift`.
+
+Not-found rows have owner ID -1, NaN owner coordinates and zero owner shifts.
+The owner selector omits all three fields when false; query views remain.
+Nonperiodic calls retain their existing keys. Zero-query batches retain empty
+array shapes and construct no native container. Returned arrays own their data.
+
+Actual native insertion omission and unsafe integer execution raise explicit
+ValueError-compatible failures. Requested image certification may also refuse
+ambiguous, inconsistent, resource-limited or unrepresentable results. The
+Provisional protocol exposes `code`, `stage`, `query_index` and bounded
+`details`; see the [reference](../reference/api.md). Native selection remains
+the owner answer, without an additional exact ownership theorem.
 
 ## 3) `ghost_cells(...)`: compute probe (ghost) cells
 
@@ -264,21 +286,30 @@ under the reviewed strict binary64 native profile. Unsupported source/build
 profiles and incomplete or inconsistent certificates raise a
 `ValueError`-compatible error with `code`, `stage`, `query_index` and bounded
 `details`; no partial batch is returned. Geometry-only calls use the safe
-initialized native route without claiming this boundary certificate. This
-WP7 implementation remains subject to independent exact-head acceptance.
+initialized native route without claiming this boundary certificate. WP7 has been independently accepted; WP8 metadata implementation remains
+subject to its separate exact-head review.
 
 ### `query` vs `site` in periodic domains
 
 For periodic domains, preparation remaps each query before native insertion.
-The spatial record contains:
+Both dimensions' records contain:
 
-- `query`: the original coordinate you supplied
+- `query`: the original coordinate you supplied, in every domain;
+- `query_wrapped` and `query_shift`: exact user-wrap float/int64 views in periodic domains;
 - `site`: the actual stored ghost's materialized Cartesian representative
-  anchoring returned native geometry
+  anchoring returned native geometry.
 
 The original query and stored site need not be exactly separated by an integer
 lattice translation as binary64 values: preparation, insertion and frame
 conversion can round separately. Generator boundary images reconstruct as
 `original_generator_site + shift @ A`; ghost self images reconstruct as
-`site + shift @ A`. The original planar `query` field and unified periodic
-query metadata remain WP8 work.
+`site + shift @ A`. Boundary shifts stay in the stored-ghost chart; never add
+`query_shift` to them. No `site_shift` is returned.
+
+All required ghost certification runs before `include_empty=False` removes
+empty records. Only retained records need the new public query fields to fit
+int64. Thus a filtered, already-qualified empty ghost with private shift
+`2**70` may yield `[]`; retaining that row raises
+`GHOST_SHIFT_UNREPRESENTABLE` at materialization with `field='query_shift'`.
+Filtering preserves original `query_index` values and cannot hide certification
+failure. Geometry-only calls do not acquire a new semantic cell certificate.

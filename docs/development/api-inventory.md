@@ -100,7 +100,7 @@ adopts a backend-fork policy.
 | Existing `compute`, `locate`, `ghost_cells`, domain classes, fixed separator fit | Stable | Existing stable operations remain stable; accepted v0.9 semantic corrections are deliberate pre-1.0 contract changes. |
 | Weight-first `locate`; complete weight/radius `ghost_cells` families | Stable — implemented by WP1 | Same mathematical-weight versus backend-radius representation model as stable weight-first `compute`. |
 | New `PeriodicCell` user-coordinate/wrap helpers | Provisional — implemented by WP2 | Public convenience names may receive soak feedback; exact wrap-shift authority and reconstruction equations are fixed by ADR 0018. |
-| New periodic query/owner/ghost metadata and `boundary_reference` | Provisional | Field spellings below are the v0.9 target; user-basis shift meaning and kind/payload invariants are fixed. |
+| New periodic query/owner/ghost metadata and `boundary_reference` | Provisional | Implemented WP7/WP8 schema and failure protocols below; user-basis image meaning and kind/payload invariants are fixed. |
 | Separator objective/constraint/penalty `space` selectors and effective-space views | Provisional | Advanced model objects remain provisional; observation/source identity remains stable. |
 | `fit_self_consistent_weights_from_separators` and preferred-namespace `SelfConsistentPowerFitResult` | Provisional | Supported normal public workflow during v0.9.x soak; no Experimental import is required. |
 | Advanced active-set options/path/history and `solve_self_consistent_power_weights` | Experimental | Remain under `pyvoro2.inverse.separator`; not promoted by WP11. |
@@ -165,7 +165,7 @@ All other public periodic shift fields use the same user-basis sign convention:
 
 ```text
 minimum-image displacement = p_j - p_i + image_shift @ A
-owner_pos = owner_site + owner_shift @ A
+owner_image_exact = owner_site + owner_shift @ A
 boundary_image = generator_site + shift @ A
 boundary_image = ghost_site + shift @ A      # ghost_self, shift != 0
 ```
@@ -243,42 +243,60 @@ Output-selection switches such as `return_face_shifts`/`return_edge_shifts`,
 general tessellation diagnostic tolerances, and separator `image_search` are
 not reconstruction-correctness knobs and are not removed by this decision.
 
-### Target periodic query/owner metadata
+### WP8 periodic query/owner metadata
 
-For periodic spatial or planar `locate`, the base keys remain `found` and
-`owner_id`. The target additionally returns these periodic query arrays:
+For periodic spatial or planar `locate`, base keys remain `found` and
+`owner_id`. The following independently owned arrays are always returned:
+
+| Key | Shape / dtype | Semantics |
+|---|---|---|
+| `query` | `(m,d)` float64 | Original validated query. |
+| `query_wrapped` | `(m,d)` float64 | RN64 of exact `q-n@A`. |
+| `query_shift` | `(m,d)` int64 | Exact floor of the affine solve on periodic axes; zero elsewhere. |
+
+The exact affine operands are the validated binary64 query, origin and user
+rows; rectangular spans use the exposed binary64 span, even when its exact seam
+differs from the supplied upper endpoint. Float views do not determine shifts.
+
+When `return_owner_position=True`, periodic locate adds all three fields:
+
+| Key | Shape / dtype | Semantics |
+|---|---|---|
+| `owner_site` | `(m,d)` float64 | Original persistent input row selected by native locate. |
+| `owner_pos` | `(m,d)` float64 | Preserved qualified native Cartesian image view. |
+| `owner_shift` | `(m,d)` int64 | Exact image `owner_site+owner_shift@A` in the original query chart. |
+
+`owner_pos` is not canonicalized to the rounded exact image. For `found=False`,
+`owner_id=-1`, both owner coordinate rows are NaN and owner shifts are zero.
+Zero-query results retain `(0,d)` shapes/dtypes and skip native construction.
+External IDs change labels only. Nonperiodic schemas remain unchanged.
+
+The new Provisional ValueError-compatible failure protocol has `code`, `stage`,
+`query_index` (integer or None before query selection), and bounded `details`.
+Codes are `LOCATE_BACKEND_INSERTION`, `LOCATE_NATIVE_UNSUPPORTED`,
+`LOCATE_PROVENANCE_AMBIGUOUS`, `LOCATE_PROVENANCE_INCONSISTENT`,
+`LOCATE_CERTIFICATION_RESOURCE`, and `LOCATE_METADATA_UNREPRESENTABLE`.
+Proof-invariant failures retain an explicit reason and chained cause. Ordinary
+input validation remains unchanged; no public exception class is exported.
+
+### WP7 ghost boundaries with WP8 query metadata
+
+Both dimensions retain `query_index`, `id=-1`, and original Cartesian `query`
+as a float list in every domain. Periodic records also contain:
 
 | Key | Semantics |
 |---|---|
-| `query` | Original caller query coordinates. |
-| `query_wrapped` | Query coordinates wrapped into the user fundamental cell. |
-| `query_shift` | User-basis signed-int64 shift satisfying `query = query_wrapped + query_shift @ A`. |
+| `query_wrapped` | Float list, nearest-even exact user-wrap view. |
+| `query_shift` | Tuple of user-basis Python integers representable in signed int64. |
+| `site` | Actual stored ghost's materialized Cartesian anchor, unchanged from WP7. |
 
-When `return_owner_position=True`, periodic locate also returns:
-
-| Key | Semantics |
-|---|---|
-| `owner_site` | Original caller-supplied Cartesian coordinate of the persistent owner. |
-| `owner_pos` | Actual owner-image Cartesian position used for the located image; existing key retained. |
-| `owner_shift` | User-basis signed-int64 shift satisfying `owner_pos = owner_site + owner_shift @ A`. |
-
-For `found=False`, `owner_id` remains `-1`; `owner_site` and `owner_pos` use
-all-NaN rows and `owner_shift` uses the all-zero integer sentinel. Those owner
-fields are semantically valid only where `found` is true. External `ids` change
-labels, not geometric shift calculation.
-
-### WP7 ghost boundary identity and later WP8 metadata target
-
-WP7 retains `query_index` in both dimensions and the original Cartesian
-`query` in spatial records. It does not add that key to planar records. WP8
-later adds the original Cartesian `query` to planar records and the following
-periodic query fields in both dimensions:
-
-| Key | Semantics |
-|---|---|
-| `query_wrapped` | User-cell wrapped query. |
-| `query_shift` | User-basis shift satisfying `query = query_wrapped + query_shift @ A`. |
-| `site` | Actual stored ghost's materialized Cartesian representative anchoring returned geometry; never the original unwrapped query by definition. This WP7 rule already applies before the remaining WP8 metadata. |
+No `site_shift` or aggregate result is added. All required WP7 checks precede
+`include_empty=False` filtering. New query views materialize only retained
+records, so an already-certified filtered empty row may have an unbounded
+private query shift. A retained unrepresentable query view raises
+`GHOST_SHIFT_UNREPRESENTABLE` at `materialization`, identifying its field/index.
+Missing or malformed query associations fail instead of emitting `query=None`.
+Ghost boundary shifts never include the public query-wrap coefficient.
 
 `TessellationResult.sites` remains the original persistent input array. A raw
 periodic cell record's `site` is a geometry anchor and must not be substituted

@@ -23,7 +23,7 @@ from .wp5_producer import Producer
 
 _SCHEMA = 'wp7-selected-ghost-3d-v1'
 _QUALIFIED_GHOST_SOURCE_SHA256 = (
-    'a58520644947526a312eda64c947fa56b5eeef77e2da942eb945ad43a911dbdc'
+    'ab3a064a2b44b18236d1f1300ff12610d32463fc049d02d1499aea17e66098ea'
 )
 _MAX_OCCURRENCES = 262_144
 _MAX_SOURCE_TOKENS = 1_000_000

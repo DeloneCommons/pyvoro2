@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 SCHEMA = "pyvoro2.planar.occurrences.v1"
-SOURCE_SHA256 = "818a6de67e32e9e85efafa0f833bacf4139a8636342aaecf4423f48adf7dfc10"
+SOURCE_SHA256 = "9bac785e9d4145a6a65ba4cc732c33c6a1578d7f7d1f9be4095083ead6a5ee18"
 SUPPORTED_COHORTS = frozenset({"linux-x86_64-gcc13.3-sse2"})
 
 

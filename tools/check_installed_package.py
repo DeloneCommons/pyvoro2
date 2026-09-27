@@ -21,6 +21,8 @@ INTERNAL_HELPER_MODULES = (
     'pyvoro2._internal.cell_output',
     'pyvoro2._internal.ghost',
     'pyvoro2._internal.inputs',
+    'pyvoro2._internal.locate',
+    'pyvoro2._internal.query_metadata',
     'pyvoro2._internal.power_input',
     'pyvoro2._internal.weight_transforms',
     'pyvoro2._internal.spatial.domain_geometry',
@@ -484,6 +486,32 @@ def _check_ghost_workflows(*, refusal: bool) -> None:
           'zero-query and geometry-only routes available')
 
 
+def _check_query_metadata() -> None:
+    """Exercise WP8 on every wheel cohort independently of WP6/7 support."""
+    import numpy as np
+    import pyvoro2
+    from pyvoro2 import planar
+
+    for dim, api, domain in (
+        (2, planar, planar.RectangularCell(((0., 1.),) * 2)),
+        (3, pyvoro2, pyvoro2.OrthorhombicCell(((0., 1.),) * 3)),
+    ):
+        points = [[np.nextafter(1., 0.), *([.5] * (dim - 1))]]
+        queries = [[0., *([.5] * (dim - 1))]]
+        out = api.locate(points, queries, domain=domain,
+                         return_owner_position=True)
+        if (out['owner_pos'][0, 0] != 0 or out['owner_shift'][0, 0] != -1
+                or out['query_shift'].dtype != np.int64
+                or not np.array_equal(out['owner_site'], points)):
+            raise InstalledPackageCheckError('WP8 native owner/exact image mismatch')
+        ghost = api.ghost_cells(
+            np.empty((0, dim)), [[2.25, *([.5] * (dim - 1))]], domain=domain,
+            **{'return_edges' if dim == 2 else 'return_faces': False})[0]
+        if ghost['query_shift'] != (2,) + (0,) * (dim - 1):
+            raise InstalledPackageCheckError('WP8 ghost query chart mismatch')
+    print('WP8 query/owner metadata: both dimensions, native seam, geometry-only ghost')
+
+
 def _run_workflows(
     repository_root: Path,
     *,
@@ -695,6 +723,7 @@ def main() -> int:
     _check_scipy(require_scipy=args.require_scipy)
     _check_removed_compatibility()
     _check_private_helper_layout()
+    _check_query_metadata()
     _run_workflows(args.repo_root, require_scipy=args.require_scipy,
                    planar_refusal=args.planar_refusal,
                    ghost_refusal=args.ghost_refusal)

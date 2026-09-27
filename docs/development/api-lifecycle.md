@@ -154,7 +154,8 @@ exact consistency, optional geometry availability and structured failure are
 scientific API meanings even though the witness/profile machinery is private.
 The distinct ghost action and failure contract is
 [ADR 0023](decisions/0023-wp7-certified-ghost-boundaries.md). WP5 and WP6 were
-independently accepted; WP7 implementation still requires independent acceptance.
+independently accepted, as was WP7 before WP8 authorization. WP8 independent
+acceptance remains pending.
 
 D9, the backend-fork policy, is not silently assigned a lifecycle category by
 WP0. It remains the explicit decision gate in the active plan and must be
@@ -349,3 +350,15 @@ Before a stabilization or 1.0 release, follow the
 - update guides, reference, changelog, and release notes;
 - ensure experimental features are visibly marked;
 - verify generated documentation and distributions.
+
+WP8 implements the periodic locate `query`, `query_wrapped`, `query_shift`,
+`owner_site` and `owner_shift` fields, and the added planar original-query and
+periodic ghost query views. These additions and the inspectable `LOCATE_*`
+failure protocol are **Provisional** through v0.9.x. Existing `owner_pos`
+retains its native floating-point meaning; the exact image equation uses
+`owner_site+owner_shift@A` and permits the source-qualified float-view error.
+Native insertion omission and unsafe execution now fail explicitly. This does
+not downgrade Stable forward operations, add a public exception class or
+perform WP9's remaining reconstruction-control removals. See
+[ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md)
+and the [API inventory](api-inventory.md) for the adopted semantics.

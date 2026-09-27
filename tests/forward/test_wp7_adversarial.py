@@ -124,7 +124,14 @@ def test_public_unused_huge_query_translation_and_required_shift_limit(dim):
     huge = float(2**70)
     empty = np.empty((0, dim))
     query = [(huge,) + (.5,) * (dim - 1)]
-    output, = api.ghost_cells(empty, query, domain=domain,
+    # WP8 now materializes the retained public query shift. The private WP7
+    # computation still succeeds, but this new view cannot represent 2**70.
+    with pytest.raises(ValueError) as caught:
+        api.ghost_cells(empty, query, domain=domain,
+                        return_vertices=False, return_adjacency=False)
+    assert caught.value.code == 'GHOST_SHIFT_UNREPRESENTABLE'
+    assert caught.value.details['field'] == 'query_shift'
+    output, = api.ghost_cells(empty, [(0.,) + (.5,) * (dim - 1)], domain=domain,
                               return_vertices=False, return_adjacency=False)
     ideal = ghost_ideal([], output['site'], ((0, 1),) * dim,
                         (1,) * dim, mask)

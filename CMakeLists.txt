@@ -75,7 +75,7 @@ foreach(_source IN LISTS _PYVORO2_GHOST_VENDOR_SOURCES)
   string(APPEND _PYVORO2_GHOST_SOURCE_HASHES "${_source}:${_source_hash},")
 endforeach()
 foreach(_source cpp/bindings.cpp cpp/native_witness.cpp cpp/native_witness.hpp
-                cpp/native_preconditions.hpp cpp/native_fp_contract.hpp
+                cpp/native_preconditions.hpp cpp/native_fp_contract.hpp cpp/locate_source.hpp
                 CMakeLists.txt cmake/NativeFP.cmake pyproject.toml)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/${_source}")
