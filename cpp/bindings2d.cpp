@@ -3,7 +3,6 @@
 #include <pybind11/stl.h>
 
 #include <array>
-#include <limits>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -94,29 +93,6 @@ py::dict build_cell_dict(
   return out;
 }
 
-py::dict build_empty_ghost_dict(
-    int query_index,
-    double x,
-    double y,
-    const OutputOpts& opts
-) {
-  py::dict out;
-  out["id"] = -1;
-  out["empty"] = true;
-  out["area"] = 0.0;
-
-  py::list site;
-  site.append(x);
-  site.append(y);
-  out["site"] = site;
-  out["query_index"] = query_index;
-
-  if (opts.vertices) out["vertices"] = py::list();
-  if (opts.adjacency) out["adjacency"] = py::list();
-  if (opts.edges) out["edges"] = py::list();
-  return out;
-}
-
 template <class ContainerT>
 py::list compute_cells_impl(ContainerT& con, const OutputOpts& opts) {
   py::list out;
@@ -138,37 +114,6 @@ py::list compute_cells_impl(ContainerT& con, const OutputOpts& opts) {
   }
 
   return out;
-}
-
-template <class ContainerT>
-bool append_ghost_cell(
-    ContainerT& con,
-    int ghost_id,
-    int query_index,
-    double x,
-    double y,
-    const OutputOpts& opts,
-    py::list& out
-) {
-  c_loop_all_2d loop(con);
-  voronoicell_neighbor_2d cell;
-  if (loop.start()) {
-    do {
-      if (loop.pid() != ghost_id) {
-        continue;
-      }
-      if (con.compute_cell(cell, loop)) {
-        py::dict d = build_cell_dict(cell, -1, x, y, opts);
-        d["empty"] = false;
-        d["query_index"] = query_index;
-        out.append(d);
-      } else {
-        out.append(build_empty_ghost_dict(query_index, x, y, opts));
-      }
-      return true;
-    } while (loop.inc());
-  }
-  return false;
 }
 
 }  // namespace
@@ -395,121 +340,6 @@ PYBIND11_MODULE(_core2d, m) {
       py::arg("init_mem"),
       py::arg("queries"));
 
-  m.def(
-      "ghost_box_standard",
-      [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
-         py::array_t<int, py::array::c_style | py::array::forcecast> ids,
-         std::array<std::array<double, 2>, 2> bounds,
-         std::array<int, 2> blocks,
-         std::array<bool, 2> periodic,
-         int init_mem,
-         std::tuple<bool, bool, bool> opts_tuple,
-         py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-        native::preflight_box<2>(points, ids, nullptr, bounds, blocks,
-                                 periodic, init_mem, 2, &queries, nullptr,
-                                 true, true);
-        const auto n = points.shape(0);
-        const auto opts = parse_opts(opts_tuple);
-
-        auto p = points.unchecked<2>();
-        auto id = ids.unchecked<1>();
-        auto q = queries.unchecked<2>();
-        const py::ssize_t m_q = queries.shape(0);
-        const int ghost_id = std::numeric_limits<int>::max();
-
-        py::list out;
-        for (py::ssize_t qi = 0; qi < m_q; ++qi) {
-          container_2d con(bounds[0][0],
-                           bounds[0][1],
-                           bounds[1][0],
-                           bounds[1][1],
-                           blocks[0],
-                           blocks[1],
-                           periodic[0],
-                           periodic[1],
-                           init_mem);
-          for (py::ssize_t i = 0; i < n; ++i) {
-            con.put(id(i), p(i, 0), p(i, 1));
-          }
-
-          const double x = q(qi, 0);
-          const double y = q(qi, 1);
-          con.put(ghost_id, x, y);
-          if (!append_ghost_cell(con, ghost_id, static_cast<int>(qi), x, y, opts, out)) {
-            out.append(build_empty_ghost_dict(static_cast<int>(qi), x, y, opts));
-          }
-        }
-
-        return out;
-      },
-      py::arg("points"),
-      py::arg("ids"),
-      py::arg("bounds"),
-      py::arg("blocks"),
-      py::arg("periodic") = std::array<bool, 2>{false, false},
-      py::arg("init_mem"),
-      py::arg("opts"),
-      py::arg("queries"));
-
-  m.def(
-      "ghost_box_power",
-      [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
-         py::array_t<int, py::array::c_style | py::array::forcecast> ids,
-         py::array_t<double, py::array::c_style | py::array::forcecast> radii,
-         std::array<std::array<double, 2>, 2> bounds,
-         std::array<int, 2> blocks,
-         std::array<bool, 2> periodic,
-         int init_mem,
-         std::tuple<bool, bool, bool> opts_tuple,
-         py::array_t<double, py::array::c_style | py::array::forcecast> queries,
-         py::array_t<double, py::array::c_style | py::array::forcecast> ghost_radii) {
-        native::preflight_box<2>(points, ids, &radii, bounds, blocks,
-                                 periodic, init_mem, 3, &queries,
-                                 &ghost_radii, true, true);
-        const auto n = points.shape(0);
-        const py::ssize_t m_q = queries.shape(0);
-        const auto opts = parse_opts(opts_tuple);
-
-        auto p = points.unchecked<2>();
-        auto id = ids.unchecked<1>();
-        auto r = radii.unchecked<1>();
-        auto q = queries.unchecked<2>();
-        auto gr = ghost_radii.unchecked<1>();
-        const int ghost_id = std::numeric_limits<int>::max();
-
-        py::list out;
-        for (py::ssize_t qi = 0; qi < m_q; ++qi) {
-          container_poly_2d con(bounds[0][0],
-                                bounds[0][1],
-                                bounds[1][0],
-                                bounds[1][1],
-                                blocks[0],
-                                blocks[1],
-                                periodic[0],
-                                periodic[1],
-                                init_mem);
-          for (py::ssize_t i = 0; i < n; ++i) {
-            con.put(id(i), p(i, 0), p(i, 1), r(i));
-          }
-
-          const double x = q(qi, 0);
-          const double y = q(qi, 1);
-          con.put(ghost_id, x, y, gr(qi));
-          if (!append_ghost_cell(con, ghost_id, static_cast<int>(qi), x, y, opts, out)) {
-            out.append(build_empty_ghost_dict(static_cast<int>(qi), x, y, opts));
-          }
-        }
-
-        return out;
-      },
-      py::arg("points"),
-      py::arg("ids"),
-      py::arg("radii"),
-      py::arg("bounds"),
-      py::arg("blocks"),
-      py::arg("periodic") = std::array<bool, 2>{false, false},
-      py::arg("init_mem"),
-      py::arg("opts"),
-      py::arg("queries"),
-      py::arg("ghost_radii"));
+  // The two ghost entry points are registered by planar_witness::bind above.
+  // They share the fresh selected-source route with the witnessed entry points.
 }

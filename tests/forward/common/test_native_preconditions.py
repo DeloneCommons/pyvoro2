@@ -919,10 +919,10 @@ def test_direct_core_rejects_invalid_internal_ids(
         getattr(path.module, path.name)(*_native_args(path, ids=ids))
 
 
-def test_direct_planar_ghost_rejects_reserved_ghost_id_conflict() -> None:
+def test_direct_planar_ghost_requires_dense_augmented_identity() -> None:
     path = NATIVE_CONSTRUCTOR_PATHS[16]
     ids = np.array([0, CPP_INT_MAX], dtype=np.int32)
-    with pytest.raises(ValueError, match='reserved ghost ID'):
+    with pytest.raises(ValueError, match=r'range \[0, n\)'):
         getattr(path.module, path.name)(*_native_args(path, ids=ids))
 
 

@@ -20,6 +20,12 @@ class FakeCore2D:
 
     last_call: tuple[str, tuple] | None = None
 
+    def _ghost_box_standard_witness(self, *args):
+        from pyvoro2 import _core2d
+
+        self.last_call = ('_ghost_box_standard_witness', args)
+        return _core2d._ghost_box_standard_witness(*args)
+
     @staticmethod
     def _constructed_witness(points, ids, radii, bounds, blocks, periodic,
                              opts, polygons):
@@ -328,10 +334,12 @@ def test_planar_ghost_cells_remap_neighbor_ids(fake_core) -> None:
     )
 
     assert fake_core.last_call is not None
-    assert fake_core.last_call[0] == 'ghost_box_standard'
-    assert len(out) == 1
-    assert out[0]['edges'][0]['adjacent_cell'] == 10
-    assert out[0]['edges'][1]['adjacent_cell'] == 20
+    assert fake_core.last_call[0] == '_ghost_box_standard_witness'
+    assert len(out) == 2
+    generators = {edge['adjacent_cell'] for cell in out for edge in cell['edges']
+                  if edge['boundary_reference'] is not None
+                  and edge['boundary_reference']['kind'] == 'generator'}
+    assert generators == {10, 20}
 
 
 def test_planar_return_edge_shifts_requires_periodicity(fake_core) -> None:

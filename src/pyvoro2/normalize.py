@@ -17,6 +17,8 @@ All coordinates exposed by the public API are Cartesian.
 
 from __future__ import annotations
 
+from ._internal.ghost import reject_ghost_records
+
 from dataclasses import dataclass
 from typing import Any, Dict, List, Sequence, Tuple
 
@@ -113,6 +115,7 @@ def _prepare_vertex_cells(
 
     if not isinstance(cells, list):
         raise ValueError('cells must be a list of dicts')
+    reject_ghost_records(cells)
 
     prepared: List[Dict[str, Any]] = []
     seen_ids: set[int] = set()
@@ -567,6 +570,7 @@ def _prepare_topology_cells(
     )
     if not isinstance(nv.cells, list):
         raise ValueError('normalized.cells must be a list of dicts')
+    reject_ghost_records(nv.cells)
 
     prepared: List[Dict[str, Any]] = []
     seen_ids: set[int] = set()

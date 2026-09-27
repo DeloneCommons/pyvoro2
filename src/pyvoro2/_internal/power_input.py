@@ -31,10 +31,13 @@ class ResolvedPowerInput:
 
 @dataclass(frozen=True, slots=True)
 class ResolvedGhostPowerInput:
-    """Validated persistent and temporary backend power representations."""
+    """Original ghost weights and their single batch-wide representation."""
 
     backend_radii: np.ndarray | None
     backend_ghost_radii: np.ndarray | None
+    input_weights: np.ndarray | None = None
+    input_ghost_weights: np.ndarray | None = None
+    representation_shift: float | None = None
 
 
 def resolve_power_input(
@@ -153,12 +156,15 @@ def resolve_ghost_power_input(
         combined_weights = np.concatenate(
             (persistent_weights, temporary_weights)
         )
-        combined_radii, _representation_shift = weights_to_radii(
+        combined_radii, representation_shift = weights_to_radii(
             combined_weights
         )
         return ResolvedGhostPowerInput(
             combined_radii[:n],
             combined_radii[n:],
+            persistent_weights,
+            temporary_weights,
+            representation_shift,
         )
 
     assert radii is not None

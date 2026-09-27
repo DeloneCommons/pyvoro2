@@ -36,6 +36,14 @@ using Options = std::tuple<bool, bool, bool>;
 constexpr std::size_t max_occurrences = 262144;
 constexpr std::size_t max_sources = 1000000;
 constexpr std::size_t max_observer_storage_bytes = 64 * 1024 * 1024;
+// Conservative CPython retained-packet charges include referenced keys and
+// scalar objects, local vectors, source origins and list/tuple slots.  This is
+// a charged memory estimate rather than an RSS ceiling: allocator overhead and
+// the ordinary container's allocation are separately governed.  The cap
+// covers the complete returned batch plus the peak second native producer.
+constexpr std::size_t ghost_inserted_row_bytes = 2048;
+constexpr std::size_t ghost_packet_bytes = 16384;
+constexpr std::size_t ghost_occurrence_bytes = 2048;
 constexpr int max_token_sources = (INT_MAX - 4) / 9;
 
 static_assert(sizeof(unsigned int) * CHAR_BIT == 32 && UINT_MAX == 4294967295u,
@@ -82,6 +90,10 @@ py::dict profile() {
   out["max_observer_storage_bytes"] = max_observer_storage_bytes;
   out["max_occurrences"] = max_occurrences;
   out["max_token_sources"] = max_token_sources;
+  out["ghost_batch_limit_bytes"] = max_observer_storage_bytes;
+  out["ghost_inserted_row_charge_bytes"] = ghost_inserted_row_bytes;
+  out["ghost_packet_charge_bytes"] = ghost_packet_bytes;
+  out["ghost_occurrence_charge_bytes"] = ghost_occurrence_bytes;
   out["qualified"] = source && qualified_cohort() && nearest && gradual;
   return out;
 }
@@ -453,14 +465,270 @@ void bind_compute(py::module_& m, const char* standard, const char* power) {
         py::arg("radii"), py::arg("bounds"), py::arg("blocks"), py::arg("periodic"),
         py::arg("init_mem"), py::arg("opts"));
 }
+
+[[noreturn]] void fail_ghost_query(py::ssize_t qi, const std::string& reason) {
+  const char* stage = "native";
+  const char* code = "GHOST_NATIVE_UNSUPPORTED";
+  if (reason.find("planar_certification:insertion:") == 0) {
+    stage = "insertion";
+    code = "GHOST_BACKEND_INSERTION";
+  } else if (reason.find("planar_certification:provenance:") == 0) {
+    stage = "provenance";
+    code = "GHOST_PROVENANCE_INCONSISTENT";
+  } else if (reason.find("planar_certification:resource:") == 0) {
+    stage = "native";
+    code = "GHOST_CERTIFICATION_RESOURCE";
+  }
+  std::string detail = reason.substr(0, 512);
+  throw std::runtime_error(std::string("ghost_native:") + stage + ":" +
+                           std::to_string(qi) + ":" + code + ":" + detail);
+}
+
+// A ghost is the selected source of a fresh augmented population.  Reusing a
+// container across queries would retain the previous query as a competitor.
+template<class Base, bool Power, bool Observe, bool VerifyProfile, bool EmitPacket>
+py::tuple run_ghost(Points points, IDs ids, Points radii, Bounds bounds,
+                    Blocks blocks, Mask periodic, int init_mem, Options opts,
+                    Points queries, Points ghost_radii) {
+  try {
+    native_preconditions::preflight_box<2>(
+        points, ids, Power ? &radii : nullptr, bounds, blocks, periodic,
+        init_mem, Power ? 3 : 2, &queries,
+        Power ? &ghost_radii : nullptr, true, false);
+    if (queries.shape(0) == 0)
+      return py::make_tuple(py::list(), py::list());
+    if constexpr (VerifyProfile) require_profile();
+    else require_evaluation();
+    const auto persistent_count = points.shape(0);
+    if (persistent_count >= INT_MAX || persistent_count >= max_token_sources ||
+        (Observe && static_cast<std::size_t>(persistent_count) >= max_sources))
+      fail("resource", "token_range", "augmented ghost source exceeds native token range");
+    const int ghost_id = static_cast<int>(persistent_count);
+    const int source_count = ghost_id + 1;
+    std::size_t batch_observer_bytes = 0;
+    auto charge_batch = [&](std::size_t count, std::size_t unit) {
+      if (count > (max_observer_storage_bytes - batch_observer_bytes) / unit)
+        fail("resource", "batch_observer", "complete selected-ghost batch exceeds 64 MiB witness budget");
+      batch_observer_bytes += count * unit;
+    };
+    if constexpr (Observe) {
+      const std::size_t hx = periodic[0] ? 2 * std::size_t(blocks[0]) + 1 : blocks[0];
+      const std::size_t hy = periodic[1] ? 2 * std::size_t(blocks[1]) + 1 : blocks[1];
+      const std::size_t extra = sizeof(unsigned int) * hx * hy +
+          sizeof(int) * 2 * (2 + hx + hy) + sizeof(double) * 16 * 64;
+      if (extra > max_observer_storage_bytes)
+        fail("resource", "observer_storage", "additional selected-cell observer storage exceeds budget");
+      charge_batch(1, extra);
+    }
+    if constexpr (EmitPacket) {
+      // All m augmented snapshots will remain live in the returned packet
+      // list.  Charge their complete family before constructing any query.
+      const std::size_t m = static_cast<std::size_t>(queries.shape(0));
+      charge_batch(m, ghost_packet_bytes);
+      charge_batch(m, static_cast<std::size_t>(source_count) *
+                          ghost_inserted_row_bytes);
+    }
+
+    auto p = points.unchecked<2>();
+    auto id = ids.unchecked<1>();
+    auto q = queries.unchecked<2>();
+    py::list cells, packets;
+    std::size_t total_occurrences = 0;
+    for (py::ssize_t qi = 0; qi < queries.shape(0); ++qi) {
+      try {
+      using Container = std::conditional_t<Observe, ObservedContainer<Base>, Base>;
+      std::unique_ptr<Container> storage;
+      if constexpr (Observe)
+        storage = std::make_unique<Container>(bounds, blocks, periodic, init_mem);
+      else
+        storage = std::make_unique<Container>(
+            bounds[0][0], bounds[0][1], bounds[1][0], bounds[1][1],
+            blocks[0], blocks[1], periodic[0], periodic[1], init_mem);
+      auto& con = *storage;
+      if constexpr (Observe) con.state.count = source_count;
+      std::vector<Insertion> replay(static_cast<std::size_t>(source_count));
+      for (py::ssize_t k = 0; k < persistent_count; ++k) {
+        const double radius = Power ? *radii.data(k) : 0;
+        replay[id(k)] = replay_insertion(con, points.data(k), radius);
+        if constexpr (Power) con.put(id(k), p(k, 0), p(k, 1), radius);
+        else con.put(id(k), p(k, 0), p(k, 1));
+      }
+      const double radius = Power ? *ghost_radii.data(qi) : 0;
+      replay[ghost_id] = replay_insertion(con, queries.data(qi), radius);
+      if constexpr (Power) con.put(ghost_id, q(qi, 0), q(qi, 1), radius);
+      else con.put(ghost_id, q(qi, 0), q(qi, 1));
+
+      // This check precedes native deletion/hidden-cell interpretation and
+      // includes the selected ghost, even when no public geometry is asked for.
+      require_population(con, source_count);
+      py::list inserted;
+      int ghost_block = -1, ghost_slot = -1;
+      for (int block = 0; block < con.nxy; ++block) {
+        for (int slot = 0; slot < con.co[block]; ++slot) {
+          const int pid = con.id[block][slot];
+          const auto& expected = replay[pid];
+          const double* actual = con.p[block] + con.ps * slot;
+          if (expected.block != block || !same_bits(expected.point[0], actual[0]) ||
+              !same_bits(expected.point[1], actual[1]) ||
+              (Power && !same_bits(expected.radius, actual[2])))
+            fail("insertion", "storage", "augmented actual storage disagrees with source replay");
+          if (pid == ghost_id) { ghost_block = block; ghost_slot = slot; }
+          if constexpr (EmitPacket) {
+            py::dict row;
+            row["id"] = pid;
+            row["point"] = py::make_tuple(actual[0], actual[1]);
+            row["radius"] = Power ? actual[2] : 0.0;
+            row["h"] = expected.h;
+            row["block"] = block;
+            row["slot"] = slot;
+            inserted.append(row);
+          }
+        }
+      }
+      if (ghost_block < 0 || ghost_slot < 0)
+        fail("insertion", "omitted", "selected ghost was not stored");
+      const double* ghost = con.p[ghost_block] + con.ps * ghost_slot;
+      const double gx = ghost[0], gy = ghost[1];
+      using Cell = std::conditional_t<Observe, ObservedCell, voronoicell_neighbor_2d>;
+      std::unique_ptr<Cell> cell_storage;
+      if constexpr (Observe) cell_storage = std::make_unique<ObservedCell>(con.state);
+      else cell_storage = std::make_unique<voronoicell_neighbor_2d>();
+      auto& cell = *cell_storage;
+      bool selected = false, present = false;
+      py::dict source, result;
+      c_loop_all_2d loop(con);
+      if (loop.start()) do {
+        if (loop.pid() != ghost_id) continue;
+        if (selected || loop.ij != ghost_block || loop.q != ghost_slot)
+          fail("provenance", "source", "selected ghost loop locator disagrees with storage");
+        selected = true;
+        require_selector(con, gx, gy, loop.i, loop.j);
+        if constexpr (Observe)
+          present = con.producer.compute_cell(static_cast<ObservedCell&>(cell),
+                                              loop.ij, loop.q, loop.i, loop.j);
+        else present = con.compute_cell(cell, loop);
+        source["id"] = ghost_id;
+        source["present"] = present;
+        py::list local2, next, origins;
+        if (present) {
+          if constexpr (EmitPacket) {
+            const std::size_t edges = static_cast<std::size_t>(cell.p);
+            if (edges > max_occurrences - total_occurrences)
+              fail("resource", "witness_occurrences", "complete ghost occurrence budget exceeded");
+            total_occurrences += edges;
+            charge_batch(edges, ghost_occurrence_bytes);
+            validate_topology(cell);
+            if constexpr (Observe) {
+              if (con.state.source != ghost_id || con.state.source_block != ghost_block ||
+                  con.state.source_slot != ghost_slot)
+                fail("provenance", "source", "final ghost cell is not associated with its stored source");
+            }
+            for (int slot = 0; slot < cell.p; ++slot) {
+              local2.append(py::make_tuple(cell.pts[2 * slot], cell.pts[2 * slot + 1]));
+              next.append(cell.ed[2 * slot]);
+              if constexpr (Observe) {
+                const int token = cell.ne[slot];
+                const int owner = decoded_owner(token, source_count);
+                py::dict origin;
+                origin["source"] = ghost_id;
+                origin["slot"] = slot;
+                origin["next"] = cell.ed[2 * slot];
+                if (token <= 4) {
+                  origin["kind"] = "initialization";
+                  origin["side"] = owner;
+                } else {
+                  const int image = (token - 5) % 9;
+                  const int sx = image / 3 - 1, sy = image % 3 - 1;
+                  if ((!periodic[0] && sx) || (!periodic[1] && sy) ||
+                      (owner == ghost_id && sx == 0 && sy == 0))
+                    fail("provenance", "image", "selected ghost token has invalid self/image coefficient");
+                  origin["kind"] = "particle";
+                  origin["owner"] = owner;
+                  origin["sigma"] = py::make_tuple(sx, sy);
+                }
+                origins.append(origin);
+              }
+            }
+          }
+          result = serialize_cell(cell, -1, gx, gy, opts);
+          result["empty"] = false;
+        } else {
+          result["id"] = -1;
+          result["area"] = 0.0;
+          result["site"] = py::cast(std::vector<double>{gx, gy});
+          result["empty"] = true;
+          if (std::get<0>(opts)) result["vertices"] = py::list();
+          if (std::get<1>(opts)) result["adjacency"] = py::list();
+          if (std::get<2>(opts)) result["edges"] = py::list();
+        }
+        source["local2"] = local2;
+        source["next"] = next;
+        source["origins"] = origins;
+      } while (loop.inc());
+      if (!selected)
+        fail("insertion", "selector", "verified selected ghost is absent from native loop");
+      result["query_index"] = qi;
+      cells.append(result);
+      if constexpr (EmitPacket) {
+        py::dict packet;
+        packet["profile"] = profile();
+        packet["bounds"] = bounds;
+        packet["periods"] = py::make_tuple(con.bx - con.ax, con.by - con.ay);
+        packet["periodic"] = periodic;
+        packet["inserted"] = inserted;
+        py::list sources;
+        sources.append(source);
+        packet["sources"] = sources;
+        packet["ghost_internal_id"] = ghost_id;
+        packet["query_index"] = qi;
+        packets.append(packet);
+      }
+      } catch (const std::bad_alloc&) {
+        fail_ghost_query(qi, "planar_certification:resource:allocation: augmented ghost allocation failed");
+      } catch (const std::runtime_error& error) {
+        fail_ghost_query(qi, error.what());
+      }
+    }
+    return py::make_tuple(cells, packets);
+  } catch (const std::bad_alloc&) {
+    fail("resource", "allocation", "augmented planar ghost allocation failed");
+  }
+}
+
+template<bool Observe, bool VerifyProfile, bool EmitPacket>
+void bind_ghost(py::module_& m, const char* standard, const char* power) {
+  m.def(standard, [](Points p, IDs ids, Bounds b, Blocks n, Mask mask,
+                     int mem, Options opts, Points queries) -> py::object {
+    py::tuple selected = run_ghost<container_2d, false, Observe, VerifyProfile, EmitPacket>(
+        p, ids, Points(), b, n, mask, mem, opts, queries, Points());
+    if constexpr (EmitPacket) return selected;
+    else return selected[0];
+  }, py::arg("points"), py::arg("ids"), py::arg("bounds"), py::arg("blocks"),
+     py::arg("periodic") = Mask{false, false}, py::arg("init_mem"),
+     py::arg("opts"), py::arg("queries"));
+  m.def(power, [](Points p, IDs ids, Points r, Bounds b, Blocks n, Mask mask,
+                  int mem, Options opts, Points queries, Points ghost_radii) -> py::object {
+    py::tuple selected = run_ghost<container_poly_2d, true, Observe, VerifyProfile, EmitPacket>(
+        p, ids, r, b, n, mask, mem, opts, queries, ghost_radii);
+    if constexpr (EmitPacket) return selected;
+    else return selected[0];
+  }, py::arg("points"), py::arg("ids"), py::arg("radii"), py::arg("bounds"),
+     py::arg("blocks"), py::arg("periodic") = Mask{false, false},
+     py::arg("init_mem"), py::arg("opts"),
+     py::arg("queries"), py::arg("ghost_radii"));
+}
 }  // namespace
 
 void bind(pybind11::module_& module) {
   module.def("_planar_witness_profile", &profile);
   bind_compute<true>(module, "_compute_box_standard_witness", "_compute_box_power_witness");
+  bind_ghost<true, true, true>(module, "_ghost_box_standard_witness", "_ghost_box_power_witness");
+  bind_ghost<false, false, false>(module, "ghost_box_standard", "ghost_box_power");
 #ifdef PYVORO2_PLANAR_QUALIFICATION
   bind_compute<false, false>(module, "_planar_stock_standard", "_planar_stock_power");
   bind_compute<true, false>(module, "_planar_candidate_standard", "_planar_candidate_power");
+  bind_ghost<false, false, true>(module, "_planar_ghost_stock_standard", "_planar_ghost_stock_power");
+  bind_ghost<true, false, true>(module, "_planar_ghost_candidate_standard", "_planar_ghost_candidate_power");
 #endif
 }
 }  // namespace pyvoro2::planar_witness

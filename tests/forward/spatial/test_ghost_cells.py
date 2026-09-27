@@ -189,7 +189,7 @@ def _independent_cubic_ghost_volume(power):
 
 
 def _assert_physical_ghost_equal(actual, expected):
-    """Compare physical geometry without asserting future WP7 neighbor IDs."""
+    """Compare requested native geometry independently of semantic labels."""
     assert actual['empty'] == expected['empty']
     assert actual['volume'] == pytest.approx(
         expected['volume'], abs=1e-12, rel=1e-12,
@@ -208,11 +208,13 @@ def _assert_physical_ghost_equal(actual, expected):
     np.testing.assert_array_equal(matches.sum(axis=0), np.ones(len(right)))
     np.testing.assert_array_equal(matches.sum(axis=1), np.ones(len(left)))
     vertex_map = np.argmax(matches, axis=1) if len(left) else []
-    mapped_faces = sorted(tuple(sorted(vertex_map[v] for v in f['vertices']))
-                          for f in actual['faces'])
-    expected_faces = sorted(tuple(sorted(f['vertices']))
-                            for f in expected['faces'])
-    assert mapped_faces == expected_faces
+    assert ('faces' in actual) == ('faces' in expected)
+    if 'faces' in expected:
+        mapped_faces = sorted(tuple(sorted(vertex_map[v] for v in f['vertices']))
+                              for f in actual['faces'])
+        expected_faces = sorted(tuple(sorted(f['vertices']))
+                                for f in expected['faces'])
+        assert mapped_faces == expected_faces
     mapped_edges = sorted((int(vertex_map[i]), int(vertex_map[j]))
                           for i, row in enumerate(actual['adjacency'])
                           for j in row)
@@ -228,9 +230,15 @@ def _assert_physical_ghost_equal(actual, expected):
 def test_periodic_ghost_batch_analytic_volume(basis, geometry, family):
     points = np.array([[0.125, 0.125, 0.125]])
     queries = np.array([[0.375, 0.125, 0.125], [0.875, 0.125, 0.125]])
+    exact_microfacets = (family in ('standard', 'equal-weights')
+                         and not np.array_equal(basis, np.eye(3)))
     options = dict(domain=pyvoro2.PeriodicCell(basis), blocks=(1, 1, 1),
-                   return_vertices=geometry, return_faces=geometry,
+                   return_vertices=geometry,
+                   return_faces=geometry and not exact_microfacets,
                    return_adjacency=geometry)
+    # This is the native geometry/volume invariant. Triclinic frame rounding
+    # can add exact S microfacets omitted by N; the independent WP7 oracle tests
+    # require boundary-bearing calls to refuse those cases.
     if family == 'standard':
         expected_volume = 0.5
     else:
@@ -277,7 +285,10 @@ def test_periodic_ghost_permutation_matches_independent_geometry(basis, mode, bl
     weights = np.array([0., .015625, .03125])
     ghost_weights = np.array([-.03125, .046875, .015625])
     radii = _common_radii(weights, ghost_weights)
-    options = dict(domain=pyvoro2.PeriodicCell(basis), blocks=blocks, mode=mode)
+    options = dict(domain=pyvoro2.PeriodicCell(basis), blocks=blocks, mode=mode,
+                   return_faces=np.array_equal(basis, np.eye(3)))
+    # Keep this native geometry parity test independent of S eligibility.
+    # Raw native face parity remains covered by the direct isolation test below.
     # Hold the complete batch's explicit radii fixed in every reference call.
     # This also exercises a ghost (not a persistent site) setting the gauge.
     singles = []
@@ -357,7 +368,7 @@ def test_native_periodic_ghost_batch_isolation(mode):
     queries = np.array([[.375, .125, .125], [.875, .125, .125], [.625, .125, .125]])
     options = dict(points=points, ids=np.array([0], dtype=np.int32),
                    cell_params=(1., 0., 1., 0., 0., 1.), blocks=(1, 1, 1),
-                   init_mem=8, opts=(False, False, False))
+                   init_mem=8, opts=(True, True, True))
     if mode == 'power':
         call = _core.ghost_periodic_power
         options.update(radii=np.array([0.]))

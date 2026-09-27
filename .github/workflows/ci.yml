@@ -94,10 +94,13 @@ jobs:
               tests/forward/spatial/test_duplicate_check.py \
               tests/forward/spatial/test_ghost_cells.py \
               tests/forward/spatial/test_native_witness.py \
+              tests/forward/spatial/test_wp7_native_selected.py \
               tests/tooling/test_native_witness_cpp.py \
               tests/forward/planar/test_api_dispatch.py \
               tests/forward/planar/test_wp6_native.py \
-              tests/forward/planar/test_wp6_profile_refusal.py
+              tests/forward/planar/test_wp6_profile_refusal.py \
+              tests/forward/planar/test_wp7_native.py \
+              tests/forward/test_wp7_oracle.py
 
   # This is the mandatory full suite. A changed compiler/target profile fails
   # the installed gate and requires qualification; it never turns into a skip.
@@ -147,6 +150,11 @@ jobs:
             --qualification-module "$PLANAR_QUALIFIED" \
             --source-manifest build/wp6-qualification/planar-source-closure.txt \
             --output wp6-qualification.json
+          python tools/native/check_ghost_planar.py \
+            --module "$PLANAR_QUALIFIED" \
+            --production-module "$PLANAR_INSTALLED" \
+            --source-manifest build/wp6-qualification/planar-source-closure.txt \
+            --output wp7-planar-qualification.json
       - name: Run full installed-package suite including seeded fuzz
         run: python -m pytest -q
       - name: Preserve compiled planar profile and qualification evidence
@@ -157,12 +165,13 @@ jobs:
           path: |
             installed-package-profile.txt
             wp6-qualification.json
+            wp7-planar-qualification.json
             build/wp6-qualification/planar-source-closure.txt
             build/wp6-qualification/planar-build-profile.txt
             build/wp6-qualification/compile_commands.json
 
-  # These builds retain 3D and pure-Python coverage. Ordinary planar provenance
-  # is explicitly unsupported; every mask/input mode must refuse structurally.
+  # These builds retain ordinary 3D, safe geometry-only ghosts and pure-Python
+  # coverage. Both ghost certificates and ordinary planar provenance refuse.
   test-other-platforms:
     strategy:
       fail-fast: false
@@ -181,15 +190,19 @@ jobs:
         run: python -m pip install -U pip cmake ninja
       - name: Build and install package
         run: python -m pip install -v .[test]
-      - name: Check installed 3D/algebra workflows and explicit planar refusal
+      - name: Check ordinary 3D/algebra and explicit ghost/planar refusal
         shell: bash
         run: |
-          python tools/check_installed_package.py --require-scipy --planar-refusal \
+          python tools/check_installed_package.py \
+            --require-scipy --planar-refusal --ghost-refusal \
             | tee installed-package-profile.txt
-      - name: Run spatial, pure-Python, tooling and planar refusal tests
+      - name: Run ordinary spatial, geometry-only, tooling and refusal tests
         run: >-
           python -m pytest -q
           tests/forward/spatial
+          --ignore=tests/forward/spatial/test_ghost_cells.py
+          --ignore=tests/forward/spatial/test_wp7_spatial_certificate.py
+          -k "not ghost_reflection_transport"
           tests/forward/planar/test_wp6_ideal.py
           tests/forward/planar/test_wp6_consumers.py
           tests/forward/planar/test_wp6_profile_refusal.py

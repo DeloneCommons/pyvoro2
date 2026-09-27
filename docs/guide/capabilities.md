@@ -56,10 +56,15 @@ The current manylinux, Windows and macOS release-wheel cohorts also test
 explicit ordinary-planar refusal. Ordinary planar computation is admitted on
 the separately built Linux GCC 13.3 source wheel.
 
-Ordinary planar reconstruction search, validation, repair and matching-tolerance
-keywords are removed. WP5's corresponding 3D controls remain validated no-ops
-until WP9. Planar ghost reconstruction is still a separate legacy path pending
-WP7, and unified query/owner/ghost metadata remains WP8 work. Separator
+Ordinary planar and planar ghost reconstruction search, validation, repair and
+matching-tolerance keywords are removed by WP6 and WP7 respectively. WP5's
+corresponding 3D controls remain validated no-ops until WP9. Ghost boundary
+references use same-computation native provenance plus complete exact
+public-semantic positivity/coverage; their initial qualified certificate
+profile is Linux x86_64 GCC 13.3 under strict binary64 settings. Other
+certificate-bearing cohorts refuse pending qualification; safe geometry-only
+ghost calls have separate availability. Unified query/owner/ghost metadata
+remains WP8 work. WP7 independent exact-head acceptance remains pending. Separator
 `image_search` stays a performance seed, never a correctness radius. These
 boundaries are recorded in the [active plan](../development/plans/v0.9.md).
 
@@ -105,9 +110,9 @@ question is whether pyvoro2 should require functionally unmodified upstream
 Voro++ source or permit a bounded, explicitly maintained downstream patchset
 without becoming an independently evolving backend fork.
 
-That policy is intentionally deferred until WP7 establishes the minimum native
-change required for correct ghost-boundary semantics. A clean binding-only fix
-does not settle it. If a vendored Voro++ source change is actually needed, the
+That policy remains open while WP7 qualifies a binding-only initialized
+selected-cell route. A clean binding-only fix does not settle it. If a
+vendored Voro++ source change is actually needed, the
 minimum concrete patch is reviewed under D9 before acceptance. The unresolved
 choice is about the scope and maintenance burden of downstream divergence, not
 about declaring every long-lived patch a functional fork merely because it is

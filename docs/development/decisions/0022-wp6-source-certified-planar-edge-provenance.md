@@ -1,6 +1,6 @@
 # 0022 — WP6 source-certified ordinary planar edge provenance
 
-- **Status:** Accepted contract; branch implementation present, independent production acceptance pending
+- **Status:** Accepted; implementation independently accepted and merged 2026-09-26
 - **Date:** 2026-09-24
 - **Related issues:** [#74 — WP6](https://github.com/DeloneCommons/pyvoro2/issues/74),
   [#47 — v0.9 implementation](https://github.com/DeloneCommons/pyvoro2/issues/47)
@@ -41,9 +41,10 @@ These identities name reviewed bytes, not an unverified duplicate filename.
 The prerequisite compared 92 fixtures under GCC 13.3/CPython 3.12 and an
 independent GCC 14.2/CPython 3.13 rebuild, both Linux x86_64. An independent
 rational interval oracle checked 10,178 labeled contacts in 402 exact cells.
-This is prerequisite evidence, not qualification of the permanent production
-witness or a cross-platform support claim. Production acceptance, #74 closure,
-WP6 completion and Checkpoint B acceptance remain pending.
+This prerequisite evidence alone did not qualify the permanent production
+witness or other platforms. The subsequent independent production acceptance
+and squash merge at `1a6ae56ece1923530dcb0798b5710704f0f08697` complete
+WP6; Checkpoint B acceptance remains pending.
 
 ## Decision
 
@@ -338,8 +339,9 @@ Remove `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, and
 `edge_shift_tol` from ordinary `pyvoro2.planar.compute` in WP6, without aliases,
 ignored kwargs or no-op compatibility. Separator `image_search`, unrelated
 diagnostic/normalization tolerances and valid resource/performance controls
-remain. Planar ghost versions remain legacy WP7-owned controls; residual global
-cleanup remains WP9-owned.
+remain. Planar ghost versions are removed by the separate WP7 contract in
+[ADR 0023](0023-wp7-certified-ghost-boundaries.md); residual global cleanup
+remains WP9-owned.
 
 ## Consequences and alternatives
 
@@ -356,7 +358,7 @@ Keeping the full characterization journal is unnecessary: the compact witness
 must retain the proof obligations, not every debugging trace. Reusing WP5's
 3D reverse-plane proof or resource values by analogy is also rejected.
 
-Independent production review must qualify the optimized witness, actual
-source/build profiles, packed artifacts and narrow consumers. Prerequisite
-closure alone does not mark this implementation or any later release gate
-accepted.
+The subsequent independent production review accepted the optimized witness,
+actual source/build profiles, packed artifacts and narrow consumers on the
+merged WP6 implementation. Its acceptance does not qualify a changed WP7
+binding source closure or any later release gate.

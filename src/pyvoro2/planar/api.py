@@ -29,10 +29,8 @@ from .._internal.power_input import (
 )
 from .._internal.validation import (
     CPP_INT_MAX,
-    PY_SSIZE_T_MAX,
     require_bool,
     require_nonnegative_finite_real,
-    require_nonnegative_index,
     require_optional_bool,
     require_optional_nonnegative_finite_real,
     require_positive_finite_real,
@@ -41,7 +39,6 @@ from .._internal.validation import (
 )
 from ..result import TessellationResult, _build_tessellation_result
 from .._internal.planar.domain_geometry import geometry2d
-from .._internal.planar.edge_shifts import _add_periodic_edge_shifts_inplace
 from .diagnostics import (
     TessellationDiagnostics,
     TessellationError,
@@ -918,11 +915,7 @@ def ghost_cells(
     return_adjacency: bool = True,
     return_edges: bool = True,
     return_edge_shifts: bool = False,
-    edge_shift_search: int = 2,
     include_empty: bool = True,
-    validate_edge_shifts: bool = True,
-    repair_edge_shifts: bool = False,
-    edge_shift_tol: float | None = None,
 ) -> list[dict[str, Any]]:
     """Compute ghost Voronoi/Laguerre cells at planar query points.
 
@@ -933,6 +926,14 @@ def ghost_cells(
     accepts exactly one complete ``weights``/``ghost_weights`` or
     ``radii``/``ghost_radii`` family. Persistent and ghost weights share one
     common backend-radius conversion gauge.
+    Every requested edge has a certified ``boundary_reference`` identifying a
+    persistent generator, a periodic ghost-self image or a real wall. A proved
+    internally collapsed occurrence has ``boundary_reference=None``. Hard
+    certification failures are ValueError-compatible and expose ``code``,
+    ``stage``, ``query_index`` and bounded ``details``. Source and exact semantic
+    certification do not require public vertices or adjacency. ``site`` is the
+    actual stored native ghost coordinate. ``return_edge_shifts`` adds the
+    matching legacy ``adjacent_shift`` view to eligible periodic references.
     Both persistent sites and each temporary ghost generator use half-open
     containment and mandatory duplicate safety. Periodic axes are remapped;
     an outside non-periodic ghost query raises instead of producing an empty
@@ -950,11 +951,6 @@ def ghost_cells(
             max_pairs=duplicate_max_pairs,
         )
     )
-    edge_shift_search_value = require_nonnegative_index(
-        edge_shift_search,
-        name='edge_shift_search',
-        maximum=PY_SSIZE_T_MAX,
-    )
     return_vertices_value = require_bool(
         return_vertices,
         name='return_vertices',
@@ -969,20 +965,6 @@ def ghost_cells(
         name='return_edge_shifts',
     )
     include_empty_value = require_bool(include_empty, name='include_empty')
-    validate_edge_shifts_value = require_bool(
-        validate_edge_shifts,
-        name='validate_edge_shifts',
-    )
-    repair_edge_shifts_value = require_bool(
-        repair_edge_shifts,
-        name='repair_edge_shifts',
-    )
-    edge_shift_tol_value = require_optional_nonnegative_finite_real(
-        edge_shift_tol,
-        name='edge_shift_tol',
-    )
-    if repair_edge_shifts_value:
-        validate_edge_shifts_value = True
     init_mem_value = require_positive_index(
         init_mem,
         name='init_mem',
@@ -1038,7 +1020,6 @@ def ghost_cells(
     pts_native = prepared.native_points
     q_native = temporary.native_points
     ids_internal = prepared.internal_ids
-    ids_user = prepared.external_ids if ids is not None else None
     rr = prepared.backend_radii
     gr = temporary.backend_radii
     _warn_if_scale_suspicious(pts=pts, domain=domain)
@@ -1056,8 +1037,6 @@ def ghost_cells(
             )
         if not return_edges_value:
             raise ValueError('return_edge_shifts requires return_edges=True')
-        if not return_vertices_value:
-            raise ValueError('return_edge_shifts requires return_vertices=True')
 
     periodic_flags = geom.periodic_axes
     opts = (
@@ -1066,54 +1045,43 @@ def ghost_cells(
         return_edges_value,
     )
 
+    from .._internal.ghost import (GhostFailure, from_native_failure,
+                                   validate_materialized_cells)
+
     core = _require_core2d()
-    if mode == 'standard':
-        cells = core.ghost_box_standard(
-            pts_native,
-            ids_internal,
-            bounds,
-            (nx, ny),
-            periodic_flags,
-            init_mem_value,
-            opts,
-            q_native,
-        )
-    elif mode == 'power':
-        assert rr is not None
-        assert gr is not None
-        cells = core.ghost_box_power(
-            pts_native,
-            ids_internal,
-            rr,
-            bounds,
-            (nx, ny),
-            periodic_flags,
-            init_mem_value,
-            opts,
-            q_native,
-            gr,
-        )
-    else:
-        raise ValueError(f'unknown mode: {mode}')
+    args = [pts_native, ids_internal]
+    if mode == 'power':
+        args.append(rr)
+    args.extend([bounds, (nx, ny), periodic_flags, init_mem_value, opts, q_native])
+    if mode == 'power':
+        args.append(gr)
+    try:
+        if return_edges_value:
+            from .._internal.planar.ghost_certificate import certify_ghost_packets
 
-    if return_edge_shifts_value:
-        _add_periodic_edge_shifts_inplace(
-            cells,
-            lattice_vectors=geom.lattice_vectors_cart,
-            periodic_mask=geom.periodic_axes,
-            mode=mode,
-            radii=rr,
-            site_positions=prepared.primary_points_cart,
-            ghost_radii=gr if mode == 'power' else None,
-            search=edge_shift_search_value,
-            tol=edge_shift_tol_value,
-            validate=validate_edge_shifts_value,
-            repair=repair_edge_shifts_value,
-        )
+            name = f'_ghost_box_{mode}_witness'
+            if not hasattr(core, name):
+                raise GhostFailure('GHOST_NATIVE_UNSUPPORTED',
+                                   'Installed native module lacks the ghost witness',
+                                   stage='native', dimension=2)
+            native, packets = getattr(core, name)(*args)
+            cells = certify_ghost_packets(
+                native, packets, prepared=prepared, temporary=temporary,
+                power_input=power_input, domain=domain,
+                return_edge_shifts=return_edge_shifts_value,
+            )
+        else:
+            cells = getattr(core, f'ghost_box_{mode}')(*args)
+    except GhostFailure:
+        raise
+    except RuntimeError as exc:
+        raise from_native_failure(exc, 2, None, 'native') from exc
+    except ValueError as exc:
+        if not str(exc).startswith('ghost_native:'):
+            raise
+        raise from_native_failure(exc, 2, None, 'native') from exc
 
+    validate_materialized_cells(cells, 2)
     if not include_empty_value:
         cells = [cell for cell in cells if not bool(cell.get('empty', False))]
-
-    if ids_user is not None:
-        remap_ids_inplace(cells, ids_user, boundary_key='edges')
     return cells

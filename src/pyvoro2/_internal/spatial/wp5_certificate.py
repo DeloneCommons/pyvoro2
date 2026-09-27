@@ -194,22 +194,29 @@ class FaceCertificate:
         return result
 
 
-def _check_packet(packet, n):
-    """Validate packet association, including every final directed edge token."""
+def _check_packet(packet, n, *, selected_sources=None):
+    """Validate all sites and selected cells, including directed edge tokens."""
     try:
-        _check_packet_fields(packet, n)
+        _check_packet_fields(packet, n, selected_sources=selected_sources)
     except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
         raise WP5Failure('WP5_SOURCE_PROFILE_MISMATCH',
                          f'Malformed native witness packet: {exc}') from exc
 
 
-def _check_packet_fields(packet, n):
-    if len(packet.get('sites', ())) != n or len(packet.get('cells', ())) != n:
+def _check_packet_fields(packet, n, *, selected_sources=None):
+    selected = (set(range(n)) if selected_sources is None
+                else set(selected_sources))
+    if (selected_sources is not None and not selected
+            or not selected <= set(range(n))):
         raise WP5Failure('WP5_SOURCE_PROFILE_MISMATCH',
-                         'Witness does not cover every persistent insertion')
-    if {c['id'] for c in packet['cells']} != set(range(n)):
+                         'Invalid selected source population')
+    if (len(packet.get('sites', ())) != n
+            or len(packet.get('cells', ())) != len(selected)):
         raise WP5Failure('WP5_SOURCE_PROFILE_MISMATCH',
-                         'Witness persistent cell identities disagree')
+                         'Witness does not cover insertion/selected source count')
+    if {c['id'] for c in packet['cells']} != selected:
+        raise WP5Failure('WP5_SOURCE_PROFILE_MISMATCH',
+                         'Witness selected cell identities disagree')
     for cell in packet['cells']:
         i = cell['id']
         parity = cell.get('noninterference', {})

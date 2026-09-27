@@ -215,23 +215,22 @@ def test_diagnostic_expected_ids_reject_before_cell_analysis(
 
 
 @pytest.mark.parametrize('value', [0, np.int32(1), np.uint64(2)])
-def test_ghost_search_counts_accept_exact_integers(value: object) -> None:
-    result = planar.ghost_cells(
-        np.array([[0.25, 0.5], [1.75, 0.5]]),
-        np.array([[1.0, 0.5]]),
-        domain=planar.Box(((0, 2), (0, 1))),
-        edge_shift_search=value,
-    )
-    assert len(result) == 1
-    assert result[0]['query_index'] == 0
+def test_removed_ghost_search_rejects_former_exact_integers(value: object) -> None:
+    with pytest.raises(TypeError, match='edge_shift_search'):
+        planar.ghost_cells(
+            np.array([[0.25, 0.5], [1.75, 0.5]]),
+            np.array([[1.0, 0.5]]),
+            domain=planar.Box(((0, 2), (0, 1))),
+            edge_shift_search=value,
+        )
 
 
 @pytest.mark.parametrize(
     'invalid',
     [True, np.bool_(False), 1.0, 1.5, '1', 1 + 0j, np.array(1), -1],
 )
-def test_ghost_search_counts_reject_non_indices(invalid: object) -> None:
-    with pytest.raises(ValueError, match='edge_shift_search'):
+def test_removed_ghost_search_rejects_all_other_values(invalid: object) -> None:
+    with pytest.raises(TypeError, match='edge_shift_search'):
         planar.ghost_cells(
             np.array([[0.25, 0.5], [1.75, 0.5]]),
             np.array([[1.0, 0.5]]),

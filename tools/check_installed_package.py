@@ -19,11 +19,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_LICENSE_FILES = ('LICENSE', 'COPYING', 'NOTICE.md', 'LICENSE.voro++')
 INTERNAL_HELPER_MODULES = (
     'pyvoro2._internal.cell_output',
+    'pyvoro2._internal.ghost',
     'pyvoro2._internal.inputs',
     'pyvoro2._internal.power_input',
     'pyvoro2._internal.weight_transforms',
     'pyvoro2._internal.spatial.domain_geometry',
     'pyvoro2._internal.spatial.domain_utils',
+    'pyvoro2._internal.spatial.ghost_certificate',
     'pyvoro2._internal.spatial.wp5_binary64',
     'pyvoro2._internal.spatial.wp5_certificate',
     'pyvoro2._internal.spatial.wp5_common',
@@ -32,6 +34,7 @@ INTERNAL_HELPER_MODULES = (
     'pyvoro2._internal.spatial.wp5_producer',
     'pyvoro2._internal.planar.domain_geometry',
     'pyvoro2._internal.planar.edge_shifts',
+    'pyvoro2._internal.planar.ghost_certificate',
     'pyvoro2._internal.planar.wp6_profile',
     'pyvoro2._internal.planar.wp6_ideal',
     'pyvoro2._internal.planar.wp6_certificate',
@@ -196,7 +199,11 @@ def _check_removed_compatibility() -> None:
             raise InstalledPackageCheckError(
                 f'the removed ordinary planar {name} parameter is still accepted'
             )
-    print('removed v0.7 compatibility and ordinary planar reconstruction '
+        if name in inspect.signature(pv2.ghost_cells).parameters:
+            raise InstalledPackageCheckError(
+                f'the removed planar ghost {name} parameter is still accepted'
+            )
+    print('removed v0.7 compatibility and planar reconstruction '
           'surfaces: absent')
 
 
@@ -332,11 +339,157 @@ def _check_planar_refusals(core: ModuleType, planar: ModuleType) -> None:
     print('planar refusal workflows: 12 native and 12 public cohort refusals')
 
 
+def _ghost_case(dimension: int, mask: tuple[bool, ...], family: str,
+                *, boundaries: bool = True, queries=None, points=None):
+    """One public selected-ghost call with dimension-specific naming."""
+    import numpy as np
+    import pyvoro2 as spatial
+    import pyvoro2.planar as planar
+
+    module = planar if dimension == 2 else spatial
+    bounds = ((0., 1.),) * dimension
+    domain = (module.RectangularCell(bounds, periodic=mask)
+              if dimension == 2 and any(mask) else
+              module.OrthorhombicCell(bounds, periodic=mask)
+              if dimension == 3 and any(mask) else module.Box(bounds))
+    sites = np.asarray([] if points is None else points, dtype=float).reshape(
+        -1, dimension)
+    selected = np.asarray([(.5,) * dimension] if queries is None else queries,
+                          dtype=float).reshape(-1, dimension)
+    kwargs = {'return_vertices': False, 'return_adjacency': False,
+              'return_edges' if dimension == 2 else 'return_faces': boundaries}
+    if family == 'weights':
+        kwargs.update(mode='power', weights=[0.] * len(sites), ghost_weights=0.)
+    elif family == 'radii':
+        kwargs.update(mode='power', radii=[0.] * len(sites), ghost_radii=.25)
+    return module.ghost_cells(sites, selected, domain=domain, **kwargs)
+
+
+def _check_ghost_reference(boundary, dimension, mask):
+    """Require complete tagged public identity without leaked temporary IDs."""
+    reference = boundary.get('boundary_reference')
+    if (not isinstance(reference, dict) or set(reference) !=
+            {'kind', 'generator_id', 'shift', 'wall_id'}):
+        raise InstalledPackageCheckError(
+            'installed ghost boundary lacks four-field reference')
+    kind = reference['kind']
+    shift = reference['shift']
+    if kind == 'wall':
+        if (reference['generator_id'] is not None or shift is not None or
+                reference['wall_id'] not in range(-2 * dimension, 0) or
+                boundary.get('adjacent_cell') != reference['wall_id']):
+            raise InstalledPackageCheckError('installed ghost wall identity is invalid')
+        return kind
+    if kind == 'ghost_self':
+        if (reference['generator_id'] is not None or reference['wall_id'] is not None
+                or 'adjacent_cell' in boundary or not isinstance(shift, tuple)
+                or len(shift) != dimension or not any(shift)
+                or any(not mask[axis] and value for axis, value in enumerate(shift))):
+            raise InstalledPackageCheckError('installed ghost-self identity is invalid')
+        return kind
+    if kind == 'generator':
+        if (reference['wall_id'] is not None or
+                boundary.get('adjacent_cell') != reference['generator_id'] or
+                not isinstance(reference['generator_id'], int) or
+                (any(mask) and (not isinstance(shift, tuple) or
+                                len(shift) != dimension)) or
+                (not any(mask) and shift is not None)):
+            raise InstalledPackageCheckError(
+                'installed ghost generator identity is invalid')
+        return kind
+    raise InstalledPackageCheckError(f'unknown installed ghost kind: {kind!r}')
+
+
+def _check_ghost_workflows(*, refusal: bool) -> None:
+    """Exercise qualified references or prove explicit cohort refusal."""
+    import numpy as np
+    from pyvoro2._internal.ghost import GhostFailure
+    from pyvoro2._internal.spatial.ghost_certificate import (
+        _QUALIFIED_GHOST_SOURCE_SHA256,
+    )
+
+    spatial_core = importlib.import_module('pyvoro2._core')
+    query = np.asarray([[.5, .5, .5]])
+    packet, = spatial_core._observe_ghost_box(
+        np.empty((0, 3)), np.empty((0,), dtype=np.int32),
+        ((0., 1.),) * 3, (1, 1, 1), (False, False, False), 1, query,
+    )
+    if (packet['build'].get('ghost_source_sha256') !=
+            _QUALIFIED_GHOST_SOURCE_SHA256):
+        raise InstalledPackageCheckError('installed 3D ghost source is not reviewed')
+    print('spatial ghost native source: reviewed digest ' +
+          _QUALIFIED_GHOST_SOURCE_SHA256)
+
+    masks_checked = 0
+    for dimension in (2, 3):
+        boundary_key = 'edges' if dimension == 2 else 'faces'
+        for mask in itertools.product((False, True), repeat=dimension):
+            for family in ('standard', 'weights', 'radii'):
+                if refusal:
+                    try:
+                        _ghost_case(dimension, mask, family)
+                    except GhostFailure as exc:
+                        if (exc.code != 'GHOST_NATIVE_UNSUPPORTED' or
+                                exc.stage != 'native' or
+                                exc.query_index not in (None, 0) or
+                                not isinstance(exc.details, dict)):
+                            raise InstalledPackageCheckError(
+                                'unsupported ghost certificate lost structured refusal'
+                            ) from exc
+                    else:
+                        raise InstalledPackageCheckError(
+                            'unsupported cohort returned certified ghost boundaries'
+                        )
+                else:
+                    cells = _ghost_case(dimension, mask, family)
+                    if (len(cells) != 1 or cells[0]['id'] != -1 or
+                            cells[0]['query_index'] != 0 or cells[0]['empty'] or
+                            'vertices' in cells[0] or 'adjacency' in cells[0] or
+                            tuple(cells[0]['site']) != (.5,) * dimension or
+                            len(cells[0][boundary_key]) != 2 * dimension):
+                        raise InstalledPackageCheckError(
+                            'installed ghost-only selected cell is incomplete'
+                        )
+                    kinds = {_check_ghost_reference(b, dimension, mask)
+                             for b in cells[0][boundary_key]}
+                    expected = {('ghost_self' if periodic else 'wall')
+                                for periodic in mask}
+                    if kinds != expected:
+                        raise InstalledPackageCheckError(
+                            'installed ghost-only references have wrong kinds'
+                        )
+                masks_checked += 1
+        empty = _ghost_case(dimension, (False,) * dimension, 'standard', queries=[])
+        if empty != []:
+            raise InstalledPackageCheckError('zero-query ghost batch is not empty')
+        geometry = _ghost_case(dimension, (True,) * dimension, 'standard',
+                               boundaries=False)
+        if (len(geometry) != 1 or boundary_key in geometry[0] or
+                geometry[0]['query_index'] != 0 or geometry[0]['empty'] or
+                not np.all(np.isfinite(geometry[0]['site']))):
+            raise InstalledPackageCheckError('geometry-only ghost route is unavailable')
+        if not refusal:
+            points = [[.2] + [.5] * (dimension - 1)]
+            cells = _ghost_case(dimension, (False,) * dimension, 'standard',
+                                points=points)
+            if (len(cells) != 1 or not any(
+                    _check_ghost_reference(b, dimension, (False,) * dimension)
+                    == 'generator' and b['boundary_reference']['generator_id'] == 0
+                    for b in cells[0][boundary_key])):
+                raise InstalledPackageCheckError(
+                    'installed ghost generator reference is absent'
+                )
+    print(f'ghost workflows: {masks_checked} mask/representation cases, '
+          f'{"explicit refusal" if refusal else "certified references"}; '
+          'zero-query and geometry-only routes available')
+
+
 def _run_workflows(
     repository_root: Path,
     *,
     require_scipy: bool,
     planar_refusal: bool = False,
+    ghost_refusal: bool = False,
 ) -> None:
     import numpy as np
     import pyvoro2 as pv
@@ -419,6 +572,7 @@ def _run_workflows(
             raise InstalledPackageCheckError(
                 'the periodic planar workflow did not cover the unit cell'
             )
+    _check_ghost_workflows(refusal=ghost_refusal)
 
     public_weights = np.array([-2.5, 0.25, 4.0])
     backend_radii, representation_shift = pv.weights_to_radii(public_weights)
@@ -520,6 +674,10 @@ def main() -> int:
         '--planar-refusal', action='store_true',
         help='require an unsupported planar cohort and verify explicit refusals',
     )
+    parser.add_argument(
+        '--ghost-refusal', action='store_true',
+        help='require explicit 2D/3D certificate refusal but safe geometry-only calls',
+    )
     scipy_group = parser.add_mutually_exclusive_group(required=True)
     scipy_group.add_argument(
         '--require-scipy',
@@ -538,7 +696,8 @@ def main() -> int:
     _check_removed_compatibility()
     _check_private_helper_layout()
     _run_workflows(args.repo_root, require_scipy=args.require_scipy,
-                   planar_refusal=args.planar_refusal)
+                   planar_refusal=args.planar_refusal,
+                   ghost_refusal=args.ghost_refusal)
     return 0
 
 

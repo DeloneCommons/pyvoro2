@@ -252,11 +252,7 @@ def test_locate_and_ghost_signatures_are_characterized() -> None:
             ('return_adjacency', True),
             ('return_edges', True),
             ('return_edge_shifts', False),
-            ('edge_shift_search', 2),
             ('include_empty', True),
-            ('validate_edge_shifts', True),
-            ('repair_edge_shifts', False),
-            ('edge_shift_tol', None),
         )
     )
 

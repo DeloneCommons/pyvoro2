@@ -108,14 +108,16 @@ def _integers(bounds):
 class Producer:
     """Validate insertion operands, then attribute one occurrence at a time.
 
-    ``removals`` is indexed by dense persistent ID, in exact Python integers.
+    ``removals`` is indexed by dense inserted ID, in exact Python integers.
     It supplements the preparation chart removals already owned by the caller.
+    A selected source scope still replays every inserted site and its storage.
     """
 
     def __init__(self, packet, prepared_native_points, ids, radii=None,
-                 budget=None):
+                 budget=None, selected_sources=None):
         self.packet = packet
         self.budget = budget if budget is not None else WP5Budget()
+        self.selected_sources = selected_sources
         try:
             self._initialize(prepared_native_points, ids, radii)
         except (KeyError, TypeError, ValueError, IndexError, OverflowError,
@@ -232,8 +234,12 @@ class Producer:
                     parity[key] is not True
                     for key in ('geometry', 'topology', 'owners', 'volume')):
                 raise ValueError('native ordinary/observed parity differs')
-        if sorted(cell_ids) != list(range(n)):
-            raise ValueError('native cell records do not cover persistent IDs')
+        expected = (set(range(n)) if self.selected_sources is None
+                    else set(self.selected_sources))
+        if (self.selected_sources is not None and not expected
+                or not expected <= set(range(n))) or (
+                len(cell_ids) != len(expected) or set(cell_ids) != expected):
+            raise ValueError('native cell records do not cover selected sources')
 
     def _block_index(self, block):
         nx, ny, _ = self.blocks

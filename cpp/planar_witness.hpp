@@ -31,9 +31,9 @@ inline void require_evaluation() {
     fail("profile", "subnormal", "ordinary planar evaluation requires gradual underflow");
 }
 
-// Every persistent ID must be stored before clipping can classify a cell as
-// hidden.  Stock put() can silently omit a contained point after rounding.
-// This also applies when the caller requests no edges or public geometry.
+// Every source ID, including a selected temporary ghost, must be stored before
+// clipping can classify a cell as hidden.  Stock put() can silently omit a
+// contained point after rounding, even without requested public geometry.
 template<class Container>
 void require_population(Container& con, pybind11::ssize_t count) {
   std::vector<unsigned char> seen(static_cast<std::size_t>(count), 0);
@@ -48,7 +48,7 @@ void require_population(Container& con, pybind11::ssize_t count) {
     }
   }
   if (actual != count)
-    fail("insertion", "omitted", "a persistent input was not inserted by native put");
+    fail("insertion", "omitted", "an input was not inserted by native put");
 }
 
 // The byte-unmodified compute template repeats these literal operations.

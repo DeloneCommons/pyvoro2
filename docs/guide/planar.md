@@ -38,7 +38,9 @@ checks signed-int64 shift range before conversion. Ordinary `compute` keeps
 its private preparation and transport shifts as Python integers; only a
 requested final public edge shift must fit signed int64. Large common
 translations can therefore cancel without an earlier preparation-range
-failure. Public remapping and ghost/locate integer policies are unchanged.
+failure. Public remapping remains unchanged; selected ghosts transport their
+private preparation and actual insertion translations before materializing
+required public boundary shifts.
 
 Every inserted planar generator must lie in `[lo, hi)` on non-periodic axes;
 periodic axes are remapped first. Generator pairs at squared distance at most
@@ -188,10 +190,32 @@ So the same three high-level questions exist in both dimensions:
 2. locate the owner of a query point,
 3. compute the hypothetical cell of a query point without inserting it.
 
-Ghost edge reconstruction remains a separate legacy path. Its reconstruction
-controls and requirement for public vertices when requesting ghost shifts are
-unchanged; ordinary compute's source certification does not certify ghost
-boundary identity.
+Ghost cells return `list[dict]`, with `id=-1` and the input `query_index`.
+They do not yet add a planar original-`query` field. Each requested native
+edge has a nested `boundary_reference` for a source-attributed positive exact
+public-semantic boundary, or `None` only for a proved internally collapsed raw
+edge. `kind='generator'` has a persistent external ID and a user-basis
+integer shift in a periodic domain, including `(0, 0)`; `ghost_self` has a
+nonzero shift and no `adjacent_cell`; `wall` has a real side ID and no shift.
+The reference's four keys are `kind`, `generator_id`, `shift` and `wall_id`.
+The ghost `site` is the actual stored Cartesian representative, while a
+generator image uses its original input site plus the reference shift.
+
+For a periodic domain, `return_edge_shifts=True` still requires requested
+edges but no longer requires public vertices. A positive generator/self
+reference has its shift even when this selector is false. When true,
+`adjacent_shift` is a matching compatibility view for eligible generator/self
+edges; walls and collapsed raw edges omit it. The four ghost-only controls
+`edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts` and
+`edge_shift_tol` are removed without aliases. Geometry-only ghost calls use
+the initialized selected-cell route without the full S certificate.
+
+Certificate-bearing ghosts initially require the qualified Linux x86_64 GCC
+13.3 strict binary64 native profile. Source/profile, insertion, provenance,
+exact semantic, resource and shift-representation failures abort the entire
+batch with a `ValueError`-compatible `GHOST_*` error exposing `code`, `stage`,
+`query_index` and bounded `details`. Independent exact-head WP7 acceptance
+remains pending.
 
 ## Diagnostics and wrapper-level convenience
 
@@ -302,6 +326,11 @@ retained but do not by themselves prove native internal collapse.
 `normalize_vertices` alone remains a numerical vertex pool with raw vertices
 and local mappings. Normalization tolerance never determines exact semantic
 positivity.
+
+These helpers normalize an ordinary partition of persistent cells. A batch of
+independent `id=-1` ghost records is not that partition and is explicitly
+rejected by whole-tessellation normalization and validation; use the returned
+ghost boundary references directly.
 
 ## Planar plotting
 
