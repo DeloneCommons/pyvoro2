@@ -107,11 +107,11 @@ No functional vendored change is planned; D9 remains open.
   rejection. Preserve ordinary APIs and all unrelated controls.
 - [x] Add the WP7 ADR and update current architecture, plan target wording,
   inventory/lifecycle, guides/reference/migration and changelog.
-- [ ] Run focused tests, native parity/profile qualification, relevant WP5/WP6
+- [x] Run focused tests, native parity/profile qualification, relevant WP5/WP6
   regressions, seeded fuzz, full suite, lint, generated-file checks and strict docs.
-- [ ] Build direct wheel, sdist and wheel from sdist; test installed artifacts
+- [x] Build direct wheel, sdist and wheel from sdist; test installed artifacts
   with supported optional-dependency conditions and record hashes/commands.
-- [ ] Open the issue-linked PR against `dev`, obtain exact-head remote CI,
+- [x] Open the issue-linked PR against `dev`, obtain exact-head remote CI,
   and assemble a compact independent-review archive with inventory and hashes.
 
 The final review must deliberately check translated query representatives,
