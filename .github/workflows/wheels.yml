@@ -1,11 +1,12 @@
 name: Wheels
 
 on:
+  # CI calls this complete matrix only for wheel-sensitive/full PR profiles.
+  # Tags and manual dispatch retain the standalone release qualification.
+  workflow_call:
   push:
     tags:
       - "v*"
-  pull_request:
-    branches: [dev, main]
   workflow_dispatch:
 
 env:
@@ -166,12 +167,20 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Download complete artifact set
+      # Reusable PR runs share artifacts with CI qualification jobs. Only the
+      # four wheel cohorts and this workflow's sdist belong in release-dist.
+      - name: Download wheel cohorts
         uses: actions/download-artifact@v7
         with:
-          pattern: "*"
+          pattern: "wheels-*"
           path: release-dist
           merge-multiple: true
+
+      - name: Download sdist
+        uses: actions/download-artifact@v7
+        with:
+          name: sdist
+          path: release-dist
 
       - name: Install artifact validators
         run: |

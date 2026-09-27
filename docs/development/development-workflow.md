@@ -20,6 +20,27 @@ Direct changes to `main` should be limited to exceptional release or repository
 administration fixes. Normal development is integrated through `dev` and
 released from a reviewed state.
 
+## Pull-request CI routing
+
+`tools/ci_classify_changes.py` classifies the whole merge-base-to-head PR diff.
+The workflow starts for every PR and reports the stable **CI gate** result;
+conditional jobs may be skipped only when the classifier did not require them.
+Unknown paths and changes to CI or certificate-sensitive source select the full
+profile. A missing diff or failed classifier also fails the gate.
+
+| PR change | Validation |
+|---|---|
+| Documentation only | Lint, generated-file sync, notebook/tooling checks, strict docs build. |
+| Ordinary runtime Python | One complete installed suite on Linux/Python 3.13, smaller Python compatibility checks, cross-platform ordinary/refusal checks, distribution validation and docs. |
+| Native/build/certificate or CI infrastructure | Existing qualified Linux matrix, native sanitizers, cross-platform refusal matrix, distribution checks and complete release wheel matrix. |
+| Packaging/distribution tooling | Distribution and complete wheel validation plus lint/docs/tooling checks. |
+
+The path mapping deliberately treats internal certificate code and test changes
+conservatively. `docs/index.md` generates package `README.md`, and notebook
+exports are distributed, so these select distribution validation. Every push
+to `dev` or `main` runs the full integration profile regardless of its diff.
+Release tags and manual dispatch continue to run the standalone Wheels workflow.
+
 ## Planning levels
 
 | Artifact | Question it answers |
