@@ -1,149 +1,235 @@
+# Every qualification uses the reviewed head and retains the full evidence tree.
+# Source approval must already exist; these workflows cannot issue source approval.
 name: Wheels
-
-on:
-  # CI calls this complete matrix only for wheel-sensitive/full PR profiles.
-  # Tags and manual dispatch retain the standalone release qualification.
-  workflow_call:
+'on':
+  workflow_call: null
   push:
     tags:
-      - "v*"
-  workflow_dispatch:
-
+      - v*
+  workflow_dispatch: null
 env:
-  CIBW_SKIP: >-
-    cp3??t-* pp* gp* *-musllinux* *-manylinux_i686
-    *-manylinux_{aarch64,ppc64le,s390x,armv7l,riscv64}
-    *-win32 *-win_arm64 *-macosx_universal2
-  CIBW_TEST_EXTRAS: "test"
-  # Distributed cohorts have neither ordinary planar nor selected ghost
-  # qualification. Require both explicit refusals while preserving safe
-  # geometry-only ghost and ordinary spatial coverage. Qualified Ubuntu/GCC
-  # 13.3 source wheels pass the default success gate in CI's build-dist job.
-  CIBW_TEST_COMMAND: >-
-    python -m pip check &&
-    python "{project}/tools/check_installed_package.py"
-    --repo-root "{project}" --require-scipy --planar-refusal --ghost-refusal
-
+  CMAKE_BUILD_PARALLEL_LEVEL: '2'
+  # The digest is verified against the predecessor archive's OCI manifest.
+  MANYLINUX_IMAGE: quay.io/pypa/manylinux_2_28_x86_64:2026.03.20-1@sha256:853663dc8253b62be437bb52a5caecffd020792af4442f55d927d22e0ea795ae
 jobs:
+
   wheels-manylinux-x86_64:
-    name: Wheels (manylinux x86_64, planar refusal)
-    runs-on: ubuntu-latest
+    name: Wheels (GNU 14.2.1 manylinux x86_64, Python ${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: '3.10'
+            python-abi: cp310-cp310
+          - python-version: '3.11'
+            python-abi: cp311-cp311
+          - python-version: '3.12'
+            python-abi: cp312-cp312
+          - python-version: '3.13'
+            python-abi: cp313-cp313
+          - python-version: '3.14'
+            python-abi: cp314-cp314
     steps:
       - uses: actions/checkout@v5
-
-      - uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-
-      - name: Build and test wheels
-        uses: pypa/cibuildwheel@v3.4.1
-        env:
-          CIBW_ARCHS_LINUX: "x86_64"
-          CIBW_BUILD: >-
-            cp310-manylinux_x86_64 cp311-manylinux_x86_64
-            cp312-manylinux_x86_64 cp313-manylinux_x86_64
-            cp314-manylinux_x86_64
-
-      - name: Upload wheels
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Build, repair, qualify and test pinned production image
+        shell: bash
+        run: |
+          docker pull "$MANYLINUX_IMAGE"
+          docker image inspect "$MANYLINUX_IMAGE" > "${{ runner.temp }}/manylinux-image.json"
+          docker run --rm --interactive \
+            --volume "$GITHUB_WORKSPACE:/source:ro" \
+            --volume "${{ runner.temp }}:/evidence" \
+            --env PYTHON_ABI="${{ matrix.python-abi }}" \
+            --env CMAKE_BUILD_PARALLEL_LEVEL=2 \
+            "$MANYLINUX_IMAGE" /bin/bash -euxo pipefail -s <<'BUILD'
+          export PATH="/opt/python/$PYTHON_ABI/bin:$PATH"
+          export CXX=/opt/rh/gcc-toolset-14/root/usr/bin/g++
+          test "$($CXX -dumpfullversion)" = 14.2.1
+          $CXX --version
+          git config --global --add safe.directory /source
+          python -m pip install --upgrade pip
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" \
+            "pybind11>=3,<4" pytest scipy auditwheel \
+            "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" \
+            "tomli; python_version<'3.11'"
+          python /source/tools/native/qualification/build.py --source-root /source \
+            --output /evidence/qualification --repair auditwheel --suite full
+          BUILD
+      - name: Upload final qualified wheel
         uses: actions/upload-artifact@v6
         with:
-          name: wheels-manylinux-x86_64
-          path: wheelhouse/*.whl
+          name: wheels-manylinux-x86_64-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/qualification/final-wheel/*.whl
           if-no-files-found: error
+      - name: Preserve complete build and qualification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-wheel-manylinux-x86_64-py${{ matrix.python-version }}
+          path: |
+            ${{ runner.temp }}/qualification
+            ${{ runner.temp }}/manylinux-image.json
+          include-hidden-files: true
+        if: always()
 
+  # The existing Windows cohort needs no repair or Python bootstrap rewriting.
   wheels-windows-amd64:
-    name: Wheels (Windows AMD64, planar refusal)
+    name: Wheels (x64, WP5/WP8, Python ${{ matrix.python-version }})
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - '3.13'
+          - '3.14'
     steps:
       - name: Preserve reviewed source bytes on checkout
         run: git config --global core.autocrlf false
       - uses: actions/checkout@v5
-
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-
-      - name: Build and test wheels
-        uses: pypa/cibuildwheel@v3.4.1
-        env:
-          CIBW_ARCHS_WINDOWS: "AMD64"
-          CIBW_BUILD: >-
-            cp310-win_amd64 cp311-win_amd64 cp312-win_amd64
-            cp313-win_amd64 cp314-win_amd64
-
-      - name: Upload wheels
+          python-version: ${{ matrix.python-version }}
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Install controlled build, repair and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'"
+      - name: Qualify final installed WP5/WP8 production adapter
+        run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
+          adapter
+      - name: Upload final qualified wheel
         uses: actions/upload-artifact@v6
         with:
-          name: wheels-windows-amd64
-          path: wheelhouse/*.whl
+          name: wheels-windows-amd64-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/qualification/final-wheel/*.whl
           if-no-files-found: error
+      - name: Preserve complete build and qualification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-wheels-windows-amd64-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/qualification
+          include-hidden-files: true
+        if: always()
+    env:
+      CXX: cl
 
   wheels-macos-arm64:
-    name: Wheels (macOS arm64, planar refusal)
+    name: Wheels (arm64, WP5/WP8, Python ${{ matrix.python-version }})
     runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - '3.13'
+          - '3.14'
     steps:
       - uses: actions/checkout@v5
-
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-
-      - name: Build and test wheels
-        uses: pypa/cibuildwheel@v3.4.1
-        env:
-          CIBW_ARCHS_MACOS: "arm64"
-          CIBW_BUILD: >-
-            cp310-macosx_arm64 cp311-macosx_arm64 cp312-macosx_arm64
-            cp313-macosx_arm64 cp314-macosx_arm64
-
-      - name: Upload wheels
+          python-version: ${{ matrix.python-version }}
+      - name: Install controlled build, repair and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'" delocate
+      - name: Qualify final installed WP5/WP8 production adapter
+        run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair delocate --suite
+          adapter
+      - name: Upload final qualified wheel
         uses: actions/upload-artifact@v6
         with:
-          name: wheels-macos-arm64
-          path: wheelhouse/*.whl
+          name: wheels-macos-arm64-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/qualification/final-wheel/*.whl
           if-no-files-found: error
+      - name: Preserve complete build and qualification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-wheels-macos-arm64-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/qualification
+          include-hidden-files: true
+        if: always()
+    env:
+      CXX: clang++
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
+      ARCHFLAGS: -arch arm64
 
   wheels-macos-x86_64:
-    name: Wheels (macOS x86_64, planar refusal)
+    name: Wheels (x86_64, WP5/WP8, Python ${{ matrix.python-version }})
     runs-on: macos-15-intel
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - '3.13'
+          - '3.14'
     steps:
       - uses: actions/checkout@v5
-
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-
-      - name: Build and test wheels
-        uses: pypa/cibuildwheel@v3.4.1
-        env:
-          CIBW_ARCHS_MACOS: "x86_64"
-          CIBW_BUILD: >-
-            cp310-macosx_x86_64 cp311-macosx_x86_64
-            cp312-macosx_x86_64 cp313-macosx_x86_64
-            cp314-macosx_x86_64
-
-      - name: Upload wheels
+          python-version: ${{ matrix.python-version }}
+      - name: Install controlled build, repair and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'" delocate
+      - name: Qualify final installed WP5/WP8 production adapter
+        run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair delocate --suite
+          adapter
+      - name: Upload final qualified wheel
         uses: actions/upload-artifact@v6
         with:
-          name: wheels-macos-x86_64
-          path: wheelhouse/*.whl
+          name: wheels-macos-x86_64-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/qualification/final-wheel/*.whl
           if-no-files-found: error
+      - name: Preserve complete build and qualification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-wheels-macos-x86_64-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/qualification
+          include-hidden-files: true
+        if: always()
+    env:
+      CXX: clang++
+      # Preserve cibuildwheel's prior per-CPython deployment target floors.
+      MACOSX_DEPLOYMENT_TARGET: ${{ (matrix.python-version == '3.10' || matrix.python-version == '3.11') && '10.9' || (matrix.python-version == '3.14' && '10.15' || '10.13') }}
+      ARCHFLAGS: -arch x86_64
 
   sdist:
     name: Build sdist
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-
+          python-version: '3.11'
       - name: Build sdist
         run: |
           python -m pip install --upgrade pip build
           python -m build --sdist
-
       - name: Upload sdist
         uses: actions/upload-artifact@v6
         with:
@@ -162,41 +248,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.14"
-
-      # Reusable PR runs share artifacts with CI qualification jobs. Only the
-      # four wheel cohorts and this workflow's sdist belong in release-dist.
+          python-version: '3.14'
       - name: Download wheel cohorts
         uses: actions/download-artifact@v7
         with:
-          pattern: "wheels-*"
+          pattern: wheels-*
           path: release-dist
           merge-multiple: true
-
       - name: Download sdist
         uses: actions/download-artifact@v7
         with:
           name: sdist
           path: release-dist
-
       - name: Install artifact validators
         run: |
           python -m pip install --upgrade pip
           python -m pip install twine
-
       - name: Validate wheel matrix and distribution contents
         run: |
-          python tools/check_wheel_matrix.py release-dist
-          python tools/check_dist.py release-dist
+          python tools/check_wheel_matrix.py --require-qualification release-dist
+          python tools/check_dist.py --require-qualification release-dist
           python tools/check_dist_metadata.py release-dist
-
       - name: Create clean aggregate-wheel environment
         run: python -m venv "${{ runner.temp }}/pyvoro2-wheel-venv"
-
-      - name: Check aggregate manylinux wheel and explicit ghost/planar refusal
+      - name: Check final GNU 14.2.1 wheel and positive certificate routes
         shell: bash
         run: |
           "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" \
@@ -208,16 +288,13 @@ jobs:
           "${{ runner.temp }}/pyvoro2-wheel-venv/bin/python" \
             tools/check_installed_package.py \
             --repo-root "${{ github.workspace }}" --forbid-scipy \
-            --planar-refusal --ghost-refusal \
             | tee aggregate-wheel-profile.txt
-
-      - name: Preserve aggregate wheel profile and refusal evidence
+      - name: Preserve aggregate wheel qualification evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: aggregate-wheel-planar-refusal-profile
+          name: aggregate-wheel-qualified-profile
           path: aggregate-wheel-profile.txt
-
       - name: Upload release-ready distributions
         uses: actions/upload-artifact@v6
         with:

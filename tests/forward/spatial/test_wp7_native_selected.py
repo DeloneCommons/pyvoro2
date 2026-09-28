@@ -121,14 +121,14 @@ def test_geometry_only_all_native_routes_replay_augmented_storage(
 
 @pytest.mark.skipif(
     sys.platform != 'linux' or platform.machine().lower() not in ('x86_64', 'amd64'),
-    reason='FE_UPWARD constant belongs to the qualified Linux x86_64 cohort',
+    reason='FE_UPWARD constant belongs to the Linux x86_64 adapter',
 )
 def test_selected_environment_refusal_and_zero_query_validation():
     libc = ctypes.CDLL(None)
     if not hasattr(libc, 'fegetround') or not hasattr(libc, 'fesetround'):
         pytest.skip('C floating environment unavailable')
     nearest = libc.fegetround()
-    upward = 0x800  # FE_UPWARD on the qualified Linux x86_64 cohort.
+    upward = 0x800  # FE_UPWARD on Linux x86_64.
     points = np.empty((0, 3), dtype=float)
     ids = np.empty((0,), dtype=np.int32)
     bounds = ((0., 1.),) * 3
@@ -141,12 +141,22 @@ def test_selected_environment_refusal_and_zero_query_validation():
                 points, ids, bounds, (1, 1, 1),
                 (True, True, True), 1, np.array([[.5, .5, .5]]),
             )
-        assert _core._observe_ghost_box(
-            points, ids, bounds, (1, 1, 1),
-            (True, True, True), 1, np.empty((0, 3)),
-        ) == []
+        # Empty batches omit artifact admission, but still cast and validate
+        # floating inputs. Their raw-control safety boundary is therefore the
+        # same as for a nonempty batch.
+        with pytest.raises(ValueError, match=(
+            r'^ghost_native:native:None:GHOST_NATIVE_UNSUPPORTED:'
+        )):
+            _core._observe_ghost_box(
+                points, ids, bounds, (1, 1, 1),
+                (True, True, True), 1, np.empty((0, 3)),
+            )
     finally:
         libc.fesetround(nearest)
+    assert _core._observe_ghost_box(
+        points, ids, bounds, (1, 1, 1),
+        (True, True, True), 1, np.empty((0, 3)),
+    ) == []
 
 
 def test_selected_batch_rejects_retained_packet_budget_before_computation():

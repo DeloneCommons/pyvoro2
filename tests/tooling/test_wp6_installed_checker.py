@@ -28,9 +28,23 @@ def test_installed_checker_exposes_explicit_planar_refusal_flag():
 
 
 def test_installed_profile_gate_cannot_confuse_support_and_refusal():
+    from pyvoro2._internal.native_admission import require_component
+    from pyvoro2._internal.native_qualification import NativeQualificationError
     assert hasattr(CHECKER, '_check_planar_profile'), 'WP6 profile gate is absent'
     profile = _core2d._planar_witness_profile()
-    unsupported = not profile['cohort_supported']
+    try:
+        require_component('wp6-planar')
+    except NativeQualificationError as exc:
+        if exc.reason != 'missing_component':
+            # A normal unissued local artifact is neither positive production
+            # evidence nor the qualified distribution's intended refusal.
+            for refusal in (False, True):
+                with pytest.raises(CHECKER.InstalledPackageCheckError):
+                    CHECKER._check_planar_profile(_core2d, refusal=refusal)
+            return
+        unsupported = True
+    else:
+        unsupported = False
     checked = CHECKER._check_planar_profile(_core2d, refusal=unsupported)
     assert checked == profile
     with pytest.raises(CHECKER.InstalledPackageCheckError):

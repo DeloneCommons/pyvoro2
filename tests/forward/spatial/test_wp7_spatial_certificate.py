@@ -63,10 +63,7 @@ def _ghost_case():
                   ghost_internal_id=1)
     packet['build']['ghost_selected_route'] = 'wp7-initialized-selected-v1'
     packet['build']['ghost_source_sha256'] = (
-        'ab3a064a2b44b18236d1f1300ff12610d32463fc049d02d1499aea17e66098ea'
-    )
-    packet['build'].update(compiler_id='GNU', x86_64=True, sse2=True,
-                           avx=False, fma=False)
+        _core._spatial_witness_profile()['ghost_source_sha256'])
     prepared = SimpleNamespace(
         internal_ids=np.array([0]), native_points=points[:1],
         input_points_cart=np.array([[2.25, .5, .5]]),
@@ -110,8 +107,8 @@ def test_constructed_ghost_packet_uses_stored_chart_and_external_identity():
 @pytest.mark.parametrize('field,value', (
     ('ghost_selected_route', None),
     ('ghost_source_sha256', '0' * 64),
-    ('compiler_id', 'Clang'), ('compiler', '13.2.0'),
-    ('x86_64', False), ('sse2', False), ('avx', True), ('fma', True),
+    ('compiler_id', 'invented'), ('compiler', 'invented'),
+    ('x86_64', None), ('sse2', None), ('avx', None), ('fma', None),
     ('int_bits', 64), ('binary64', False), ('fp_contract', 'fast'),
 ))
 def test_constructed_unsupported_selected_route_refuses_atomically(field, value):
@@ -219,10 +216,7 @@ def test_constructed_empty_population_box_has_six_wall_references():
                   ghost_internal_id=0)
     packet['build']['ghost_selected_route'] = 'wp7-initialized-selected-v1'
     packet['build']['ghost_source_sha256'] = (
-        'ab3a064a2b44b18236d1f1300ff12610d32463fc049d02d1499aea17e66098ea'
-    )
-    packet['build'].update(compiler_id='GNU', x86_64=True, sse2=True,
-                           avx=False, fma=False)
+        _core._spatial_witness_profile()['ghost_source_sha256'])
     prepared = SimpleNamespace(
         internal_ids=np.array([], dtype=int), native_points=np.empty((0, 3)),
         input_points_cart=np.empty((0, 3)),

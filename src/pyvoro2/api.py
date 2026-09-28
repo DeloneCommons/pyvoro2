@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import Any, Sequence, Literal
 from dataclasses import replace
 
-import warnings
+from ._internal.native_runtime import checked_warn
 
 import numpy as np
+from ._internal.native_runtime import guarded_public
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.spatial.domain_utils import domain_length_scale
@@ -97,7 +98,7 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, length_scale: float) -> None:
     # typical coordinate systems (~1..1e3), but still highlight the most common
     # failure mode (very small unit systems, e.g. SI meters for atomistic data).
     if L < 1e-3:
-        warnings.warn(
+        checked_warn(
             'The domain length scale appears very small (L≈{:.3g}). '
             'pyvoro2 reserves distances through 1e-5 for backend safety, and '
             'Voro++ uses other fixed absolute tolerances. Consider '
@@ -107,7 +108,7 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, length_scale: float) -> None:
             stacklevel=3,
         )
     elif L > 1e9:
-        warnings.warn(
+        checked_warn(
             'The domain length scale appears very large (L≈{:.3g}). '
             'Floating-point precision may be poor at this scale; consider '
             'rescaling your coordinates.'.format(L),
@@ -314,6 +315,13 @@ def _attach_wp5_findings(diag, failures, prepared, *, reciprocity_required=True)
 
 def _raise_wp5_failure(error, packet, domain, prepared, mode):
     """Attach a fatal certificate reason without judging unobserved geometry."""
+    from ._internal.native_runtime import (
+        RuntimeFPError, _public_refusal, check_before_native_import,
+    )
+    try:
+        check_before_native_import()
+    except RuntimeFPError as exc:
+        _public_refusal(exc, 'compute', 3)
     expected = prepared.external_ids.tolist()
     observed = None
     if packet is not None:
@@ -545,6 +553,7 @@ def compute(
     )
 
 
+@guarded_public('compute', 3)
 def _compute_impl(
     points: Sequence[Sequence[float]] | np.ndarray,
     *,
@@ -794,7 +803,7 @@ def _compute_impl(
                 message = f'tessellation_check failed (mode={mode!r}): {reasons}'
                 if tessellation_check == 'raise':
                     raise TessellationError(message, diag)
-                warnings.warn(message, stacklevel=2)
+                checked_warn(message, stacklevel=2)
         result = _finish_compute_output(
             output=resolved_output,
             return_diagnostics=return_diagnostics_value,
@@ -889,7 +898,7 @@ def _compute_impl(
                     )
                     if tessellation_check == 'raise':
                         raise TessellationError(msg, diag)
-                    warnings.warn(msg, stacklevel=2)
+                    checked_warn(msg, stacklevel=2)
 
         return _finish_compute_output(
             output=resolved_output,
@@ -993,7 +1002,7 @@ def _compute_impl(
                 )
                 if tessellation_check == 'raise':
                     raise TessellationError(msg, diag)
-                warnings.warn(msg, stacklevel=2)
+                checked_warn(msg, stacklevel=2)
 
     return _finish_compute_output(
         output=resolved_output,
@@ -1011,6 +1020,7 @@ def _compute_impl(
     )
 
 
+@guarded_public('locate', 3)
 def locate(
     points: Sequence[Sequence[float]] | np.ndarray,
     queries: Sequence[Sequence[float]] | np.ndarray,
@@ -1164,6 +1174,7 @@ def locate(
     )
 
 
+@guarded_public('ghost', 3)
 def ghost_cells(
     points: Sequence[Sequence[float]] | np.ndarray,
     queries: Sequence[Sequence[float]] | np.ndarray,

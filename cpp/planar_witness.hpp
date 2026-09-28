@@ -1,6 +1,8 @@
 #ifndef PYVORO2_PLANAR_WITNESS_HPP
 #define PYVORO2_PLANAR_WITNESS_HPP
 
+#include "native_runtime.hpp"
+
 #include <pybind11/pybind11.h>
 #include <cfenv>
 #include <cmath>
@@ -18,17 +20,15 @@ namespace pyvoro2::planar_witness {
 }
 
 inline bool gradual_underflow() {
-  volatile double den = std::numeric_limits<double>::denorm_min();
-  volatile double twice = den + den;
-  volatile double half = twice * 0.5;
-  return twice > den && half == den;
+  const auto state = native_runtime::inspect();
+  return state.supported && state.subnormal;
 }
 
 inline void require_evaluation() {
-  if (std::fegetround() != FE_TONEAREST)
-    fail("profile", "rounding", "ordinary planar evaluation requires RNE");
-  if (!gradual_underflow())
-    fail("profile", "subnormal", "ordinary planar evaluation requires gradual underflow");
+  try { native_runtime::require_environment(); }
+  catch (const native_runtime::EnvironmentError& error) {
+    native_runtime::entry_failure(native_runtime::Family::planar, error);
+  }
 }
 
 // Every source ID, including a selected temporary ghost, must be stored before

@@ -19,6 +19,7 @@ import sys
 from typing import Any, Literal
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
+from ._internal.native_runtime import checked_call, checked_tuple
 from ._internal.spatial.domain_utils import is_periodic_domain
 from ._internal.tessellation_diagnostics import diagnostics_ok
 from ._internal.validation import (
@@ -102,7 +103,8 @@ def _fully_periodic(domain: Domain) -> bool:
     if isinstance(domain, PeriodicCell):
         return True
     if isinstance(domain, OrthorhombicCell):
-        return bool(all(domain.periodic))
+        return all(checked_call(bool, value) for value in checked_tuple(
+            checked_call(getattr, domain, 'periodic')))
     return False
 
 

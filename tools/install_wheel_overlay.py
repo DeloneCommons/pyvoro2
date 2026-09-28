@@ -10,7 +10,7 @@ This script is intended for the workflow where:
 
 The script performs three steps:
 
-- copies or symlinks compiled binaries such as ``_core`` and ``_core2d`` into
+- copies or symlinks ``_core``, ``_core2d`` and the raw ``_fpguard`` binary into
   ``src/pyvoro2/``;
 - writes a ``.pth`` file into the active environment to insert ``repo/src`` at
   the front of ``sys.path``;
@@ -25,6 +25,10 @@ Typical usage::
 If the wheel is not yet installed, the script can also extract extension
 binaries directly from a wheel file via ``--wheel``. In that mode it still
 writes the ``.pth`` overlay for the current environment.
+
+An overlay does not transfer artifact qualification to changed source. It keeps
+the source checkout's unqualified anchor; certificate consumers need a fresh
+controlled build and finalization against their exact source and payload.
 """
 
 from __future__ import annotations
@@ -41,7 +45,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_NAME = 'pyvoro2'
 PACKAGE_SRC = PROJECT_ROOT / 'src' / PACKAGE_NAME
-EXTENSION_PREFIXES = ('_core', '_core2d')
+EXTENSION_PREFIXES = ('_core', '_core2d', '_fpguard')
 
 
 class OverlayError(RuntimeError):
@@ -68,9 +72,8 @@ def _installed_extension_paths() -> dict[str, Path]:
         if not pkg_dir.exists():
             continue
         for prefix in EXTENSION_PREFIXES:
-            cores = sorted(pkg_dir.glob(f'{prefix}*.so')) + sorted(
-                pkg_dir.glob(f'{prefix}*.pyd')
-            )
+            cores = sorted(path for path in pkg_dir.glob(f'{prefix}.*')
+                           if path.is_file() and path.suffix in {'.so', '.pyd'})
             if cores and prefix not in found:
                 found[prefix] = cores[0]
     return found
@@ -101,7 +104,7 @@ def _extract_extensions_from_wheel(
             names = [
                 name
                 for name in zf.namelist()
-                if name.startswith(f'{PACKAGE_NAME}/{prefix}')
+                if name.startswith(f'{PACKAGE_NAME}/{prefix}.')
                 and (name.endswith('.so') or name.endswith('.pyd'))
             ]
             if not names:
@@ -112,8 +115,11 @@ def _extract_extensions_from_wheel(
             with zf.open(member) as src, target.open('wb') as dst:
                 shutil.copyfileobj(src, dst)
             extracted[prefix] = target
-    if '_core' not in extracted:
-        raise OverlayError(f'no {PACKAGE_NAME}._core binary found in {wheel_path}')
+    for required in ('_core', '_fpguard'):
+        if required not in extracted:
+            raise OverlayError(
+                f'no {PACKAGE_NAME}.{required} binary found in {wheel_path}'
+            )
     return extracted
 
 
@@ -131,7 +137,7 @@ def _write_pth(repo_src: Path, *, pth_name: str) -> Path:
     return pth_path
 
 
-def _verify_overlay(repo_src: Path) -> tuple[str, str, str]:
+def _verify_overlay(repo_src: Path) -> tuple[str, str, str, str]:
     code = textwrap.dedent(
         '''
         from importlib import import_module, util
@@ -139,6 +145,7 @@ def _verify_overlay(repo_src: Path) -> tuple[str, str, str]:
         import pyvoro2
 
         core = import_module('pyvoro2._core')
+        fpguard = import_module('pyvoro2._fpguard')
         core2d_spec = util.find_spec('pyvoro2._core2d')
         core2d = (
             None
@@ -148,6 +155,7 @@ def _verify_overlay(repo_src: Path) -> tuple[str, str, str]:
         print(pyvoro2.__file__)
         print(core.__file__)
         print('MISSING' if core2d is None else core2d.__file__)
+        print(fpguard.__file__)
         '''
     )
     proc = subprocess.run(
@@ -157,9 +165,9 @@ def _verify_overlay(repo_src: Path) -> tuple[str, str, str]:
         text=True,
     )
     lines = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
-    if len(lines) != 3:
+    if len(lines) != 4:
         raise OverlayError(f'unexpected verification output: {proc.stdout!r}')
-    py_file, core_file, core2d_file = lines
+    py_file, core_file, core2d_file, fpguard_file = lines
     repo_prefix = str(repo_src.resolve())
     if not py_file.startswith(repo_prefix):
         raise OverlayError(
@@ -178,7 +186,12 @@ def _verify_overlay(repo_src: Path) -> tuple[str, str, str]:
             'overlay verification failed: _core2d was not imported from the '
             f'repository package directory ({core2d_file})'
         )
-    return py_file, core_file, core2d_file
+    if not fpguard_file.startswith(str((repo_src / PACKAGE_NAME).resolve())):
+        raise OverlayError(
+            'overlay verification failed: _fpguard was not imported from the '
+            f'repository package directory ({fpguard_file})'
+        )
+    return py_file, core_file, core2d_file, fpguard_file
 
 
 def main() -> int:
@@ -219,10 +232,11 @@ def main() -> int:
         core_source_note = f'extracted from wheel {args.wheel.resolve()}'
     else:
         installed = _installed_extension_paths()
-        if '_core' not in installed:
+        if not {'_core', '_fpguard'} <= installed.keys():
             searched = ', '.join(str(p) for p in _candidate_site_packages())
             raise OverlayError(
-                'could not find an installed pyvoro2 wheel core in the current '
+                'could not find installed pyvoro2 _core and _fpguard binaries '
+                'in the current '
                 f'environment (searched: {searched}). Install a wheel first or '
                 'pass --wheel /path/to/pyvoro2-...whl.'
             )
@@ -234,7 +248,7 @@ def main() -> int:
         core_source_note = 'copied/symlinked from installed wheel extensions'
 
     pth_path = _write_pth(repo_src, pth_name=args.pth_name)
-    py_file, core_file, core2d_file = _verify_overlay(repo_src)
+    py_file, core_file, core2d_file, fpguard_file = _verify_overlay(repo_src)
 
     print('pyvoro2 dev overlay installed successfully')
     print(f'  repo src:    {repo_src}')
@@ -244,6 +258,7 @@ def main() -> int:
         print('  core2d:      MISSING (no planar extension in the installed wheel yet)')
     else:
         print(f'  core2d:      {core2d_file}')
+    print(f'  fpguard:     {fpguard_file}')
     print(f'  .pth file:   {pth_path}')
     print(f'  core source: {core_source_note}')
     print('To remove the overlay later, delete the .pth file shown above.')

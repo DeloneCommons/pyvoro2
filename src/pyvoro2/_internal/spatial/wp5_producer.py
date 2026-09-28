@@ -17,7 +17,7 @@ from .wp5_binary64 import (
     bits_equal, div, integer_interval, interval_add, interval_div, interval_sub,
     mod, rounding_bin, rounding_preimage, step,
 )
-from .wp5_common import WP5Budget, WP5Failure
+from .wp5_common import WP5Budget, WP5Failure, require_wp5
 
 
 _IMIN = -(1 << 31)
@@ -115,6 +115,11 @@ class Producer:
 
     def __init__(self, packet, prepared_native_points, ids, radii=None,
                  budget=None, selected_sources=None):
+        module = require_wp5()
+        try:
+            self.profile = module._spatial_witness_profile()
+        finally:
+            require_wp5(artifact=False)
         self.packet = packet
         self.budget = budget if budget is not None else WP5Budget()
         self.selected_sources = selected_sources
@@ -129,11 +134,18 @@ class Producer:
 
     def _initialize(self, prepared_native_points, ids, radii):
         build = self.packet['build']
+        for key in ('source_sha256', 'compiler_id', 'compiler',
+                    'x86_64', 'sse2', 'avx', 'fma'):
+            if build.get(key) != self.profile.get(key):
+                raise WP5Failure('WP5_SOURCE_PROFILE_MISMATCH',
+                                 'Packet metadata differs from admitted artifact',
+                                 stage='profile', reason='packet_identity', field=key)
         if (build.get('native_fp_policy') != 'binary64-noncontracting-v1'
                 or build.get('int_bits') != 32
                 or build.get('int_min') != _IMIN or build.get('int_max') != _IMAX
                 or not all(build.get(key) is True for key in (
                     'binary64', 'round_to_nearest', 'gradual_underflow',
+                    'runtime_compatible',
                     'source_coupled_seed_replay', 'source_coupled_compute'))
                 or build.get('float_eval_method') != 0
                 or build.get('fast_math') is not False
@@ -284,6 +296,7 @@ class Producer:
 
     def attribute(self, cell, origin):
         """Return the sole source-compatible class, or a structured failure."""
+        require_wp5(artifact=False)
         source = cell.get('id')
         try:
             if not isinstance(source, int) or not 0 <= source < len(self.sites):

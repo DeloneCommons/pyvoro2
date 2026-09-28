@@ -7,6 +7,12 @@ including its synchronized contract of 2026-09-26. The baseline is `dev`
 accepted. This note records delegated engineering choices; it does not replace
 the scientific contract or constitute implementation acceptance.
 
+WP7 was subsequently independently accepted and merged, as recorded in the
+[active plan](plans/v0.9.md). Its historical implementation evidence below does
+not qualify issue #88's changed artifact machinery. See
+[ADR 0024](decisions/0024-external-native-artifact-qualification.md) and the
+[native qualification workflow](native-qualification.md) for that separate gate.
+
 ## Components and invariants
 
 | Component | Responsibility and acceptance obligation |
@@ -84,7 +90,7 @@ token/occurrence counters accumulate across queries. Representative recursive
 Python object-size tests check these conservative envelopes. This is an
 explicit resource policy, not a promise that process RSS equals the charge.
 
-Initially qualify Linux x86_64 GCC 13.3 with the existing strict binary64/SSE2,
+The initial qualification used Linux x86_64 GCC 13.3 with strict binary64/SSE2,
 nearest/gradual, noncontracting/no-IPO policy. Other certificate-bearing cohorts
 must refuse until independently qualified. Safe initialized geometry-only
 availability is separate. Bind source closures to actual build commands and

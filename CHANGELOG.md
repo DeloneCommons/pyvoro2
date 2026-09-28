@@ -19,6 +19,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Native forward entry checks the executing thread's raw floating-point
+  controls before numeric coercion and rechecks after foreign callbacks,
+  refusing incompatible state without changing caller controls (#88).
+
 - Locate verifies actual persistent native insertion, rejects unsafe native
   integer execution, validates internal owner association before external IDs,
   and skips native construction for zero queries. Missing insertion cannot
@@ -59,6 +63,13 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   mathematics, and separator source-identity contracts are unchanged.
 
 ### Changed
+
+- Native certificate admission now separates reviewed source/schema approval,
+  externally recorded effective builds, final installed payload identity and
+  route-specific qualification records. Unqualified or changed artifacts refuse
+  explicitly; public APIs and WP5–WP8 mathematical semantics are unchanged.
+  Issue #88's final platform/artifact evidence and independent acceptance remain
+  pending.
 
 - Requested 2D ghost edges and 3D ghost faces expose source-attributed
   `boundary_reference` with user-basis shifts only for exact positive

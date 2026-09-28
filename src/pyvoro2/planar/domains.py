@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..domains import _default_snap_eps
+from .._internal.domain_access import call_domain_method, periodic_axis
+from .._internal.native_runtime import checked_call
 from .._internal.inputs import coerce_point_array, floor_to_int64
 from .._internal.validation import (
     INT64_MAX,
@@ -24,7 +26,8 @@ class Box:
     bounds: tuple[tuple[float, float], tuple[float, float]]
 
     def __post_init__(self) -> None:
-        bounds = require_ordered_bounds(self.bounds, name='bounds', dim=2)
+        bounds = require_ordered_bounds(
+            checked_call(getattr, self, 'bounds'), name='bounds', dim=2)
         object.__setattr__(self, 'bounds', bounds)
 
     @classmethod
@@ -60,8 +63,10 @@ class RectangularCell:
     periodic: tuple[bool, bool] = (True, True)
 
     def __post_init__(self) -> None:
-        bounds = require_ordered_bounds(self.bounds, name='bounds', dim=2)
-        periodic = require_bool_tuple(self.periodic, name='periodic', length=2)
+        bounds = require_ordered_bounds(
+            checked_call(getattr, self, 'bounds'), name='bounds', dim=2)
+        periodic = require_bool_tuple(
+            checked_call(getattr, self, 'periodic'), name='periodic', length=2)
         object.__setattr__(self, 'bounds', bounds)
         object.__setattr__(self, 'periodic', periodic)
 
@@ -69,7 +74,8 @@ class RectangularCell:
     def lattice_vectors(self) -> tuple[np.ndarray, np.ndarray]:
         """Return lattice vectors ``(a, b)`` in Cartesian coordinates."""
 
-        (xmin, xmax), (ymin, ymax) = self.bounds
+        (xmin, xmax), (ymin, ymax) = require_ordered_bounds(
+            checked_call(getattr, self, 'bounds'), name='bounds', dim=2)
         a = np.array([xmax - xmin, 0.0], dtype=np.float64)
         b = np.array([0.0, ymax - ymin], dtype=np.float64)
         return a, b
@@ -83,8 +89,10 @@ class RectangularCell:
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Remap Cartesian points into the primary rectangular domain."""
 
-        return self._remap_cart(points, return_shifts=return_shifts, eps=eps,
-                                integer_view=True)
+        return call_domain_method(
+            self, '_remap_cart', points, return_shifts=return_shifts, eps=eps,
+            integer_view=True,
+        )
 
     def _remap_cart(self, points, *, return_shifts, eps=None, integer_view=True):
         """Shared numerical preparation; private WP6 transport keeps Python ints.
@@ -99,15 +107,16 @@ class RectangularCell:
         )
         pts = coerce_point_array(points, name='points', dim=2)
 
-        (xmin, xmax), (ymin, ymax) = self.bounds
+        (xmin, xmax), (ymin, ymax) = require_ordered_bounds(
+            checked_call(getattr, self, 'bounds'), name='bounds', dim=2)
         lx = float(xmax - xmin)
         ly = float(ymax - ymin)
 
         if eps is None:
             lp = 0.0
-            if self.periodic[0]:
+            if periodic_axis(self, 0):
                 lp = max(lp, lx)
-            if self.periodic[1]:
+            if periodic_axis(self, 1):
                 lp = max(lp, ly)
             eps_val = _default_snap_eps(lp)
         else:
@@ -120,8 +129,8 @@ class RectangularCell:
 
         for axis, (lo, hi, length, is_periodic) in enumerate(
             (
-                (xmin, xmax, lx, self.periodic[0]),
-                (ymin, ymax, ly, self.periodic[1]),
+                (xmin, xmax, lx, periodic_axis(self, 0)),
+                (ymin, ymax, ly, periodic_axis(self, 1)),
             )
         ):
             if not is_periodic:

@@ -9,6 +9,8 @@ from typing import Iterable, Iterator
 
 import numpy as np
 
+from .inputs import coerce_finite_vector
+from .native_runtime import checked_call
 from .periodic_images import (
     _exact_triclinic_bucket_layout,
     exact_distance_float,
@@ -160,9 +162,10 @@ def _fractional_layout(points: np.ndarray, radius: float, geometry) -> _BucketLa
     """
 
     lattice = np.asarray(geometry.lattice_vectors_cart, dtype=np.float64)
-    origin = np.asarray(
-        getattr(geometry.domain, 'origin', (0.0,) * points.shape[1]),
-        dtype=np.float64,
+    origin = coerce_finite_vector(
+        checked_call(getattr, geometry.domain, 'origin',
+                     (0.0,) * points.shape[1]),
+        name='origin', n=points.shape[1],
     )
     try:
         exact = _exact_triclinic_bucket_layout(

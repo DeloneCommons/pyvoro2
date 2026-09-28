@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from numbers import Real
-import operator
 import sys
 from typing import Any, Sequence
 
 import numpy as np
+from .native_runtime import (check_environment, checked_float, checked_index,
+                             checked_tuple, numeric_array, original_array)
 
 
 CPP_INT_MAX = int(np.iinfo(np.intc).max)
@@ -23,7 +24,7 @@ def _index_value(value: object, *, name: str) -> int:
             'are not accepted'
         )
     try:
-        return int(operator.index(value))
+        return int(checked_index(value))
     except (OverflowError, TypeError, ValueError):
         raise ValueError(f'{name} must be an exact integer') from None
 
@@ -152,7 +153,7 @@ def require_string_tuple(values: Sequence[object], *, name: str) -> tuple[str, .
     if type(values) is tuple and all(type(item) is str for item in values):
         return values
     try:
-        items = tuple(values)
+        items = checked_tuple(values)
     except TypeError:
         raise ValueError(f'{name} must be a sequence of scalar strings') from None
     return tuple(
@@ -170,7 +171,7 @@ def require_bool_tuple(
     """Return a fixed-length tuple of exact Python/NumPy Booleans."""
 
     try:
-        items = tuple(values)
+        items = checked_tuple(values)
     except TypeError:
         raise ValueError(
             f'{name} must be a length-{length} sequence of Boolean values'
@@ -194,7 +195,7 @@ def require_bool_mask(
     """Return an owned read-only one-dimensional exact-Boolean mask."""
 
     try:
-        arr = np.asarray(values)
+        arr = original_array(values)
     except (TypeError, ValueError):
         raise ValueError(f'{name} must be a one-dimensional Boolean mask') from None
     if arr.ndim != 1 or (length is not None and arr.shape != (length,)):
@@ -238,7 +239,7 @@ def require_finite_real(value: object, *, name: str) -> float:
 
     real_value = _require_real_scalar_kind(value, name=name)
     try:
-        result = float(real_value)
+        result = checked_float(real_value)
     except (OverflowError, TypeError, ValueError):
         raise ValueError(f'{name} must be finite real numeric scalar') from None
     if not np.isfinite(result):
@@ -300,7 +301,7 @@ def _as_original_array(values: Any, *, name: str) -> np.ndarray:
         # Object conversion preserves the element categories of mixed Python
         # sequences. A normal NumPy coercion could otherwise turn ``[False,
         # 1.0]`` into floats before Boolean rejection.
-        return np.asarray(values, dtype=object)
+        return original_array(values)
     except (TypeError, ValueError):
         raise ValueError(f'{name} must be an array of real numeric values') from None
 
@@ -324,7 +325,7 @@ def _real_float64_array(arr: np.ndarray, *, name: str) -> np.ndarray:
 
     _require_real_array_kind(arr, name=name)
     try:
-        result = np.asarray(arr, dtype=np.float64)
+        result = numeric_array(arr, dtype=np.float64)
     except (OverflowError, TypeError, ValueError):
         raise ValueError(
             f'{name} must contain real numeric values representable as float64'
@@ -334,6 +335,7 @@ def _real_float64_array(arr: np.ndarray, *, name: str) -> np.ndarray:
 
 def _finite_float64_array(arr: np.ndarray, *, name: str) -> np.ndarray:
     result = _real_float64_array(arr, name=name)
+    check_environment()
     if not np.all(np.isfinite(result)):
         raise ValueError(f'{name} must contain only finite values')
     return result

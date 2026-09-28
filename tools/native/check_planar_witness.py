@@ -167,6 +167,8 @@ def compare_archive(packet, spec):
 
 
 def main():
+    if sys.flags.optimize or not __debug__:
+        raise RuntimeError('qualification requires enabled Python assertions')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--module", type=Path, required=True,
                         help="final production _core2d shared module")
@@ -189,7 +191,8 @@ def main():
     assert profile["source_sha256"] == source_sha
     assert qualified._planar_witness_profile()["source_sha256"] == source_sha
     if not args.candidate_cohort:
-        assert profile["qualified"], profile
+        from pyvoro2._internal.native_qualification import require_native
+        require_native(production, 'wp6-planar')
     fixtures = archived(args.archive) if args.archive else corpus()
     results = []
     started = time.perf_counter()

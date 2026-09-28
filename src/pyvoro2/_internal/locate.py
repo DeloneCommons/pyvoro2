@@ -7,7 +7,9 @@ from fractions import Fraction as F
 
 import numpy as np
 
-from .ghost import _bounded
+from .locate_failure import LocateFailure, _CODES
+from .native_admission import require_component, require_environment
+from .native_qualification import NativeQualificationError
 from .native_translation import (
     CartesianCompatibilityBox, DEFAULT_NATIVE_TRANSLATION_LIMITS,
     NativeTranslationAmbiguityError, NativeTranslationInconsistencyError,
@@ -20,22 +22,18 @@ from .query_metadata import locate_query_views, user_frame
 _LIMITS = DEFAULT_NATIVE_TRANSLATION_LIMITS
 _MAX_OWNER_QUERIES = 4096
 _MAX_BATCH_CANDIDATES = 16_000_000
-_CODES = frozenset({
-    'LOCATE_BACKEND_INSERTION', 'LOCATE_NATIVE_UNSUPPORTED',
-    'LOCATE_PROVENANCE_AMBIGUOUS', 'LOCATE_PROVENANCE_INCONSISTENT',
-    'LOCATE_CERTIFICATION_RESOURCE', 'LOCATE_METADATA_UNREPRESENTABLE',
-})
 
 
-class LocateFailure(ValueError):
-    """Private class implementing the provisional inspectable failure protocol."""
-
-    def __init__(self, code, message, *, stage, query_index=None, **details):
-        if code not in _CODES:
-            raise ValueError('unknown locate failure code')
-        self.code, self.stage, self.query_index = code, stage, query_index
-        self.details = _bounded(details)
-        super().__init__(f'{code} [{stage}]: {str(message)[:512]}')
+def _admit(dim=None):
+    try:
+        if dim is None:
+            require_environment()
+        else:
+            require_component(f'wp8-{"planar" if dim == 2 else "spatial"}')
+    except NativeQualificationError as exc:
+        raise LocateFailure('LOCATE_NATIVE_UNSUPPORTED', str(exc),
+                            stage='profile', reason=exc.reason,
+                            detail=exc.detail) from exc
 
 
 def _materialization(message, **details):
@@ -118,6 +116,7 @@ def owner_enclosure(*, original, preparation, stored, insertion, query_removal,
     The actual preparation/storage defect and L-to-A frame defect remain exact.
     See docs/development/wp8-implementation.md for the source derivation.
     """
+    _admit()
     dim = len(original)
     a, native = _exact_rows(lattice), _exact_rows(native_lattice)
     rotation = (_exact_rows(snapshot.rotation_to_internal) if snapshot is not None
@@ -167,6 +166,9 @@ def owner_enclosure(*, original, preparation, stored, insertion, query_removal,
 
 def _owner_shifts(found, owners, positions, packet, prepared, geometry, snapshot):
     dim, m, n = geometry.dim, len(found), len(prepared.internal_ids)
+    if not m:
+        return np.empty((0, dim), dtype=np.int64)
+    _admit(dim)
     packet = _source_packet(packet, n, m, dim)
     lattice, _origin = user_frame(geometry, snapshot)
     out = np.zeros((m, dim), dtype=np.int64)
@@ -174,14 +176,17 @@ def _owner_shifts(found, owners, positions, packet, prepared, geometry, snapshot
     for i in np.flatnonzero(found):
         i, j = int(i), int(owners[i])
         original = prepared.input_points_cart[j]
-        defect, radius, removal, bounds = owner_enclosure(
-            original=original, preparation=prepared.remap_shifts[j],
-            stored=packet['stored'][j], insertion=packet['insertion_shifts'][j],
-            query_removal=packet['query_removals'][i],
-            copy_bounds=packet['copy_bounds'], lattice=lattice,
-            native_lattice=packet['lattice'], snapshot=snapshot,
-            periodic=geometry.periodic_axes,
-        )
+        try:
+            defect, radius, removal, bounds = owner_enclosure(
+                original=original, preparation=prepared.remap_shifts[j],
+                stored=packet['stored'][j], insertion=packet['insertion_shifts'][j],
+                query_removal=packet['query_removals'][i],
+                copy_bounds=packet['copy_bounds'], lattice=lattice,
+                native_lattice=packet['lattice'], snapshot=snapshot,
+                periodic=geometry.periodic_axes,
+            )
+        finally:
+            _admit()
         center = tuple(F(float(positions[i, k])) - F(float(original[k]))
                        - defect[k] for k in range(dim))
         box = CartesianCompatibilityBox(
@@ -199,6 +204,7 @@ def _owner_shifts(found, owners, positions, packet, prepared, geometry, snapshot
                 limits=replace(_LIMITS, max_candidates=min(
                     _LIMITS.max_candidates, remaining)),
             )
+            _admit()
             shift = recovered.shift
             remaining -= max(1, recovered.diagnostics.candidate_bound or 0)
         except (NativeTranslationAmbiguityError, NativeTranslationInconsistencyError,
@@ -227,10 +233,12 @@ def locate_prepared(prepared, queries, *, geometry, snapshot, blocks, init_mem,
     """One shared packaging boundary for six native locate routes."""
     dim, m, n = geometry.dim, len(queries), len(prepared.internal_ids)
     periodic = geometry.has_any_periodic_axis
-    out = locate_query_views(queries, geometry, snapshot, _materialization) \
-        if periodic else {}
     certificate = periodic and return_owner_position
+    out = {}
     if m == 0:
+        if periodic:
+            out.update(query=queries.copy(), query_wrapped=np.empty_like(queries),
+                       query_shift=np.empty((0, dim), dtype=np.int64))
         out.update(found=np.empty(0, dtype=bool), owner_id=np.empty(0, dtype=np.int64))
         if return_owner_position:
             out['owner_pos'] = np.empty((0, dim), dtype=np.float64)
@@ -238,6 +246,12 @@ def locate_prepared(prepared, queries, *, geometry, snapshot, blocks, init_mem,
                 out['owner_site'] = np.empty((0, dim), dtype=np.float64)
                 out['owner_shift'] = np.empty((0, dim), dtype=np.int64)
         return out
+    _admit(dim if certificate else None)
+    if periodic:
+        try:
+            out = locate_query_views(queries, geometry, snapshot, _materialization)
+        finally:
+            _admit()
     if certificate and m > _MAX_OWNER_QUERIES:
         raise LocateFailure('LOCATE_CERTIFICATION_RESOURCE',
                             'Complete owner batch exceeds private query budget',
@@ -246,7 +260,10 @@ def locate_prepared(prepared, queries, *, geometry, snapshot, blocks, init_mem,
     q_native = queries
     if snapshot is not None:
         with np.errstate(over='ignore', invalid='ignore'):
-            q_native = snapshot.cart_to_internal(queries)
+            try:
+                q_native = snapshot.cart_to_internal(queries)
+            finally:
+                _admit()
         if not np.isfinite(q_native).all():
             index = int(np.flatnonzero(~np.isfinite(q_native).all(axis=1))[0])
             raise LocateFailure('LOCATE_NATIVE_UNSUPPORTED', 'Nonfinite query frame',
@@ -261,7 +278,14 @@ def locate_prepared(prepared, queries, *, geometry, snapshot, blocks, init_mem,
     args.extend([init_mem, q_native])
     name = f'locate_{"periodic" if snapshot is not None else "box"}_{mode}'
     try:
-        result = getattr(core_loader(), name)(*args, return_source=certificate)
+        try:
+            core = core_loader()
+        finally:
+            _admit()
+        try:
+            result = getattr(core, name)(*args, return_source=certificate)
+        finally:
+            _admit()
     except ValueError as exc:
         translated = _native_failure(exc)
         if translated is None:
@@ -275,7 +299,10 @@ def locate_prepared(prepared, queries, *, geometry, snapshot, blocks, init_mem,
     )
     if snapshot is not None and return_owner_position:
         with np.errstate(over='ignore', invalid='ignore'):
-            positions = snapshot.internal_to_cart(positions)
+            try:
+                positions = snapshot.internal_to_cart(positions)
+            finally:
+                _admit()
     if return_owner_position:
         if not np.isfinite(positions[found]).all():
             index = int(np.flatnonzero(found & ~np.isfinite(positions).all(axis=1))[0])

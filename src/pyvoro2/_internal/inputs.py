@@ -10,6 +10,7 @@ import sys
 from typing import Sequence
 
 import numpy as np
+from .native_runtime import checked_tuple, original_array
 
 from .validation import (
     CPP_INT_MAX,
@@ -109,7 +110,7 @@ def coerce_external_id_array(
     """Return exact, non-negative, unique signed-int64 external IDs."""
 
     try:
-        ids_arr = np.asarray(ids, dtype=object)
+        ids_arr = original_array(ids)
     except (TypeError, ValueError):
         expected = 'a 1D sequence' if n is None else 'a 1D sequence of length n'
         raise ValueError(f'{name} must be {expected}') from None
@@ -219,7 +220,7 @@ def coerce_native_block_parameters(
         return None, block_size_value
 
     try:
-        items = tuple(blocks)
+        items = checked_tuple(blocks)
     except TypeError:
         raise ValueError(
             f'blocks must be a length-{dim} sequence of positive exact integers'

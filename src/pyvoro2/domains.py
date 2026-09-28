@@ -12,10 +12,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import warnings
-
 import numpy as np
 
+from ._internal.domain_access import call_domain_method, periodic_axis
+from ._internal.native_runtime import checked_call, checked_tuple, checked_warn
 from ._internal.inputs import (
     checked_int64_add,
     coerce_finite_matrix,
@@ -71,7 +71,8 @@ class Box:
     bounds: tuple[tuple[float, float], tuple[float, float], tuple[float, float]]
 
     def __post_init__(self) -> None:
-        bounds = require_ordered_bounds(self.bounds, name='bounds', dim=3)
+        bounds = require_ordered_bounds(
+            checked_call(getattr, self, 'bounds'), name='bounds', dim=3)
         object.__setattr__(self, 'bounds', bounds)
 
     @classmethod
@@ -132,8 +133,10 @@ class OrthorhombicCell:
     periodic: tuple[bool, bool, bool] = (True, True, True)
 
     def __post_init__(self) -> None:
-        bounds = require_ordered_bounds(self.bounds, name='bounds', dim=3)
-        periodic = require_bool_tuple(self.periodic, name='periodic', length=3)
+        bounds = require_ordered_bounds(
+            checked_call(getattr, self, 'bounds'), name='bounds', dim=3)
+        periodic = require_bool_tuple(
+            checked_call(getattr, self, 'periodic'), name='periodic', length=3)
         object.__setattr__(self, 'bounds', bounds)
         object.__setattr__(self, 'periodic', periodic)
 
@@ -144,7 +147,8 @@ class OrthorhombicCell:
         Vectors are returned in Cartesian coordinates and correspond to
         translations that map the cell onto itself.
         """
-        (xmin, xmax), (ymin, ymax), (zmin, zmax) = self.bounds
+        (xmin, xmax), (ymin, ymax), (zmin, zmax) = require_ordered_bounds(
+            checked_call(getattr, self, 'bounds'), name='bounds', dim=3)
         a = np.array([xmax - xmin, 0.0, 0.0], dtype=np.float64)
         b = np.array([0.0, ymax - ymin, 0.0], dtype=np.float64)
         c = np.array([0.0, 0.0, zmax - zmin], dtype=np.float64)
@@ -180,7 +184,8 @@ class OrthorhombicCell:
                 (remapped_points, shifts) where shifts has shape (n, 3)
                 and contains integer (nx, ny, nz).
         """
-        return self._remap_cart(
+        return call_domain_method(
+            self, '_remap_cart',
             points, return_shifts=return_shifts, eps=eps, integer_view=True,
         )
 
@@ -192,7 +197,8 @@ class OrthorhombicCell:
         )
         pts = coerce_point_array(points, name='points', dim=3)
 
-        (xmin, xmax), (ymin, ymax), (zmin, zmax) = self.bounds
+        (xmin, xmax), (ymin, ymax), (zmin, zmax) = require_ordered_bounds(
+            checked_call(getattr, self, 'bounds'), name='bounds', dim=3)
         Lx = float(xmax - xmin)
         Ly = float(ymax - ymin)
         Lz = float(zmax - zmin)
@@ -200,11 +206,11 @@ class OrthorhombicCell:
         if eps is None:
             # Use the maximum length among periodic axes (no hard floor).
             Lp = 0.0
-            if bool(self.periodic[0]):
+            if periodic_axis(self, 0):
                 Lp = max(Lp, Lx)
-            if bool(self.periodic[1]):
+            if periodic_axis(self, 1):
                 Lp = max(Lp, Ly)
-            if bool(self.periodic[2]):
+            if periodic_axis(self, 2):
                 Lp = max(Lp, Lz)
             eps_val = _default_snap_eps(Lp)
         else:
@@ -219,9 +225,9 @@ class OrthorhombicCell:
 
         for axis, (lo, hi, L, is_per) in enumerate(
             (
-                (xmin, xmax, Lx, self.periodic[0]),
-                (ymin, ymax, Ly, self.periodic[1]),
-                (zmin, zmax, Lz, self.periodic[2]),
+                (xmin, xmax, Lx, periodic_axis(self, 0)),
+                (ymin, ymax, Ly, periodic_axis(self, 1)),
+                (zmin, zmax, Lz, periodic_axis(self, 2)),
             )
         ):
             if not is_per:
@@ -306,11 +312,12 @@ class PeriodicCell:
 
     def __post_init__(self) -> None:
         vec = coerce_finite_matrix(
-            self.vectors,
+            checked_call(getattr, self, 'vectors'),
             name='vectors',
             shape=(3, 3),
         )
-        org = coerce_finite_vector(self.origin, name='origin', n=3)
+        org = coerce_finite_vector(checked_call(getattr, self, 'origin'),
+                                   name='origin', n=3)
 
         # Exact binary64 nonsingularity is the user-lattice validity rule.
         exact_basis_3d(vec)
@@ -323,7 +330,7 @@ class PeriodicCell:
         except np.linalg.LinAlgError:
             cond = float('inf')
         if not np.isfinite(cond) or cond > 1e10:
-            warnings.warn(
+            checked_warn(
                 'PeriodicCell lattice vectors are very ill-conditioned '
                 f'(cond≈{cond:.3g}). Numerical accuracy and periodic image '
                 'bookkeeping may be unstable; consider rescaling or using a '
@@ -391,12 +398,17 @@ class PeriodicCell:
     def _backend_frame(self):
         """Return the validated private frame used by native operations."""
 
-        return prepare_backend_frame(np.asarray(self.vectors, dtype=np.float64))
+        vectors = coerce_finite_matrix(checked_call(getattr, self, 'vectors'),
+                                       name='vectors', shape=(3, 3))
+        return prepare_backend_frame(vectors)
 
     def _rotation_to_internal(self) -> np.ndarray:
         """Return the 3x3 orthogonal Cartesian-to-backend matrix."""
 
-        return self._backend_frame().q.T
+        frame = call_domain_method(self, '_backend_frame')
+        q = coerce_finite_matrix(checked_call(getattr, frame, 'q'),
+                                 name='backend frame', shape=(3, 3))
+        return q.T
 
     def to_internal_params(self) -> tuple[float, float, float, float, float, float]:
         """Convert lattice vectors into Voro++ periodic cell parameters.
@@ -408,12 +420,16 @@ class PeriodicCell:
         Returns:
             Tuple of (bx, bxy, by, bxz, byz, bz).
         """
-        return self._backend_frame().params
+        frame = call_domain_method(self, '_backend_frame')
+        return checked_call(getattr, frame, 'params')
 
     def cart_to_internal(self, points: np.ndarray) -> np.ndarray:
         """Transform Cartesian points into the internal coordinate system."""
-        q = self._backend_frame().q
-        origin = np.asarray(self.origin, dtype=float)
+        frame = call_domain_method(self, '_backend_frame')
+        q = coerce_finite_matrix(checked_call(getattr, frame, 'q'),
+                                 name='backend frame', shape=(3, 3))
+        origin = coerce_finite_vector(checked_call(getattr, self, 'origin'),
+                                      name='origin', n=3)
         pts = coerce_point_array(points, name='points', dim=3) - origin[None, :]
         with np.errstate(over='ignore', invalid='ignore'):
             result = pts @ q
@@ -423,8 +439,11 @@ class PeriodicCell:
 
     def internal_to_cart(self, points_internal: np.ndarray) -> np.ndarray:
         """Transform internal points back into Cartesian coordinates."""
-        q = self._backend_frame().q
-        origin = np.asarray(self.origin, dtype=float)
+        frame = call_domain_method(self, '_backend_frame')
+        q = coerce_finite_matrix(checked_call(getattr, frame, 'q'),
+                                 name='backend frame', shape=(3, 3))
+        origin = coerce_finite_vector(checked_call(getattr, self, 'origin'),
+                                      name='origin', n=3)
         pts = coerce_point_array(
             points_internal,
             name='points_internal',
@@ -446,8 +465,13 @@ class PeriodicCell:
         """
 
         pts = coerce_point_array(points, name='points', dim=3)
-        basis = exact_basis_3d(np.asarray(self.vectors, dtype=np.float64))
-        origin = exact_point(np.asarray(self.origin, dtype=np.float64))
+        basis = exact_basis_3d(coerce_finite_matrix(
+            checked_call(getattr, self, 'vectors'),
+            name='vectors', shape=(3, 3),
+        ))
+        origin = exact_point(coerce_finite_vector(
+            checked_call(getattr, self, 'origin'), name='origin', n=3,
+        ))
         result = np.empty(pts.shape, dtype=np.float64)
         for row_index, row in enumerate(pts):
             point = exact_point(row)
@@ -467,8 +491,13 @@ class PeriodicCell:
         """
 
         frac = coerce_point_array(fractional, name='fractional', dim=3)
-        basis = exact_basis_3d(np.asarray(self.vectors, dtype=np.float64))
-        origin = exact_point(np.asarray(self.origin, dtype=np.float64))
+        basis = exact_basis_3d(coerce_finite_matrix(
+            checked_call(getattr, self, 'vectors'),
+            name='vectors', shape=(3, 3),
+        ))
+        origin = exact_point(coerce_finite_vector(
+            checked_call(getattr, self, 'origin'), name='origin', n=3,
+        ))
         result = np.empty(frac.shape, dtype=np.float64)
         for row_index, row in enumerate(frac):
             values = exact_point(row)
@@ -537,8 +566,13 @@ class PeriodicCell:
 
         return_shifts_value = require_bool(return_shifts, name='return_shifts')
         pts = coerce_point_array(points, name='points', dim=3)
-        basis = exact_basis_3d(np.asarray(self.vectors, dtype=np.float64))
-        origin = exact_point(np.asarray(self.origin, dtype=np.float64))
+        basis = exact_basis_3d(coerce_finite_matrix(
+            checked_call(getattr, self, 'vectors'),
+            name='vectors', shape=(3, 3),
+        ))
+        origin = exact_point(coerce_finite_vector(
+            checked_call(getattr, self, 'origin'), name='origin', n=3,
+        ))
         result = np.empty(pts.shape, dtype=np.float64)
         shifts_exact: list[tuple[int, int, int]] = []
         for row_index, row in enumerate(pts):
@@ -624,7 +658,8 @@ class PeriodicCell:
                 (remapped_points, shifts) where shifts has shape (n, 3)
                 and contains integer (na, nb, nc).
         """
-        return self._remap_internal(
+        return call_domain_method(
+            self, '_remap_internal',
             points_internal, return_shifts=return_shifts, eps=eps,
             integer_view=True,
         )
@@ -648,7 +683,11 @@ class PeriodicCell:
             if eps is None
             else require_nonnegative_finite_real(eps, name='eps')
         )
-        bx, bxy, by, bxz, byz, bz = self.to_internal_params()
+        parameters = coerce_finite_vector(
+            call_domain_method(self, 'to_internal_params'),
+            name='internal parameters', n=6,
+        )
+        bx, bxy, by, bxz, byz, bz = (float(value) for value in parameters)
 
         x = pts[:, 0].astype(float, copy=True)
         y = pts[:, 1].astype(float, copy=True)
@@ -850,7 +889,8 @@ class PeriodicCell:
         This name existed in early versions of pyvoro2 but previously used an
         incorrect independent modulo for sheared cells.
         """
-        return self.remap_internal(points_internal, return_shifts=False)
+        return call_domain_method(self, 'remap_internal', points_internal,
+                                  return_shifts=False)
 
     def remap_cart(
         self,
@@ -881,20 +921,22 @@ class PeriodicCell:
             if eps is None
             else require_nonnegative_finite_real(eps, name='eps')
         )
-        pts_i = self.cart_to_internal(points)
+        pts_i = call_domain_method(self, 'cart_to_internal', points)
         if return_shifts_value:
-            pts_i2, shifts = self.remap_internal(
+            pts_i2, shifts = checked_tuple(call_domain_method(
+                self, 'remap_internal',
                 pts_i,
                 return_shifts=True,
                 eps=eps_value,
-            )
-            return self.internal_to_cart(pts_i2), shifts
-        pts_i2 = self.remap_internal(
+            ))
+            return call_domain_method(self, 'internal_to_cart', pts_i2), shifts
+        pts_i2 = call_domain_method(
+            self, 'remap_internal',
             pts_i,
             return_shifts=False,
             eps=eps_value,
         )
-        return self.internal_to_cart(pts_i2)
+        return call_domain_method(self, 'internal_to_cart', pts_i2)
 
 
 def _require_finite_remap_coordinates(*coordinates: np.ndarray) -> None:

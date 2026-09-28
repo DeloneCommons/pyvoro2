@@ -212,14 +212,18 @@ their existing lazy loading paths.
 Plain `import pyvoro2` loads the public pure-Python forward/result surface and
 the `pyvoro2.planar` namespace, but it does not import `pyvoro2.inverse`,
 `pyvoro2._core`, or `pyvoro2._core2d`. Importing `pyvoro2.inverse` or
-`pyvoro2.inverse.separator` also does not load either native extension.
+`pyvoro2.inverse.separator` also does not load either geometry extension.
+Issue #88 adds a small root-owned `_fpguard` extension retained at package
+initialization so a forward operation can inspect raw FP controls before lazy
+geometry loading performs any interpreter conversion. Absence of this guard
+does not block pure Python/inverse imports, but forward operations refuse.
 
 The spatial wrapper imports `_core` only when `compute`, `locate`, or
 `ghost_cells` first needs the 3D backend. The planar wrapper does the same for
 `_core2d`. Documentation builds and inverse-only work can therefore import the
 package without a compiled extension; a forward geometry operation raises an
-informative `ImportError` when its required native module is unavailable. Lazy
-loading does not change ownership: `_core` and `_core2d` remain root-owned
+informative error when its required guard or native module is unavailable. Lazy
+loading does not change ownership: native extensions remain root-owned
 internal native extensions, while `_internal` owns only pure-Python helpers.
 
 ### Native construction safety boundary
@@ -244,6 +248,13 @@ are not insertion-checked. Exact original
 Python type semantics remain the wrapper's responsibility because pybind11
 conversion may already have erased that information. ADR 0010 fixes the
 ordering, resource policy, source-trace requirement, and R3-A scope.
+
+[ADR 0024](decisions/0024-external-native-artifact-qualification.md) adds raw
+current-thread inspection before floating preparation and typed native casters,
+plus rechecks after each foreign conversion callback. Runtime state is never
+cached or normalized. The [qualification workflow](native-qualification.md)
+separately binds approved source/schema/consumers, actual effective build
+evidence and all final installed native payloads, including `_fpguard`.
 
 ### Strict public values and pragmatic ownership
 
@@ -907,7 +918,7 @@ the independently accepted WP6 contract and merged implementation under
 | Component | Responsibility |
 |---|---|
 | `cpp/planar_witness.cpp` and private headers | Run the unchanged ordinary rectangular producer with compact outgoing-edge tokens, actual insertion/storage snapshots and internal collapse evidence. |
-| `cmake/PlanarWitness.cmake` and `_internal/planar/wp6_profile.py` | Bind the measured source closure and schema to an admitted effective build/evaluation profile; refuse unsupported profiles. |
+| Shared qualification workflow and `_internal/planar/wp6_profile.py` | Bind separately approved source/schema/consumers and effective-build evidence to the installed planar artifact; retain packet consistency and runtime checks. |
 | `_internal/planar/wp6_certificate.py` | Validate insertion and final source associations, transport native images into the original-source/user-basis chart, and combine exact audit findings with public output/actions. |
 | `_internal/planar/wp6_ideal.py` | Reconstruct complete exact planar cells and labeled contacts independently for E and S, with complete-family and exact-arithmetic guards. |
 | `_internal/planar/wp6_numerical.py` | After complete E/S auditing, compare reciprocal native segment unions for classes positive in both ideals, using exact native-local chart translation before a checked numerical view. |
@@ -959,27 +970,22 @@ The four obsolete ordinary `planar.compute` reconstruction controls are removed
 in WP6; WP7 removes their planar `ghost_cells` counterparts. No new public
 result hierarchy, inverse algorithm or mandatory dependency is introduced.
 
-The occurrence schema is private `pyvoro2.planar.occurrences.v1`. CMake hashes
-the complete linked planar vendor closure plus adapter/binding/precondition and
-effective build-control sources; its measured digest must match separately
-reviewed literals in the native contract header and Python profile module.
-Runtime checks additionally require the admitted cohort, binary64
-`FLT_EVAL_METHOD == 0`, 32-bit native integers, round-to-nearest and gradual
-underflow. The initial admitted production cohort is Linux x86_64/GCC 13.3
-baseline SSE2, with no AVX/FMA, fast-math, contraction or LTO. Other package
-platforms do not inherit that proof and refuse until qualified.
+The occurrence schema is private `pyvoro2.planar.occurrences.v1`. Under
+ADR 0024, separately reviewed source/schema/consumer approval, actual effective
+compiler/link evidence and final installed identity govern artifact admission.
+Packet hashes and compiler metadata remain consistency checks. The accepted
+evaluation contract retains binary64 `FLT_EVAL_METHOD == 0`, 32-bit native
+integers and strict ordered operations. Raw current-thread guards separately
+check rounding, subnormal controls, exception masks and required precision.
 
-The full source-install CI gate uses Ubuntu 24.04 and `CXX=g++-13`, then checks
-the actual supported profile; compiler drift does not expand qualification.
-macOS 15 and Windows build the package and run spatial/pure-Python checks plus
-explicit ordinary-planar profile-refusal checks. Installed-artifact checks
-retain source/schema and native-profile/binary identities in either mode;
-successful unsupported-platform refusal is not planar geometry qualification.
-All current cibuildwheel release cohorts (manylinux x86_64, Windows AMD64,
-macOS arm64 and macOS x86_64) explicitly test ordinary-planar refusal across
-CPython 3.10–3.14. The separately built Linux GCC 13.3 source wheel is the
-admitted ordinary-planar wheel; release-wheel 3D/algebra checks do not extend
-that support boundary.
+The historical Linux x86_64/GCC 13.3 positive remains a control, rather than a
+compiler-version or no-AVX/FMA allowlist. Issue #88 requires final repaired
+GNU 14.2.1 manylinux positives and a strict AVX/FMA-capable positive, with
+unsafe contraction discriminated independently. Other package platforms do not
+inherit planar occurrence qualification from ordinary package support or
+refusal-only tests. The [qualification workflow](native-qualification.md) records
+the still-pending exact-head artifact/platform acceptance gates, retained
+CPython 3.10–3.14 coverage and required Apple/MSVC WP5/WP8 preservation.
 
 Current private refusal ceilings remain separate:
 
@@ -1043,9 +1049,9 @@ The public result remains `list[dict]`. Both dimensions retain `id=-1` and
 `query_index`; WP8 adds original `query` in both dimensions and periodic
 `query_wrapped`/`query_shift` after all required checks and empty filtering. The four planar ghost numerical
 reconstruction controls are removed. Generic whole-tessellation normalization
-rejects independent ghost batches. Initially only the qualified Linux x86_64
-GCC 13.3 strict binary64 cohort admits certificate-bearing calls; other
-cohorts explicitly refuse pending qualification. WP6's binding source closure
+rejects independent ghost batches. Certificate admission composes the qualified
+ordinary producer and selected ghost component for the dimension; unqualified
+components refuse explicitly. WP6's binding source closure
 must be requalified when the shared binding changes. Safe identity alone does
 not settle the still-open D9 vendor policy.
 
@@ -1066,6 +1072,12 @@ uniqueness. Exact owner image and native float presentation are separate; query
 wrapping is never counted again. The `LOCATE_*` protocol distinguishes native
 integrity, support, proof and materialization failures. Finite private budgets
 bound complete observation/certification and never allow partial success.
+
+WP8 consumes its separately qualified spatial or planar source/enclosure
+component. Its final NumPy/BLAS transform retains the bounded association/FMA
+allowance in the accepted proof; it does not inherit an occurrence component
+solely because the native module is shared. ID-only routes do not acquire
+owner-image certificate requirements.
 
 Ghost metadata integration preserves all WP7 source/S checks, stored site and
 boundary transport. It validates original query association even on filtered

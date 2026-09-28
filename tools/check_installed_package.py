@@ -267,10 +267,10 @@ def _check_private_helper_layout() -> None:
 
 
 def _check_planar_profile(core: ModuleType, *, refusal: bool) -> dict:
-    """Require either reviewed production support or explicit cohort refusal."""
-    from pyvoro2._internal.planar.wp6_profile import (
-        SCHEMA, SOURCE_SHA256, validate_profile,
-    )
+    """Distinguish externally admitted provenance from component refusal."""
+    from pyvoro2._internal.planar.wp6_profile import SCHEMA, validate_profile
+    from pyvoro2._internal.native_admission import require_component
+    from pyvoro2._internal.native_qualification import NativeQualificationError
 
     try:
         profile = core._planar_witness_profile()
@@ -279,18 +279,21 @@ def _check_planar_profile(core: ModuleType, *, refusal: bool) -> dict:
             'installed planar extension has no WP6 native profile'
         ) from exc
     if refusal:
-        # A stale/mismatched package is never evidence of intended platform
-        # refusal.  Its schema and reviewed source binding must still agree.
-        if (profile.get('schema') != SCHEMA
-                or profile.get('source_sha256') != SOURCE_SHA256
-                or profile.get('source_supported') is not True):
+        if profile.get('schema') != SCHEMA:
             raise InstalledPackageCheckError(
                 'planar refusal check found a mismatched source/schema package'
             )
-        if (profile.get('cohort_supported') is not False
-                or profile.get('qualified') is not False):
+        try:
+            require_component('wp6-planar')
+        except NativeQualificationError as exc:
+            if exc.reason != 'missing_component':
+                raise InstalledPackageCheckError(
+                    'planar refusal is not a qualified artifact component '
+                    f'refusal: {exc}'
+                ) from exc
+        else:
             raise InstalledPackageCheckError(
-                '--planar-refusal requires an unsupported native cohort'
+                '--planar-refusal requires an explicitly unqualified component'
             )
     else:
         try:
@@ -329,7 +332,8 @@ def _check_planar_refusals(core: ModuleType, planar: ModuleType) -> None:
             try:
                 native(*args, bounds, (1, 1), periodic, 1, (True, True, True))
             except RuntimeError as exc:
-                if not str(exc).startswith('planar_certification:profile:cohort:'):
+                if not str(exc).startswith(
+                        'planar_certification:profile:missing_component:'):
                     raise InstalledPackageCheckError(
                         f'native refused for an unexpected reason: {exc}'
                     ) from exc
@@ -423,21 +427,18 @@ def _check_ghost_workflows(*, refusal: bool) -> None:
     """Exercise qualified references or prove explicit cohort refusal."""
     import numpy as np
     from pyvoro2._internal.ghost import GhostFailure
-    from pyvoro2._internal.spatial.ghost_certificate import (
-        _QUALIFIED_GHOST_SOURCE_SHA256,
-    )
-
-    spatial_core = importlib.import_module('pyvoro2._core')
-    query = np.asarray([[.5, .5, .5]])
-    packet, = spatial_core._observe_ghost_box(
-        np.empty((0, 3)), np.empty((0,), dtype=np.int32),
-        ((0., 1.),) * 3, (1, 1, 1), (False, False, False), 1, query,
-    )
-    if (packet['build'].get('ghost_source_sha256') !=
-            _QUALIFIED_GHOST_SOURCE_SHA256):
-        raise InstalledPackageCheckError('installed 3D ghost source is not reviewed')
-    print('spatial ghost native source: reviewed digest ' +
-          _QUALIFIED_GHOST_SOURCE_SHA256)
+    from pyvoro2._internal.native_admission import require_component
+    from pyvoro2._internal.native_qualification import NativeQualificationError
+    for component in ('wp7-spatial', 'wp7-planar'):
+        try:
+            require_component(component)
+        except NativeQualificationError as exc:
+            if not refusal or exc.reason != 'missing_component':
+                raise InstalledPackageCheckError(str(exc)) from exc
+        else:
+            if refusal:
+                raise InstalledPackageCheckError(
+                    'qualified ghost component was expected to refuse')
 
     masks_checked = 0
     for dimension in (2, 3):
@@ -546,6 +547,7 @@ def _run_workflows(
         ('pyvoro2', pv),
         ('pyvoro2._core', importlib.import_module('pyvoro2._core')),
         ('pyvoro2._core2d', importlib.import_module('pyvoro2._core2d')),
+        ('pyvoro2._fpguard', importlib.import_module('pyvoro2._fpguard')),
     )
     for module_name, module in modules:
         location = assert_outside_repository(
@@ -556,6 +558,9 @@ def _run_workflows(
         print(f'{module_name}: {location}')
 
     core2d = importlib.import_module('pyvoro2._core2d')
+    from pyvoro2._internal.native_admission import require_component
+    for component in ('wp5-spatial', 'wp8-spatial', 'wp8-planar'):
+        require_component(component)
     _check_planar_profile(core2d, refusal=planar_refusal)
 
     points3 = np.array(

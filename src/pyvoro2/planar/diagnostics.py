@@ -7,7 +7,7 @@ from .._internal.ghost import reject_ghost_records
 from dataclasses import dataclass
 from typing import Any, Literal, Sequence
 
-import warnings
+from .._internal.native_runtime import checked_warn
 
 import numpy as np
 
@@ -481,7 +481,7 @@ def _analyze_tessellation(
             if (line_offset_tol is None or line_angle_tol is None) and (
                 float(L) < 1e-3 or float(L) > 1e9
             ):
-                warnings.warn(
+                checked_warn(
                     'analyze_tessellation is using default periodic line-mismatch '
                     'tolerances derived from the planar domain length scale '
                     f'(L≈{float(L):.3g}). For very small/large units this may '

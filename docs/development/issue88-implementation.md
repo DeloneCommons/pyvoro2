@@ -1,6 +1,9 @@
-# Issue #88 implementation and qualification plan
+# Issue #88 implementation and qualification status
 
-Status: implementation preparation; no new artifact is qualified by this note.
+Status: runtime/tooling implementation and independent source review are complete.
+The reviewed source closure is approved. Native and platform qualification,
+exact-head CI, and the review PR/evidence handoff remain pending. No production
+artifact is qualified by source approval or by this note.
 
 ## Authority and scope
 
@@ -25,7 +28,7 @@ public API, edit functional vendor source, or enter Phase C.
 | Effective build | External controlled driver and platform adapters; actual process/argument, response-file, environment, dependency, object and link records; ordered effective settings and independent arithmetic discriminators. |
 | Issuance | External finalizer consumes successful complete component evidence and the final repaired/installed native payload, then writes a detached record and its trusted installation anchor. |
 | Artifact verification | Private Python verifier checks trusted anchor, approved source/schema/policy, component claims, exact loaded native payload and dependency binding. Immutable installation identity may be cached; current FP state may not. |
-| Safe execution | Binding-owned raw integer control inspection before floating operations and pybind casters, with checks after foreign coercion boundaries; no caller-state normalization. |
+| Safe execution | Preloaded private `_fpguard` and shared binding-owned raw integer inspection before lazy geometry loading, raw argument validation and typed casters, with checks after foreign callback boundaries; no caller-state normalization. |
 | Route composition | WP5 spatial; independently owned WP6 planar; WP7 spatial = WP5 + selected spatial; WP7 planar = WP6 + selected planar; separate spatial/planar WP8 source/enclosure components. |
 
 The record anchor belongs to the trusted package finalization/installation
@@ -33,6 +36,12 @@ path, not to native candidate metadata or a JSON file discovered beside it.
 Replacing the verifier and trusted installation together is outside the
 documented numerical/build trust boundary. This is not a malicious-compiler
 or native-code security sandbox.
+
+[ADR 0024](decisions/0024-external-native-artifact-qualification.md) now owns the
+durable qualification policy; the [native qualification workflow](native-qualification.md)
+maps its implementation and required evidence. The separate source approval binds
+the independently reviewed closure and review-report hashes. Measurement alone
+cannot approve a source change, and source approval cannot qualify an artifact.
 
 ## Global constraints
 
@@ -48,63 +57,80 @@ or native-code security sandbox.
 - WP8's bounded final NumPy/BLAS transform continues to permit association/FMA.
 - Qualification-only hooks must not be present in production distributions.
 
-## Implementation sequence
+## Implementation and remaining evidence
+
+Checked items identify implementation work or focused development checks already
+performed. They do not establish final-head acceptance. Independent review
+remains active, and affected checks must be rerun after its corrections.
 
 ### 1. Raw runtime boundary and guarded coercion
 
-- [ ] Add failing split-rounding, PC24/PC53, unmasked-trap and callback-state
+- [x] Add failing split-rounding, PC24/PC53, unmasked-trap and callback-state
   tests using disposable child processes and exact surviving-harness restoration.
-- [ ] Introduce a shared binding-owned raw-control inspector whose refusal path
-  uses no FP conversion/arithmetic; verify its optimized object instructions.
-- [ ] Guard public Python entry, direct native dispatch before typed casters,
-  profile inspection and replay/enclosure continuation. Recheck after foreign
-  coercion callbacks, including callbacks inside object-array conversion.
-- [ ] Preserve structured WP5/WP6/GHOST/LOCATE failure ownership.
-- [ ] Fresh-build and run focused entry/precondition regressions.
+- [x] Introduce the shared raw-control inspector and preloaded `_fpguard`, with
+  integer-only inspection before lazy geometry import and native argument binding.
+- [x] Wire guarded public/native entry, profile inspection and replay/enclosure
+  continuation, including per-callback coercion, warning delivery and domain
+  subclass attribute/method checks before native-facing continuation. Independent
+  entry review remains active.
+- [x] Preserve structured WP5/WP6/GHOST/LOCATE failure ownership.
+- [x] Fresh-build and run focused entry/precondition regressions during development.
+- [ ] Finish independent entry-boundary review and inspect the final optimized
+  guard/dispatch instructions; rerun hostile-state controls on final artifacts.
 
 ### 2. Source approval, effective build, and artifact record
 
-- [ ] Add failing missing/forged/copied-record, source/schema mismatch and
+- [x] Add failing missing/forged/copied-record, source/schema mismatch and
   late-unsafe-launcher tests before issuing any qualification record.
-- [ ] Bind complete reviewed source/schema/consumer and separate policy anchors.
-- [ ] Implement controlled build recording with atomic per-process records,
+- [x] Implement conservative source/schema/consumer measurement, separate approval
+  and policy anchors, immutable payload registration and detached-record checks.
+- [x] Implement controlled build recording with atomic per-process records,
   executable/backend/linker identity, ordered effective argv, response files,
   source/header inputs, environment and toolchain settings, and final objects.
-- [ ] Refuse opaque wrappers, incomplete evidence and effective unsafe math/LTO;
-  allow an earlier unsafe flag only when demonstrably overridden effectively.
-- [ ] Run independent exact arithmetic and selected disassembly discriminators.
-- [ ] Finalize only completed positive components against exact post-processing
-  native bytes and native dependencies; bind evidence and record identities.
+- [x] Add effective-option, external-provider, linker-input and source-control
+  checks with independent negative tests; keep approval distinct from captured
+  hashes and reject incomplete or unsafe evidence.
+- [x] Implement independent arithmetic/disassembly discrimination and finalization
+  tooling that requires complete component evidence and postprocessing lineage.
+- [x] Complete independent review and approve the integrated source closure.
+- [ ] Run the discriminators and finalizer on the actual final production payloads,
+  binding module, dependency, record and evidence identities.
 - [ ] Verify a distinct conforming rebuild can receive a distinct valid record.
 
 ### 3. Route admission and qualification corpora
 
-- [ ] Replace version/ISA cohort authority with component qualification while
+- [x] Replace version/ISA cohort authority with component qualification while
   keeping native metadata as consistency data and retaining per-call checks.
+- [x] Preserve original archived corpus bytes and implement controlled route-suite
+  and targeted missing-component/refusal checks without regenerating expectations.
 - [ ] Run current WP6 48-case/1718-occurrence and original archived
-  92-case/2298-occurrence corpora without regenerating expected provenance.
+  92-case/2298-occurrence corpora on the final qualification artifacts.
 - [ ] Run WP7 planar 30-case/287-occurrence and accepted ordinary/selected
-  spatial, ghost semantic and separate WP8 enclosure/source tests.
-- [ ] Exercise all missing-component and unqualified-platform refusals.
+  spatial, ghost semantic and separate WP8 enclosure/source tests on those artifacts.
+- [ ] Complete native missing-component and unqualified-platform refusal evidence
+  for the final head alongside required positive paths.
 
 ### 4. Final installed artifacts and documentation
 
-- [ ] Add actual GNU14.2.1 manylinux build/repair/install positive qualification.
-- [ ] Preserve GNU13.3 control, strict AVX/FMA control, unsafe contraction
-  discriminator, supported Apple/MSVC WP5/WP8 and Python 3.10–3.14 coverage.
-- [ ] Keep optimized native, sanitizers, Python compatibility, build negatives,
-  runtime negatives, direct-wheel and sdist-wheel checks distinct.
-- [ ] Add focused qualification ADR; narrowly amend ADRs 0021–0023, active plan,
+- [x] Implement controlled build/repair/install and distribution validation for
+  `_core`, `_core2d`, `_fpguard`, private consumers and qualification records.
+- [x] Add CI paths separating source/build admission, optimized native, sanitizers,
+  Python compatibility, negative controls and direct/sdist-wheel checks.
+- [x] Add focused qualification ADR; narrowly amend ADRs 0021–0023, active plan,
   native/build/support documentation and evidence navigation.
+- [ ] Obtain actual final repaired/installed GNU14.2.1 manylinux positive evidence.
+- [ ] Obtain final GNU13.3 and strict AVX/FMA controls, unsafe discriminators,
+  AppleClang/MSVC WP5/WP8 positives and Python 3.10–3.14/full-suite evidence.
 - [ ] Run final exact-head CI and retain complete commands, manifests, run IDs,
   imported module paths, native/dependency/wheel hashes and checksums.
-- [ ] Complete an independent branch review and hand off the review PR; do not
+- [ ] Finish independent branch review and hand off the review PR; do not
   merge, close issues or mark integration/release gates accepted.
 
 ## Review focus
 
-- Foreign scalar/array/index callbacks that change FP state before the next
-  package-owned operation must be refused at the return boundary.
+- Foreign scalar/array/index, warning-handler and domain subclass callbacks that
+  change FP state before the next package-owned operation must be refused at
+  their individual return boundaries, including method acquisition.
 - Direct native calls and profile inspection must be safe even when Python
   preparation and normal import-time checks are bypassed.
 - A correct record copied to another module, or a modified dependency after

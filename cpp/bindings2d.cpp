@@ -120,10 +120,11 @@ py::list compute_cells_impl(ContainerT& con, const OutputOpts& opts) {
 }  // namespace
 
 PYBIND11_MODULE(_core2d, m) {
+  pyvoro2::native_runtime::bind_inspection(m);
   pyvoro2::planar_witness::bind(m);
   m.doc() = "pyvoro2 planar core bindings (legacy 2D Voro++)";
 
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "compute_box_standard",
       [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
          py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -166,7 +167,7 @@ PYBIND11_MODULE(_core2d, m) {
       py::arg("init_mem"),
       py::arg("opts"));
 
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "compute_box_power",
       [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
          py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -212,7 +213,7 @@ PYBIND11_MODULE(_core2d, m) {
       py::arg("init_mem"),
       py::arg("opts"));
 
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "locate_box_standard",
       [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
          py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -281,7 +282,7 @@ PYBIND11_MODULE(_core2d, m) {
       py::arg("init_mem"),
       py::arg("queries"), py::arg("return_source") = false);
 
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "locate_box_power",
       [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
          py::array_t<int, py::array::c_style | py::array::forcecast> ids,

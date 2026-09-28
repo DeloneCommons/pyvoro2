@@ -145,7 +145,7 @@ def test_profile_binds_schema_source_and_effective_fp_contract():
     from pyvoro2._internal.planar.wp6_profile import require_supported_profile
     profile = _core2d._planar_witness_profile()
     require_supported_profile(profile)
-    assert profile["qualified"] is True
+    assert profile["runtime_compatible"] is True
     assert profile["flt_eval_method"] == 0
     assert profile["int_bits"] == profile["uint_bits"] == 32
     assert profile["double_digits"] == 53

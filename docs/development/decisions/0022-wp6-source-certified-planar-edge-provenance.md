@@ -46,6 +46,14 @@ witness or other platforms. The subsequent independent production acceptance
 and squash merge at `1a6ae56ece1923530dcb0798b5710704f0f08697` complete
 WP6; Checkpoint B acceptance remains pending.
 
+**Qualification amendment, 2026-09-28:**
+[ADR 0024](0024-external-native-artifact-qualification.md) replaces historical
+compiler-cohort admission with separately approved source/schema/consumer
+identity, external effective-build/artifact evidence and raw current-thread FP
+checks. WP6 remains an independent occurrence component. This does not change
+the accepted source association, insertion, N/E/S or collapse contract, and
+does not claim issue #88 acceptance.
+
 ## Decision
 
 ### Native occurrence provenance comes from the producing execution
@@ -109,7 +117,7 @@ native pruning produces the exact ideal cell. Direct witnessed attribution
 does not need reverse plane matching or per-call producer-family enumeration.
 
 Checked integer/block/allocation and selector assumptions exclude signed
-overflow and invalid floating-to-integer conversion. The accepted cohorts use
+overflow and invalid floating-to-integer conversion. The historical cohorts used
 32-bit native signed/unsigned integers, binary64 with `FLT_EVAL_METHOD == 0`,
 round-to-nearest, gradual underflow, no fast-math or LTO/IPO, and x86_64 targets
 without enabled FMA instructions. Their flags did not explicitly disable
@@ -118,12 +126,14 @@ must use source `Step` semantics, which differ from mathematical floor at
 negative exact integers.
 
 Production binds the Python/native schema and reviewed source contract to the
-actual effective build/evaluation profile. A self-reported hash or compiler
-name alone is insufficient. Changed source, FMA, reassociation, extended
-evaluation, integer width or rounding requires affected-proposition
-qualification or explicit refusal. The two prerequisite Linux cohorts do not
-certify other package platforms. A binding-only implementation does not trigger
-D9; a newly necessary vendor edit does.
+actual effective build/evaluation profile under ADR 0024. A self-reported hash or
+compiler name alone is insufficient. Changed source, contraction, reassociation,
+extended evaluation, integer width or rounding requires affected-proposition
+qualification or explicit refusal. AVX/FMA instruction availability alone is not
+an unsafe-transformation predicate; proof-sensitive source contraction must be
+excluded and independently discriminated. The two prerequisite Linux cohorts do
+not certify other package platforms. A binding-only implementation does not
+trigger D9; a newly necessary vendor edit does.
 
 ### Insertion and public chart use actual storage
 

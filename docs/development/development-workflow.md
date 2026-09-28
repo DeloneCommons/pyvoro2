@@ -32,7 +32,7 @@ profile. A missing diff or failed classifier also fails the gate.
 |---|---|
 | Documentation only | Lint, generated-file sync, notebook/tooling checks, strict docs build. |
 | Ordinary runtime Python | One complete installed suite on Linux/Python 3.13, smaller Python compatibility checks, cross-platform ordinary/refusal checks, distribution validation and docs. |
-| Native/build/certificate or CI infrastructure | Existing qualified Linux matrix, native sanitizers, cross-platform refusal matrix, distribution checks and complete release wheel matrix. |
+| Native/build/certificate or CI infrastructure | Native qualification, platform-specific positive/refusal routes, native sanitizers, distribution checks and complete release wheel matrix. |
 | Packaging/distribution tooling | Distribution and complete wheel validation plus lint/docs/tooling checks. |
 
 The path mapping deliberately treats internal certificate code and test changes
@@ -40,6 +40,14 @@ conservatively. `docs/index.md` generates package `README.md`, and notebook
 exports are distributed, so these select distribution validation. Every push
 to `dev` or `main` runs the full integration profile regardless of its diff.
 Release tags and manual dispatch continue to run the standalone Wheels workflow.
+
+Issue #88's [native qualification workflow](native-qualification.md) separates
+source approval, actual optimized build evidence, current-thread runtime checks
+and final installed artifact acceptance. Keep these distinct from Python-minor
+compatibility and sanitizer jobs. A compiler label, requested flags or a
+refusal-only wheel smoke cannot establish a required positive. Record exact PR
+head and final payload identities; changed source or repaired bytes require
+affected checks again.
 
 ## Planning levels
 

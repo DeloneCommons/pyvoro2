@@ -9,9 +9,11 @@ import numpy as np
 
 from ...planar.domains import Box, RectangularCell
 from ..inputs import (
+    coerce_finite_matrix,
     coerce_native_block_parameters,
     coerce_point_array,
 )
+from ..native_runtime import checked_call, checked_tuple
 from ..periodic_images import (
     MinimumImageBatch,
     MinimumImageDistances,
@@ -51,7 +53,8 @@ class DomainGeometry2D:
     def periodic_axes(self) -> tuple[bool, bool]:
         if self.domain is None or isinstance(self.domain, Box):
             return (False, False)
-        return tuple(bool(v) for v in self.domain.periodic)
+        return tuple(checked_call(bool, v) for v in checked_tuple(
+            checked_call(getattr, self.domain, 'periodic')))
 
     @property
     def has_any_periodic_axis(self) -> bool:
@@ -61,7 +64,7 @@ class DomainGeometry2D:
     def bounds(self) -> tuple[tuple[float, float], tuple[float, float]]:
         if self.domain is None:
             raise ValueError('a domain is required to determine planar bounds')
-        return self.domain.bounds
+        return checked_call(getattr, self.domain, 'bounds')
 
     @property
     def native_bounds(self) -> tuple[tuple[float, float], tuple[float, float]]:
@@ -81,9 +84,13 @@ class DomainGeometry2D:
         if self.domain is None:
             raise ValueError('a domain is required to determine lattice vectors')
         if isinstance(self.domain, RectangularCell):
-            return self.domain.lattice_vectors
+            a, b = coerce_finite_matrix(
+                checked_call(getattr, self.domain, 'lattice_vectors'),
+                name='lattice vectors', shape=(2, 2),
+            )
+            return a, b
 
-        (xmin, xmax), (ymin, ymax) = self.domain.bounds
+        (xmin, xmax), (ymin, ymax) = self.native_bounds
         a = np.array([xmax - xmin, 0.0], dtype=np.float64)
         b = np.array([0.0, ymax - ymin], dtype=np.float64)
         return a, b
@@ -92,7 +99,9 @@ class DomainGeometry2D:
         pts = coerce_point_array(points, name='points', dim=2)
         if self.domain is None or isinstance(self.domain, Box):
             return pts
-        return self.domain.remap_cart(pts, return_shifts=False)
+        remap = checked_call(getattr, self.domain, 'remap_cart')
+        return coerce_point_array(checked_call(remap, pts, return_shifts=False),
+                                  name='remapped points', dim=2)
 
     def shift_to_cart(self, shifts: np.ndarray) -> np.ndarray:
         raw = np.asarray(shifts, dtype=object)

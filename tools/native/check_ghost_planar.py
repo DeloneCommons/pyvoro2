@@ -15,6 +15,7 @@ import json
 import math
 from pathlib import Path
 import struct
+import sys
 
 import numpy as np
 
@@ -99,6 +100,8 @@ def run(module, prefix, spec, suffix=''):
 
 
 def main():
+    if sys.flags.optimize or not __debug__:
+        raise RuntimeError('qualification requires enabled Python assertions')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--module', type=Path, required=True)
     parser.add_argument('--production-module', type=Path,
@@ -116,7 +119,8 @@ def main():
     assert profile['source_sha256'] == source_sha
     if production:
         assert production._planar_witness_profile()['source_sha256'] == source_sha
-        assert production._planar_witness_profile()['qualified'] is True
+        from pyvoro2._internal.native_qualification import require_native
+        require_native(production, 'wp7-planar')
     results = []
     for fixture in corpus():
         if fixture.get('batch_resource'):

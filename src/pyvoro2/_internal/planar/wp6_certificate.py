@@ -13,6 +13,7 @@ import math
 import struct
 
 from .domain_geometry import geometry2d
+from .wp6_profile import require_planar, validate_profile
 
 
 class WP6Failure(Exception):
@@ -23,6 +24,20 @@ class WP6Failure(Exception):
         self.code = code
         self.severity = severity
         self.context = context
+
+
+def require_wp6(*, artifact=True):
+    try:
+        return require_planar(artifact=artifact)
+    except RuntimeError as exc:
+        raise _profile_failure(exc) from exc
+
+
+def _profile_failure(exc):
+    parts = str(exc).split(':', 3)
+    reason = parts[2] if len(parts) == 4 else 'packet_profile'
+    return WP6Failure('WP6_PROFILE_UNSUPPORTED', str(exc),
+                      stage='profile', reason=reason)
 
 
 @dataclass(frozen=True)
@@ -140,9 +155,16 @@ class EdgeCertificate:
         }
 
     def boundary_measures(self):
+        try:
+            require_wp6()
+        except WP6Failure as exc:
+            from ...planar.api import _raise_wp6_failure
+
+            _raise_wp6_failure(exc, self.domain, self.prepared, self.mode)
         from .wp6_ideal import ExactAuditRefusal, length_from_squared
 
         try:
+            require_wp6(artifact=False)
             return {
                 key: length_from_squared(contact.length_squared)
                 for key, contact in self.positive_boundaries().items()
@@ -154,6 +176,10 @@ class EdgeCertificate:
                 'WP6_MEASURE_REPRESENTATION', str(exc), stage='representation'
             )
             _raise_wp6_failure(error, self.domain, self.prepared, self.mode)
+        except WP6Failure as exc:
+            from ...planar.api import _raise_wp6_failure
+
+            _raise_wp6_failure(exc, self.domain, self.prepared, self.mode)
 
     def bridge_defect(self, source, owner, sigma):
         return tuple(
@@ -167,6 +193,7 @@ class EdgeCertificate:
         """Materialize source-centered native views without using public points
         as exact ideal vertices. Unrequested views are never constructed.
         """
+        require_wp6()
         by_source = defaultdict(list)
         for occurrence in self.occurrences:
             by_source[occurrence.source].append(occurrence)
@@ -224,13 +251,15 @@ class EdgeCertificate:
 
 def _checked_packet(cells, packet, prepared, domain, mode, limits,
                     *, selected_sources=None):
-    from .wp6_profile import validate_profile
-
+    require_wp6()
     try:
         validate_profile(packet['profile'])
     except (KeyError, TypeError, ValueError, RuntimeError) as exc:
-        raise WP6Failure('WP6_PROFILE_UNSUPPORTED', str(exc), stage='profile') from exc
-    geom = geometry2d(domain)
+        raise _profile_failure(exc) from exc
+    try:
+        geom = geometry2d(domain)
+    finally:
+        require_wp6(artifact=False)
     n = len(prepared.internal_ids)
     periodic = tuple(packet['periodic'])
     if (
@@ -466,8 +495,10 @@ def certify_packet(
 
 
 def _audit(certificate, power_input, semantic_weights, reciprocity_required, budget):
+    require_wp6(artifact=False)
     from .wp6_ideal import ExactAuditBudget, ExactAuditRefusal, ExactIdeal
 
+    require_wp6(artifact=False)
     c = certificate
     issues = []
     budget = budget or ExactAuditBudget()

@@ -13,7 +13,10 @@ import math
 
 import numpy as np
 
-from .wp5_common import WP5Budget, WP5Failure
+from ..native_runtime import checked_call
+from ..validation import require_ordered_bounds
+from .domain_utils import domain_lattice_vectors
+from .wp5_common import WP5Budget, WP5Failure, require_wp5
 
 
 def _vector(values):
@@ -128,6 +131,7 @@ class FaceCertificate:
         """
         self.require_semantic_consistency()
         try:
+            require_wp5()
             return {
                 (i, owner, shift): _sqrt_view(
                     self.semantic.cell(i).contact(owner, shift).area_squared
@@ -143,6 +147,7 @@ class FaceCertificate:
 
     def public_cells(self, *, return_vertices, return_adjacency, include_empty):
         """Serialize the matched ordinary native geometry in the source chart."""
+        require_wp5()
         result = []
         reflected = self.snapshot is not None and self.snapshot.parity < 0
         for native in self.packet['cells']:
@@ -180,9 +185,13 @@ class FaceCertificate:
                     ])
                 if values and self.snapshot is not None:
                     with np.errstate(over='ignore', invalid='ignore'):
-                        values = self.snapshot.internal_to_cart(
-                            np.asarray(values, dtype=np.float64)
-                        ).tolist()
+                        try:
+                            values = self.snapshot.internal_to_cart(
+                                np.asarray(values, dtype=np.float64)
+                            )
+                        finally:
+                            require_wp5(artifact=False)
+                        values = values.tolist()
                 translation = _row_product(self.shifts[i], self.lattice)
                 cell['vertices'] = [
                     [_finite(Fraction(_finite(value, view='native frame'))
@@ -268,10 +277,12 @@ def certify_packet(packet, *, prepared, power_input, domain, snapshot=None,
                    semantic_weights=None, budget=None, audit=True,
                    materialize_shifts=True):
     """Compose the frozen ADR 0021 certificate, or raise a structured refusal."""
+    require_wp5()
     from .wp5_cycle import audit_cycle
     from .wp5_ideal import ExactIdeal
     from .wp5_producer import Producer
 
+    require_wp5(artifact=False)
     budget = budget if budget is not None else WP5Budget()
     n = len(prepared.internal_ids)
     _check_packet(packet, n)
@@ -283,9 +294,15 @@ def certify_packet(packet, *, prepared, power_input, domain, snapshot=None,
     )
     periodic = tuple(prepared.periodic_axes)
     if snapshot is None:
-        lattice = _matrix(domain.lattice_vectors)
+        try:
+            lattice = _matrix(domain_lattice_vectors(domain))
+            bounds = require_ordered_bounds(
+                checked_call(getattr, domain, 'bounds'),
+                name='domain bounds', dim=3,
+            )
+        finally:
+            require_wp5(artifact=False)
         native_lattice = lattice
-        bounds = domain.bounds
         frame = _matrix(np.eye(3))
         origin = (Fraction(),) * 3
     else:

@@ -10,6 +10,7 @@ from typing import Any, Literal, Sequence
 
 import numpy as np
 
+from ._internal.native_runtime import checked_call, checked_tuple
 from ._internal.power_input import ResolvedPowerInput
 from ._internal.validation import require_string_choice
 from ._internal.weight_transforms import weights_to_radii
@@ -645,7 +646,9 @@ def _validate_boundary_records(
 
             periodic = (
                 (False, False) if isinstance(domain, Box)
-                else domain.periodic if isinstance(domain, RectangularCell)
+                else tuple(checked_call(bool, value) for value in checked_tuple(
+                    checked_call(getattr, domain, 'periodic')))
+                if isinstance(domain, RectangularCell)
                 else None
             )
             wall = bool(
