@@ -72,7 +72,6 @@ REQUIRED_WHEEL_FILES = {
     'pyvoro2/_internal/spatial/wp5_producer.py',
     'pyvoro2/_internal/planar/__init__.py',
     'pyvoro2/_internal/planar/domain_geometry.py',
-    'pyvoro2/_internal/planar/edge_shifts.py',
     'pyvoro2/inverse/__init__.py',
     'pyvoro2/inverse/separator/__init__.py',
     'pyvoro2/inverse/separator/solver.py',
@@ -106,7 +105,6 @@ REQUIRED_SDIST_FILES = {
     'src/pyvoro2/_internal/spatial/wp5_producer.py',
     'src/pyvoro2/_internal/planar/__init__.py',
     'src/pyvoro2/_internal/planar/domain_geometry.py',
-    'src/pyvoro2/_internal/planar/edge_shifts.py',
     'src/pyvoro2/inverse/__init__.py',
     'src/pyvoro2/inverse/separator/__init__.py',
     'src/pyvoro2/inverse/separator/solver.py',
@@ -168,6 +166,7 @@ REQUIRED_SDIST_FILES = {
 }
 
 FORBIDDEN_WHEEL_MARKERS = (
+    'pyvoro2/_internal/planar/edge_shifts.py',
     'pyvoro2/_internal/spatial/face_shifts.py',
     'pyvoro2/powerfit/',
     'pyvoro2/planar/result.py',
@@ -183,6 +182,7 @@ FORBIDDEN_WHEEL_MARKERS = (
 )
 
 FORBIDDEN_SDIST_MARKERS = (
+    'src/pyvoro2/_internal/planar/edge_shifts.py',
     'src/pyvoro2/_internal/spatial/face_shifts.py',
     'src/pyvoro2/powerfit/',
     'src/pyvoro2/planar/result.py',

@@ -89,7 +89,6 @@ def test_validate_tessellation_strict_passes_for_power_mode_periodic_case() -> N
         return_vertices=True,
         return_faces=True,
         return_face_shifts=True,
-        repair_face_shifts=True,
     )
     diag = pyvoro2.validate_tessellation(cells, dom, level='strict')
     assert diag.ok_volume

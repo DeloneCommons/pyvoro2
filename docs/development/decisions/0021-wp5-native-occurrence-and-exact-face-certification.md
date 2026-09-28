@@ -749,10 +749,15 @@ existing atomic active-state behavior and unrelated nonperiodic inverse
 behavior. The accepted WP5 integration uses S for periodic 3D scientific
 measure without changing the public native descriptor.
 
-`face_shift_search`, `face_shift_tol`, `validate_face_shifts` and
-`repair_face_shifts` retain their existing input validation until WP9 but
-are semantic no-ops for certified WP5, including a false validation flag or
-true repair flag. They cannot alter success, failure, candidates or shifts.
+Before WP9, `face_shift_search`, `face_shift_tol`, `validate_face_shifts` and
+`repair_face_shifts` retained input validation but were semantic no-ops for
+certified WP5, including a false validation flag or true repair flag. They
+could not alter success, failure, candidates or shifts.
+
+**WP9 implementation annotation:** issue #85 removes these four parameters
+and their unused validation. They now fail ordinary argument binding; the
+accepted source-attribution and independent E/S audit contracts above are
+unchanged.
 
 ## Rejected approaches and consequences
 

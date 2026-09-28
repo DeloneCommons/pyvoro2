@@ -1,10 +1,25 @@
-# v0.9 planar boundary migration
+# v0.9 periodic boundary and query migration
 
 Ordinary `pyvoro2.planar.compute` now attributes edge owners and images from the
 native execution and audits exact geometry separately. The result class and
 raw output selectors are unchanged.
 
 ## Remove obsolete reconstruction arguments
+
+Delete `face_shift_search`, `validate_face_shifts`, `repair_face_shifts` and
+`face_shift_tol` from spatial `pyvoro2.compute` (also `pyvoro2.api.compute`).
+All four are removed immediately before 1.0. Even their former default values
+raise ordinary Python argument-binding `TypeError` before native work.
+There are no aliases, warning-only transitions or replacement controls.
+Keep `return_face_shifts=True` to request public face-image metadata:
+
+```python
+result = pyvoro2.compute(points, domain=cell, return_face_shifts=True)
+```
+
+Native source attribution and the optional independent exact consistency audit
+retain their WP5 meanings. Diagnostic tolerances cannot select or repair labels.
+
 
 Delete these keywords from ordinary `planar.compute` and `planar.ghost_cells`
 calls:
@@ -84,8 +99,8 @@ See the [planar guide](planar.md) for current workflows and
 [ADR 0022](../development/decisions/0022-wp6-source-certified-planar-edge-provenance.md)
 for the ordinary scientific and failure contract. WP6 has been independently
 accepted; [ADR 0023](../development/decisions/0023-wp7-certified-ghost-boundaries.md)
-defines the independently accepted ghost contract. WP8 acceptance remains
-pending its separate exact-head review.
+defines the independently accepted ghost contract. WP8 query/owner metadata
+was independently accepted and merged through PR #80.
 
 ## Consume query and owner metadata directly
 
@@ -104,4 +119,5 @@ keys should allow these additive fields. Nonperiodic locate keys are unchanged.
 Insertion omission and unsafe native queries now raise structured `LOCATE_*`
 errors rather than silently losing a generator or entering unsafe conversion.
 The added fields/failure protocol remain Provisional during v0.9.x; existing
-forward operations stay Stable. Remaining WP9 controls are unchanged.
+forward operations stay Stable. The WP9 reconstruction-control removals above
+do not change these metadata equations or ghost eligibility checks.

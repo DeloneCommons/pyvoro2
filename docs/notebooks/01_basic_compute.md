@@ -283,7 +283,6 @@ hidden_result = compute(
     return_faces=True,
     return_adjacency=False,
     return_face_shifts=True,
-    face_shift_search=1,
 )
 
 [(int(c['id']), c.get('empty', False), float(c.get('volume', 0.0))) for c in hidden_result.cells]
@@ -314,7 +313,6 @@ diagnosed_result = compute(
     return_faces=True,
     return_adjacency=False,
     return_face_shifts=True,
-    face_shift_search=1,
     tessellation_check='diagnose',
     return_diagnostics=True,
 )
@@ -332,12 +330,12 @@ face01 = c0['faces'][idx]
 
 ```text
 ((True, 1.0, 0),
- {'adjacent_cell': 1,
-  'vertices': [1, 6, 4, 5],
+ {'vertices': [1, 6, 4, 5],
+  'adjacent_cell': 1,
   'adjacent_shift': (-1, 0, 0),
   'orphan': False,
-  'reciprocal_mismatch': False,
-  'reciprocal_missing': False})
+  'reciprocal_missing': False,
+  'reciprocal_mismatch': False})
 ```
 ## Normalization: global vertices / edges / faces
 
@@ -361,7 +359,6 @@ topology_result = compute(
     return_faces=True,
     return_adjacency=False,
     return_face_shifts=True,
-    face_shift_search=1,
 )
 
 # This section operates repeatedly on raw records, so give that view a local name.
@@ -471,7 +468,6 @@ face_result = compute(
     return_faces=True,
     return_adjacency=False,
     return_face_shifts=True,
-    face_shift_search=1,
     tessellation_check='diagnose',
     return_diagnostics=True,
 )

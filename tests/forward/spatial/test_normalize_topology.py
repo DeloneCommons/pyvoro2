@@ -41,7 +41,6 @@ def test_normalize_topology_periodic_cubic_edges_and_faces():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
 
     nt = normalize_topology(cells, domain=cell)
@@ -97,7 +96,6 @@ def test_normalize_topology_copy_cells_false_mutates_input():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
 
     c0 = next(c for c in cells if int(c['id']) == 0)
@@ -128,7 +126,6 @@ def test_normalize_topology_periodic_sheared_edges_and_faces():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
 
     nt = normalize_topology(cells, domain=cell)
@@ -184,7 +181,6 @@ def test_normalize_topology_orthorhombic_partial_periodic_edges_and_faces():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
 
     nt = normalize_topology(cells, domain=dom)

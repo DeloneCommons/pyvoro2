@@ -7,10 +7,9 @@
 - **Implemented release:** v0.8.0
 - **Active target:** v0.9.0 — WP0 contract activated 2026-09-01; WP1 query-input
   parity, WP2 user/backend lattice separation, WP4 exact proof geometry and
-  WP5 face and WP6 ordinary planar certification are independently accepted;
-  WP7 ghost certification is in implementation with independent acceptance
-  pending; WP3/WP4 add no public surface and later feature work remains
-  target-only
+  WP5/WP6 boundary certification and WP7/WP8 ghost/query metadata are
+  independently accepted and merged. WP9 removals are implemented in this tree
+  pending independent acceptance; later feature work remains target-only
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
 - **v0.9 activation:** [issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **v0.9 execution tracker:** [issue #47](https://github.com/DeloneCommons/pyvoro2/issues/47)
@@ -74,9 +73,9 @@ fact.
 
 This section is the implementation/target ledger activated by issue
 [#46](https://github.com/DeloneCommons/pyvoro2/issues/46). It freezes the public
-contract choices needed by WP1–WP11 and records WP1–WP6 as independently
-accepted. WP7's closed contract is under implementation; independent
-acceptance remains pending. Entries for later public work packages remain
+contract choices needed by WP1–WP11 and records WP1–WP8 as independently
+accepted. WP9 removals are implemented pending independent acceptance.
+Entries for later public work packages remain
 target-only; the
 [current implemented contract](#current-implemented-contract) remains factual
 authority. Issue
@@ -105,7 +104,7 @@ adopts a backend-fork policy.
 | `fit_self_consistent_weights_from_separators` and preferred-namespace `SelfConsistentPowerFitResult` | Provisional | Supported normal public workflow during v0.9.x soak; no Experimental import is required. |
 | Advanced active-set options/path/history and `solve_self_consistent_power_weights` | Experimental | Remain under `pyvoro2.inverse.separator`; not promoted by WP11. |
 | `ghost_radius` | Removed — implemented by WP1 | Immediate pre-1.0 removal; no deprecated alias period. |
-| Finite face/edge reconstruction search/validation/repair/matching-tolerance keywords | Removed when implemented | Immediate pre-1.0 removal at the later owning work package; no deprecated alias period. |
+| Finite face/edge reconstruction search/validation/repair/matching-tolerance keywords | Removed | Immediate pre-1.0 removal by WP6/WP7/WP9; no deprecated alias period. |
 | Ordinary planar `compute` edge reconstruction controls | Removed by WP6 | The four keywords below have no aliases. |
 | Planar `ghost_cells` edge reconstruction controls | Removed by WP7 | The same four ghost-only keywords have no aliases or ignored-keyword transition. |
 
@@ -235,7 +234,7 @@ The reconstruction-control removal ledger is:
 
 | Operation | Keywords | Current status |
 |---|---|---|
-| `pyvoro2.compute` | `face_shift_search`, `validate_face_shifts`, `repair_face_shifts`, `face_shift_tol` | Validated correctness-neutral WP5 inputs; removal remains WP9-owned. |
+| `pyvoro2.compute` | `face_shift_search`, `validate_face_shifts`, `repair_face_shifts`, `face_shift_tol` | Removed by WP9; ordinary argument-binding `TypeError`, including former defaults. No aliases or replacement controls. |
 | `pyvoro2.planar.compute` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` | Removed by WP6 without aliases or ignored keyword handling. |
 | `pyvoro2.planar.ghost_cells` | `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, `edge_shift_tol` | Removed by WP7 without aliases or ignored keyword handling. |
 
@@ -353,8 +352,8 @@ Hard ghost certificate failures are `ValueError`-compatible with `code`,
 the batch before `include_empty` filtering. Generic partition normalization
 must reject independent ghost batches rather than treating their `id=-1`
 records as one ordinary tessellation. See
-[ADR 0023](decisions/0023-wp7-certified-ghost-boundaries.md); exact-head
-implementation acceptance is pending.
+[ADR 0023](decisions/0023-wp7-certified-ghost-boundaries.md); WP7 and WP8
+were independently accepted and merged through PRs #78 and #80.
 
 For **ordinary persistent 3D faces**, [ADR 0021](decisions/0021-wp5-native-occurrence-and-exact-face-certification.md)
 supersedes the earlier native-envelope/zero-face-deletion target. Requested
@@ -394,10 +393,11 @@ semantic consistency before consuming identity or S measures. See the
 [implementation map](wp5-implementation.md); PR #72 was independently accepted
 and merged on 2026-09-24.
 
-For WP5 until WP9, `face_shift_search`, `face_shift_tol`,
-`validate_face_shifts`, and `repair_face_shifts` keep existing strict input
-validation but are no-ops for the certified result. WP9 still owns their
-removal. Ordinary planar edges follow the separate ADR 0022 contract below;
+WP9 removes `face_shift_search`, `face_shift_tol`, `validate_face_shifts`,
+and `repair_face_shifts` from both `pyvoro2.compute` and `pyvoro2.api.compute`.
+Supplying any of them raises ordinary binding `TypeError` before native work;
+delete these arguments with no replacement. Ordinary planar edges follow the
+separate ADR 0022 contract below;
 ghost boundary identity and output policy are fixed separately by ADR 0023.
 
 ### Ordinary planar WP6 contract and accepted implementation
@@ -1547,8 +1547,7 @@ pyvoro2.compute(
     block_size=None, blocks=None, init_mem=8,
     mode='standard', weights=None, radii=None,
     return_vertices=True, return_adjacency=True, return_faces=True,
-    return_face_shifts=False, face_shift_search=2, include_empty=False,
-    validate_face_shifts=True, repair_face_shifts=False, face_shift_tol=None,
+    return_face_shifts=False, include_empty=False,
     return_diagnostics=False, output='result',
     tessellation_check='none', tessellation_require_reciprocity=None,
     tessellation_volume_tol_rel=1e-8,
@@ -2519,7 +2518,6 @@ pyvoro2._internal.spatial.wp5_cycle
 pyvoro2._internal.spatial.wp5_ideal
 pyvoro2._internal.spatial.wp5_producer
 pyvoro2._internal.planar.domain_geometry
-pyvoro2._internal.planar.edge_shifts
 ```
 
 These module routes and every object available only from them are

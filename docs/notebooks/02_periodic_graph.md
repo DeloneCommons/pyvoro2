@@ -41,7 +41,6 @@ result = pv.compute(
     return_faces=True,
     return_vertices=True,
     return_face_shifts=True,  # <-- adds `adjacent_shift` to each face
-    face_shift_search=2,
 )
 
 # The structured result records which optional geometry was requested.

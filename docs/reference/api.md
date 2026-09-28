@@ -20,7 +20,8 @@ Certification needs no requested public vertices or adjacency. Hard
 certificate refusals expose `code`, `stage`, `query_index` and bounded
 `details` on a `ValueError`-compatible error. Certificate-bearing support is
 initially qualified for Linux x86_64 GCC 13.3 strict binary64; other cohorts
-refuse explicitly while safe geometry-only operation is separate. WP7 is independently accepted; WP8 metadata awaits its separate exact-head review.
+refuse explicitly while safe geometry-only operation is separate. WP7 and WP8
+are independently accepted and merged.
 
 ## Query results (spatial and planar)
 

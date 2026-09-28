@@ -28,7 +28,6 @@ def test_normalize_vertices_periodic_reconstructs_local_vertices_cubic():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
 
     nv = normalize_vertices(cells, domain=cell)
@@ -66,7 +65,6 @@ def test_normalize_vertices_periodic_reconstructs_local_vertices_sheared():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
 
     nv = normalize_vertices(cells, domain=cell)
@@ -141,7 +139,6 @@ def test_normalize_vertices_orthorhombic_partial_periodic_reconstructs_local_ver
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
 
     nv = normalize_vertices(cells, domain=dom)

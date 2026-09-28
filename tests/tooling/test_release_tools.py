@@ -45,7 +45,6 @@ TEST_WHEEL_FILES = (
     'pyvoro2/_internal/spatial/wp5_producer.py',
     'pyvoro2/_internal/planar/__init__.py',
     'pyvoro2/_internal/planar/domain_geometry.py',
-    'pyvoro2/_internal/planar/edge_shifts.py',
     'pyvoro2/inverse/__init__.py',
     'pyvoro2/inverse/separator/__init__.py',
     'pyvoro2/inverse/separator/solver.py',
@@ -89,7 +88,6 @@ src/pyvoro2/_internal/spatial/wp5_ideal.py
 src/pyvoro2/_internal/spatial/wp5_producer.py
 src/pyvoro2/_internal/planar/__init__.py
 src/pyvoro2/_internal/planar/domain_geometry.py
-src/pyvoro2/_internal/planar/edge_shifts.py
 src/pyvoro2/inverse/__init__.py
 src/pyvoro2/inverse/separator/__init__.py
 src/pyvoro2/inverse/separator/solver.py
@@ -378,7 +376,6 @@ def test_distribution_content_checks_require_internal_hierarchy(
         'pyvoro2/_internal/spatial/wp5_producer.py',
         'pyvoro2/_internal/planar/__init__.py',
         'pyvoro2/_internal/planar/domain_geometry.py',
-        'pyvoro2/_internal/planar/edge_shifts.py',
     }
     assert required_internal <= dist_tool.REQUIRED_WHEEL_FILES
     assert {

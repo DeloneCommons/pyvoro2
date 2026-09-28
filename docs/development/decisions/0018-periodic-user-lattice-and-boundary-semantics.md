@@ -244,8 +244,9 @@ Metadata and the ValueError-compatible `LOCATE_*` protocol remain Provisional
 through v0.9.x. Errors expose `code`, `stage`, `query_index` and bounded
 `details`; ambiguity, inconsistency, proof resources, native support/insertion
 and public representation are distinct. Invariant defects retain their reason
-and cause. Existing Stable forward operations remain Stable; WP9 cleanup and
-independent WP8 acceptance remain separate.
+and cause. Existing Stable forward operations remain Stable. WP8 was
+independently accepted and merged through PR #80; WP9 cleanup remains a
+separate implementation and acceptance unit.
 
 ### Ghost boundary identity is a tagged public record
 

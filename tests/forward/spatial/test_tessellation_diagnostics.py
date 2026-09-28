@@ -20,7 +20,6 @@ def test_diagnostics_periodic_standard_ok():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
 
     diag = analyze_tessellation(cells, cell, expected_ids=[0, 1], mode='standard')
@@ -46,7 +45,6 @@ def test_compute_return_diagnostics_periodic():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
         return_diagnostics=True,
         tessellation_check='diagnose',
     )

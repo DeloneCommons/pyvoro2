@@ -1073,6 +1073,17 @@ rows and materializes new query views only for retained records. It does not
 add S certification to geometry-only calls. Existing normalization and result
 consumers keep their ghost rejection/availability policies. WP9 is separate.
 
+### Reconstruction-control retirement (WP9)
+
+Spatial `compute` and its private implementation no longer accept finite
+face-search, validation, repair or matching-tolerance controls. Ordinary
+argument binding rejects them. The unused `_internal.planar.edge_shifts`
+reconstructor is retired; planar ownership/images continue to come from the
+accepted WP6/WP7 source witnesses. Public edge-property utilities consume
+explicit image-qualified records and do not reconstruct provenance.
+Diagnostic/normalization tolerances, separator `image_search`, output selectors,
+native tuning and private proof limits retain their independent responsibilities.
+
 ### Remaining v0.9 stabilization
 
 The normal "points + separator observations -> fitted weighted tessellation"

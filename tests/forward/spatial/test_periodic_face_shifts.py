@@ -56,7 +56,6 @@ def test_periodic_face_shifts_detect_wraparound_standard():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
 
     c0 = next(c for c in cells if c['id'] == 0)
@@ -101,7 +100,6 @@ def test_periodic_face_shifts_power_mode():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
 
     c0 = next(c for c in cells if c['id'] == 0)
