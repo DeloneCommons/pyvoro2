@@ -134,6 +134,7 @@ _NON_ARITHMETIC_F = {
     '-fno-stack-protector', '-fcf-protection', '-fcf-protection=full',
     '-fcf-protection=branch', '-fcf-protection=none',
     '-fverbose-asm', '-fno-verbose-asm', '-fpreprocessed', '-fpch-preprocess',
+    '-fworking-directory', '-fno-working-directory',
     '-fno-rounding-math', '-frounding-math', '-fno-gnu-unique',
     '-fno-integrated-cc1', '-fno-integrated-as', '-fintegrated-as',
     '-fcolor-diagnostics', '-fno-color-diagnostics', '-fno-caret-diagnostics',
@@ -145,6 +146,16 @@ _CLANG_NON_ARITHMETIC_F = {
     '-fno-modules', '-faddrsig', '-fno-addrsig',
     '-fdebug-compilation-dir', '-fcoverage-compilation-dir', '-ferror-limit',
     '-fmodule-file-home-is-cwd', '-fskip-odr-check-in-gmf',
+    # Defaults observed in the actual Xcode 16.4 / AppleClang 17 child plans.
+    # These control C++/ObjC ABI, diagnostics, stack checks and module disabling;
+    # none grants unsafe FP algebra, contraction, excess precision or LTO.
+    '-fno-strict-return', '-fobjc-msgsend-selector-stubs',
+    '-faligned-alloc-unavailable',
+    '-fcompatibility-qualified-id-block-type-checking',
+    '-fvisibility-inlines-hidden-static-local-var',
+    '-fbuiltin-headers-in-system-modules', '-fdefine-target-os-macros',
+    '-fno-assume-unique-vtables', '-fstack-check', '-fno-cxx-modules',
+    '-fcommon', '-fno-odr-hash-protocols',
 }
 
 
@@ -156,7 +167,10 @@ def _check_control_option(arg, family):
                    '-march=x86-64', '-mtune=generic', '-mtune=core2'}
         if family == 'clang':
             allowed.update({'-mrelocation-model', '-mframe-pointer',
-                            '-mconstructor-aliases', '-munwind-tables'})
+                            '-mconstructor-aliases', '-munwind-tables',
+                            '-main-file-name', '-mdarwin-stkchk-strong-link',
+                            '-mframe-pointer=all', '-mframe-pointer=non-leaf',
+                            '-mframe-pointer=none'})
         deployment = (family == 'clang' and re.fullmatch(
             r'-mmacosx-version-min=\d+\.\d+(?:\.\d+)?', arg))
         if arg not in allowed and not deployment:
@@ -174,7 +188,9 @@ def _check_control_option(arg, family):
         if family == 'clang':
             allowed |= arg in _CLANG_NON_ARITHMETIC_F
             allowed |= arg.startswith(('-fgnuc-version=', '-fobjc-runtime=',
-                                       '-fmax-type-align=', '-funwind-tables='))
+                                       '-fmax-type-align=', '-funwind-tables=',
+                                       '-fdebug-compilation-dir=',
+                                       '-fcoverage-compilation-dir='))
             allowed |= arg in ('-ffp-exception-behavior=ignore',
                                '-ffp-exception-behavior=strict')
         if not allowed:
@@ -244,7 +260,20 @@ def effective_options(argv, family, *, link=False, backend=False):
     contraction, strict_seen, lto, trapping = None, False, False, True
     if backend and family == 'clang':
         strict_seen = True  # Explicit cc1 algebra flags below are authoritative.
-    for arg in argv:
+    skip = False
+    for index, arg in enumerate(argv):
+        if skip:
+            skip = False
+            continue
+        if arg == '-mllvm':
+            # Apple's ordinary optimized pipeline requests cleanup after loop
+            # vectorization. This exact pass toggle retains the strict FP
+            # semantics; arbitrary LLVM backend options remain opaque.
+            if (family != 'clang' or not backend or index + 1 >= len(argv) or
+                    argv[index + 1] != '-extra-vectorizer-passes'):
+                raise BuildEvidenceError('unreviewed LLVM backend control')
+            skip = True
+            continue
         if arg in ('-ffast-math', '-Ofast', '-funsafe-math-optimizations'):
             unsafe = dict.fromkeys(unsafe, True)
             trapping = False
@@ -332,7 +361,39 @@ _STRICT_PRAGMAS = [re.compile(pattern, re.I) for pattern in (
 )]
 
 
-def unsafe_source_directives(text):
+def _pragma_calls(text):
+    """Preserve equivalent MSVC/C pragma forms in preprocessor output."""
+    for match in re.finditer(r'\b(__pragma|_Pragma)\s*\(', text):
+        depth, quote, escape, end = 1, False, False, match.end()
+        while end < len(text) and depth:
+            char = text[end]
+            if quote:
+                if escape:
+                    escape = False
+                elif char == '\\':
+                    escape = True
+                elif char == '"':
+                    quote = False
+            elif char == '"':
+                quote = True
+            elif char == '(':
+                depth += 1
+            elif char == ')':
+                depth -= 1
+            end += 1
+        if depth:
+            raise BuildEvidenceError('incomplete preprocessed pragma call')
+        body = text[match.end():end - 1].strip()
+        if match[1] == '_Pragma':
+            # Standard destringizing removes only escaped quotes/backslashes.
+            # Other literal grammars require review, never substring guessing.
+            if not re.fullmatch(r'"(?:\\[\\"]|[^"\\])*"', body, re.S):
+                raise BuildEvidenceError('opaque preprocessed pragma literal')
+            body = re.sub(r'\\([\\"])', r'\1', body[1:-1])
+        yield '#pragma ' + body.replace('\n', ' ')
+
+
+def unsafe_source_directives(text, *, macro_overrides_only=False):
     # Join preprocessing continuations and remove comments without erasing
     # quoted optimization options. Actual saved preprocessed input is checked
     # as well, so macro-generated pragmas/attributes remain visible.
@@ -342,8 +403,13 @@ def unsafe_source_directives(text):
     directives = [m.group() for m in re.finditer(
         r'^\s*#\s*(?:define|undef)\s+([^\s(]+)[^\n]*', text, re.M)
         if _PROOF_MACRO.match(m.group(1))]
+    if macro_overrides_only:
+        return directives
     directives.extend(m.group() for m in _PRAGMA_FP.finditer(text)
                       if not any(p.fullmatch(m.group()) for p in _STRICT_PRAGMAS))
+    directives.extend(pragma for pragma in _pragma_calls(text)
+                      if _PRAGMA_FP.fullmatch(pragma) and
+                      not any(p.fullmatch(pragma) for p in _STRICT_PRAGMAS))
     for match in _ATTRIBUTE.finditer(text):
         opening, closing = ('[', ']') if match.group() == '[[' else ('(', ')')
         depth, quote, escape = 2, None, False
@@ -483,8 +549,12 @@ def verify_build(records_dir: Path, source_root: Path) -> dict:
         for item in row.get('dependencies', []):
             _verify_identity(item, 'input')
             inputs[item['path']] = item
+            # Raw dependencies retain byte identity and cannot redefine the
+            # compiler-owned proof macros. Other local controls are judged in
+            # the actual expanded input below: inactive platform branches are
+            # not effective optimizer settings (e.g. CPython 3.10 pyport.h).
             if unsafe_source_directives(Path(item['path']).read_text(
-                    errors='replace')):
+                    errors='replace'), macro_overrides_only=True):
                 raise BuildEvidenceError('source-local unsafe FP directive: ' +
                                          item['path'])
         for item in row.get('preprocessed', []):

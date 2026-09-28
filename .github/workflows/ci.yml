@@ -411,6 +411,9 @@ jobs:
       - name: Qualify final installed production artifact
         run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
           adapter
+        env:
+          CMAKE_GENERATOR: Ninja
+          CXX: ${{ runner.os == 'Windows' && 'cl' || 'clang++' }}
       - name: Install qualified artifact
         shell: bash
         run: python -m pip install "${{ runner.temp }}/qualification/final-wheel/"*.whl

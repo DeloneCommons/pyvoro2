@@ -36,8 +36,7 @@ def parse_glibc_maps(text):
             if not value.startswith('/'):
                 raise BuildEvidenceError('unresolved glibc program identity')
             programs.add(value)
-    if (not images or not programs or
-            not any('ld-linux' in Path(path).name for path in images)):
+    if not images or not programs:
         raise BuildEvidenceError('missing actual glibc loader/image observation')
     for path in generated:
         if path.startswith('/'):
@@ -49,13 +48,51 @@ def parse_glibc_maps(text):
     return {'images': sorted(images), 'programs': sorted(programs)}
 
 
+def elf_interpreter(data):
+    """Read the interpreter the trusted kernel selects for an observed ELF.
+
+    glibc 2.28 omits its own ``calling init`` line because the loader has no
+    constructor. Its identity comes from PT_INTERP in the actually executed
+    program, while ordinary helper DSOs still require actual loader events.
+    Static, malformed, non-native, and ambiguous executables are unqualified.
+    """
+    if (len(data) < 64 or data[:7] != b'\x7fELF\x02\x01\x01' or
+            struct.unpack_from('<HHI', data, 16) not in ((2, 62, 1), (3, 62, 1))):
+        raise BuildEvidenceError('unsupported ELF interpreter provenance')
+    offset = struct.unpack_from('<Q', data, 32)[0]
+    header_size, stride, count = struct.unpack_from('<HHH', data, 52)
+    if (header_size != 64 or stride != 56 or not 1 <= count <= 128 or
+            offset < 64 or offset + count * stride > len(data)):
+        raise BuildEvidenceError('invalid ELF interpreter program table')
+    paths = []
+    for index in range(count):
+        row = offset + index * stride
+        if struct.unpack_from('<I', data, row)[0] != 3:  # PT_INTERP
+            continue
+        start, size = (struct.unpack_from('<Q', data, row + relative)[0]
+                       for relative in (8, 32))
+        if not 2 <= size <= 4096 or start + size > len(data):
+            raise BuildEvidenceError('invalid ELF interpreter bounds')
+        value = data[start:start + size]
+        if (value[-1:] != b'\0' or not value.startswith(b'/') or
+                b'\0' in value[:-1] or any(c < 32 for c in value[:-1])):
+            raise BuildEvidenceError('invalid ELF interpreter path')
+        try:
+            paths.append(value[:-1].decode('utf-8'))
+        except UnicodeDecodeError as error:
+            raise BuildEvidenceError('invalid ELF interpreter encoding') from error
+    if len(paths) != 1:
+        raise BuildEvidenceError('missing/multiple ELF interpreter fields')
+    return paths[0]
+
+
 def capture_glibc(prefix):
     prefix = Path(prefix)
     paths = sorted(p for p in prefix.parent.glob(prefix.name + '.*')
                    if p.suffix[1:].isdigit())
     if not paths:
         raise BuildEvidenceError('missing actual glibc loader diagnostics')
-    images, programs = {}, {}
+    images, programs, interpreters = {}, {}, {}
     for path in paths:
         result = parse_glibc_maps(path.read_text(errors='strict'))
         for name in result['images']:
@@ -64,7 +101,19 @@ def capture_glibc(prefix):
         for name in result['programs']:
             identity = file_identity(name)
             programs[identity['path']] = identity
+            interpreter = elf_interpreter(Path(name).read_bytes())
+            if (Path(interpreter).name != 'ld-linux-x86-64.so.2' or
+                    not interpreter.startswith(('/lib/', '/lib64/', '/usr/lib/',
+                                                '/usr/lib64/'))):
+                raise BuildEvidenceError('unreviewed actual ELF interpreter')
+            loader = file_identity(interpreter)
+            images[loader['path']] = loader
+            interpreters[identity['path']] = {
+                'program': identity, 'interpreter_path': interpreter,
+                'interpreter': loader, 'selection': 'trusted-kernel-elf-pt-interp',
+            }
     return {'images': list(images.values()), 'programs': list(programs.values()),
+            'program_interpreters': list(interpreters.values()),
             'evidence_files': [file_identity(path) for path in paths]}
 
 
@@ -76,25 +125,37 @@ def dyld_environment(environment):
 
 def parse_dyld_images(text, pid):
     images = []
-    pattern = re.compile(r'dyld\[(\d+)\]: <([0-9A-Fa-f-]{36})> (/.*)')
+    prefix = re.compile(r'dyld\[(\d+)\]: (.*)')
+    pattern = re.compile(r'<([0-9A-Fa-f-]{36})> (/.*)')
+    transition = re.compile(r'move (?:loaded to delayed|delayed to loaded): (.+)')
     for line in text.splitlines():
         if not line.startswith('dyld['):
             continue
-        match = pattern.fullmatch(line)
-        if not match or int(match[1]) != pid:
+        process = prefix.fullmatch(line)
+        if not process or int(process[1]) != pid:
+            raise BuildEvidenceError('unparsed/unobserved Apple loader process')
+        status = transition.fullmatch(process[2])
+        if status:
+            # dyld repartitions already loaded/bound images before running
+            # their initializers. Keep every image in the UUID inventory.
+            if sum(Path(image['path']).name == status[1] for image in images) != 1:
+                raise BuildEvidenceError('unbound Apple delayed-image transition')
+            continue
+        match = pattern.fullmatch(process[2])
+        if not match:
             raise BuildEvidenceError('unparsed/unobserved Apple loader process')
         import uuid
         try:
-            identifier = str(uuid.UUID(match[2]))
+            identifier = str(uuid.UUID(match[1]))
         except ValueError as error:
             raise BuildEvidenceError('invalid actual Apple image UUID') from error
-        images.append({'path': match[3], 'uuid': identifier})
+        images.append({'path': match[2], 'uuid': identifier})
     if not images:
         raise BuildEvidenceError('missing actual Apple loader image observation')
     return images
 
 
-def macho_uuids(data):
+def macho_uuids(data, *, architecture=None):
     """UUIDs of each supported Mach-O slice, checked against real dyld output."""
     import uuid
     if data[:4] in (b'\xca\xfe\xba\xbe', b'\xca\xfe\xba\xbf'):
@@ -111,7 +172,8 @@ def macho_uuids(data):
                                               data, pos + 8)
             if offset + size > len(data):
                 raise BuildEvidenceError('truncated universal tool image')
-            result.update(macho_uuids(data[offset:offset + size]))
+            result.update(macho_uuids(data[offset:offset + size],
+                                      architecture=architecture))
         return result
     if data[:4] != b'\xcf\xfa\xed\xfe' or len(data) < 32:
         raise BuildEvidenceError('unsupported Apple compiler/library image')
@@ -132,6 +194,12 @@ def macho_uuids(data):
         offset += length
     if not result:
         raise BuildEvidenceError('Apple compiler/library image has no UUID')
+    if architecture is not None:
+        native_cpu = {'x86_64': 0x1000007, 'arm64': 0x100000c}.get(architecture)
+        if native_cpu is None:
+            raise BuildEvidenceError('unsupported native Apple image architecture')
+        if struct.unpack_from('<I', data, 4)[0] != native_cpu:
+            return set()
     return result
 
 
@@ -144,10 +212,13 @@ def apple_system_baseline(images):
     """
     import ctypes as c
     import errno
+    import os
     import platform
     import subprocess
     import uuid
 
+    if any(key.startswith('DYLD_') and value for key, value in os.environ.items()):
+        raise BuildEvidenceError('unreviewed Apple observer loader environment')
     library = c.CDLL(None, use_errno=True)
     uuid_type = c.c_ubyte * 16
     cache_uuid = uuid_type()
@@ -157,14 +228,6 @@ def apple_system_baseline(images):
         raise BuildEvidenceError('Apple system cache identity is unavailable')
     contains = library._dyld_shared_cache_contains_path
     contains.argtypes, contains.restype = [c.c_char_p], c.c_bool
-    count = library._dyld_image_count
-    count.argtypes, count.restype = [], c.c_uint32
-    get_name = library._dyld_get_image_name
-    get_name.argtypes, get_name.restype = [c.c_uint32], c.c_char_p
-    get_header = library._dyld_get_image_header
-    get_header.argtypes, get_header.restype = [c.c_uint32], c.c_void_p
-    get_uuid = library._dyld_get_image_uuid
-    get_uuid.argtypes, get_uuid.restype = [c.c_void_p, c.POINTER(c.c_ubyte)], c.c_bool
     arch = platform.machine()
     translated, size = c.c_int(0), c.c_size_t(c.sizeof(c.c_int))
     sysctl = library.sysctlbyname
@@ -180,26 +243,16 @@ def apple_system_baseline(images):
             or arch not in ('arm64', 'x86_64')):
         raise BuildEvidenceError(
             'Apple observer must use the native cache architecture')
-    kept_alive = []
     for image in images:
         path = image['path']
         if (not path.startswith(('/usr/lib/', '/System/Library/'))
                 or not contains(path.encode())):
             raise BuildEvidenceError(
                 'unresolved non-system Apple loaded library: ' + path)
-        # Resolve the same cache image in this native observer and compare its
-        # actual in-memory UUID with the compiler process's loader diagnostic.
-        kept_alive.append(c.CDLL(path))
-        found = False
-        for index in range(count()):
-            name = get_name(index)
-            if name and name.decode() == path:
-                value = uuid_type()
-                if get_uuid(get_header(index), value):
-                    found = str(uuid.UUID(bytes=bytes(value))) == image['uuid']
-                break
-        if not found:
-            raise BuildEvidenceError('Apple cache image UUID differs from actual child')
+        # The actual child supplies each UUID/path. The native default-cache
+        # observer supplies cache identity/membership under the trusted OS
+        # baseline. Never dlopen these images: that would run initializers for
+        # hundreds of frameworks which dyld deliberately left delayed.
     queries = []
     for option in ('-productVersion', '-buildVersion'):
         run = subprocess.run(['/usr/bin/sw_vers', option], text=True,
@@ -236,4 +289,10 @@ def capture_dyld(text, executable, pid):
     except (AttributeError, OSError) as error:
         raise BuildEvidenceError(
             'actual Apple cache observation unavailable') from error
+    executable_path = Path(executable).resolve(strict=True)
+    native = macho_uuids(executable_path.read_bytes(),
+                         architecture=baseline['architecture'])
+    if not any(Path(image['path']).resolve() == executable_path and
+               image['uuid'] in native for image in images):
+        raise BuildEvidenceError('Apple child does not match native cache architecture')
     return {'images': list(ordinary.values()), 'system_loader': baseline}

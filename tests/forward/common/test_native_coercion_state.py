@@ -18,6 +18,34 @@ def test_guarded_array_preserves_existing_buffer_input():
                           source)
 
 
+@pytest.mark.parametrize('dtype', [np.int64, np.float64, object])
+def test_original_array_keeps_nested_zero_dimensional_arrays_as_scalars(dtype):
+    from pyvoro2._internal.native_runtime import original_array
+    scalar_array = np.array(1, dtype=dtype)
+    values = original_array([[scalar_array, 2]])
+    assert values.shape == (1, 2)
+    assert values[0, 0] is scalar_array
+    assert values[0, 1] == 2
+
+
+def test_original_array_keeps_top_level_and_nested_row_array_shapes():
+    from pyvoro2._internal.native_runtime import original_array
+    top = original_array(np.array(1))
+    assert top.shape == ()
+    assert top.item() == 1
+    rows = original_array([np.array([1, 2]), np.array([3, 4])])
+    assert rows.shape == (2, 2)
+    assert rows.tolist() == [[1, 2], [3, 4]]
+
+
+@pytest.mark.parametrize('nesting', [1, 2])
+def test_strict_integer_array_validation_rejects_nested_scalar_arrays(nesting):
+    from pyvoro2._internal.validation import require_index_array
+    values = [np.array(1)] if nesting == 1 else [[np.array(1)]]
+    with pytest.raises(ValueError, match='exact integer'):
+        require_index_array(values, name='ids', shape=(1,) * nesting)
+
+
 @pytest.mark.skipif(sys.platform != 'linux', reason='GNU fenv adversarial controls')
 @pytest.mark.parametrize('dimension', [2, 3])
 @pytest.mark.parametrize('operation', ['compute', 'locate', 'ghost_cells'])

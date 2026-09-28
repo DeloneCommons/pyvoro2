@@ -1,6 +1,6 @@
 """Arithmetic-free structured locate failure used at the first public guard."""
 
-from .ghost import _bounded
+from .ghost_failure import _bounded
 
 
 _CODES = frozenset({

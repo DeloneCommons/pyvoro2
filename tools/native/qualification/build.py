@@ -13,7 +13,9 @@ import csv
 import hashlib
 import io
 import json
+import os
 from pathlib import Path, PurePosixPath
+import re
 import shutil
 import stat
 import subprocess
@@ -62,6 +64,28 @@ def _require(condition, message):
         raise DriverError(message)
 
 
+def _failed_output_tail(path, environment):
+    """Bound console diagnostics without copying credentials from child output."""
+    sensitive = re.compile(
+        r'TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTHORIZATION|(?:^|_)KEY(?:$|_)',
+        re.I)
+    secrets = sorted({value for name, value in environment.items()
+                      if value and sensitive.search(name)}, key=len, reverse=True)
+    # Extra overlap allows complete credential redaction before taking the tail.
+    overlap = max((len(value.encode('utf8')) for value in secrets), default=0)
+    limit = 12 * 1024
+    with Path(path).open('rb') as stream:
+        stream.seek(0, os.SEEK_END)
+        stream.seek(max(0, stream.tell() - limit - overlap))
+        text = stream.read().decode('utf8', errors='replace')
+    if secrets:
+        text = re.sub('|'.join(re.escape(value) for value in secrets),
+                      '[redacted]', text)
+    text = re.sub(r'(https?://)[^/\s@]+@', r'\1[redacted]@', text)
+    text = '\n'.join(text.splitlines()[-80:])
+    return text.encode('utf8')[-limit:].decode('utf8', errors='ignore')
+
+
 def run_process(command, *, cwd, directory, environment=None):
     """Capture the actual process outcome and retained output, without a shell."""
     directory = Path(directory)
@@ -89,8 +113,13 @@ def run_process(command, *, cwd, directory, environment=None):
                                        if key in environment}}
     text = json.dumps(receipt, sort_keys=True, indent=2) + '\n'
     (directory / 'process.json').write_text(text, encoding='utf8')
-    _require(result.returncode == 0,
-             f'process failed ({result.returncode}); see {directory / "stderr"}')
+    if result.returncode != 0:
+        details = [f'process failed ({result.returncode}); retained logs: {directory}']
+        for name in ('stdout', 'stderr'):
+            tail = _failed_output_tail(directory / name, environment)
+            if tail:
+                details.append(f'{name} (last 80 lines, at most 12 KiB):\n{tail}')
+        raise DriverError('\n'.join(details))
     _require(file_identity(command[0]) == executable_identity,
              'process executable changed during execution')
     return receipt
@@ -342,6 +371,12 @@ def build(*, source_root, output, repair='none', suite='full', sanitizers=False)
     output.mkdir(parents=True)
     processes = []
     environment = build_environment()
+    # Visual Studio generators ignore the recorder launcher properties. The
+    # controlled driver uses Ninja for individual observed compile/link actions.
+    environment['CMAKE_GENERATOR'] = 'Ninja'
+    for key in ('CMAKE_GENERATOR_PLATFORM', 'CMAKE_GENERATOR_TOOLSET',
+                'CMAKE_GENERATOR_INSTANCE'):
+        environment.pop(key, None)
     environment.setdefault('CMAKE_BUILD_PARALLEL_LEVEL', '2')
     if sanitizers:
         flags = '-fsanitize=address,undefined,float-cast-overflow'
@@ -354,7 +389,7 @@ def build(*, source_root, output, repair='none', suite='full', sanitizers=False)
     processes.append(run_process(
         [sys.executable, '-m', 'build', '--wheel', '--no-isolation',
          '--outdir', direct_dir, '-Cbuild-dir=' + str(output / 'production-build'),
-         '-Cinstall.strip=false', source_root], cwd=output,
+         '-Ccmake.args=-GNinja', '-Cinstall.strip=false', source_root], cwd=output,
         directory=output / 'process-build', environment=environment))
     direct = _wheel_in(direct_dir)
     build_evidence = verify_build(records, source_root)

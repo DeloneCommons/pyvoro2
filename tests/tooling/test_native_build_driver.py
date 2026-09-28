@@ -6,7 +6,9 @@ import csv
 import hashlib
 import importlib.util
 import io
+import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -94,6 +96,41 @@ def test_process_preserves_interpreter_invocation_and_environment(driver, tmp_pa
     assert Path(receipt['stdout']['path']).read_text().strip() == sys.prefix
 
 
+def test_failed_process_reports_bounded_redacted_tails_and_retains_receipt(
+        driver, tmp_path):
+    environment = driver.build_environment()
+    environment['FIXTURE_API_TOKEN'] = 'fixture-sensitive-token'
+    script = (
+        'import os, sys\n'
+        'for index in range(120):\n'
+        '    print("discarded stdout prefix " + str(index) + "x" * 256)\n'
+        '    print("discarded stderr prefix " + str(index) + "y" * 256, '
+        'file=sys.stderr)\n'
+        'print("final stdout marker")\n'
+        'print(os.environ["FIXTURE_API_TOKEN"], file=sys.stderr)\n'
+        'print("https://fixture-user:fixture-password@example.invalid/", '
+        'file=sys.stderr)\n'
+        'print("ValueError: concrete failure detail", file=sys.stderr)\n'
+        'raise SystemExit(7)\n')
+    directory = tmp_path / 'failed-process'
+    with pytest.raises(driver.DriverError) as failure:
+        driver.run_process([sys.executable, '-c', script], cwd=tmp_path,
+                           directory=directory, environment=environment)
+    message = str(failure.value)
+    assert 'process failed (7)' in message
+    assert 'final stdout marker' in message
+    assert 'ValueError: concrete failure detail' in message
+    assert 'discarded stdout prefix 0x' not in message
+    assert len(message.encode('utf8')) < 2 * 12288 + 2048
+    assert len(message.splitlines()) <= 165
+    assert 'fixture-sensitive-token' not in message
+    assert 'fixture-user:fixture-password' not in message
+    assert '[redacted]' in message
+    receipt = json.loads((directory / 'process.json').read_text())
+    assert receipt['exit_code'] == 7
+    assert 'fixture-sensitive-token' in (directory / 'stderr').read_text()
+
+
 def test_output_inside_source_is_rejected_before_build(driver, tmp_path):
     with pytest.raises(driver.DriverError, match='outside'):
         driver.build(source_root=tmp_path, output=tmp_path / 'inside', repair='none')
@@ -132,3 +169,53 @@ def test_optimized_driver_refuses_before_source_approval(driver, tmp_path):
     assert process.returncode != 0
     assert 'optimized Python' in process.stderr
     assert not (tmp_path / 'build').exists()
+
+
+def test_controlled_wheel_build_selects_ninja_and_preserves_compiler_environment(
+        driver, tmp_path, monkeypatch):
+    # An independently measured fixture reaches the first external process.
+    # No project source approval or native artifact is changed by this test.
+    source = tmp_path / 'source'
+    internal = source / 'src/pyvoro2/_internal'
+    for name in ('vendor/voro++', 'cpp', 'cmake', 'src/pyvoro2/_internal'):
+        (source / name).mkdir(parents=True)
+    for name in ('CMakeLists.txt', 'pyproject.toml'):
+        (source / name).write_text('# fixture\n', encoding='utf8')
+    shutil.copyfile(ROOT / 'src/pyvoro2/_internal/native_qualification.py',
+                    internal / 'native_qualification.py')
+    measurement = driver.measure_source(source)
+    approval = {'approval_schema': driver._contract(source).APPROVAL_SCHEMA,
+                'approved': True,
+                **{key: measurement[key] for key in (
+                    'policy_revision', 'source_sha256', 'schema_sha256',
+                    'consumer_sha256', 'components')}}
+    (internal / 'native_approval.json').write_text(
+        json.dumps(approval), encoding='utf8')
+    inherited = {'CMAKE_GENERATOR': 'Visual Studio 18 2026',
+                 'CMAKE_GENERATOR_PLATFORM': 'x64',
+                 'CMAKE_GENERATOR_TOOLSET': 'v145',
+                 'CMAKE_GENERATOR_INSTANCE': 'fixture-vs-install',
+                 'CXX': 'fixture-cl.exe', 'INCLUDE': 'fixture-msvc-headers',
+                 'LIB': 'fixture-msvc-libraries', 'LIBPATH': 'fixture-msvc-metadata'}
+    for name, value in inherited.items():
+        monkeypatch.setenv(name, value)
+    observed = {}
+
+    class StopBeforeNativeBuild(Exception):
+        pass
+
+    def capture(command, **kwargs):
+        observed.update(command=command, **kwargs)
+        raise StopBeforeNativeBuild
+
+    monkeypatch.setattr(driver, 'run_process', capture)
+    with pytest.raises(StopBeforeNativeBuild):
+        driver.build(source_root=source, output=tmp_path / 'output')
+    assert '-Ccmake.args=-GNinja' in observed['command']
+    assert '-Cinstall.strip=false' in observed['command']
+    environment = observed['environment']
+    assert environment['CMAKE_GENERATOR'] == 'Ninja'
+    assert not {'CMAKE_GENERATOR_PLATFORM', 'CMAKE_GENERATOR_TOOLSET',
+                'CMAKE_GENERATOR_INSTANCE'} & environment.keys()
+    for name in ('CXX', 'INCLUDE', 'LIB', 'LIBPATH'):
+        assert environment[name] == inherited[name]

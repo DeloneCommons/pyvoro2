@@ -123,6 +123,7 @@ jobs:
         if: always()
     env:
       CXX: cl
+      CMAKE_GENERATOR: Ninja
 
   wheels-macos-arm64:
     name: Wheels (arm64, WP5/WP8, Python ${{ matrix.python-version }})

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -20,7 +21,8 @@ from qualification.effective_build import (  # noqa: E402
     unsafe_source_directives,
 )
 from qualification.loader_trace import (  # noqa: E402
-    macho_uuids, parse_dyld_images, parse_glibc_maps,
+    apple_system_baseline, capture_glibc, elf_interpreter, macho_uuids,
+    parse_dyld_images, parse_glibc_maps,
 )
 from qualification.link_provenance import verify_linker_options  # noqa: E402
 
@@ -92,6 +94,40 @@ def test_loader_trace_requires_resolved_images_for_every_generated_mapping():
         parse_glibc_maps('')
 
 
+def elf_with_interpreter(path, *, count=1):
+    data = path + b'\0'
+    header = b'\x7fELF\x02\x01\x01' + b'\0' * 9
+    header += struct.pack('<HHIQQQIHHHHHH', 3, 62, 1, 0, 64, 0, 0,
+                          64, 56, count, 0, 0, 0)
+    program = struct.pack('<IIQQQQQQ', 3, 4, 64 + 56 * count,
+                          0, 0, len(data), len(data), 1)
+    return header + program * count + data
+
+
+def test_elf_interpreter_is_explicit_bounded_and_unambiguous():
+    path = b'/lib64/ld-linux-x86-64.so.2'
+    assert elf_interpreter(elf_with_interpreter(path)) == path.decode()
+    for data in (elf_with_interpreter(path, count=0),
+                 elf_with_interpreter(path, count=2),
+                 elf_with_interpreter(path)[:-1],
+                 elf_with_interpreter(b'relative/loader'),
+                 elf_with_interpreter(b'/loader\0trailing')):
+        with pytest.raises(BuildEvidenceError, match='interpreter|ELF'):
+            elf_interpreter(data)
+
+
+@pytest.mark.skipif(not HAS_GNU, reason='ELF GNU13 tool identity')
+def test_glibc_without_loader_initializer_binds_actual_program_interpreter(tmp_path):
+    program = Path(HAS_GNU).resolve()
+    trace = tmp_path / 'old-glibc.7'
+    trace.write_text('7: calling init: ' + str(program) + '\n'
+                     '7: transferring control: ' + str(program) + '\n')
+    evidence = capture_glibc(tmp_path / 'old-glibc')
+    interpreter = Path(elf_interpreter(program.read_bytes())).resolve()
+    assert str(interpreter) in {row['path'] for row in evidence['images']}
+    assert evidence['program_interpreters'][0]['program']['path'] == str(program)
+
+
 def test_apple_loader_requires_actual_pid_uuid_and_matching_image_structure():
     identifier = uuid.UUID('01234567-89ab-cdef-0123-456789abcdef')
     line = f'dyld[42]: <{identifier}> /xcode/lib/libLLVM.dylib\n'
@@ -106,6 +142,81 @@ def test_apple_loader_requires_actual_pid_uuid_and_matching_image_structure():
     assert macho_uuids(image) == {str(identifier)}
     with pytest.raises(BuildEvidenceError, match='invalid'):
         macho_uuids(image[:-1])
+
+
+def test_apple_delayed_images_remain_bound_to_the_same_observed_process():
+    identifier = '01234567-89ab-cdef-0123-456789abcdef'
+    image = f'dyld[42]: <{identifier}> /System/Library/XPCSupport\n'
+    transitions = ('dyld[42]: move loaded to delayed: XPCSupport\n'
+                   'dyld[42]: move delayed to loaded: XPCSupport\n')
+    assert parse_dyld_images(image + transitions, 42) == [
+        {'path': '/System/Library/XPCSupport', 'uuid': identifier}]
+    for bad in ('dyld[43]: move loaded to delayed: XPCSupport\n',
+                'dyld[42]: move loaded to delayed: Unknown\n',
+                'dyld[42]: unreviewed status: XPCSupport\n'):
+        with pytest.raises(BuildEvidenceError):
+            parse_dyld_images(image + bad, 42)
+
+
+def test_apple_loaded_executable_uuid_requires_the_native_slice():
+    identifier = uuid.UUID('01234567-89ab-cdef-0123-456789abcdef')
+    header = struct.pack('<IIIIIIII', 0xfeedfacf, 0x1000007, 3, 2, 1, 24, 0, 0)
+    image = header + struct.pack('<II', 0x1b, 24) + identifier.bytes
+    assert macho_uuids(image, architecture='x86_64') == {str(identifier)}
+    assert macho_uuids(image, architecture='arm64') == set()
+
+
+def test_apple_cache_provenance_does_not_initialize_delayed_frameworks(monkeypatch):
+    import ctypes
+    import platform
+    from types import SimpleNamespace
+
+    for name in list(os.environ):
+        if name.startswith('DYLD_'):
+            monkeypatch.delenv(name)
+    calls = []
+    library = SimpleNamespace(
+        _dyld_get_shared_cache_uuid=lambda output: True,
+        _dyld_shared_cache_contains_path=lambda path: True,
+        sysctlbyname=lambda *args: 0,
+    )
+
+    def existing_process(path, **kwargs):
+        calls.append(path)
+        assert path is None, 'cache observation must not initialize a framework'
+        return library
+
+    monkeypatch.setattr(ctypes, 'CDLL', existing_process)
+    monkeypatch.setattr(platform, 'machine', lambda: 'arm64')
+    monkeypatch.setattr(subprocess, 'run', lambda *a, **k: SimpleNamespace(
+        returncode=0, stdout='native-os-build\n', stderr=''))
+    images = [{'path': '/System/Library/XPCSupport', 'uuid': str(uuid.uuid4())}]
+    assert apple_system_baseline(images)['images'] == images
+    assert calls == [None]
+    monkeypatch.setenv('DYLD_SHARED_CACHE_DIR', '/alternate/cache')
+    with pytest.raises(BuildEvidenceError, match='observer loader environment'):
+        apple_system_baseline(images)
+
+
+@pytest.mark.parametrize('frame_pointer', ['all', 'non-leaf'])
+def test_actual_apple17_backend_metadata_does_not_weaken_fp(frame_pointer):
+    options = [
+        '-main-file-name', 'bindings.cpp', '-mframe-pointer=' + frame_pointer,
+        '-mllvm', '-extra-vectorizer-passes', '-fno-strict-return',
+        '-fobjc-msgsend-selector-stubs', '-faligned-alloc-unavailable',
+        '-fcompatibility-qualified-id-block-type-checking',
+        '-fvisibility-inlines-hidden-static-local-var',
+        '-fbuiltin-headers-in-system-modules', '-fdefine-target-os-macros',
+        '-fno-assume-unique-vtables', '-fdebug-compilation-dir=/build',
+        '-fcoverage-compilation-dir=/build', '-fstack-check',
+        '-mdarwin-stkchk-strong-link', '-fno-cxx-modules', '-fcommon',
+        '-fno-odr-hash-protocols',
+    ]
+    effective_options([*STRICT, *options], 'clang', backend=True)
+    for extra in (['-mllvm'], ['-mllvm', '-enable-unsafe-fp-math'],
+                  ['-mframe-pointer=opaque']):
+        with pytest.raises(BuildEvidenceError, match='unreviewed'):
+            effective_options([*STRICT, *options, *extra], 'clang', backend=True)
 
 
 @pytest.mark.parametrize('option', [
@@ -192,6 +303,19 @@ def test_actual_gnu_compile_and_link_are_bound(tmp_path):
         verify_build(records, tmp_path)
 
 
+@pytest.mark.skipif(not HAS_GNU, reason='GNU13 actual debug/inactive-branch control')
+def test_inactive_platform_directive_and_debug_metadata_are_not_effective(tmp_path):
+    source = tmp_path / 'inactive.cpp'
+    source.write_text('#if defined(_MSC_VER) && defined(PY_LOCAL_AGGRESSIVE)\n'
+                      '#pragma optimize("gt", on)\n#endif\n'
+                      '#if 0\n#pragma GCC optimize("fast-math")\n#endif\n'
+                      'extern "C" double local(double x) { return x * 0; }\n')
+    records = record(tmp_path, ['g++-13', *STRICT, '-g', '-fPIC', '-c',
+                                str(source), '-o', 'inactive.o'])
+    record(tmp_path, ['g++-13', *STRICT, '-shared', 'inactive.o', '-o', '_core.so'])
+    assert verify_build(records, tmp_path)['properties']['contraction'] == 'off'
+
+
 @pytest.mark.skipif(not HAS_GNU, reason='GNU13 actual-child observation control')
 def test_real_late_launcher_override_is_observed(tmp_path):
     source = tmp_path / 'arithmetic.cpp'
@@ -237,6 +361,30 @@ def test_source_directive_polarity_and_comments_do_not_forge_unsafe_settings():
         '__attribute__((optimize(\n "fp-contract=fast"))) double f();')
     assert unsafe_source_directives(
         '__attribute__((optimize("fp-" "contract=fast"))) double f();')
+    assert unsafe_source_directives('__pragma(float_control(precise, off))')
+    assert unsafe_source_directives('_Pragma("GCC optimize(\\"fast-math\\")")')
+    assert unsafe_source_directives('__pragma(float_control(precise, on))') == []
+    assert unsafe_source_directives(
+        '#undef __FLT_EVAL_METHOD__\n', macro_overrides_only=True)
+    assert unsafe_source_directives(
+        '#pragma optimize("gt", on)\n', macro_overrides_only=True) == []
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='actual MSVC preprocessor semantics')
+@pytest.mark.parametrize('directive', [
+    '#pragma float_control(precise, off)',
+    '__pragma(float_control(precise, off))',
+    '_Pragma("float_control(precise, off)")',
+])
+def test_actual_msvc_preprocessed_source_preserves_local_controls(tmp_path, directive):
+    source, output = tmp_path / 'pragma.cpp', tmp_path / 'pragma.i'
+    for active in (False, True):
+        source.write_text(f'#if {int(active)}\n{directive}\n#endif\n'
+                          'double local(double x) { return x * 0; }\n')
+        run = subprocess.run(['cl', '/nologo', '/P', '/Fi' + str(output),
+                              str(source)], text=True, capture_output=True)
+        assert run.returncode == 0, run.stdout + run.stderr
+        assert bool(unsafe_source_directives(output.read_text())) == active
 
 
 @pytest.mark.skipif(not HAS_GNU, reason='GNU13 actual-child observation control')

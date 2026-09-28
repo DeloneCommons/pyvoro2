@@ -13,7 +13,7 @@ from functools import wraps
 from importlib import import_module
 
 import numpy as np
-from .ghost import GhostFailure
+from .ghost_failure import GhostFailure
 from .locate_failure import LocateFailure
 
 
@@ -165,11 +165,16 @@ def _array_protocol(value):
     return checked_call(np.asarray, buffer)
 
 
-def _object_tree(value):
+def _object_tree(value, *, nested=False):
     """Shape and references without letting NumPy call foreign protocols."""
     check_environment()
     array = _array_protocol(value)
     if array is not None:
+        if nested and array.ndim == 0:
+            # A zero-dimensional array in a scalar position retains its
+            # category for strict public validators. Root arrays and nested
+            # nonzero-dimensional row arrays still supply their shapes.
+            return (), [value]
         # Only a base ndarray reaches this conversion; no user callback is
         # nested inside its numeric-to-object conversion.
         objects = checked_call(np.asarray, array, dtype=object)
@@ -186,7 +191,7 @@ def _object_tree(value):
     for index in range(count):
         child = checked_call(operator.getitem, value, index)
         raw.append(child)
-        children.append(_object_tree(child))
+        children.append(_object_tree(child, nested=True))
     if not children:
         return (0,), []
     shape = children[0][0]
