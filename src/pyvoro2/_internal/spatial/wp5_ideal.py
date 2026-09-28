@@ -193,26 +193,30 @@ class _Polytope:
         if not self.vertices:
             return
         arithmetic = self.arithmetic
-        gaps = {point: arithmetic.sub(arithmetic.dot(cut.normal, point), cut.offset)
-                for point in self.vertices}
-        if all(gap < 0 for gap in gaps.values()):
+        # Evaluate every gap eagerly: proof work/refusals precede classification.
+        # Carry the result with the vertex to avoid hashing rational keys again.
+        records = [
+            (point, active, arithmetic.sub(arithmetic.dot(cut.normal, point),
+                                           cut.offset))
+            for point, active in self.vertices.items()
+        ]
+        if all(gap < 0 for _, _, gap in records):
             return
         index = len(self.cuts)
         self.cuts.append(cut)
         retained = {
-            point: active | {index} if gaps[point] == 0 else active
-            for point, active in self.vertices.items() if gaps[point] <= 0
+            point: active | {index} if gap == 0 else active
+            for point, active, gap in records if gap <= 0
         }
-        inside = [p for p, gap in gaps.items() if gap < 0]
-        outside = [p for p, gap in gaps.items() if gap > 0]
+        inside = [record for record in records if record[2] < 0]
+        outside = [record for record in records if record[2] > 0]
         arithmetic.budget.charge(len(inside) * len(outside), stage='ideal_edges')
-        for left in inside:
-            for right in outside:
-                left_active, right_active = self.vertices[left], self.vertices[right]
+        for left, left_active, left_gap in inside:
+            for right, right_active, right_gap in outside:
                 if not self._edge(left_active, right_active):
                     continue
-                difference = arithmetic.sub(gaps[left], gaps[right])
-                amount = arithmetic.div(gaps[left], difference)
+                difference = arithmetic.sub(left_gap, right_gap)
+                amount = arithmetic.div(left_gap, difference)
                 point = tuple(arithmetic.add(a, arithmetic.mul(
                     amount, arithmetic.sub(b, a)))
                               for a, b in zip(left, right))
