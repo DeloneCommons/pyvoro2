@@ -6,6 +6,7 @@ from dataclasses import fields
 import inspect
 
 import numpy as np
+import pytest
 
 import pyvoro2 as pv
 import pyvoro2.api as spatial_api
@@ -151,11 +152,7 @@ def test_spatial_compute_signature_and_defaults_are_characterized() -> None:
         ('return_adjacency', True),
         ('return_faces', True),
         ('return_face_shifts', False),
-        ('face_shift_search', 2),
         ('include_empty', False),
-        ('validate_face_shifts', True),
-        ('repair_face_shifts', False),
-        ('face_shift_tol', None),
         ('return_diagnostics', False),
         ('output', 'result'),
         ('tessellation_check', 'none'),
@@ -1135,3 +1132,25 @@ def test_hidden_power_cells_are_omitted_or_reinserted_in_both_dimensions() -> No
         'site': [0.25, 0.5],
     }
     assert 'empty' not in included2[1]
+
+
+@pytest.mark.parametrize('compute', [pv.compute, spatial_api.compute])
+@pytest.mark.parametrize('keyword,value', [
+    ('face_shift_search', 2), ('face_shift_search', 0),
+    ('validate_face_shifts', True), ('validate_face_shifts', False),
+    ('repair_face_shifts', False), ('repair_face_shifts', True),
+    ('face_shift_tol', None), ('face_shift_tol', 0.0),
+])
+def test_removed_spatial_controls_fail_binding_before_implementation(
+    monkeypatch, compute, keyword, value,
+):
+    def forbidden(*args, **kwargs):
+        pytest.fail('removed keyword reached the implementation')
+
+    monkeypatch.setattr(spatial_api, '_compute_impl', forbidden)
+    with pytest.raises(TypeError, match="unexpected keyword argument") as error:
+        compute([[0.5, 0.5, 0.5]], domain=pv.Box(((0, 1),) * 3),
+                **{keyword: value})
+    assert keyword in str(error.value)
+    # An ordinary binding failure never enters compute's Python body.
+    assert error.value.__traceback__.tb_next is None

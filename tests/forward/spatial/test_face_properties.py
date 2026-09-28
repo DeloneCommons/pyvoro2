@@ -32,7 +32,6 @@ def test_face_properties_standard_periodic_midface():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
     )
     # Mark faces (orphan/mismatch flags)
     analyze_tessellation(

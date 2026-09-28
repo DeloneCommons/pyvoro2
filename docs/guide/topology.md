@@ -52,9 +52,10 @@ Unresolved or unrepresentable requested images always
 raise `TessellationError`.
 
 Public vertex and adjacency arrays may both be disabled while requesting
-shifts. The legacy `face_shift_search`, `face_shift_tol`,
-`validate_face_shifts`, and `repair_face_shifts` arguments still validate their
-inputs but do not change source attribution, auditing, or returned shifts.
+shifts. The obsolete `face_shift_search`, `face_shift_tol`,
+`validate_face_shifts`, and `repair_face_shifts` arguments are removed. Delete
+them with no replacement; supplying them raises ordinary `TypeError`.
+Diagnostic and normalization tolerances retain their independent purposes.
 
 ## Building a periodic graph in practice
 

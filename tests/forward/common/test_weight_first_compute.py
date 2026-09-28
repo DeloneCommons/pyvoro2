@@ -123,7 +123,6 @@ INTEGRATION_CASES = (
         shift_size=3,
         kwargs={
             'return_face_shifts': True,
-            'face_shift_search': 2,
             'return_diagnostics': True,
             'tessellation_check': 'raise',
         },
@@ -149,7 +148,6 @@ INTEGRATION_CASES = (
         shift_size=3,
         kwargs={
             'return_face_shifts': True,
-            'face_shift_search': 2,
             'return_diagnostics': True,
             'tessellation_check': 'raise',
         },
@@ -763,7 +761,7 @@ def test_global_weight_gauge_preserves_complete_diagram(case: ForwardCase) -> No
                 'volume',
                 'faces',
                 shift_size=3,
-                kwargs={'return_face_shifts': True, 'face_shift_search': 1},
+                kwargs={'return_face_shifts': True},
             ),
             np.array([1.0, 4.0]),
             np.array([1.0, 2.0]),

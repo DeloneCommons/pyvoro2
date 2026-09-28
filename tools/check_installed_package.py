@@ -35,7 +35,6 @@ INTERNAL_HELPER_MODULES = (
     'pyvoro2._internal.spatial.wp5_ideal',
     'pyvoro2._internal.spatial.wp5_producer',
     'pyvoro2._internal.planar.domain_geometry',
-    'pyvoro2._internal.planar.edge_shifts',
     'pyvoro2._internal.planar.ghost_certificate',
     'pyvoro2._internal.planar.wp6_profile',
     'pyvoro2._internal.planar.wp6_ideal',
@@ -43,6 +42,7 @@ INTERNAL_HELPER_MODULES = (
     'pyvoro2._internal.planar.wp6_numerical',
 )
 OBSOLETE_PRIVATE_MODULES = (
+    'pyvoro2._internal.planar.edge_shifts',
     'pyvoro2._internal.spatial.face_shifts',
     'pyvoro2._cell_output',
     'pyvoro2._inputs',
@@ -195,6 +195,23 @@ def _check_removed_compatibility() -> None:
         raise InstalledPackageCheckError(
             'the removed planar return_result parameter is still accepted'
         )
+    for name, value in (
+        ('face_shift_search', 2), ('validate_face_shifts', True),
+        ('repair_face_shifts', False), ('face_shift_tol', None),
+    ):
+        for operation in (pv.compute, pv.ghost_cells):
+            if name in inspect.signature(operation).parameters:
+                raise InstalledPackageCheckError(
+                    f'removed spatial {name} is still in {operation.__name__}'
+                )
+        try:
+            pv.compute([[0.5, 0.5, 0.5]], domain=pv.Box(((0, 1),) * 3),
+                       **{name: value})
+        except TypeError as exc:
+            if 'unexpected keyword argument' not in str(exc):
+                raise InstalledPackageCheckError(str(exc)) from exc
+        else:
+            raise InstalledPackageCheckError(f'removed {name} was accepted')
     for name in ('edge_shift_search', 'validate_edge_shifts',
                  'repair_edge_shifts', 'edge_shift_tol'):
         if name in inspect.signature(pv2.compute).parameters:
@@ -205,7 +222,7 @@ def _check_removed_compatibility() -> None:
             raise InstalledPackageCheckError(
                 f'the removed planar ghost {name} parameter is still accepted'
             )
-    print('removed v0.7 compatibility and planar reconstruction '
+    print('removed v0.7 compatibility and periodic reconstruction '
           'surfaces: absent')
 
 

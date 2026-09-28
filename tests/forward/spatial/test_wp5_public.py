@@ -72,20 +72,6 @@ def test_wall_identity_has_no_image_and_source_sites_are_retained():
     assert all('adjacent_shift' not in f for f in walls)
 
 
-def test_legacy_controls_cannot_restrict_or_repair_the_certificate():
-    labels = []
-    for search, tol, validate, repair in [
-        (0, 0, False, False), (9, 100, True, True),
-    ]:
-        result = compute([[1, 1, 1]], domain=_domain(), output='cells',
-                         return_face_shifts=True, face_shift_search=search,
-                         face_shift_tol=tol, validate_face_shifts=validate,
-                         repair_face_shifts=repair)
-        labels.append([(f['adjacent_cell'], f['adjacent_shift'])
-                       for f in result[0]['faces']])
-    assert labels[0] == labels[1]
-
-
 @pytest.mark.parametrize('vectors', [
     np.diag([4., 4., 4.]), np.diag([-4., 4., 4.]),
 ])
@@ -215,3 +201,22 @@ def test_optional_reciprocity_preserves_information_without_error_severity(monke
                  if i.code == 'WP5_RECIPROCAL_MISSING')
     assert issue.severity == 'warning'
     assert result.tessellation_diagnostics.ok
+
+
+def test_diagnostic_tolerances_do_not_select_or_repair_source_labels():
+    labels = []
+    for tolerance in (0.0, 100.0):
+        result = compute([[9, 1, 1], [1, 3, 1]], domain=_domain(),
+                         return_face_shifts=True, return_diagnostics=True,
+                         tessellation_plane_offset_tol=tolerance,
+                         tessellation_plane_angle_tol=tolerance,
+                         tessellation_volume_tol_abs=tolerance,
+                         tessellation_volume_tol_rel=tolerance)
+        labels.append([[(f['adjacent_cell'], f.get('adjacent_shift'))
+                        for f in cell['faces']] for cell in result.cells])
+        assert result.has_periodic_shifts
+        assert result.has_tessellation_diagnostics
+    assert labels[0] == labels[1]
+    assert {shift for owner, shift in labels[0][0] if owner == 1} == {
+        (2, 0, 0), (2, -1, 0),
+    }

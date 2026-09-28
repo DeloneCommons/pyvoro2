@@ -131,6 +131,15 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Removed
 
+- Removed `face_shift_search`, `validate_face_shifts`, `repair_face_shifts` and
+  `face_shift_tol` from spatial `pyvoro2.compute` / `pyvoro2.api.compute`.
+  Delete these arguments with no replacement; even former defaults now raise
+  ordinary argument-binding `TypeError`. Output selectors, diagnostics and
+  normalization tolerances, separator `image_search` and native tuning remain.
+- Retired the unused private planar edge-shift reconstructor. Accepted
+  source attribution, exact consistency auditing and hard ghost eligibility
+  are unchanged.
+
 - Removed `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts` and
   `edge_shift_tol` from ordinary `pyvoro2.planar.compute` and
   `pyvoro2.planar.ghost_cells` without aliases.

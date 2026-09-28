@@ -136,10 +136,19 @@ The activation boundary is:
   controls, and research history remain **Experimental** under
   `pyvoro2.inverse.separator`;
 - `ghost_radius` is **Removed** by WP1. The face/edge reconstruction search,
-  validation, repair, and matching-tolerance keywords named in the target
-  inventory become **Removed** when their later owning v0.9 work packages land.
+  validation, repair, and matching-tolerance keywords named in the inventory
+  are **Removed** by WP6, WP7 and WP9.
   The active plan explicitly chooses immediate pre-1.0 removal rather than a
   deprecated alias period for these surfaces.
+
+WP9 removes `face_shift_search`, `validate_face_shifts`, `repair_face_shifts`
+and `face_shift_tol` from spatial `compute` and its defining `api.compute`.
+Calls supplying them, including former defaults, fail at ordinary Python
+argument binding with `TypeError` before native work. Delete these arguments;
+there are no aliases, warnings-only transitions or replacement controls.
+Output selectors, native block/memory settings, duplicate safety, diagnostic
+and normalization tolerances, separator `image_search` and private proof
+limits retain their independent contracts.
 
 WP6 applies that immediate removal to ordinary `pyvoro2.planar.compute`:
 `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, and
@@ -154,8 +163,8 @@ exact consistency, optional geometry availability and structured failure are
 scientific API meanings even though the witness/profile machinery is private.
 The distinct ghost action and failure contract is
 [ADR 0023](decisions/0023-wp7-certified-ghost-boundaries.md). WP5 and WP6 were
-independently accepted, as was WP7 before WP8 authorization. WP8 independent
-acceptance remains pending.
+independently accepted, as were WP7 and WP8 through PRs #78 and #80. WP9
+implementation does not imply independent acceptance of its removal evidence.
 
 D9, the backend-fork policy, is not silently assigned a lifecycle category by
 WP0. It remains the explicit decision gate in the active plan and must be
@@ -358,7 +367,7 @@ failure protocol are **Provisional** through v0.9.x. Existing `owner_pos`
 retains its native floating-point meaning; the exact image equation uses
 `owner_site+owner_shift@A` and permits the source-qualified float-view error.
 Native insertion omission and unsafe execution now fail explicitly. This does
-not downgrade Stable forward operations, add a public exception class or
-perform WP9's remaining reconstruction-control removals. See
+not downgrade Stable forward operations or add a public exception class.
+WP9's separate reconstruction-control removals are recorded above. See
 [ADR 0018](decisions/0018-periodic-user-lattice-and-boundary-semantics.md)
 and the [API inventory](api-inventory.md) for the adopted semantics.

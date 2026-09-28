@@ -34,9 +34,9 @@ INTERNAL_MODULES = (
     'pyvoro2._internal.spatial.wp5_ideal',
     'pyvoro2._internal.spatial.wp5_producer',
     'pyvoro2._internal.planar.domain_geometry',
-    'pyvoro2._internal.planar.edge_shifts',
 )
 OBSOLETE_MODULES = (
+    'pyvoro2._internal.planar.edge_shifts',
     'pyvoro2._internal.spatial.face_shifts',
     'pyvoro2._cell_output',
     'pyvoro2._inputs',

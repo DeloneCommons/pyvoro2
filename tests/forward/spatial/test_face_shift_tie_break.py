@@ -7,8 +7,7 @@ def test_public_source_translation_is_not_a_finite_search_window():
     domain = pv.OrthorhombicCell(((0, 4), (0, 4), (0, 4)))
     cells = pv.compute(
         [[9, 1, 1], [1, 3, 1]], domain=domain,
-        return_face_shifts=True, face_shift_search=0,
-        face_shift_tol=0, validate_face_shifts=False,
+        return_face_shifts=True,
         output='cells',
     )
     assert {f['adjacent_shift'] for f in cells[0]['faces']

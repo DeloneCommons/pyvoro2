@@ -31,10 +31,8 @@ from ._internal.power_input import (
 )
 from ._internal.validation import (
     CPP_INT_MAX,
-    PY_SSIZE_T_MAX,
     require_bool,
     require_nonnegative_finite_real,
-    require_nonnegative_index,
     require_optional_bool,
     require_optional_nonnegative_finite_real,
     require_positive_index,
@@ -389,11 +387,7 @@ def compute(
     return_adjacency: bool = True,
     return_faces: bool = True,
     return_face_shifts: bool = False,
-    face_shift_search: int = 2,
     include_empty: bool = False,
-    validate_face_shifts: bool = True,
-    repair_face_shifts: bool = False,
-    face_shift_tol: float | None = None,
     return_diagnostics: bool = False,
     output: Literal['result', 'cells'] = 'result',
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'none',
@@ -478,17 +472,10 @@ def compute(
             Every generator image must be uniquely source-attributed. Real
             walls have no ``adjacent_shift``. Exact semantic consistency is
             reported through tessellation diagnostics and its action policy.
-        face_shift_search: Validated non-negative legacy control; has no effect
-            on source attribution, exact auditing, or returned shifts.
         include_empty: If True, include explicit empty-cell records for sites that
             do not produce a Voronoi/Laguerre cell (possible in extreme power
             settings). Empty records have 'empty': True, volume 0.0, and empty
             geometry lists.
-        validate_face_shifts: Validated Boolean legacy control; correctness-neutral.
-        repair_face_shifts: Validated Boolean legacy control; correctness-neutral.
-            Native faces and shifts are never repaired.
-        face_shift_tol: Validated optional non-negative finite legacy control;
-            correctness-neutral. Exact decisions use no numerical tolerance.
         tessellation_check: ``"none"`` takes no action on diagnostic findings;
             ``"diagnose"`` attaches it without acting on failure; ``"warn"``
             emits one summary warning when the final diagnostic is not okay;
@@ -546,11 +533,7 @@ def compute(
         return_adjacency=return_adjacency,
         return_faces=return_faces,
         return_face_shifts=return_face_shifts,
-        face_shift_search=face_shift_search,
         include_empty=include_empty,
-        validate_face_shifts=validate_face_shifts,
-        repair_face_shifts=repair_face_shifts,
-        face_shift_tol=face_shift_tol,
         return_diagnostics=return_diagnostics,
         output=output,
         tessellation_check=tessellation_check,
@@ -581,11 +564,7 @@ def _compute_impl(
     return_adjacency: bool = True,
     return_faces: bool = True,
     return_face_shifts: bool = False,
-    face_shift_search: int = 2,
     include_empty: bool = False,
-    validate_face_shifts: bool = True,
-    repair_face_shifts: bool = False,
-    face_shift_tol: float | None = None,
     return_diagnostics: bool = False,
     output: Literal['result', 'cells'] = 'result',
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'none',
@@ -619,11 +598,6 @@ def _compute_impl(
             max_pairs=duplicate_max_pairs,
         )
     )
-    require_nonnegative_index(
-        face_shift_search,
-        name='face_shift_search',
-        maximum=PY_SSIZE_T_MAX,
-    )
     return_vertices_value = require_bool(
         return_vertices,
         name='return_vertices',
@@ -638,14 +612,6 @@ def _compute_impl(
         name='return_face_shifts',
     )
     include_empty_value = require_bool(include_empty, name='include_empty')
-    require_bool(
-        validate_face_shifts,
-        name='validate_face_shifts',
-    )
-    require_bool(
-        repair_face_shifts,
-        name='repair_face_shifts',
-    )
     return_diagnostics_value = require_bool(
         return_diagnostics,
         name='return_diagnostics',
@@ -653,10 +619,6 @@ def _compute_impl(
     tessellation_require_reciprocity_value = require_optional_bool(
         tessellation_require_reciprocity,
         name='tessellation_require_reciprocity',
-    )
-    require_optional_nonnegative_finite_real(
-        face_shift_tol,
-        name='face_shift_tol',
     )
     volume_tol_rel_value = require_nonnegative_finite_real(
         tessellation_volume_tol_rel,

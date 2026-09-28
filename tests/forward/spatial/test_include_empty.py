@@ -20,7 +20,6 @@ def test_include_empty_power_periodic_returns_all_ids():
         return_faces=True,
         return_adjacency=False,
         return_face_shifts=True,
-        face_shift_search=1,
         include_empty=True,
     )
 
