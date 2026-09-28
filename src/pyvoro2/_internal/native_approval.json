@@ -4,34 +4,34 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "4e0604e97734848ea9e8551851402febc1604c6ce4bd16b95ee3eb2717da3413"
+      "source_sha256": "1d9df9968b01d7f6f4c9e9ada9b0168c98f95a4d33c6188b08714ecf7c1030a5"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "b6a266e83afc498b5065f32f14c4945ac0a1a873d66e31bb77047076449ea8c6"
+      "source_sha256": "cae17998ab5bc0977c13e696f17604645cf82bc79126c1d8e1ecc102d4d2303b"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "d690e938d7e4ddc04b8713966e1a4b638c843261bc9179859e4d5f39959459fc"
+      "source_sha256": "66428e9ca263167f61561c2438fdb9fe8656454aea29ab19fbbff001798aaa21"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "93ec7d6f2edc82e2821db968864c549680969483aa178e298e622861a80a4863"
+      "source_sha256": "6f63311993d1d27b4220766f662ddeab1c7b498ffb2ed08d6958747259b79b35"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "df4563cfb401e31a28c42c68d757c7bd4e6326d9d79cc8e6440bf59d5c646909"
+      "source_sha256": "3a80e5f938d41fbafdcf0d878f336a374d99fc2aca1c89fe77dfb261ec684b77"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "101061e79fbb040667db31cb58f7e991881c3111a32f086d9ddfe547043000af"
+      "source_sha256": "3bbbdf031ebc1af0e135c2958ec1f7419c414bf32de13ae8724cba4f2de48996"
     }
   },
   "consumer_sha256": "1b57fac7d8f206bfa9e6211292912117479a4b4d32522b66b41066a784ed00fc",
   "policy_revision": "issue88-p1",
   "review": {
     "baseline_commit": "032c0d5befeb88b4a903274d082029c30fcc882f",
-    "decision": "Approved revised source closure after independent runtime and qualification reviews of the first CI corrections and integration review of the bounded workflow delta; artifact and platform acceptance remain mandatory.",
+    "decision": "Approved the frozen second-round CI correction closure after independent runtime and qualification reviews and integration review of the distinct sanitizer safety path; fresh optimized artifact, sanitizer safety, and platform acceptance remain mandatory.",
     "reports": [
       {
         "name": "independent-runtime-review.md",
@@ -48,10 +48,18 @@
       {
         "name": "independent-qualification-review-ci-corrections.md",
         "sha256": "a47e49e3093b5d23e14851f00c0e766bd2a4fed3b5e990e969f7782902bb69be"
+      },
+      {
+        "name": "independent-runtime-review-ci-round2.md",
+        "sha256": "ea5094c04701114f49064589766459c9089d56214b016022cd6f5708a3b6448b"
+      },
+      {
+        "name": "independent-qualification-review-ci-round2.md",
+        "sha256": "b1bc566bcfccbc18d6b8f3486bfc44453ed04fe655ad4665590bdf26b2ff55e5"
       }
     ],
-    "reviewed_delta_base": "baa681768c9a570d13986d1b77fbc5a3aaee86fa"
+    "reviewed_delta_base": "45ff837eeff1aa25d0c47342b0d4b9d030d03d72"
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "2c69b451c2915fd0647d0fe860c7a7898f8e1ea113fcf5513e00accb584193df"
+  "source_sha256": "9391a8f17515a5171cd6a90e774968500044651bd812653dfbe6f333727a63a0"
 }

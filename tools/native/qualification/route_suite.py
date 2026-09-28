@@ -21,6 +21,29 @@ import zipfile
 
 ARCHIVE_SHA256 = '85e2f0e8ac3678d83dc3b6d289abd580c9f36c80ee7934f46a194caf4e1ffe38'
 
+# Union of the prior driver and CI native safety selections, including the
+# warning callback hostile-state regression. These execute in the fixed child.
+SANITIZER_TESTS = (
+    'tests/forward/common/test_native_boundary_validation.py',
+    'tests/forward/common/test_native_preconditions.py',
+    'tests/forward/common/test_native_runtime_entry.py',
+    'tests/forward/common/test_native_coercion_state.py',
+    'tests/forward/common/test_native_route_admission.py',
+    'tests/forward/common/test_native_warning_state.py',
+    'tests/forward/common/test_native_certificate_refusal.py',
+    'tests/forward/common/test_generator_preparation.py',
+    'tests/forward/spatial/test_duplicate_check.py',
+    'tests/forward/spatial/test_ghost_cells.py',
+    'tests/forward/spatial/test_native_witness.py',
+    'tests/forward/spatial/test_wp7_native_selected.py',
+    'tests/tooling/test_native_witness_cpp.py',
+    'tests/forward/planar/test_api_dispatch.py',
+    'tests/forward/planar/test_wp6_native.py',
+    'tests/forward/planar/test_wp6_profile_refusal.py',
+    'tests/forward/planar/test_wp7_native.py',
+    'tests/forward/test_wp7_oracle.py',
+)
+
 
 def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -161,12 +184,14 @@ def main():
     parser.add_argument('--candidate-module', type=Path)
     parser.add_argument('--candidate-build-evidence', type=Path)
     parser.add_argument('--components', required=True)
+    parser.add_argument('--mode', choices=('qualification', 'sanitizer-safety'),
+                        default='qualification')
     args = parser.parse_args()
     root, installation = args.source_root.resolve(), args.installation_root.resolve()
     sys.path.insert(0, str(installation))
     sys.path.insert(0, str(root / 'tools/native'))
     from qualification.source_policy import measure_source
-    from qualification.discriminators import run_discriminators
+    from qualification.discriminators import run_arithmetic_controls, run_discriminators
     from pyvoro2 import _core, _core2d, _fpguard
     from pyvoro2._internal import native_qualification as authority
     from pyvoro2._internal import native_admission
@@ -222,6 +247,8 @@ def main():
     test_results = TestResults()
     import pytest
     paths = sorted({name for files in selection.values() for name in files})
+    if args.mode == 'sanitizer-safety':
+        paths = sorted(set(paths) | set(SANITIZER_TESTS))
     code = pytest.main(['-q', '-x', '-o', 'addopts=', '--rootdir', str(root),
                         *[str(root / name) for name in paths]], plugins=[test_results])
     if code != 0:
@@ -237,7 +264,9 @@ def main():
         claims[name] = {'passed': True, 'tests': rows,
                         'corpora': corpora.get(name, {})}
     build = json.loads(args.build_evidence.read_text())
-    discriminators = run_discriminators(root, build, outdir / 'discriminators')
+    controls = (run_arithmetic_controls if args.mode == 'sanitizer-safety'
+                else run_discriminators)
+    discriminators = controls(root, build, outdir / 'discriminators')
     discriminators['standard_strict_bits'] = standard_offset(_core)
     report = {'schema': 'pyvoro2-native-route-evidence-v1',
               'source_sha256': measurement['source_sha256'],
@@ -245,6 +274,13 @@ def main():
                           for name, module in modules.items()},
               'native_identities': identities, 'components': claims,
               'discriminators': discriminators}
+    if args.mode == 'sanitizer-safety':
+        report.update(schema='pyvoro2-native-sanitizer-routes-v1',
+                      scope='sanitizer-safety-only',
+                      safety_tests=[{'nodeid': node, 'outcome': outcome}
+                                    for node, outcome in sorted(
+                                        test_results.results.items())
+                                    if node.split('::')[0] in SANITIZER_TESTS])
     if candidate:
         spec = importlib.util.spec_from_file_location('recorded._core2d', candidate)
         module = importlib.util.module_from_spec(spec)

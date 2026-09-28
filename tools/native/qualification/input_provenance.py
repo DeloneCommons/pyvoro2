@@ -87,6 +87,10 @@ def collect_input_providers(driver, family, *, cwd, env, directory):
                                  capture_output=True)
             if sdk.returncode or not Path(sdk.stdout.strip()).is_dir():
                 raise BuildEvidenceError('cannot resolve installed Apple SDK')
+            if (env.get('SDKROOT') and Path(env['SDKROOT']).resolve() !=
+                    Path(sdk.stdout.strip()).resolve()):
+                raise BuildEvidenceError(
+                    'actual Apple SDK differs from installed provider')
             clean['SDKROOT'] = sdk.stdout.strip()
             sdk_query = {'argv': sdk_argv, 'stdout': sdk.stdout,
                          'stderr': sdk.stderr, 'exit_code': sdk.returncode,

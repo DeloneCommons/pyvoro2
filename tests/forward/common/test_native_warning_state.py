@@ -35,12 +35,17 @@ def test_warning_callback_state_is_checked(dimension, warning, callback_raises):
         else:
             method = api.compute
         libc = ctypes.CDLL(None)
+        enable = libc.feenableexcept
+        restore = libc.fesetenv
+        raw_state = pyvoro2._internal.native_runtime._early_guard._runtime_fp_state
         saved = ctypes.create_string_buffer(256)
         assert libc.fegetenv(saved) == 0
         invoked = []
+        incoming = []
         def poison(*args, **kwargs):
             invoked.append(True)
-            libc.feenableexcept(32)
+            enable(32)
+            incoming.append(raw_state())
             if RAISES:
                 raise RuntimeError('warning callback raised')
         warnings.showwarning = poison
@@ -51,9 +56,12 @@ def test_warning_callback_state_is_checked(dimension, warning, callback_raises):
                 method(points, **kwargs)
             except (ValueError, RuntimeError) as error:
                 refused = 'UNSUPPORTED' in str(error)
-            assert libc.fegetexcept() & 32, 'caller controls were normalized'
+            # glibc fegetexcept waits on pending unmasked x87 exceptions.
+            assert raw_state() == incoming[-1], 'caller state was changed'
+            assert incoming[-1]['x87_control'] & 0x20 == 0
+            assert incoming[-1]['mxcsr'] & 0x1000 == 0
         finally:
-            assert libc.fesetenv(saved) == 0
+            assert restore(saved) == 0
         assert invoked, 'warning callback was not exercised'
         assert refused, 'warning callback escaped structured runtime refusal'
     '''

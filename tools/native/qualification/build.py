@@ -29,29 +29,14 @@ from qualification.effective_build import (
     BuildEvidenceError, file_identity, verify_build,
 )
 from qualification.finalize import (
-    FinalizationError, SANITIZER_RUNTIME_KEYS, controlled_environment, finalize,
+    FinalizationError, SANITIZER_RUNTIME_KEYS, _require_default_anchor,
+    controlled_environment, exercise_sanitizer_safety, finalize,
 )
 from qualification.source_policy import _contract, check_approval, measure_source
 
 
 class DriverError(RuntimeError):
     """An observed build/distribution stage did not establish qualification."""
-
-
-_SANITIZER_TESTS = (
-    'tests/forward/common/test_native_boundary_validation.py',
-    'tests/forward/common/test_native_preconditions.py',
-    'tests/forward/common/test_generator_preparation.py',
-    'tests/forward/spatial/test_duplicate_check.py',
-    'tests/forward/spatial/test_ghost_cells.py',
-    'tests/forward/spatial/test_native_witness.py',
-    'tests/forward/spatial/test_wp7_native_selected.py',
-    'tests/forward/planar/test_api_dispatch.py',
-    'tests/forward/planar/test_wp6_native.py',
-    'tests/forward/planar/test_wp6_profile_refusal.py',
-    'tests/forward/planar/test_wp7_native.py',
-    'tests/forward/test_wp7_oracle.py',
-)
 
 
 def build_environment():
@@ -69,19 +54,37 @@ def _failed_output_tail(path, environment):
     sensitive = re.compile(
         r'TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTHORIZATION|(?:^|_)KEY(?:$|_)',
         re.I)
-    secrets = sorted({value for name, value in environment.items()
-                      if value and sensitive.search(name)}, key=len, reverse=True)
-    # Extra overlap allows complete credential redaction before taking the tail.
-    overlap = max((len(value.encode('utf8')) for value in secrets), default=0)
+    secrets = {value.encode('utf8') for name, value in environment.items()
+               if value and sensitive.search(name)}
+    overlap = max((len(value) for value in secrets), default=1)
     limit = 12 * 1024
     with Path(path).open('rb') as stream:
         stream.seek(0, os.SEEK_END)
-        stream.seek(max(0, stream.tell() - limit - overlap))
-        text = stream.read().decode('utf8', errors='replace')
-    if secrets:
-        text = re.sub('|'.join(re.escape(value) for value in secrets),
-                      '[redacted]', text)
-    text = re.sub(r'(https?://)[^/\s@]+@', r'\1[redacted]@', text)
+        display_offset = max(0, stream.tell() - limit)
+        offset = max(0, display_offset - overlap)
+        stream.seek(offset)
+        data = stream.read()
+    start = display_offset - offset
+    if display_offset and data[start - 1:start] != b'\n':
+        # An incomplete line can contain URL userinfo whose scheme was cut off.
+        newline = data.find(b'\n', start)
+        start = len(data) if newline < 0 else newline + 1
+    # Choose the original window before any length-changing replacement. Extra
+    # context locates complete multiline secrets but can never become output.
+    ranges = [match.span(1) for match in re.finditer(
+        rb'https?://([^/\s@]+)@', data)]
+    for value in secrets:
+        position = data.find(value)
+        while position >= 0:
+            ranges.append((position, position + len(value)))
+            position = data.find(value, position + 1)
+    parts, cursor = [], start
+    for begin, end in sorted(ranges):
+        if end > cursor:
+            parts.extend((data[cursor:max(cursor, begin)], b'[redacted]'))
+            cursor = end
+    parts.append(data[cursor:])
+    text = b''.join(parts).decode('utf8', errors='replace')
     text = '\n'.join(text.splitlines()[-80:])
     return text.encode('utf8')[-limit:].decode('utf8', errors='ignore')
 
@@ -189,6 +192,19 @@ def repack_wheel(original, stage, output):
                     info.external_attr = 0o100644 << 16
                     info.compress_type = zipfile.ZIP_DEFLATED
                 archive.writestr(info, data[name])
+    return output
+
+
+def copy_safety_wheel(source_root, original, stage, output):
+    """Retain the unqualified wheel byte for byte; never invoke the issuer."""
+    _require_default_anchor(Path(source_root), Path(stage))
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=False)
+    before = file_identity(original)
+    shutil.copyfile(original, output)
+    _require(file_identity(original) == before
+             and file_identity(output)['sha256'] == before['sha256'],
+             'sanitizer wheel changed while copying unqualified bytes')
     return output
 
 
@@ -349,6 +365,100 @@ def sanitizer_runtime(build_evidence, output):
     return environment, libraries, receipts
 
 
+_UNQUALIFIED_PROBE = r'''
+import json
+from pathlib import Path
+import sys
+from pyvoro2._internal import native_admission, native_qualification
+from pyvoro2._internal import _qualification_installation as anchor
+root = Path(sys.argv[1]).resolve()
+assert Path(native_qualification.__file__).resolve().is_relative_to(root)
+assert native_qualification.require_native.__module__ == native_qualification.__name__
+assert anchor.RECORD_SHA256 is None and anchor.INSTALLATION_ID is None
+assert not (Path(anchor.__file__).parent / anchor.RECORD_FILENAME).exists()
+refusals = {}
+for component in sys.argv[2].split(','):
+    try:
+        native_admission.require_component(component)
+    except native_qualification.NativeQualificationError as error:
+        assert error.reason == 'untrusted_qualification', error.reason
+        refusals[component] = error.reason
+    else:
+        raise RuntimeError('sanitizer artifact acquired production qualification')
+print(json.dumps(refusals, sort_keys=True))
+'''
+
+
+def _finish_sanitizer_build(*, source_root, output, measurement, contract, required,
+                            direct, repaired, stage, imports, records, postprocess_path,
+                            candidate_module, candidate_records, runtime_environment,
+                            runtime_libraries, processes):
+    wheel = copy_safety_wheel(source_root, repaired, stage,
+                              output / 'sanitizer-wheel' / repaired.name)
+    wheel_identities = {name: file_identity(path) for name, path in (
+        ('direct_wheel', direct), ('repaired_wheel', repaired),
+        ('sanitizer_wheel', wheel))}
+    installed = output / 'installed'
+    processes.append(run_process(
+        [sys.executable, '-m', 'pip', 'install', '--no-index', '--no-deps',
+         '--no-compile', '--target', installed, wheel], cwd=output,
+        directory=output / 'process-sanitizer-install'))
+    environment = build_environment()
+    environment.update(runtime_environment)
+    environment['PYTHONPATH'] = str(installed)
+    loaded_before = None
+    for phase in ('before', 'after'):
+        _require_default_anchor(source_root, installed)
+        _require(all(file_identity(item['path']) == item for item in runtime_libraries),
+                 'sanitizer runtime libraries changed during safety evidence')
+        import_dir = output / ('sanitizer-imports-' + phase)
+        import_dir.mkdir()
+        observed, receipts = inspect_installation(
+            installed, import_dir, runtime_environment)
+        processes.extend(receipts)
+        for name, item in observed.items():
+            _require(item['sha256'] == imports[name]['sha256']
+                     and item['identity'] == imports[name]['identity'],
+                     'installed sanitizer payload differs from observed wheel bytes')
+            _require({lib['path'] for lib in runtime_libraries} <= set(item['loaded']),
+                     'sanitizer runtime library was not loaded by the native process')
+        processes.append(run_process(
+            [sys.executable, '-c', _UNQUALIFIED_PROBE, installed,
+             ','.join(sorted(required))], cwd=output,
+            directory=output / ('process-unqualified-' + phase),
+            environment=environment))
+        if phase == 'before':
+            loaded_before = observed
+            exercise_sanitizer_safety(
+                source_root=source_root, installation_root=installed,
+                records_dir=records, postprocess_path=postprocess_path,
+                corpus=(source_root / 'tools/native/qualification/fixtures/'
+                        'wp6-predecessor.zip'),
+                output=output / 'sanitizer-safety', candidate_module=candidate_module,
+                candidate_records=candidate_records,
+                runtime_environment=runtime_environment)
+        else:
+            _require(observed == loaded_before,
+                     'installed native identity changed during sanitizer safety suite')
+    _require(measure_source(source_root) == measurement,
+             'source closure changed during sanitizer safety acceptance')
+    _require(all(file_identity(item['path']) == item
+                 for item in wheel_identities.values()),
+             'sanitizer wheel or recorded wheel lineage changed during safety evidence')
+    manifest = {
+        'schema': 'pyvoro2-native-sanitizer-distribution-evidence-v1',
+        'mode': 'sanitizer-safety', 'scope': 'sanitizer-safety-only',
+        'source': measurement, 'git': _git_identity(source_root),
+        **wheel_identities, 'imported_modules': observed,
+        'safety_evidence': file_identity(
+            output / 'sanitizer-safety/sanitizer-safety-evidence.json'),
+        'runtime_libraries': runtime_libraries, 'processes': processes,
+    }
+    (output / 'distribution-evidence.json').write_bytes(
+        contract.canonical_json(manifest))
+    return manifest
+
+
 def build(*, source_root, output, repair='none', suite='full', sanitizers=False):
     _require(__debug__ and sys.flags.optimize == 0,
              'optimized Python cannot run distribution qualification')
@@ -455,14 +565,21 @@ def build(*, source_root, output, repair='none', suite='full', sanitizers=False)
             environment=candidate_environment))
         candidate = verify_build(candidate_records, source_root)
         candidate_module = Path(candidate['components']['_core2d']['output']['path'])
+    if sanitizers:
+        return _finish_sanitizer_build(
+            source_root=source_root, output=output, measurement=measurement, contract=q,
+            required=required, direct=direct, repaired=repaired, stage=stage,
+            imports=imports, records=records, postprocess_path=postprocess_path,
+            candidate_module=candidate_module, candidate_records=candidate_records,
+            runtime_environment=runtime_environment,
+            runtime_libraries=runtime_libraries, processes=processes)
     record = finalize(
         source_root=source_root, installation_root=stage, records_dir=records,
         postprocess_path=postprocess_path,
         corpus=source_root / 'tools/native/qualification/fixtures/wp6-predecessor.zip',
         output=output / 'finalization', candidate_module=candidate_module,
         candidate_records=candidate_records, runtime_environment=runtime_environment)
-    wheel_dir = 'sanitizer-wheel' if sanitizers else 'final-wheel'
-    final_wheel = repack_wheel(repaired, stage, output / wheel_dir / repaired.name)
+    final_wheel = repack_wheel(repaired, stage, output / 'final-wheel' / repaired.name)
     installed = output / 'installed'
     processes.append(run_process(
         [sys.executable, '-m', 'pip', 'install', '--no-index', '--no-deps',
@@ -490,9 +607,7 @@ def build(*, source_root, output, repair='none', suite='full', sanitizers=False)
                                  directory=output / 'process-installed-smoke',
                                  environment=installed_environment))
     tests = [str(source_root / 'tests')]
-    if sanitizers:
-        tests = [str(source_root / name) for name in _SANITIZER_TESTS]
-    elif suite == 'adapter':
+    if suite == 'adapter':
         from qualification.route_suite import selections
         tests = [str(source_root / name) for name in sorted({
             path for paths in selections(source_root, required).values()
@@ -507,14 +622,14 @@ def build(*, source_root, output, repair='none', suite='full', sanitizers=False)
     _require(all(file_identity(item['path']) == item for item in runtime_libraries),
              'sanitizer runtime libraries changed during safety evidence')
     manifest = {'schema': 'pyvoro2-native-distribution-evidence-v1',
-                'mode': 'sanitizer-safety' if sanitizers else 'optimized-release',
+                'mode': 'optimized-release',
                 'source': measurement, 'git': _git_identity(source_root),
                 'direct_wheel': file_identity(direct),
                 'repaired_wheel': file_identity(repaired),
                 'final_wheel': file_identity(final_wheel),
                 'qualification_record_sha256': q.canonical_sha256(record),
                 'imported_modules': final_imports,
-                'suite': 'sanitizer-safety' if sanitizers else suite,
+                'suite': suite,
                 'runtime_libraries': runtime_libraries,
                 'processes': processes}
     (output / 'distribution-evidence.json').write_bytes(q.canonical_json(manifest))
@@ -540,7 +655,8 @@ def main(argv=None):
     except (DriverError, BuildEvidenceError, FinalizationError,
             ValueError, OSError) as exc:
         parser.exit(1, f'distribution qualification refused: {exc}\n')
-    print(json.dumps(manifest['final_wheel'], sort_keys=True))
+    print(json.dumps(manifest.get('sanitizer_wheel', manifest.get('final_wheel')),
+                     sort_keys=True))
 
 
 if __name__ == '__main__':

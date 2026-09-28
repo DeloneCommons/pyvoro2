@@ -23,18 +23,23 @@ def repair_runner():
     return module
 
 
+@pytest.mark.parametrize('encoding', [None, 'locale', 'utf-8', 'utf-16-le'])
 def test_observer_retains_communicate_output_without_changing_return_value(
-        repair_runner, tmp_path):
+        repair_runner, tmp_path, encoding):
     observer = repair_runner.ProcessObserver(tmp_path)
+    output = ('helper output\n'.encode(encoding)
+              if encoding not in (None, 'locale') else b'helper output\n')
     with observer:
         result = subprocess.run(
-            [sys.executable, '-c', 'print("helper output")'],
-            capture_output=True, text=True, check=True)
+            [sys.executable, '-c',
+             'import sys; sys.stdout.buffer.write(' + repr(output) + ')'],
+            capture_output=True, text=True, encoding=encoding, check=True)
     assert result.stdout == 'helper output\n'
     row, = observer.records
     assert row['exit_code'] == 0
     assert row['argv'][0] == sys.executable
-    assert Path(row['stdout']['path']).read_text() == result.stdout
+    assert Path(row['stdout']['path']).read_bytes() == output
+    assert row['stdout_encoding'] == observer.processes[0].stdout.encoding
     assert row['executable']['sha256']
 
 

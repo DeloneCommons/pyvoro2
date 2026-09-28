@@ -25,18 +25,25 @@ def test_retained_spatial_certificate_refuses_without_numeric_diagnostics():
             work=0,
         )
         libc = ctypes.CDLL(None)
+        enable = libc.feenableexcept
+        restore = libc.fesetenv
+        raw_state = _core._runtime_fp_state
         saved = ctypes.create_string_buffer(256)
         assert libc.fegetenv(saved) == 0
         refused = False
         try:
-            libc.feenableexcept(32)
+            enable(32)
+            incoming = raw_state()
             try:
                 cert.boundary_measures()
             except TessellationError as error:
                 refused = 'WP5_UNSUPPORTED_FP_PROFILE' in str(error)
-            assert libc.fegetexcept() & 32
+            # Use the non-waiting inspector while x87 exceptions are pending.
+            assert raw_state() == incoming
+            assert incoming['x87_control'] & 0x20 == 0
+            assert incoming['mxcsr'] & 0x1000 == 0
         finally:
-            assert libc.fesetenv(saved) == 0
+            assert restore(saved) == 0
         assert refused
     '''
     result = subprocess.run([sys.executable, '-c', textwrap.dedent(script)],

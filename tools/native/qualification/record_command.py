@@ -216,7 +216,11 @@ def record_command(command, output_dir):
         launched.append('-Wl,-t')
     observer = {'gnu': observe_gnu_wrapper, 'clang': observe_apple,
                 'msvc': observe_windows}[family]
+    requested_environment = env
     observation = observer(launched, cwd=cwd, env=env, directory=directory)
+    # Selector defaults are actual compiler inputs. Reuse them in evaluation
+    # and provider queries rather than querying a different, SDK-less driver.
+    env = observation.get('effective_environment', env)
     problems = observation['problems']
     evidence_paths = observation['evidence_paths']
     invocations = observation['invocations']
@@ -261,10 +265,13 @@ def record_command(command, output_dir):
         except (OSError, BuildEvidenceError) as error:
             problems.append('incomplete actual response evidence: ' + str(error))
             invocation['expanded_argv'] = []
-        if invocation['role'] == 'compiler_driver' and family in ('gnu', 'clang'):
+        if invocation['role'] == 'compiler_driver' and family == 'gnu':
             driver = Path(invocation['executable']['path'])
-            if family == 'gnu':
-                effective = invocation['expanded_argv']
+            effective = invocation['expanded_argv']
+        elif (family == 'clang' and
+              invocation.get('observation') == 'executed-driver-plan-only'):
+            # Keep clang++ spelling for the same driver's corroborating queries.
+            driver = Path(invocation['argv'][0])
     if family == 'msvc':
         prefix = env.get('LINK' if kind == 'link' else 'CL', '')
         suffix = env.get('_LINK_' if kind == 'link' else '_CL_', '')
@@ -390,6 +397,7 @@ def record_command(command, output_dir):
         'adapter': observation['adapter'], 'family': family, 'kind': kind,
         'argv': command, 'launched_argv': launched, 'effective_argv': effective,
         'environment': env, 'cwd': str(cwd), 'invocations': invocations,
+        'requested_environment': requested_environment,
         'tools': sorted(tools.values(), key=lambda r: r['path']),
         'response_files': sorted(response_files.values(), key=lambda r: r['path']),
         'source': str(source) if source else None, 'output': output_identity,

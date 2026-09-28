@@ -25,6 +25,11 @@ STRICT_BITS = '4013fffffb000000'
 UNSAFE_BITS = '4013fffffb000001'
 _RUNTIME_ENVIRONMENT = ('LD_PRELOAD', 'ASAN_OPTIONS', 'UBSAN_OPTIONS',
                         'PYVORO2_NATIVE_TEST_SANITIZERS')
+_SANITIZER_BUNDLES = {
+    '-fsanitize=address,undefined,float-cast-overflow',
+    '-fsanitize=undefined,address,float-cast-overflow',
+}
+_SANITIZER_DISABLE = '-fno-sanitize=all'
 
 
 def tool_environment(environment):
@@ -328,6 +333,51 @@ def _primitive_options(unit, family):
     return options
 
 
+def _control_compile_options(options, family, *, unsafe):
+    """Keep strict instrumentation; explicitly optimize unsafe companions.
+
+    Sanitizer checks alter the optimizer's legal unsafe reassociation choices.
+    The fixed unsafe arithmetic expectations describe an optimized companion,
+    not the instrumented production artifact. Only its compile receives this
+    override; inherited production objects and runtime linkage are unchanged.
+    """
+    result = list(options)
+    sanitizers = [arg for arg in options if arg.startswith('-fsanitize=')]
+    if unsafe and sanitizers:
+        if family != 'gnu' or any(arg not in _SANITIZER_BUNDLES
+                                  for arg in sanitizers):
+            raise BuildEvidenceError('unreviewed unsafe sanitizer companion')
+        result.append(_SANITIZER_DISABLE)
+    return result
+
+
+def _control_arithmetic_argv(argv, family, *, sanitizer_companion):
+    """Validate a companion-only override before checking its FP properties.
+
+    The original vectors remain in the actual command records. The global
+    production option checker continues to reject this override. A GNU driver
+    and its observed cc1plus jobs must each record the inherited reviewed
+    sanitizer bundle followed by exactly one disable and no later re-enable.
+    """
+    if not sanitizer_companion:
+        return argv
+    if family != 'gnu':
+        raise BuildEvidenceError('unreviewed unsafe sanitizer companion')
+    enabled, disabled = False, False
+    for arg in argv:
+        if arg.startswith('-fsanitize='):
+            if arg not in _SANITIZER_BUNDLES or disabled:
+                raise BuildEvidenceError('invalid unsafe companion instrumentation')
+            enabled = True
+        elif arg.startswith('-fno-sanitize='):
+            if arg != _SANITIZER_DISABLE or not enabled or disabled:
+                raise BuildEvidenceError('invalid unsafe companion instrumentation')
+            enabled, disabled = False, True
+    if enabled or not disabled:
+        raise BuildEvidenceError('missing unsafe companion instrumentation override')
+    return [arg for arg in argv if arg != _SANITIZER_DISABLE]
+
+
 def _run_recorded(command, *, cwd, env, records, logs, name):
     recorder = Path(__file__).with_name('record_command.py')
     run = subprocess.run([sys.executable, str(recorder), '--output-dir',
@@ -342,12 +392,14 @@ def _run_recorded(command, *, cwd, env, records, logs, name):
 
 
 def verify_control_records(records, build_evidence, *, unsafe,
-                           inherited_objects=()):
+                           inherited_objects=(), sanitizer_companion=False):
     """Bind control bytes to completed real jobs from the production toolchain.
 
     Unsafe controls must be rejected by the same effective-option checker;
     a successful executable exit alone is insufficient command evidence.
     """
+    if sanitizer_companion and not unsafe:
+        raise BuildEvidenceError('strict control cannot disable instrumentation')
     rows, files = [], {}
     known_tools = {r['sha256'] for r in build_evidence['tools']}
     for path in sorted(Path(records).glob('*.json')):
@@ -387,9 +439,12 @@ def verify_control_records(records, build_evidence, *, unsafe,
         vectors.extend((i['expanded_argv'], True) for i in row['invocations']
                        if i['role'] == 'compiler_backend')
         for argv, backend in vectors:
+            companion_compile = sanitizer_companion and row['kind'] == 'compile'
+            arithmetic_argv = _control_arithmetic_argv(
+                argv, row['family'], sanitizer_companion=companion_compile)
             rejected = False
             try:
-                effective_options(argv, row['family'], backend=backend,
+                effective_options(arithmetic_argv, row['family'], backend=backend,
                                   link=row['kind'] == 'link')
             except BuildEvidenceError as error:
                 if not unsafe or row['kind'] != 'compile' or not any(
@@ -441,21 +496,45 @@ def parse_power(stdout):
             for radius, ordinary, checked in rows]
 
 
-def run_discriminators(source_root, build_evidence, output_dir):
+def _control_compiler(build_evidence, unit, family):
+    """Reuse the verified bytes without losing Apple's lexical driver mode."""
+    compiler_hash = build_evidence['toolchain']['compiler_sha256']
+    identity = next((r for r in build_evidence['tools']
+                     if r['sha256'] == compiler_hash), None)
+    if not identity:
+        raise BuildEvidenceError('verified compiler executable identity missing')
+    compiler = identity['path']
+    if family == 'clang':
+        name = Path(unit['command']['argv'][0]).name
+        if name not in ('clang', 'clang++'):
+            raise BuildEvidenceError('unreviewed production Apple compiler spelling')
+        # Production may name /usr/bin's developer selector; use its actual
+        # verified physical compiler directory with that same invocation mode.
+        # Resolving clang++ here would turn an object-only link into C mode.
+        compiler = str(Path(compiler).with_name(name))
+        selected = file_identity(compiler)
+        if any(selected[key] != identity[key] for key in ('sha256', 'size')):
+            raise BuildEvidenceError('Apple control compiler identity differs')
+    return compiler
+
+
+def run_arithmetic_controls(source_root, build_evidence, output_dir):
+    """Run source-sensitive arithmetic companions without a raw-guard claim.
+
+    A sanitizer safety runner may consume this evidence separately. Production
+    qualification must use run_discriminators, which also inspects the actual
+    production guard objects without relaxing its instruction/call checker.
+    """
     source_root, output_dir = Path(source_root).resolve(), Path(output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     family_name = build_evidence['toolchain']['family']
     family = {'GNU': 'gnu', 'AppleClang': 'clang', 'MSVC': 'msvc'}[family_name]
-    compiler_hash = build_evidence['toolchain']['compiler_sha256']
-    compiler = next((r['path'] for r in build_evidence['tools']
-                     if r['sha256'] == compiler_hash), None)
-    if not compiler:
-        raise BuildEvidenceError('verified compiler executable identity missing')
     units = build_evidence['translation_units']
     unit = next((r for r in units if Path(r['source']).resolve() ==
                  source_root / 'vendor/voro++/src/v_compute.cc'), None)
     if unit is None:
         raise BuildEvidenceError('actual standard compute compilation is missing')
+    compiler = _control_compiler(build_evidence, unit, family)
     objects = [r['output'] for r in units
                if Path(r['source']).parent == source_root / 'vendor/voro++/src'
                and Path(r['source']).name != 'v_compute.cc']
@@ -474,14 +553,15 @@ def run_discriminators(source_root, build_evidence, output_dir):
             raise BuildEvidenceError('required AVX/FMA control needs capable hardware')
     source = output_dir / 'vendor-primitives.cpp'
     source.write_text(_HARNESS)
-    observations, control_files, executions = {}, [], []
+    observations, control_files, executions, control_builds = {}, [], [], []
     for name, unsafe in (('strict', False), ('unsafe', True), ('unsafe_power', True)):
         directory = output_dir / name
         directory.mkdir(exist_ok=True)
         suffix = '.obj' if family == 'msvc' else '.o'
         object_path = directory / ('primitive' + suffix)
         executable = directory / ('primitive.exe' if family == 'msvc' else 'primitive')
-        flags = list(options)
+        flags = _control_compile_options(options, family, unsafe=unsafe)
+        sanitizer_companion = _SANITIZER_DISABLE in flags
         if family == 'msvc':
             flags.extend(['/I' + str(source_root / 'vendor/voro++/src')])
             if x86:
@@ -547,8 +627,19 @@ def run_discriminators(source_root, build_evidence, output_dir):
         observations[name] = {'standard': standard, 'power': powers}
         control_files.extend([file_identity(executable), file_identity(result_path)])
         control_files.extend(verify_control_records(
-            records, build_evidence, unsafe=unsafe, inherited_objects=objects))
-    guard = guard_disassembly(build_evidence, output_dir / 'guards')
+            records, build_evidence, unsafe=unsafe, inherited_objects=objects,
+            sanitizer_companion=sanitizer_companion))
+        control_builds.append({
+            'name': name,
+            'compile_instrumentation': ('unsafe-optimized-companion'
+                                        if sanitizer_companion else 'production'),
+            'inherited_sanitizer_options': [arg for arg in options
+                                            if arg.startswith('-fsanitize=')],
+            'compile_only_overrides': ([_SANITIZER_DISABLE]
+                                       if sanitizer_companion else []),
+            'compile_argv': compile_command, 'link_argv': link_command,
+            'records': [file_identity(path) for path in sorted(records.glob('*.json'))],
+        })
     return {
         'standard_strict_bits': observations['strict']['standard'][0],
         'standard_unsafe_bits': observations['unsafe']['standard'][0],
@@ -560,9 +651,19 @@ def run_discriminators(source_root, build_evidence, output_dir):
                                   'r_scale_check_bits': checked}
                                  for radius, ordinary, checked in
                                  observations['unsafe_power']['power']],
-        'guard_disassembly': guard, 'source': file_identity(source),
+        'source': file_identity(source),
         'inherited_vendor_inputs': objects, 'control_files': control_files,
-        'executions': executions,
+        'executions': executions, 'control_builds': control_builds,
         'strict_avx_fma_control': x86,
-        'qualification_scope': 'source-sensitive controlled-toolchain corroboration',
+        'qualification_scope': 'source-sensitive controlled-toolchain arithmetic',
     }
+
+
+def run_discriminators(source_root, build_evidence, output_dir):
+    """Production qualification always requires actual raw-guard inspection."""
+    report = run_arithmetic_controls(source_root, build_evidence, output_dir)
+    report['guard_disassembly'] = guard_disassembly(
+        build_evidence, Path(output_dir).resolve() / 'guards')
+    report['qualification_scope'] = (
+        'source-sensitive controlled-toolchain corroboration')
+    return report

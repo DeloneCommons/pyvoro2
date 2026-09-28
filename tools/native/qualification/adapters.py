@@ -129,6 +129,8 @@ def observe_gnu_wrapper(command, *, cwd, env, directory):
     only the fixed ld callback. The actual linker executable is resolved before
     creating that directory. There is no compiler-log or dry-run replay here.
     """
+    from .child_record import collect_child_receipts
+
     driver_word = next((a for a in command if tool_role(a) == 'compiler_driver'),
                        None)
     if driver_word is None:
@@ -176,8 +178,8 @@ def observe_gnu_wrapper(command, *, cwd, env, directory):
                              stdout=out, stderr=err)
     root['loader'] = capture_glibc(loader_prefix)
     root['opened_files'] = [item['path'] for item in root['loader']['images']]
-    records = sorted(children.glob('*.json'))
-    invocations = [root, *[json.loads(p.read_text()) for p in records]]
+    child_invocations, records = collect_child_receipts(children)
+    invocations = [root, *child_invocations]
     problems = []
     loader_files, loader_images = [], {}
     known_programs = {file_identity(sys.executable)['sha256'],
@@ -190,10 +192,6 @@ def observe_gnu_wrapper(command, *, cwd, env, directory):
         if any(item['sha256'] not in known_programs
                for item in row['loader']['programs']):
             problems.append('unobserved GNU descendant program in loader evidence')
-    if list(children.glob('*.pending')):
-        problems.append('unfinished actual compiler child')
-    if not records:
-        problems.append('GCC did not use the controlled child recorder')
     for row in invocations[1:]:
         if not row['executable_unchanged'] or not row['responses_unchanged']:
             problems.append('child executable/response changed during execution')
@@ -268,30 +266,81 @@ def parse_clang_plan(text, compiler):
     return jobs
 
 
-def observe_apple(command, *, cwd, env, directory):
+def prepare_apple_driver(command, *, cwd, env):
+    """Resolve the developer selector without discarding its mode or SDK.
+
+    clang++ commonly symlinks to clang, but its lexical argv[0] selects the
+    C++ driver. File identities are resolved separately. A selected macOS SDK
+    is explicit in the actual execution environment and independent queries.
+    """
+    from .link_provenance import clean_toolchain_environment
+
     configuration_variables = ('CCC_OVERRIDE_OPTIONS',
                                'CLANG_CONFIG_FILE_SYSTEM_DIR',
                                'CLANG_CONFIG_FILE_USER_DIR')
     if any(env.get(name) for name in configuration_variables):
         raise BuildEvidenceError('unreviewed Apple driver configuration environment')
     compiler = Path(shutil.which(command[0], path=env.get('PATH')) or command[0])
-    compiler = compiler.resolve(strict=True)
+    compiler = compiler.absolute()
     if compiler.name not in ('clang', 'clang++'):
         raise BuildEvidenceError('Apple adapter requires direct resolved clang')
     selector = None
+    environment = dict(env)
     if compiler.parent == Path('/usr/bin'):
         # /usr/bin/clang is Apple's developer-tool selector. Execute the
         # selected real driver directly so SIP cannot strip our child tracing.
-        selector_argv = ['/usr/bin/xcrun', '--find', compiler.name]
-        selected = subprocess.run(selector_argv, cwd=cwd, env=env,
+        clean = clean_toolchain_environment(env)
+        selector_argv = ['/usr/bin/xcrun', '--sdk', 'macosx', '--find', compiler.name]
+        selected = subprocess.run(selector_argv, cwd=cwd, env=clean,
                                   text=True, capture_output=True)
         if selected.returncode:
             raise BuildEvidenceError('cannot resolve selected Apple compiler')
-        compiler = Path(selected.stdout.strip()).resolve(strict=True)
+        selected_path = Path(selected.stdout.strip())
+        if (not selected_path.is_absolute() or selected_path.name != compiler.name
+                or not selected_path.is_file()):
+            raise BuildEvidenceError('invalid selected Apple compiler invocation')
+        compiler = selected_path
         selector = {'argv': selector_argv, 'stdout': selected.stdout,
                     'stderr': selected.stderr, 'exit_code': selected.returncode,
                     'executable': file_identity('/usr/bin/xcrun')}
-    execution_env = dyld_environment(env)
+        sdk_argv = ['/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-path']
+        selected_sdk = subprocess.run(sdk_argv, cwd=cwd, env=clean,
+                                      text=True, capture_output=True)
+        sdk = Path(selected_sdk.stdout.strip())
+        if selected_sdk.returncode or not sdk.is_absolute() or not sdk.is_dir():
+            raise BuildEvidenceError('cannot resolve selected Apple macOS SDK')
+        sdk = sdk.resolve(strict=True)
+        requested = [env['SDKROOT']] if env.get('SDKROOT') else []
+        expanded = expand_response(command, cwd)
+        for index, arg in enumerate(expanded):
+            if arg in ('-isysroot', '--sysroot'):
+                if index + 1 == len(expanded):
+                    raise BuildEvidenceError('incomplete Apple sysroot option')
+                requested.append(expanded[index + 1])
+            elif arg.startswith(('-isysroot', '--sysroot=')):
+                value = (arg.removeprefix('-isysroot').lstrip('=')
+                         if arg.startswith('-isysroot') else arg.split('=', 1)[1])
+                requested.append(value)
+        if any((Path(cwd) / root).resolve() != sdk for root in requested):
+            raise BuildEvidenceError('unreviewed selected Apple sysroot')
+        environment['SDKROOT'] = str(sdk)
+        settings = sdk / 'SDKSettings.json'
+        if not settings.is_file():
+            raise BuildEvidenceError('selected Apple SDK lacks configuration identity')
+        selector['sdk_query'] = {
+            'argv': sdk_argv, 'environment': clean, 'stdout': selected_sdk.stdout,
+            'stderr': selected_sdk.stderr, 'exit_code': selected_sdk.returncode,
+        }
+        selector['sdk_configuration'] = [file_identity(settings)]
+    # Bind the real bytes while returning the original driver-mode spelling.
+    file_identity(compiler)
+    return {'compiler': compiler, 'environment': environment, 'selector': selector}
+
+
+def observe_apple(command, *, cwd, env, directory):
+    prepared = prepare_apple_driver(command, cwd=cwd, env=env)
+    compiler, selector = prepared['compiler'], prepared['selector']
+    execution_env = dyld_environment(prepared['environment'])
     # The driver is used only to expand the jobs. Every emitted job is then
     # executed by this trusted adapter using the recorded argv, with no shell.
     plan_argv = [str(compiler), *command[1:], '-###', '-fno-integrated-cc1']
@@ -354,12 +403,14 @@ def observe_apple(command, *, cwd, env, directory):
              file_identity(Path(__file__).with_name('loader_trace.py'))]
     if selector:
         extra.append(selector['executable'])
+        extra.extend(selector['sdk_configuration'])
     return {
         'adapter': 'apple-plan-replay-v1', 'exit_code': exit_code,
         'invocations': invocations, 'problems': problems, 'evidence_paths': paths,
         'observer': file_identity(compiler),
         'extra_tools': extra,
         'loaded_images': list(loaded.values()),
+        'effective_environment': prepared['environment'],
         'system_loader_evidence': [row['loader']['system_loader']
                                    for row in invocations],
         'driver_version': next((line for line in plan.stderr.splitlines()

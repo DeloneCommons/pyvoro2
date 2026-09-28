@@ -157,51 +157,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy
-      - name: Qualify final installed production artifact
-        run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
-          adapter --sanitizers
-      - name: Install qualified artifact
-        shell: bash
-        run: python -m pip install "${{ runner.temp }}/qualification/sanitizer-wheel/"*.whl
-      - name: Run native safety regressions under ASan and UBSan
-        shell: bash
-        run: |
-          ASAN_LIB="$(g++-13 -print-file-name=libasan.so)"
-          UBSAN_LIB="$(g++-13 -print-file-name=libubsan.so)"
-          STDCXX_LIB="$(g++-13 -print-file-name=libstdc++.so)"
-          test -f "$ASAN_LIB"
-          test -f "$UBSAN_LIB"
-          test -f "$STDCXX_LIB"
-          env \
-            LD_PRELOAD="${ASAN_LIB}:${UBSAN_LIB}:${STDCXX_LIB}" \
-            ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
-            UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
-            PYVORO2_NATIVE_TEST_SANITIZERS=1 \
-            python -m pytest -q -s \
-              tests/forward/common/test_native_boundary_validation.py \
-              tests/forward/common/test_native_preconditions.py \
-              tests/forward/common/test_native_runtime_entry.py \
-              tests/forward/common/test_native_coercion_state.py \
-              tests/forward/common/test_native_route_admission.py \
-              tests/forward/common/test_generator_preparation.py \
-              tests/forward/spatial/test_duplicate_check.py \
-              tests/forward/spatial/test_ghost_cells.py \
-              tests/forward/spatial/test_native_witness.py \
-              tests/forward/spatial/test_wp7_native_selected.py \
-              tests/tooling/test_native_witness_cpp.py \
-              tests/forward/planar/test_api_dispatch.py \
-              tests/forward/planar/test_wp6_native.py \
-              tests/forward/planar/test_wp6_profile_refusal.py \
-              tests/forward/planar/test_wp7_native.py \
-              tests/forward/test_wp7_oracle.py \
-            | tee "${{ runner.temp }}/sanitizer-tests.log"
-      - name: Preserve complete build and qualification evidence
+      - name: Run controlled native safety checks under ASan and UBSan
+        run: >-
+          python tools/native/qualification/build.py --output "${{ runner.temp }}/sanitizer-safety"
+          --repair none --suite adapter --sanitizers
+      - name: Preserve complete sanitizer build and safety evidence
         uses: actions/upload-artifact@v6
         with:
-          name: native-sanitizer-qualification
-          path: |
-            ${{ runner.temp }}/qualification
-            ${{ runner.temp }}/sanitizer-tests.log
+          name: native-sanitizer-safety
+          path: ${{ runner.temp }}/sanitizer-safety
           include-hidden-files: true
         if: always()
 

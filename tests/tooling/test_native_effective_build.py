@@ -15,7 +15,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools' / 'native'))
 
-from qualification.adapters import parse_clang_plan  # noqa: E402
+from qualification.adapters import (  # noqa: E402
+    parse_clang_plan, prepare_apple_driver,
+)
 from qualification.effective_build import (  # noqa: E402
     BuildEvidenceError, digest, effective_options, verify_build, windows_words,
     unsafe_source_directives,
@@ -255,6 +257,60 @@ def test_clang_plan_is_an_explicit_supported_execution_plan():
         parse_clang_plan('Apple clang version 17\n', Path('/xcode/bin/clang'))
 
 
+def test_apple_selector_preserves_driver_mode_and_binds_default_sdk(
+        tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from qualification import adapters
+
+    compiler = tmp_path / 'clang'
+    compiler.write_bytes(b'actual compiler bytes')
+    invocation = tmp_path / 'clang++'
+    invocation.symlink_to(compiler)
+    sdk = tmp_path / 'MacOSX.sdk'
+    sdk.mkdir()
+    (sdk / 'SDKSettings.json').write_text('{}')
+    original_identity = adapters.file_identity
+    monkeypatch.setattr(adapters, 'file_identity', lambda p: original_identity(
+        compiler if str(p) == '/usr/bin/xcrun' else p))
+
+    def query(argv, **kwargs):
+        assert 'SDKROOT' not in kwargs['env']
+        if '--find' in argv:
+            assert argv[-1] == 'clang++'
+            output = str(invocation)
+        else:
+            assert argv == ['/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-path']
+            output = str(sdk)
+        return SimpleNamespace(returncode=0, stdout=output + '\n', stderr='')
+
+    monkeypatch.setattr(adapters.subprocess, 'run', query)
+    result = prepare_apple_driver(['/usr/bin/clang++', '-c', 'source.cpp'],
+                                  cwd=tmp_path, env={'PATH': '/usr/bin'})
+    assert result['compiler'] == invocation
+    assert result['compiler'].resolve() == compiler
+    assert result['environment']['SDKROOT'] == str(sdk)
+    assert result['selector']['sdk_query']['stdout'] == str(sdk) + '\n'
+    assert result['selector']['sdk_configuration'][0]['sha256']
+    for options, environment in ((['-isysroot', str(tmp_path)], {}),
+                                 ([], {'SDKROOT': str(tmp_path)})):
+        with pytest.raises(BuildEvidenceError, match='sysroot'):
+            prepare_apple_driver(['/usr/bin/clang++', *options],
+                                 cwd=tmp_path, env=environment)
+
+
+@pytest.mark.skipif(sys.platform != 'darwin', reason='actual Apple selector + SDK')
+def test_actual_apple_selector_compiles_and_links_cpp_standard_headers(tmp_path):
+    source = tmp_path / 'standard.cpp'
+    source.write_text('#include <cfloat>\n#include <string>\n'
+                      'extern "C" double local(double x) { '
+                      'std::string s("cxx"); return x + s.size() * DBL_EPSILON; }\n')
+    records = record(tmp_path, ['/usr/bin/clang++', *STRICT, '-fPIC', '-c',
+                                str(source), '-o', 'standard.o'])
+    record(tmp_path, ['/usr/bin/clang++', *STRICT, '-shared', 'standard.o',
+                      '-o', '_core.so'])
+    assert verify_build(records, tmp_path)['toolchain']['family'] == 'AppleClang'
+
+
 def test_missing_and_modified_records_do_not_qualify(tmp_path):
     with pytest.raises(BuildEvidenceError, match='no command'):
         verify_build(tmp_path, tmp_path)
@@ -267,7 +323,8 @@ def test_missing_and_modified_records_do_not_qualify(tmp_path):
 
 
 @pytest.mark.skipif(not HAS_GNU, reason='GNU13 actual-child observation control')
-def test_actual_gnu_compile_and_link_are_bound(tmp_path):
+@pytest.mark.parametrize('link_policy', [[], ['-Wl,--no-add-needed']])
+def test_actual_gnu_compile_and_link_are_bound(tmp_path, link_policy):
     source = tmp_path / 'primitive.cpp'
     source.write_text('extern "C" double primitive(double a, double b, double c) '
                       '{ return a*b+c; }\n')
@@ -276,7 +333,7 @@ def test_actual_gnu_compile_and_link_are_bound(tmp_path):
                                 '-MF', 'ninja-consumed.d'])
     # Ninja removes its depfile after the compiler launcher finishes.
     (tmp_path / 'ninja-consumed.d').unlink()
-    record(tmp_path, ['g++-13', *STRICT, '-shared', 'primitive.o',
+    record(tmp_path, ['g++-13', *STRICT, *link_policy, '-shared', 'primitive.o',
                       '-o', '_core.so'])
     evidence = verify_build(records, tmp_path)
     assert len(evidence['translation_units']) == 1
@@ -370,6 +427,18 @@ def test_source_directive_polarity_and_comments_do_not_forge_unsafe_settings():
         '#pragma optimize("gt", on)\n', macro_overrides_only=True) == []
 
 
+def test_msvc_empty_optimization_restore_keeps_fp_controls_separate():
+    for directive in ('#pragma optimize("", off)',
+                      '__pragma(optimize("", on))',
+                      r'_Pragma("optimize(\"\", off)")'):
+        assert unsafe_source_directives(directive) == []
+    for directive in ('#pragma optimize("gt", on)',
+                      '__pragma(optimize("p", off))',
+                      '__pragma(optimize("", on)) '
+                      '__pragma(float_control(precise, off))'):
+        assert unsafe_source_directives(directive)
+
+
 @pytest.mark.skipif(os.name != 'nt', reason='actual MSVC preprocessor semantics')
 @pytest.mark.parametrize('directive', [
     '#pragma float_control(precise, off)',
@@ -439,6 +508,14 @@ def test_linker_cannot_rewrite_observed_source_call_targets(tmp_path):
 def test_platform_linker_semantic_overrides_are_unreviewed(family, argv):
     with pytest.raises(BuildEvidenceError, match='linker control'):
         verify_linker_options(argv, family)
+
+
+def test_gnu_no_add_needed_keeps_default_nonrecursive_library_search():
+    for option in ('--no-add-needed', '--no-copy-dt-needed-entries'):
+        verify_linker_options(['ld', option, '-shared', 'unit.o'], 'gnu')
+    for option in ('--add-needed', '--copy-dt-needed-entries'):
+        with pytest.raises(BuildEvidenceError, match='linker control'):
+            verify_linker_options(['ld', option, '-shared', 'unit.o'], 'gnu')
 
 
 @pytest.mark.skipif(not HAS_GNU, reason='GNU13 actual-child observation control')

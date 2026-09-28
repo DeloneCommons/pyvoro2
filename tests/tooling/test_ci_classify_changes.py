@@ -129,14 +129,15 @@ def test_aggregate_fails_missing_classifier_or_required_wheels(classifier):
 
 
 @pytest.mark.parametrize('result', ['missing', 'skipped', 'failure', 'cancelled'])
-def test_native_changes_require_strict_avx_fma_control(classifier, result):
+@pytest.mark.parametrize('job', ['native-sanitizers', 'native-avx-fma'])
+def test_native_changes_require_safety_and_strict_controls(classifier, result, job):
     required = classifier.classify_paths(['cpp/native_runtime.hpp'])
-    assert 'native-avx-fma' in required
+    assert job in required
     results = {job: 'success' for job in required}
     if result == 'missing':
-        results.pop('native-avx-fma')
+        results.pop(job)
     else:
-        results['native-avx-fma'] = result
+        results[job] = result
     assert classifier.gate_failures(required, results) == [
-        f'native-avx-fma: {result}'
+        f'{job}: {result}'
     ]

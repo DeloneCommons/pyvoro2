@@ -148,6 +148,20 @@ remains active.
 | Runtime | Split x87/SSE rounding, all rounding directions, FTZ/DAZ, PC24/PC53/PC64, trap masks, masked sticky flags, worker threads, after-import changes and callback boundaries. |
 | Package | CPython 3.10–3.14 compatibility/full suites, sanitizers, direct/sdist wheels, actual import identity and absent production bypass hooks. |
 
+`build.py --sanitizers` emits separate route, safety and distribution reports
+scoped `sanitizer-safety-only`. It retains the byte-identical unqualified wheel,
+issues no production qualification record or trusted installation anchor, and
+checks refusal in fresh installed processes before and after the run. Production
+modules and the strict arithmetic control retain instrumentation, verified from
+actual compile/backend records; the fixed safety suite and route/corpus checks
+remain required. Both deliberately unsafe GNU companion translation units
+explicitly record `-fno-sanitize=all`, preserving the frozen power-order
+expectations (strict `0/1`, unsafe `1/1`) when instrumentation changes unsafe
+reassociation. Their inherited production vendor objects and sanitizer link
+flags remain unchanged. This safety path makes no raw-guard proof claim.
+Optimized release qualification still requires the unchanged strict guard
+inspection; sanitizer safety does not establish optimized release evidence.
+
 Adapter availability is not a support claim. WP6/WP7 on a family without the
 required occurrence evidence explicitly refuse. Existing WP5/WP8 Apple/MSVC
 support and final repaired GNU14 qualification are acceptance gates, not optional

@@ -141,8 +141,11 @@ class ProcessObserver:
                 for key, data in zip(('stdout', 'stderr'), result):
                     if data is None:
                         continue
-                    encoding = self.encoding or 'utf8'
                     if isinstance(data, str):
+                        # Popen may retain the TextIOWrapper-only selector
+                        # "locale". The stream binds the resolved codec used
+                        # to decode this output, including on Python 3.10.
+                        encoding = getattr(self, key).encoding
                         data = data.encode(encoding)
                         self.observation[key + '_encoding'] = encoding
                     path = owner.directory / f'{self.observation_index}-{key}'

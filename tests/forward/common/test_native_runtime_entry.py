@@ -36,7 +36,14 @@ def x86_controls(tmp_path_factory):
     source.write_text(textwrap.dedent(r'''
         #include <cstdint>
         extern "C" void controls(std::uint16_t cw, std::uint32_t mxcsr) {
-          asm volatile("fldcw %0" : : "m"(cw) : "memory");
+          // FLDCW itself waits for pending unmasked x87 exceptions. Preserve
+          // the status through FNSTENV's non-waiting mask before loading the
+          // requested test controls, including during final cleanup.
+          alignas(16) unsigned char environment[32]{};
+          asm volatile("fnstenv %0" : "=m"(environment) : : "memory");
+          environment[0] = static_cast<unsigned char>(cw);
+          environment[1] = static_cast<unsigned char>(cw >> 8);
+          asm volatile("fldenv %0" : : "m"(environment) : "memory");
           asm volatile("ldmxcsr %0" : : "m"(mxcsr) : "memory");
         }
         extern "C" void sticky() {
@@ -195,6 +202,32 @@ def test_masked_sticky_flags_are_accepted_and_unchanged(x86_controls):
         print(json.dumps({'accepted': True}))
     ''')
     assert _child(x86_controls, body) == {'accepted': True}
+
+
+@pytest.mark.parametrize('trap_bit', range(6))
+def test_pending_x87_flags_survive_hostile_refusal(x86_controls, trap_bit):
+    body = textwrap.dedent(r'''
+        try:
+            controller.sticky()
+            controller.controls(original['x87_control'] & ~(1 << TRAP_BIT),
+                                original['mxcsr'] | 0x3f)
+            incoming = _core._runtime_fp_state()
+            assert incoming['x87_status'] & 0x3f == 0x3f
+            for module in (_core, _core2d, _fpguard):
+                try:
+                    module._require_runtime_environment()
+                except ValueError as error:
+                    assert 'runtime FP profile' in str(error)
+                else:
+                    raise AssertionError('pending hostile state admitted')
+                assert module._runtime_fp_state() == incoming
+        finally:
+            controller.controls(original['x87_control'], original['mxcsr'])
+            controller.restore_x87_status(original['x87_status'])
+        assert _core._runtime_fp_state() == original
+        print(json.dumps({'preserved': True}))
+    ''').replace('TRAP_BIT', str(trap_bit))
+    assert _child(x86_controls, body) == {'preserved': True}
 
 
 def test_guard_rechecks_each_call_on_the_executing_thread(x86_controls):

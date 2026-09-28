@@ -350,6 +350,11 @@ _LOCAL_CONTROL = re.compile(
 # local controls, adjacent/escaped option strings and target attributes are
 # opaque even when their particular spelling happens to look harmless.
 _STRICT_PRAGMAS = [re.compile(pattern, re.I) for pattern in (
+    # UCRT fenv.h disables/restores /O optimizations around feraiseexcept.
+    # The exact empty selector does not change /fp; nonempty local controls
+    # still need independent review. Microsoft's optimize pragma contract:
+    # https://learn.microsoft.com/cpp/preprocessor/optimize
+    r'#\s*pragma\s+optimize\s*\(\s*""\s*,\s*(?:on|off)\s*\)\s*',
     r'#\s*pragma\s+GCC\s+optimize\s*\(\s*"no-fast-math"\s*\)\s*',
     r'#\s*pragma\s+STDC\s+FP_CONTRACT\s+OFF\s*',
     r'#\s*pragma\s+STDC\s+FENV_ACCESS\s+ON\s*',

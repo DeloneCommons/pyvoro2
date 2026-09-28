@@ -90,6 +90,81 @@ def test_route_child_ignores_inherited_python_and_pytest_controls(
         'PYTEST_DISABLE_PLUGIN_AUTOLOAD': '1'}
 
 
+def test_failed_route_child_reports_bounded_redacted_tails_and_keeps_raw_logs(
+        finalizer, tmp_path, monkeypatch):
+    runner = tmp_path / 'tools/native/qualification/route_suite.py'
+    runner.parent.mkdir(parents=True)
+    runner.write_text(
+        'import json, os, pathlib, sys\n'
+        'args = dict(zip(sys.argv[1::2], sys.argv[2::2]))\n'
+        'for index in range(120):\n'
+        '    print("discarded stdout prefix " + str(index) + "x" * 256)\n'
+        '    print("discarded stderr prefix " + str(index) + "y" * 256, '
+        'file=sys.stderr)\n'
+        'print("last route stdout marker")\n'
+        'print(os.environ["FIXTURE_ROUTE_TOKEN"], file=sys.stderr)\n'
+        'print("https://fixture-user:fixture-password@example.invalid/", '
+        'file=sys.stderr)\n'
+        'pathlib.Path(args["--output"]).write_text(json.dumps({"passed": True}))\n'
+        'raise ValueError("specific route failure")\n', encoding='utf8')
+    monkeypatch.setenv('FIXTURE_ROUTE_TOKEN', 'fixture-route-sensitive-token')
+    output = tmp_path / 'evidence'
+    output.mkdir()
+    with pytest.raises(finalizer.FinalizationError) as failure:
+        finalizer.run_routes(
+            source_root=tmp_path, installation_root=tmp_path / 'installed',
+            corpus=tmp_path / 'corpus', output=output,
+            build_evidence_path=tmp_path / 'build.json', components={'wp5-spatial'})
+    message = str(failure.value)
+    assert 'controlled route runner failed (1)' in message
+    assert 'last route stdout marker' in message
+    assert 'ValueError: specific route failure' in message
+    assert 'discarded stdout prefix 0x' not in message
+    assert len(message.encode('utf8')) < 2 * 12288 + 2048
+    assert len(message.splitlines()) <= 165
+    assert 'fixture-route-sensitive-token' not in message
+    assert 'fixture-user:fixture-password' not in message
+    assert '[redacted]' in message
+    assert 'fixture-route-sensitive-token' in (output / 'route.stderr').read_text()
+    assert 'discarded stdout prefix 0x' in (output / 'route.stdout').read_text()
+    assert json.loads((output / 'route-evidence.json').read_text()) == {'passed': True}
+
+
+def test_route_tail_drops_url_credentials_cut_by_the_read_boundary(finalizer, tmp_path):
+    url = 'https://example-user:fixture-password-fragment@example.invalid/\n'
+    cut = url.index('fixture-password-fragment') + 4
+    ending = 'last route diagnostic line\n'
+    raw = url + 'x' * (12288 + cut - len(url) - len(ending)) + ending
+    path = tmp_path / 'route.stderr'
+    path.write_text(raw, encoding='utf8')
+    tail = finalizer._failed_route_output_tail(path, {})
+    assert 'password-fragment' not in tail
+    assert tail.endswith(ending.rstrip('\n'))
+    assert len(tail.encode('utf8')) <= 12288
+    assert path.read_text(encoding='utf8') == raw
+
+
+@pytest.mark.parametrize('cut_inside_context', [False, True])
+def test_route_tail_keeps_multiline_credentials_out_of_the_original_window(
+        finalizer, tmp_path, cut_inside_context):
+    first = 'prefix-credential\nfixture-secret-suffix'
+    second = 'other-fixture-credential'
+    cut = 4 + (len(first) if cut_inside_context else 0)
+    ending = '\nlast route diagnostic line\n'
+    padding_size = 12288 + cut - len(first) - 1 - len(ending)
+    padding = second * (padding_size // len(second))
+    raw = first + '\n' + padding + 'x' * (padding_size % len(second)) + ending
+    path = tmp_path / 'route.stderr'
+    path.write_text(raw, encoding='utf8')
+    tail = finalizer._failed_route_output_tail(
+        path, {'ONE_TOKEN': first, 'TWO_TOKEN': second})
+    assert 'fixture-secret-suffix' not in tail
+    assert 'other-fixture-credential' not in tail
+    assert tail.endswith('last route diagnostic line')
+    assert len(tail.encode('utf8')) <= 12288
+    assert path.read_text(encoding='utf8') == raw
+
+
 def test_optimized_issuer_refuses_before_source_approval(finalizer, tmp_path):
     command = [sys.executable, '-O',
                str(ROOT / 'tools/native/qualification/finalize.py')]
@@ -434,3 +509,117 @@ def test_candidate_copy_with_different_path_is_not_the_observed_link_output(
     arguments['candidate_module'] = copy
     with pytest.raises(finalizer.FinalizationError, match='observed candidate'):
         finalizer.finalize(**arguments)
+
+
+SAFETY_PATHS = (
+    'tests/forward/common/test_native_boundary_validation.py',
+    'tests/forward/common/test_native_preconditions.py',
+    'tests/forward/common/test_native_runtime_entry.py',
+    'tests/forward/common/test_native_coercion_state.py',
+    'tests/forward/common/test_native_route_admission.py',
+    'tests/forward/common/test_native_warning_state.py',
+    'tests/forward/common/test_native_certificate_refusal.py',
+    'tests/forward/common/test_generator_preparation.py',
+    'tests/forward/spatial/test_duplicate_check.py',
+    'tests/forward/spatial/test_ghost_cells.py',
+    'tests/forward/spatial/test_native_witness.py',
+    'tests/forward/spatial/test_wp7_native_selected.py',
+    'tests/tooling/test_native_witness_cpp.py',
+    'tests/forward/planar/test_api_dispatch.py',
+    'tests/forward/planar/test_wp6_native.py',
+    'tests/forward/planar/test_wp6_profile_refusal.py',
+    'tests/forward/planar/test_wp7_native.py',
+    'tests/forward/test_wp7_oracle.py',
+)
+
+
+@pytest.fixture
+def safety_fixture(controlled_fixture):
+    finalizer, arguments, report, contract = controlled_fixture
+    report['schema'] = 'pyvoro2-native-sanitizer-routes-v1'
+    report['scope'] = 'sanitizer-safety-only'
+    report['discriminators'].pop('guard_disassembly')
+    report['safety_tests'] = [
+        {'nodeid': name + '::test_fixture', 'outcome': 'passed'}
+        for name in SAFETY_PATHS]
+    build = finalizer.verify_build(None, None)
+    for unit in build['translation_units']:
+        unit['command'] = {'argv': [
+            'g++', '-fsanitize=address,undefined,float-cast-overflow']}
+        row = {'kind': 'compile', 'source': unit['source'], 'output': unit['output'],
+               'effective_argv': unit['command']['argv'],
+               'invocations': [{'role': 'compiler_backend', 'expanded_argv': [
+                   'cc1plus', '-fsanitize=address,undefined,float-cast-overflow']}]}
+        unit['record_sha256'] = finalizer.build_digest(row)
+        for directory in (arguments['records_dir'], arguments['candidate_records']):
+            directory.mkdir(exist_ok=True)
+            (directory / (Path(unit['source']).name + '.json')).write_text(
+                json.dumps({**row, 'record_sha256': unit['record_sha256']}))
+    return finalizer, arguments, report, contract
+
+
+def test_safety_exercise_cannot_issue_or_change_the_default_anchor(safety_fixture):
+    finalizer, arguments, _, _ = safety_fixture
+    internal = arguments['installation_root'] / 'pyvoro2/_internal'
+    anchor = internal / '_qualification_installation.py'
+    original = anchor.read_bytes()
+    evidence = finalizer.exercise_sanitizer_safety(**arguments)
+    assert evidence['schema'] == 'pyvoro2-native-sanitizer-safety-evidence-v1'
+    assert evidence['scope'] == 'sanitizer-safety-only'
+    assert 'qualification_record_sha256' not in evidence
+    assert anchor.read_bytes() == original
+    assert not (internal / 'native_qualification_record.json').exists()
+    assert not (arguments['output'] / 'native_qualification_record.json').exists()
+    assert (arguments['output'] / 'sanitizer-safety-evidence.json').is_file()
+
+
+def test_safety_schema_cannot_be_promoted_to_production_issuance(safety_fixture):
+    finalizer, arguments, _, _ = safety_fixture
+    internal = arguments['installation_root'] / 'pyvoro2/_internal'
+    before = (internal / '_qualification_installation.py').read_bytes()
+    with pytest.raises(finalizer.FinalizationError, match='schema'):
+        finalizer.finalize(**arguments)
+    assert (internal / '_qualification_installation.py').read_bytes() == before
+    assert not (internal / 'native_qualification_record.json').exists()
+
+
+@pytest.mark.parametrize('change', [
+    'missing_safety', 'failed_route', 'disabled_instrumentation', 'claimed_guard',
+    'issued_anchor', 'adjacent_record',
+])
+def test_safety_evidence_refuses_incomplete_or_qualified_inputs(safety_fixture, change):
+    finalizer, arguments, report, _ = safety_fixture
+    internal = arguments['installation_root'] / 'pyvoro2/_internal'
+    if change == 'missing_safety':
+        report['safety_tests'].pop()
+    elif change == 'failed_route':
+        report['components']['wp5-spatial']['passed'] = False
+    elif change == 'disabled_instrumentation':
+        finalizer.verify_build(None, None)['translation_units'][0]['command'][
+            'argv'].append('-fno-sanitize=address')
+    elif change == 'claimed_guard':
+        report['discriminators']['guard_disassembly'] = {'fp_before_guard': False}
+    elif change == 'issued_anchor':
+        (internal / '_qualification_installation.py').write_text(
+            'RECORD_SHA256 = "issued"\n')
+    elif change == 'adjacent_record':
+        (internal / 'native_qualification_record.json').write_text('{}')
+    before = (internal / '_qualification_installation.py').read_bytes()
+    with pytest.raises(finalizer.FinalizationError):
+        finalizer.exercise_sanitizer_safety(**arguments)
+    assert (internal / '_qualification_installation.py').read_bytes() == before
+    assert not (arguments['output'] / 'sanitizer-safety-evidence.json').exists()
+
+
+def test_requested_sanitizers_do_not_prove_actual_backend_instrumentation(
+        safety_fixture):
+    finalizer, arguments, _, _ = safety_fixture
+    unit = finalizer.verify_build(None, None)['translation_units'][0]
+    path = arguments['records_dir'] / (Path(unit['source']).name + '.json')
+    row = json.loads(path.read_text())
+    row.pop('record_sha256')
+    row['invocations'][0]['expanded_argv'] = ['cc1plus', '-O3']
+    unit['record_sha256'] = finalizer.build_digest(row)
+    path.write_text(json.dumps({**row, 'record_sha256': unit['record_sha256']}))
+    with pytest.raises(finalizer.FinalizationError, match='instrumentation'):
+        finalizer.exercise_sanitizer_safety(**arguments)

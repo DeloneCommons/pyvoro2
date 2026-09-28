@@ -12,15 +12,18 @@ the numerical/build qualification boundary.
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import secrets
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 
 
 if not __package__:
@@ -222,6 +225,24 @@ def validate_routes(report, measurement, modules, required):
     """Validate a report from our own fixed child, never a submitted success bit."""
     _require(report.get('schema') == 'pyvoro2-native-route-evidence-v1',
              'missing or unknown route evidence schema')
+    _validate_route_claims(report, measurement, modules, required)
+    _validate_arithmetic(report)
+    guard = report['discriminators'].get('guard_disassembly')
+    _require(isinstance(guard, dict)
+             and _digest(guard.get('tool_sha256'))
+             and _digest(guard.get('disassembly_sha256'))
+             and isinstance(guard.get('inspect_symbols'), list)
+             and guard['inspect_symbols']
+             and isinstance(guard.get('dispatch_symbols'), list)
+             and guard['dispatch_symbols']
+             and isinstance(guard.get('require_environment_symbols'), list)
+             and guard['require_environment_symbols']
+             and isinstance(guard.get('objects'), list) and len(guard['objects']) == 5
+             and guard.get('fp_before_guard') is False,
+             'optimized raw guard/dispatch evidence is incomplete')
+
+
+def _validate_route_claims(report, measurement, modules, required):
     _require(report.get('source_sha256') == measurement.get('source_sha256'),
              'route evidence belongs to another source closure')
     expected_modules = {name: item['sha256'] for name, item in modules.items()}
@@ -249,6 +270,9 @@ def validate_routes(report, measurement, modules, required):
         for corpus, counts in expected_corpora.get(name, {}).items():
             _require(claim.get('corpora', {}).get(corpus) == counts,
                      f'required route corpus coverage differs: {name}/{corpus}')
+
+
+def _validate_arithmetic(report):
     discriminators = report.get('discriminators')
     _require(isinstance(discriminators, dict), 'missing independent discriminators')
     _require(discriminators.get('standard_strict_bits') == '4013fffffb000000'
@@ -264,19 +288,28 @@ def validate_routes(report, measurement, modules, required):
                     for row in expected_power]
     _require(discriminators.get('power_unsafe_offsets') == unsafe_power,
              'unsafe power operation-order control did not discriminate')
-    guard = discriminators.get('guard_disassembly')
-    _require(isinstance(guard, dict)
-             and _digest(guard.get('tool_sha256'))
-             and _digest(guard.get('disassembly_sha256'))
-             and isinstance(guard.get('inspect_symbols'), list)
-             and guard['inspect_symbols']
-             and isinstance(guard.get('dispatch_symbols'), list)
-             and guard['dispatch_symbols']
-             and isinstance(guard.get('require_environment_symbols'), list)
-             and guard['require_environment_symbols']
-             and isinstance(guard.get('objects'), list) and len(guard['objects']) == 5
-             and guard.get('fp_before_guard') is False,
-             'optimized raw guard/dispatch evidence is incomplete')
+
+
+def validate_safety_routes(report, measurement, modules, required):
+    from qualification.route_suite import SANITIZER_TESTS
+    _require(report.get('schema') == 'pyvoro2-native-sanitizer-routes-v1'
+             and report.get('scope') == 'sanitizer-safety-only',
+             'missing or unknown sanitizer safety evidence schema')
+    _validate_route_claims(report, measurement, modules, required)
+    _validate_arithmetic(report)
+    _require('guard_disassembly' not in report['discriminators'],
+             'sanitizer safety evidence cannot claim optimized guard qualification')
+    tests = report.get('safety_tests')
+    _require(isinstance(tests, list) and tests
+             and all(isinstance(row, dict) and isinstance(row.get('nodeid'), str)
+                     and row.get('outcome') in ('passed', 'skipped') for row in tests),
+             'sanitizer safety tests are incomplete or failed')
+    _require({row['nodeid'].split('::')[0] for row in tests} == set(SANITIZER_TESTS)
+             and len({row['nodeid'] for row in tests}) == len(tests)
+             and all(any(row['nodeid'].split('::')[0] == name
+                         and row['outcome'] == 'passed' for row in tests)
+                     for name in SANITIZER_TESTS),
+             'required sanitizer safety test coverage differs')
 
 
 def _check_guard_objects(report, build):
@@ -306,9 +339,50 @@ def _check_guard_objects(report, build):
              == guard['disassembly_sha256'], 'guard disassembly manifest differs')
 
 
+def _failed_route_output_tail(path, environment):
+    """Match the driver's bounded diagnostics without exporting credentials."""
+    sensitive = re.compile(
+        r'TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTHORIZATION|(?:^|_)KEY(?:$|_)',
+        re.I)
+    secrets = {value.encode('utf8') for name, value in environment.items()
+               if value and sensitive.search(name)}
+    overlap = max((len(value) for value in secrets), default=1)
+    limit = 12 * 1024
+    with Path(path).open('rb') as stream:
+        stream.seek(0, os.SEEK_END)
+        display_offset = max(0, stream.tell() - limit)
+        offset = max(0, display_offset - overlap)
+        stream.seek(offset)
+        data = stream.read()
+    start = display_offset - offset
+    if display_offset and data[start - 1:start] != b'\n':
+        # An incomplete line can contain URL userinfo whose scheme was cut off.
+        newline = data.find(b'\n', start)
+        start = len(data) if newline < 0 else newline + 1
+    # Choose the original window before any length-changing replacement. Extra
+    # context locates complete multiline secrets but can never become output.
+    ranges = [match.span(1) for match in re.finditer(
+        rb'https?://([^/\s@]+)@', data)]
+    for value in secrets:
+        position = data.find(value)
+        while position >= 0:
+            ranges.append((position, position + len(value)))
+            position = data.find(value, position + 1)
+    parts, cursor = [], start
+    for begin, end in sorted(ranges):
+        if end > cursor:
+            parts.extend((data[cursor:max(cursor, begin)], b'[redacted]'))
+            cursor = end
+    parts.append(data[cursor:])
+    text = b''.join(parts).decode('utf8', errors='replace')
+    text = '\n'.join(text.splitlines()[-80:])
+    return text.encode('utf8')[-limit:].decode('utf8', errors='ignore')
+
+
 def run_routes(*, source_root, installation_root, corpus, output,
                build_evidence_path, components, candidate_module=None,
-               candidate_build_path=None, runtime_environment=None):
+               candidate_build_path=None, runtime_environment=None,
+               safety_only=False):
     """Execute only the repository-owned runner, with no caller command option."""
     _require(__debug__ and sys.flags.optimize == 0,
              'optimized Python cannot issue route qualification')
@@ -321,6 +395,8 @@ def run_routes(*, source_root, installation_root, corpus, output,
                '--corpus', str(corpus), '--output', str(report_path),
                '--build-evidence', str(build_evidence_path),
                '--components', ','.join(sorted(components))]
+    if safety_only:
+        command.extend(('--mode', 'sanitizer-safety'))
     if candidate_module is not None:
         command.extend(('--candidate-module', str(candidate_module)))
         command.extend(('--candidate-build-evidence', str(candidate_build_path)))
@@ -333,8 +409,14 @@ def run_routes(*, source_root, installation_root, corpus, output,
         with (output / 'route.stderr').open('wb') as stderr:
             process = subprocess.run(command, cwd=output, env=environment,
                                      stdout=stdout, stderr=stderr, check=False)
-    _require(process.returncode == 0,
-             f'controlled route runner failed ({process.returncode}); see route.stderr')
+    if process.returncode != 0:
+        details = [f'controlled route runner failed ({process.returncode}); '
+                   f'retained logs: {output}']
+        for name in ('route.stdout', 'route.stderr'):
+            tail = _failed_route_output_tail(output / name, environment)
+            if tail:
+                details.append(f'{name} (last 80 lines, at most 12 KiB):\n{tail}')
+        raise FinalizationError('\n'.join(details))
     _require(report_path.is_file(), 'controlled runner did not emit route evidence')
     try:
         report = json.loads(report_path.read_text(encoding='utf8'))
@@ -428,10 +510,74 @@ def _check_source_inputs(build, measurement, source_root):
                      'unapproved external source dependency: ' + name)
 
 
-def finalize(*, source_root, installation_root, records_dir, postprocess_path,
-             corpus, output, candidate_module=None, candidate_records=None,
-             runtime_environment=None):
-    """Run the final controlled checks and write the installation anchor last."""
+def _require_default_anchor(source_root, installation_root):
+    """Safety artifacts cannot contain an issued anchor or adjacent record."""
+    internal = installation_root / 'pyvoro2/_internal'
+    path = internal / '_qualification_installation.py'
+    data = path.read_bytes()
+    _require(data == (source_root / 'src/pyvoro2/_internal/'
+                      '_qualification_installation.py').read_bytes(),
+             'sanitizer safety installation anchor differs from the default')
+    values = {}
+    try:
+        for node in ast.parse(data).body:
+            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+                _require(isinstance(node.value.value, str), 'invalid default anchor')
+            else:
+                _require(isinstance(node, ast.Assign) and len(node.targets) == 1
+                         and isinstance(node.targets[0], ast.Name),
+                         'sanitizer safety anchor contains executable code')
+                name = node.targets[0].id
+                _require(name not in values, 'duplicate default anchor field')
+                values[name] = ast.literal_eval(node.value)
+    except (SyntaxError, ValueError) as exc:
+        raise FinalizationError('invalid sanitizer safety anchor') from exc
+    _require(values == {'RECORD_FILENAME': 'native_qualification_record.json',
+                        'RECORD_SHA256': None, 'INSTALLATION_ID': None}
+             and not (internal / 'native_qualification_record.json').exists(),
+             'sanitizer safety artifact must remain unqualified')
+    return data
+
+
+def _require_sanitizers(build, records_dir):
+    _require(build.get('adapter') == 'gnu-linux-x86_64-v1',
+             'sanitizer safety has no reviewed adapter on this target')
+    units = build.get('translation_units')
+    _require(isinstance(units, list) and units,
+             'sanitizer safety requires observed instrumented translation units')
+    records = {}
+    for path in Path(records_dir).glob('*.json'):
+        row = json.loads(path.read_text(encoding='utf8'))
+        expected = row.pop('record_sha256', None)
+        _require(expected == build_digest(row),
+                 'sanitizer command record changed after build verification')
+        records[expected] = row
+    for unit in units:
+        row = records.get(unit.get('record_sha256'), {})
+        _require(row.get('kind') == 'compile' and row.get('source') == unit['source']
+                 and row.get('output') == unit['output']
+                 and row.get('effective_argv') == unit.get('command', {}).get('argv'),
+                 'sanitizer instrumentation record differs from observed build')
+        backends = [item.get('expanded_argv', []) for item in row.get('invocations', [])
+                    if item.get('role') == 'compiler_backend']
+        _require(backends, 'sanitizer instrumentation lacks an observed backend')
+        for argv in [row['effective_argv'], *backends]:
+            enabled = {value for arg in argv if arg.startswith('-fsanitize=')
+                       for value in arg.partition('=')[2].split(',')}
+            _require({'address', 'undefined', 'float-cast-overflow'} <= enabled
+                     and not any(arg.startswith(('-fno-sanitize=',
+                                                 '-fsanitize-ignorelist',
+                                                 '-fsanitize-blacklist'))
+                                 for arg in argv),
+                     'sanitizer instrumentation is missing or disabled: '
+                     + unit['source'])
+
+
+def _candidate_evidence(*, source_root, installation_root, records_dir,
+                        postprocess_path, corpus, output, candidate_module=None,
+                        candidate_records=None, runtime_environment=None,
+                        safety_only=False):
+    """Read-only source/build/payload gate shared by the two fixed evidence paths."""
     _require(__debug__ and sys.flags.optimize == 0,
              'optimized Python cannot issue native qualification')
     source_root = Path(source_root).resolve()
@@ -446,6 +592,10 @@ def finalize(*, source_root, installation_root, records_dir, postprocess_path,
     output.mkdir(parents=True)
     build = verify_build(Path(records_dir), source_root)
     _check_source_inputs(build, measurement, source_root)
+    anchor = None
+    if safety_only:
+        anchor = _require_default_anchor(source_root, installation_root)
+        _require_sanitizers(build, records_dir)
     toolchain = build.get('toolchain')
     _require(isinstance(toolchain, dict)
              and isinstance(toolchain.get('version'), str) and toolchain['version']
@@ -475,6 +625,8 @@ def finalize(*, source_root, installation_root, records_dir, postprocess_path,
         candidate_module = Path(candidate_module).resolve(strict=True)
         candidate_build = verify_build(Path(candidate_records), source_root)
         _check_source_inputs(candidate_build, measurement, source_root)
+        if safety_only:
+            _require_sanitizers(candidate_build, candidate_records)
         _require(candidate_build.get('toolchain') == toolchain
                  and candidate_build.get('adapter') == adapter
                  and candidate_build.get('properties') == build.get('properties'),
@@ -514,9 +666,7 @@ def finalize(*, source_root, installation_root, records_dir, postprocess_path,
         corpus=Path(corpus).resolve(), output=output,
         build_evidence_path=build_path, components=required,
         candidate_module=candidate_module, candidate_build_path=candidate_build_path,
-        runtime_environment=runtime_environment)
-    validate_routes(report, measurement, modules, required)
-    _check_guard_objects(report, build)
+        runtime_environment=runtime_environment, safety_only=safety_only)
     expected_identity = {'record_schema': contract.RECORD_SCHEMA,
                          'policy_revision': contract.POLICY_REVISION,
                          **{name: measurement[name] for name in (
@@ -551,41 +701,78 @@ def finalize(*, source_root, installation_root, records_dir, postprocess_path,
              and json.loads((internal / 'native_approval.json').read_text(
                  encoding='utf8')) == approval,
              'source approval changed during evidence')
+    if safety_only:
+        _require(_require_default_anchor(source_root, installation_root) == anchor,
+                 'sanitizer safety anchor changed during evidence')
     evidence = {'schema': 'pyvoro2-native-finalization-evidence-v1',
                 'build': build, 'postprocess': postprocess, 'routes': report,
                 'route_execution': execution, 'source': measurement}
     if candidate_build is not None:
         evidence['candidate_build'] = candidate_build
         evidence['candidate_payload'] = candidate_identity
-    evidence_data = contract.canonical_json(evidence)
-    _atomic_write(output / 'qualification-evidence.json', evidence_data)
+    return SimpleNamespace(
+        evidence=evidence, contract=contract, measurement=measurement,
+        approval=approval, target=target, toolchain=toolchain, adapter=adapter,
+        required=required, build_data=build_data, modules=modules,
+        dependencies=dependencies, consumers=consumers, internal=internal,
+        output=output)
+
+
+def exercise_sanitizer_safety(**arguments):
+    """Execute instrumented safety evidence without any qualification issuance."""
+    checked = _candidate_evidence(**arguments, safety_only=True)
+    report = checked.evidence['routes']
+    validate_safety_routes(report, checked.measurement, checked.modules,
+                           checked.required)
+    evidence = {**checked.evidence,
+                'schema': 'pyvoro2-native-sanitizer-safety-evidence-v1',
+                'scope': 'sanitizer-safety-only'}
+    _atomic_write(checked.output / 'sanitizer-safety-evidence.json',
+                  checked.contract.canonical_json(evidence))
+    return evidence
+
+
+def finalize(*, source_root, installation_root, records_dir, postprocess_path,
+             corpus, output, candidate_module=None, candidate_records=None,
+             runtime_environment=None):
+    """Run the final controlled checks and write the installation anchor last."""
+    checked = _candidate_evidence(
+        source_root=source_root, installation_root=installation_root,
+        records_dir=records_dir, postprocess_path=postprocess_path, corpus=corpus,
+        output=output, candidate_module=candidate_module,
+        candidate_records=candidate_records, runtime_environment=runtime_environment)
+    contract, report = checked.contract, checked.evidence['routes']
+    validate_routes(report, checked.measurement, checked.modules, checked.required)
+    _check_guard_objects(report, checked.evidence['build'])
+    evidence_data = contract.canonical_json(checked.evidence)
+    _atomic_write(checked.output / 'qualification-evidence.json', evidence_data)
     record = {'record_schema': contract.RECORD_SCHEMA,
               'policy_revision': contract.POLICY_REVISION,
               'installation_id': secrets.token_hex(32),
-              'approval_sha256': contract.canonical_sha256(approval),
-              **{name: measurement[name] for name in (
+              'approval_sha256': contract.canonical_sha256(checked.approval),
+              **{name: checked.measurement[name] for name in (
                   'source_sha256', 'schema_sha256', 'consumer_sha256')},
-              'target': target, 'toolchain': toolchain,
+              'target': checked.target, 'toolchain': checked.toolchain,
               'effective_build': {
-                  'qualified': True, 'adapter': adapter,
-                  'manifest_sha256': hashlib.sha256(build_data).hexdigest()},
+                  'qualified': True, 'adapter': checked.adapter,
+                  'manifest_sha256': hashlib.sha256(checked.build_data).hexdigest()},
               'evidence_sha256': hashlib.sha256(evidence_data).hexdigest(),
-              'modules': modules, 'dependencies': dependencies,
-              'consumers': consumers,
-              'components': {name: {**measurement['components'][name],
+              'modules': checked.modules, 'dependencies': checked.dependencies,
+              'consumers': checked.consumers,
+              'components': {name: {**checked.measurement['components'][name],
                                     'qualified': True,
                                     'evidence_sha256': contract.canonical_sha256(
                                         report['components'][name])}
-                             for name in sorted(required)}}
+                             for name in sorted(checked.required)}}
     data = contract.canonical_json(record)
     digest = hashlib.sha256(data).hexdigest()
     anchor = ('"""Generated by the controlled external qualification finalizer."""\n'
               "RECORD_FILENAME = 'native_qualification_record.json'\n"
               f"RECORD_SHA256 = '{digest}'\n"
               f"INSTALLATION_ID = '{record['installation_id']}'\n").encode('ascii')
-    _atomic_write(output / 'native_qualification_record.json', data)
-    _atomic_write(internal / 'native_qualification_record.json', data)
-    _atomic_write(internal / '_qualification_installation.py', anchor)
+    _atomic_write(checked.output / 'native_qualification_record.json', data)
+    _atomic_write(checked.internal / 'native_qualification_record.json', data)
+    _atomic_write(checked.internal / '_qualification_installation.py', anchor)
     return record
 
 
