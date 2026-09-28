@@ -29,6 +29,9 @@ if __package__ in (None, ''):
     )
     from qualification.link_provenance import native_kind, platform_runtime_inputs
     from qualification.input_provenance import collect_input_providers
+    from qualification.windows_link import (
+        collect_link_inputs as windows_link_inputs, embed_manifest, prepare_link,
+    )
 else:
     from .adapters import (observe_apple, observe_gnu_wrapper, observe_windows,
                            tool_role)
@@ -38,6 +41,9 @@ else:
     )
     from .link_provenance import native_kind, platform_runtime_inputs
     from .input_provenance import collect_input_providers
+    from .windows_link import (
+        collect_link_inputs as windows_link_inputs, embed_manifest, prepare_link,
+    )
 
 # Pass and record only the compiler/toolchain environment. CI credentials and
 # unrelated application configuration must never enter distributable evidence.
@@ -52,7 +58,7 @@ _ENVIRONMENT = {
     'OBJC_INCLUDE_PATH', 'LIBRARY_PATH', 'COMPILER_PATH', 'GCC_EXEC_PREFIX',
     'LD_LIBRARY_PATH', 'GCC_COMPARE_DEBUG', 'GCC_COLORS', 'SOURCE_DATE_EPOCH',
     'ZERO_AR_DATE', 'CLANG_CONFIG_FILE_SYSTEM_DIR', 'CLANG_CONFIG_FILE_USER_DIR',
-    'CLANG_NO_DEFAULT_CONFIG', 'CCC_OVERRIDE_OPTIONS',
+    'CLANG_NO_DEFAULT_CONFIG', 'CCC_OVERRIDE_OPTIONS', 'VSLANG',
 }
 _PAIR_OPTIONS = {
     '-o', '-MF', '-MT', '-MQ', '-include', '-imacros', '-I', '-L', '-isystem',
@@ -184,6 +190,11 @@ def record_command(command, output_dir):
     env = {k: v for k, v in os.environ.items() if k in _ENVIRONMENT}
     family = ('msvc' if os.name == 'nt' else
               'clang' if sys.platform == 'darwin' else 'gnu')
+    requested_environment = dict(env)
+    if family == 'msvc':
+        # The closed actual-library report grammar uses Microsoft's English
+        # diagnostics; this language selection is an observed tool input.
+        env['VSLANG'] = '1033'
     response_files = {}
     expanded = expand_response(command, cwd, family == 'msvc', response_files)
     if family == 'msvc':
@@ -210,14 +221,26 @@ def record_command(command, output_dir):
             else:
                 launched.extend(['-MF', str(dep_path)])
     elif family == 'msvc':
-        launched.extend(['/LINKREPROFULLPATHRSP:' +
-                         str(directory / 'actual-link-inputs.rsp')])
+        launched = prepare_link(launched, cwd=cwd, env=env, directory=directory)
     else:
         launched.append('-Wl,-t')
     observer = {'gnu': observe_gnu_wrapper, 'clang': observe_apple,
                 'msvc': observe_windows}[family]
-    requested_environment = env
     observation = observer(launched, cwd=cwd, env=env, directory=directory)
+    windows_manifest = None
+    if family == 'msvc' and kind == 'link' and observation['exit_code'] == 0:
+        try:
+            direct = Path(shutil.which(command[0], path=env.get('PATH')) or command[0])
+            windows_manifest, manifest_observation = embed_manifest(
+                output, driver=direct.resolve(strict=True), cwd=cwd, env=env,
+                directory=directory, observer=observer)
+            for key in ('invocations', 'evidence_paths', 'loaded_images'):
+                observation.setdefault(key, []).extend(manifest_observation[key])
+        except (OSError, ValueError, BuildEvidenceError) as error:
+            observation['problems'].append(str(error))
+            # The requested final image was not produced. Preserve evidence
+            # and fail the build instead of packaging a manifest-free donor.
+            observation['exit_code'] = 125
     # Selector defaults are actual compiler inputs. Reuse them in evaluation
     # and provider queries rather than querying a different, SDK-less driver.
     env = observation.get('effective_environment', env)
@@ -229,7 +252,7 @@ def record_command(command, output_dir):
     interpreter = file_identity(sys.executable)
     tools[interpreter['path']] = interpreter
     for name in ('record_command.py', 'effective_build.py', 'link_provenance.py',
-                 'input_provenance.py'):
+                 'input_provenance.py', 'windows_link.py'):
         identity = file_identity(Path(__file__).with_name(name))
         tools[identity['path']] = identity
     for identity in observation.get('extra_tools', []):
@@ -282,10 +305,12 @@ def record_command(command, output_dir):
             *expand_response(windows_words(suffix), cwd, True, response_files),
         ]
         for invocation in invocations:
-            invocation['expanded_argv'] = effective
+            if invocation['role'] != 'manifest_tool':
+                invocation['expanded_argv'] = effective
     dependencies, preprocessed, macros, link_inputs, objects = [], [], {}, [], []
     toolchain_inputs = {}
     runtime_link_inputs = []
+    windows_input_report = None
     input_providers = []
     output_identity = None
     if observation['exit_code'] == 0:
@@ -310,8 +335,13 @@ def record_command(command, output_dir):
                         raise BuildEvidenceError('MSVC source expansion failed')
                 else:
                     paths = dependencies_from_make(dep_path, cwd)
-                    preprocessed_path = output.with_suffix(
-                        '.i' if source.suffix == '.c' else '.ii')
+                    if family == 'clang':
+                        from qualification.adapters import apple_preprocessed_input
+                        preprocessed_path = apple_preprocessed_input(
+                            invocations, source)
+                    else:
+                        preprocessed_path = output.with_suffix(
+                            '.i' if source.suffix == '.c' else '.ii')
                 dependencies = [file_identity(p) for p in sorted(set(paths))]
                 input_providers, provider_paths = collect_input_providers(
                     driver, family, cwd=cwd, env=env, directory=directory)
@@ -351,17 +381,13 @@ def record_command(command, output_dir):
                         raise BuildEvidenceError(
                             'MSVC actual link input report missing '
                             '(VS 17.11+ required)')
-                    data = repro.read_bytes()
-                    encoding = ('utf-16' if data.startswith(b'\xff\xfe')
-                                else 'utf-8-sig')
-                    names = windows_words(data.decode(encoding))
-                    if not names or any(not Path(name).is_absolute()
-                                        for name in names):
-                        raise BuildEvidenceError(
-                            'incomplete MSVC actual link input paths')
+                    windows_input_report = windows_link_inputs(
+                        repro, directory / 'stdout.txt')
                     evidence_paths.append(repro)
-                    link_paths.update(Path(name).resolve(strict=True)
-                                      for name in names)
+                    link_paths.update(
+                        Path(item['path'])
+                        for key in ('explicit_inputs', 'searched_libraries')
+                        for item in windows_input_report[key])
                 # MSVC and Apple direct jobs do not use GNU's collect2 wrapper.
                 for arg in effective[1:]:
                     if Path(arg).suffix.lower() in ('.o', '.obj'):
@@ -404,6 +430,8 @@ def record_command(command, output_dir):
         'dependencies': dependencies, 'preprocessed': preprocessed,
         'macros': macros, 'link_inputs': link_inputs, 'object_inputs': objects,
         'runtime_link_inputs': runtime_link_inputs,
+        'windows_link_inputs': windows_input_report,
+        'windows_manifest': windows_manifest,
         'input_providers': input_providers,
         'system_loader_evidence': observation.get('system_loader_evidence', []),
         'toolchain_inputs': sorted(toolchain_inputs.values(), key=lambda r: r['path']),

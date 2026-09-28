@@ -1,9 +1,9 @@
 # Issue #88 implementation and qualification status
 
-Status: runtime/tooling implementation and independent source review are complete.
-The reviewed source closure is approved. Native and platform qualification,
-exact-head CI, and the review PR/evidence handoff remain pending. No production
-artifact is qualified by source approval or by this note.
+Status: runtime/tooling corrections and independent source review are complete.
+The corrected source closure has separate reviewed approval. Native and platform
+qualification, exact-head CI, and the review PR/evidence handoff remain pending.
+No production artifact is qualified by source approval or by this note.
 
 ## Authority and scope
 
@@ -60,8 +60,8 @@ cannot approve a source change, and source approval cannot qualify an artifact.
 ## Implementation and remaining evidence
 
 Checked items identify implementation work or focused development checks already
-performed. They do not establish final-head acceptance. Independent review
-remains active, and affected checks must be rerun after its corrections.
+performed. They do not establish final-head acceptance. Independent source review
+is complete; affected artifact checks must run again on the corrected head.
 
 ### 1. Raw runtime boundary and guarded coercion
 
@@ -72,11 +72,12 @@ remains active, and affected checks must be rerun after its corrections.
 - [x] Wire guarded public/native entry, profile inspection and replay/enclosure
   continuation, including per-callback coercion, warning delivery and domain
   subclass attribute/method checks before native-facing continuation. Independent
-  entry review remains active.
+  entry review also verified eager production module registration during import.
 - [x] Preserve structured WP5/WP6/GHOST/LOCATE failure ownership.
 - [x] Fresh-build and run focused entry/precondition regressions during development.
-- [ ] Finish independent entry-boundary review and inspect the final optimized
-  guard/dispatch instructions; rerun hostile-state controls on final artifacts.
+- [x] Complete independent entry-boundary source review.
+- [ ] Inspect the final optimized guard/dispatch instructions and rerun
+  hostile-state controls on final artifacts.
 
 ### 2. Source approval, effective build, and artifact record
 
@@ -92,7 +93,7 @@ remains active, and affected checks must be rerun after its corrections.
   hashes and reject incomplete or unsafe evidence.
 - [x] Implement independent arithmetic/disassembly discrimination and finalization
   tooling that requires complete component evidence and postprocessing lineage.
-- [x] Complete independent review and approve the integrated source closure.
+- [x] Complete independent review and approve the corrected source closure.
 - [ ] Run the discriminators and finalizer on the actual final production payloads,
   binding module, dependency, record and evidence identities.
 - [ ] Verify a distinct conforming rebuild can receive a distinct valid record.

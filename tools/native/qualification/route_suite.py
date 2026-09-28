@@ -27,6 +27,7 @@ SANITIZER_TESTS = (
     'tests/forward/common/test_native_boundary_validation.py',
     'tests/forward/common/test_native_preconditions.py',
     'tests/forward/common/test_native_runtime_entry.py',
+    'tests/forward/common/test_native_import_registration.py',
     'tests/forward/common/test_native_coercion_state.py',
     'tests/forward/common/test_native_route_admission.py',
     'tests/forward/common/test_native_warning_state.py',

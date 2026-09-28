@@ -143,6 +143,7 @@ _CLANG_NON_ARITHMETIC_F = {
     '-fdeprecated-macro', '-fblocks', '-fencode-extended-block-signature',
     '-fregister-global-dtors-with-atexit', '-fno-use-cxa-atexit',
     '-fno-implicit-modules', '-fno-implicit-module-maps',
+    '-fno-modulemap-allow-subdirectory-search',
     '-fno-modules', '-faddrsig', '-fno-addrsig',
     '-fdebug-compilation-dir', '-fcoverage-compilation-dir', '-ferror-limit',
     '-fmodule-file-home-is-cwd', '-fskip-odr-check-in-gmf',
@@ -161,6 +162,11 @@ _CLANG_NON_ARITHMETIC_F = {
 
 def _check_control_option(arg, family):
     """Fail closed for unreviewed machine/optimization mechanisms."""
+    # cc1 accepts OpenCL-spelled arithmetic controls outside the -f/-m
+    # namespaces, including signed-zero, literal precision and contraction.
+    # They have no reviewed role in this C++ adapter, even via -Xclang.
+    if arg.startswith('-cl-'):
+        raise BuildEvidenceError('unreviewed OpenCL arithmetic control: ' + arg)
     if arg.startswith('-m'):
         allowed = {'-mavx', '-mfma', '-mno-avx', '-mno-fma', '-msse2',
                    '-msse4.2', '-m64', '-mfpmath=sse', '-mlong-double-80',

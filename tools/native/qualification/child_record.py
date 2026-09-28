@@ -144,6 +144,10 @@ def _publish_completion(path, receipt):
     with os.fdopen(descriptor, 'wb') as stream:
         stream.write(_receipt_data(receipt))
         stream.flush()
+        # mkstemp defaults to 0600; host artifact readers may not own receipts
+        # written by a root-owned manylinux container. Set the published mode
+        # before fsync and atomic replacement, as for other qualification data.
+        os.chmod(temporary, 0o644)
         os.fsync(stream.fileno())
     _require(not path.exists(), 'GNU child completion already exists')
     os.replace(temporary, path)

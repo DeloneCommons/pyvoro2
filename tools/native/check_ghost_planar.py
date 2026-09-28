@@ -19,8 +19,12 @@ import sys
 
 import numpy as np
 
+from qualification.native_import import load_production_module
+
 
 def load(path, label):
+    if label == 'production':
+        return load_production_module(path, 'pyvoro2._core2d')
     spec = importlib.util.spec_from_file_location(f'{label}._core2d', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

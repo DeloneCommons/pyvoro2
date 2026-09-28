@@ -1218,4 +1218,5 @@ pyvoro2::native_runtime::guarded_def(m,
     py::arg("queries"),
     py::arg("ghost_radii"));
 
+  pyvoro2::native_runtime::register_imported_module(m);
 }

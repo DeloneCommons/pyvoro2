@@ -57,6 +57,61 @@ def native_kind(path):
     return 'other'
 
 
+def verify_apple_native_object(path):
+    """Exclude LTO payloads in every observed project/control link object.
+
+    Apple always forwards an LTO outliner default to ld. That does not grant
+    cross-unit optimization: the linked source closure must contain native
+    Mach-O code, with no embedded LLVM segment/bitcode section. Installed
+    runtime archives remain independently resolved toolchain inputs.
+    """
+    data = Path(path).read_bytes()
+
+    def invalid():
+        raise BuildEvidenceError('incomplete/unsupported Mach-O native object')
+
+    if len(data) < 32 or data[:4] != b'\xcf\xfa\xed\xfe':
+        invalid()
+    _, cpu, _, kind, count, size, _, _ = struct.unpack_from('<8I', data)
+    end = 32 + size
+    if (cpu not in (0x01000007, 0x0100000c) or kind != 1 or not count or
+            count > size // 8 or end > len(data)):
+        invalid()
+    cursor, sections = 32, 0
+    for _ in range(count):
+        if cursor + 8 > end:
+            invalid()
+        command, length = struct.unpack_from('<II', data, cursor)
+        if length < 8 or length % 8 or cursor + length > end:
+            invalid()
+        if command == 0x19:  # LC_SEGMENT_64, followed by section_64 entries.
+            if length < 72:
+                invalid()
+            segment = data[cursor + 8:cursor + 24].split(b'\0', 1)[0]
+            section_count = struct.unpack_from('<I', data, cursor + 64)[0]
+            if length != 72 + section_count * 80:
+                invalid()
+            if segment == b'__LLVM':
+                raise BuildEvidenceError('LTO/bitcode in actual Mach-O object')
+            for index in range(section_count):
+                offset = cursor + 72 + 80 * index
+                name = data[offset:offset + 16].split(b'\0', 1)[0]
+                segment = data[offset + 16:offset + 32].split(b'\0', 1)[0]
+                if segment == b'__LLVM' or name.startswith((b'__bitcode', b'__llvm')):
+                    raise BuildEvidenceError('LTO/bitcode in actual Mach-O object')
+                section_size = struct.unpack_from('<Q', data, offset + 40)[0]
+                file_offset = struct.unpack_from('<I', data, offset + 48)[0]
+                flags = struct.unpack_from('<I', data, offset + 64)[0]
+                # Zero-fill sections have no file payload; others must be complete.
+                if flags & 0xff not in (1, 12, 18) and section_size:
+                    if file_offset < end or file_offset + section_size > len(data):
+                        invalid()
+                sections += 1
+        cursor += length
+    if cursor != end or not sections:
+        invalid()
+
+
 def gnu_runtime_inputs(driver, *, cwd, env, directory):
     identities, queries = {}, []
     environment = clean_toolchain_environment(env)
@@ -141,14 +196,19 @@ def verify_linker_options(argv, family):
             option = arg.lower()
             if not option.startswith(('/', '-')):
                 continue
-            if option in ('/dll', '/nologo', '/incremental:no', '/manifest:embed',
-                          '/manifest:no', '/machine:x64', '/ltcg:off',
+            if option.startswith('/manifest:'):
+                raise BuildEvidenceError(
+                    'unobserved Windows manifest resource control: ' + arg)
+            if option in ('/dll', '/nologo', '/incremental:no', '/manifest',
+                          '/machine:x64', '/ltcg:off', '/verbose:lib',
                           '/opt:ref', '/opt:icf', '/debug', '/release',
                           '/subsystem:console', '/subsystem:windows'):
                 continue
+            if option == "/manifestuac:level='asinvoker' uiaccess='false'":
+                continue
             if option.startswith(('/out:', '/implib:', '/pdb:', '/libpath:',
                                   '/linkreprofullpathrsp:', '/defaultlib:',
-                                  '/version:')):
+                                  '/version:', '/manifestfile:')):
                 continue
             raise BuildEvidenceError('unreviewed actual linker control: ' + arg)
         if not arg.startswith('-'):
@@ -180,6 +240,16 @@ def verify_linker_options(argv, family):
                 index += 1
                 continue
         else:
+            # ld's -O3 preserves its ordinary native-code deduplication policy.
+            # The exact LLVM option is the Clang driver's default for LTO only;
+            # verify_link_closure independently excludes project/control bitcode.
+            # Other optimization/LLVM controls remain unreviewed.
+            if arg == '-O3':
+                continue
+            if (arg == '-mllvm' and
+                    argv[index:index + 1] == ['-enable-linkonceodr-outlining']):
+                index += 1
+                continue
             if arg in ('-demangle', '-no_deduplicate', '-dynamic', '-dylib',
                        '-bundle', '-t', '-headerpad_max_install_names',
                        '-search_paths_first', '-adhoc_codesign',
@@ -200,6 +270,9 @@ def verify_link_closure(row, units):
     """Use every observed linker input, not just driver-level .o arguments."""
     from .effective_build import _verify_identity
 
+    if row.get('family') == 'msvc':
+        from .windows_link import verify_windows_link
+        verify_windows_link(row)
     trusted = {item['path']: item for item in row.get('runtime_link_inputs', [])}
     for item in trusted.values():
         _verify_identity(item, 'toolchain link input')
@@ -215,6 +288,8 @@ def verify_link_closure(row, units):
         if kind == 'object':
             if item['path'] not in units or units[item['path']]['output'] != item:
                 raise BuildEvidenceError('unobserved/mismatched linked object')
+            if row.get('family') == 'clang':
+                verify_apple_native_object(item['path'])
             objects[item['path']] = item
         elif kind in ('archive', 'bitcode', 'image'):
             raise BuildEvidenceError(

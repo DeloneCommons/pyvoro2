@@ -9,10 +9,12 @@ find_package(pybind11 CONFIG REQUIRED)
 include(cmake/NativeQualification.cmake)
 
 # Use the real linker directly in controlled Windows builds. Ninja supplies
-# parallelism; cl.exe /MP would hide independent compile attribution.
+# parallelism; cl.exe /MP would hide independent compile attribution. The
+# recorder retains LINK's manifest, then directly observes SDK mt.exe embedding
+# its exact metadata. /MANIFEST:EMBED hides rc/cvtres input invocations.
 if(MSVC AND DEFINED ENV{PYVORO2_EVIDENCE_DIR})
   set(CMAKE_CXX_CREATE_SHARED_MODULE
-    "<CMAKE_LINKER> /nologo <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> /DLL /MANIFEST:EMBED /OUT:<TARGET> /IMPLIB:<TARGET_IMPLIB> /PDB:<TARGET_PDB> <OBJECTS> <LINK_LIBRARIES>")
+    "<CMAKE_LINKER> /nologo <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> /DLL /MANIFEST /MANIFESTUAC:\"level='asInvoker' uiAccess='false'\" /OUT:<TARGET> /IMPLIB:<TARGET_IMPLIB> /PDB:<TARGET_PDB> <OBJECTS> <LINK_LIBRARIES>")
 endif()
 
 # Voro++ sources (vendored)

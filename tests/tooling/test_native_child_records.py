@@ -4,7 +4,9 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 
@@ -57,6 +59,80 @@ def test_start_remains_immutable_after_completion(receipt_pair):
     assert set(evidence) == {start_path, complete_path}
     assert start_path.read_bytes() == before
     assert json.loads(before) == start
+
+
+def test_start_writer_is_exclusive_and_binds_the_persisted_bytes(receipt_pair):
+    _, start_path, _, start, _ = receipt_pair
+    expected = start_path.read_bytes()
+    start_path.unlink()
+    digest = child_record._write_start(start_path, start)
+    assert start_path.read_bytes() == expected
+    assert digest == hashlib.sha256(expected).hexdigest()
+    with pytest.raises(FileExistsError):
+        child_record._write_start(start_path, {'replacement': True})
+    assert start_path.read_bytes() == expected
+
+
+def test_completion_is_synced_before_atomic_publication(receipt_pair, monkeypatch):
+    directory, start_path, complete_path, _, complete = receipt_pair
+    start_data = start_path.read_bytes()
+    expected = complete_path.read_bytes()
+    complete_path.unlink()
+    fsync, replace = os.fsync, os.replace
+    synced = []
+
+    def observe_fsync(descriptor):
+        assert not complete_path.exists()
+        staged, = (directory / '.staging').iterdir()
+        assert staged.read_bytes() == expected
+        if os.name == 'posix':
+            assert stat.S_IMODE(staged.stat().st_mode) == 0o644
+        fsync(descriptor)
+        synced.append(True)
+
+    def observe_replace(source, target):
+        assert synced
+        assert Path(source).read_bytes() == expected
+        assert not complete_path.exists()
+        assert Path(target) == complete_path
+        with pytest.raises(BuildEvidenceError, match='unmatched'):
+            child_record.collect_child_receipts(directory)
+        replace(source, target)
+
+    monkeypatch.setattr(child_record.os, 'fsync', observe_fsync)
+    monkeypatch.setattr(child_record.os, 'replace', observe_replace)
+    child_record._publish_completion(complete_path, complete)
+    assert complete_path.read_bytes() == expected
+    assert start_path.read_bytes() == start_data
+    assert child_record.collect_child_receipts(directory)[0] == [
+        complete['invocation']]
+
+
+@pytest.mark.parametrize('operation', ['chmod', 'fsync', 'replace'])
+def test_completion_publication_failure_leaves_unmatched_start(
+        receipt_pair, monkeypatch, operation):
+    directory, start_path, complete_path, _, complete = receipt_pair
+    before = start_path.read_bytes()
+    complete_path.unlink()
+
+    def fail(*args):
+        raise OSError('injected publication failure')
+
+    monkeypatch.setattr(child_record.os, operation, fail)
+    with pytest.raises(OSError, match='injected publication failure'):
+        child_record._publish_completion(complete_path, complete)
+    assert not complete_path.exists()
+    assert start_path.read_bytes() == before
+    with pytest.raises(BuildEvidenceError, match='unmatched'):
+        child_record.collect_child_receipts(directory)
+
+
+def test_completion_writer_refuses_to_replace_published_receipt(receipt_pair):
+    _, _, complete_path, _, _ = receipt_pair
+    before = complete_path.read_bytes()
+    with pytest.raises(BuildEvidenceError, match='already exists'):
+        child_record._publish_completion(complete_path, {'replacement': True})
+    assert complete_path.read_bytes() == before
 
 
 @pytest.mark.parametrize('field,value', [
@@ -126,16 +202,22 @@ def test_staging_files_cannot_issue_completion_or_hide_unmatched_start(receipt_p
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='GNU/glibc child observation')
-def test_actual_child_keeps_initial_receipt_and_publishes_bound_completion(tmp_path):
+@pytest.mark.parametrize('umask,start_mode', [(0o022, 0o644), (0o002, 0o664)])
+def test_actual_child_keeps_initial_receipt_and_publishes_bound_completion(
+        tmp_path, umask, start_mode):
     process = subprocess.run(
         [sys.executable, str(ROOT / 'tools/native/qualification/child_record.py'),
          '--directory', str(tmp_path), '--', sys.executable, '-c', 'pass'],
-        text=True, capture_output=True, check=False)
+        text=True, capture_output=True, check=False, umask=umask)
     assert process.returncode == 0, process.stderr
     invocations, evidence = child_record.collect_child_receipts(tmp_path)
     assert len(invocations) == 1
     assert invocations[0]['exit_code'] == 0
     assert len(evidence) == 2
-    assert len(list(tmp_path.glob('*.start.json'))) == 1
-    assert len(list(tmp_path.glob('*.complete.json'))) == 1
+    start_path, = tmp_path.glob('*.start.json')
+    complete_path, = tmp_path.glob('*.complete.json')
+    assert stat.S_IMODE(start_path.stat().st_mode) == start_mode
+    # The host artifact uploader is not the container's root writer. Completion
+    # evidence must be readable across that boundary without other-user writes.
+    assert stat.S_IMODE(complete_path.stat().st_mode) == 0o644
     assert not list(tmp_path.glob('*.pending'))

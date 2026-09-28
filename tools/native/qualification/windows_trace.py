@@ -1,6 +1,6 @@
 """Actual process/image observation for the closed native Windows adapter.
 
-Only direct x64 cl.exe (/c, one TU, no /MP) and link.exe are supported.
+Only direct x64 cl.exe (/c, one TU, no /MP), link.exe and SDK mt.exe are supported.
 Windows' debugger events identify the images actually mapped in the compiler
 and linker. MSVC's in-process backend has no independent OS argv: the direct
 cl argv, CL/_CL_ expansion, loaded c1xx/c2 images, and completed object output
@@ -30,8 +30,8 @@ def observe(command, *, cwd, env, directory):
     executable = Path(shutil.which(command[0], path=env.get('PATH')) or command[0])
     executable = executable.resolve(strict=True)
     name = executable.name.lower()
-    if name not in ('cl.exe', 'link.exe'):
-        raise BuildEvidenceError('opaque Windows wrapper; direct cl/link required')
+    if name not in ('cl.exe', 'link.exe', 'mt.exe'):
+        raise BuildEvidenceError('opaque Windows wrapper; direct cl/link/mt required')
     if any(a.lower().startswith('/mp') for a in command[1:]):
         raise BuildEvidenceError('Windows adapter requires Ninja, not internal /MP')
     kernel = C.WinDLL('kernel32', use_last_error=True)
@@ -97,7 +97,12 @@ def observe(command, *, cwd, env, directory):
         size = kernel.GetFinalPathNameByHandleW(handle, buffer, len(buffer), 0)
         if not size or size >= len(buffer):
             raise BuildEvidenceError('cannot resolve actual mapped Windows image')
-        return file_identity(buffer.value)
+        path = buffer.value
+        if path.startswith('\\\\?\\UNC\\'):
+            path = '\\\\' + path[8:]
+        elif path.startswith('\\\\?\\'):
+            path = path[4:]
+        return file_identity(path)
 
     stdout, stderr = directory / 'stdout.txt', directory / 'stderr.txt'
     events, invocations, problems, loaded = [], [], [], []
@@ -143,15 +148,17 @@ def observe(command, *, cwd, env, directory):
                             'argv': [str(executable), *command[1:]],
                             'raw_command_line': raw_command, 'cwd': str(cwd),
                             'environment': env,
-                            'role': 'linker' if name == 'link.exe' else
-                                    'compiler_driver',
+                            'role': {'link.exe': 'linker', 'mt.exe': 'manifest_tool',
+                                     'cl.exe': 'compiler_driver'}[name],
+                            'observation': 'direct-debug-execution',
                             'opened_files': [],
                         })
                     else:
                         # The closed adapter does not guess a child's argv.
                         # A PDB service is not a numerical compiler/link input.
-                        if not Path(identity['path']).name.lower().startswith(
-                                'mspdbsrv'):
+                        pdb = executable.parent / 'mspdbsrv.exe'
+                        if not (name in ('cl.exe', 'link.exe') and pdb.is_file() and
+                                identity == file_identity(pdb)):
                             problems.append('unobserved Windows child inputs: ' +
                                             identity['path'])
                 elif event.code == 6:  # LOAD_DLL_DEBUG_EVENT
@@ -183,6 +190,10 @@ def observe(command, *, cwd, env, directory):
             kernel.CloseHandle(process_info.hProcess)
     backend = [i for i in loaded if Path(i['path']).name.lower() == 'c2.dll']
     frontend = [i for i in loaded if Path(i['path']).name.lower() == 'c1xx.dll']
+    if not invocations:
+        raise BuildEvidenceError('missing direct Windows process event')
+    invocations[0]['exit_code'] = root_exit
+    invocations[0]['loaded_images'] = loaded
     if name == 'cl.exe':
         if not backend or not frontend:
             problems.append('missing actual MSVC front/back-end image loads')
@@ -200,7 +211,7 @@ def observe(command, *, cwd, env, directory):
                     stderr.read_text(errors='replace'))
     version = next((line.strip() for line in version_text.splitlines()
                     if 'Compiler Version' in line), '')
-    if name == 'link.exe':
+    if name != 'cl.exe':
         # Link jobs bind the same compiler through their matching compile
         # records; linker version is still present in the captured diagnostics.
         version = None

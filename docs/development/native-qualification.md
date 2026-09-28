@@ -29,6 +29,11 @@ Package initialization retains `_fpguard` before forward operations can load
 the lazy geometry extensions. The issued record binds all three native
 payloads. Pure Python/inverse imports remain available without geometry
 extensions; forward operations explicitly refuse if the raw guard is missing.
+Each production geometry extension registers its loaded file during module
+initialization, before import returns or a numeric callback can run. Later
+registration rechecks that same immutable file identity. Qualification tools
+use canonical module names and preserve the explicitly requested payload path;
+they refuse a conflicting production module already loaded from another path.
 Initial interpreter and Python/NumPy loading under an already hostile FP state
 is outside the protected operation boundary. Runtime tests import the package
 before installing hostile controls, then exercise the first forward call as
@@ -69,6 +74,27 @@ evidence, objects and native outputs. GNU child observation, controlled Clang
 jobs, and the MSVC process adapter must establish the actual executed work.
 An unsupported wrapper or incomplete record refuses qualification. Requested
 `NativeFP.cmake` flags and verbose logs alone are insufficient.
+
+The Apple adapter admits only the observed linker defaults `-O3` and
+`-mllvm -enable-linkonceodr-outlining`. The latter configures the LLVM LTO
+backend; every linked project and discriminator object must independently
+be native Mach-O, without embedded LLVM/bitcode sections. Unknown linker
+optimization controls still refuse. The SDK's disabled module-map subdirectory
+search changes header discovery, not FP algebra; consumed headers still need
+their separately established provider and byte identities. These controls are
+documented in the [Clang driver](https://github.com/llvm/llvm-project/blob/main/clang/lib/Driver/ToolChains/Darwin.cpp)
+and [Apple linker options](https://github.com/apple-oss-distributions/ld64/blob/main/src/ld/Options.cpp).
+
+On Windows, the recorder combines LINK's explicit-input response with its actual
+`/VERBOSE:LIB` search and selected-member report. It reconciles member symbols
+against the observed archives; independently installed runtime paths remain the
+provider authority. LINK writes a retained manifest sidecar, then an independently
+resolved SDK `mt.exe` embeds it under direct process/image observation. The receipt
+binds the donor, XML, manifest resource and final PE, checks metadata preservation
+and unchanged non-resource sections, and refuses unobserved helper children.
+This preserves the existing manifest instead of suppressing it to avoid recording
+its production. GNU completion receipts become readable by the host evidence
+uploader before their fsync and atomic publication.
 
 Input identity and approval have different roles:
 

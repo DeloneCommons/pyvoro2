@@ -24,6 +24,58 @@ def test_native_runtime_inspection_is_available_on_all_modules():
         assert module._runtime_fp_state() == state
 
 
+@pytest.mark.parametrize('short', ['_core', '_core2d'])
+@pytest.mark.parametrize('phase', ['before', 'return', 'raise'])
+def test_import_registration_checks_raw_controls_on_entry_and_exit(
+        x86_controls, short, phase):
+    script = r'''
+        import ctypes
+        import importlib.util
+        import sys
+        import pyvoro2
+        from pyvoro2 import _fpguard
+        from pyvoro2._internal import native_qualification as q
+
+        controller = ctypes.CDLL(sys.argv[1])
+        controller.controls.argtypes = [ctypes.c_uint16, ctypes.c_uint32]
+        controller.controls.restype = None
+        name, phase = 'pyvoro2.' + sys.argv[2], sys.argv[3]
+        original = _fpguard._runtime_fp_state()
+        spec = importlib.util.find_spec(name)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        called = []
+
+        def hostile():
+            controller.controls(original['x87_control'],
+                                original['mxcsr'] | 0x4000)
+
+        def register(module):
+            called.append(module)
+            hostile()
+            if phase == 'raise':
+                raise RuntimeError('registration callback failed after FP change')
+
+        q.register_native = register
+        try:
+            if phase == 'before':
+                hostile()
+            try:
+                spec.loader.exec_module(module)
+            except ImportError as error:
+                assert 'native runtime FP profile' in str(error), error
+            else:
+                raise AssertionError('hostile registration boundary was accepted')
+        finally:
+            controller.controls(original['x87_control'], original['mxcsr'])
+        assert bool(called) == (phase != 'before')
+    '''
+    result = subprocess.run(
+        [sys.executable, '-c', textwrap.dedent(script), str(x86_controls), short,
+         phase], capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, (result.returncode, result.stdout, result.stderr)
+
+
 @pytest.fixture(scope='module')
 def x86_controls(tmp_path_factory):
     if sys.platform != 'linux' or platform.machine().lower() != 'x86_64':

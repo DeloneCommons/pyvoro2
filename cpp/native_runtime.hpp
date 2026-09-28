@@ -214,6 +214,25 @@ inline void bind_inspection(py::module_& module) {
   });
 }
 
+inline void register_imported_module(py::module_& module) {
+  // pybind11 >= 3 executes module initialization after import machinery sets
+  // __spec__, __file__, and sys.modules. Freeze the loaded file's lifetime here,
+  // before returning it to callers or admitting any foreign numeric callbacks.
+  require_environment();
+  try {
+    auto qualification = py::module_::import("pyvoro2._internal.native_qualification");
+    require_environment();
+    py::object register_native = qualification.attr("register_native");
+    require_environment();
+    register_native(module);
+    require_environment();
+  } catch (const py::error_already_set&) {
+    // Registration/import callbacks can also change controls and then raise.
+    require_environment();
+    throw;
+  }
+}
+
 enum class Family { safety, spatial, planar, ghost, locate };
 
 [[noreturn]] inline void entry_failure(Family family, const EnvironmentError& error) {

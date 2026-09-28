@@ -356,4 +356,9 @@ PYBIND11_MODULE(_core2d, m) {
 
   // The two ghost entry points are registered by planar_witness::bind above.
   // They share the fresh selected-source route with the witnessed entry points.
+#ifndef PYVORO2_PLANAR_QUALIFICATION
+  // Only the separately built, non-distributed stock comparison module uses
+  // qualification aliases. Every production import freezes its file identity.
+  pyvoro2::native_runtime::register_imported_module(m);
+#endif
 }

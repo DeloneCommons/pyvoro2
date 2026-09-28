@@ -337,6 +337,43 @@ def prepare_apple_driver(command, *, cwd, env):
     return {'compiler': compiler, 'environment': environment, 'selector': selector}
 
 
+def apple_preprocessed_input(invocations, source):
+    """Bind the actual saved expansion to its producing and consuming jobs.
+
+    Clang's saved-intermediate basename differs from GCC's for e.g. foo.cpp.o.
+    Filenames are evidence from executed cc1 jobs, not a suffix convention.
+    """
+    jobs = [row for row in invocations
+            if row.get('expanded_argv', [])[1:2] == ['-cc1']]
+    producers = [row for row in jobs if '-E' in row['expanded_argv']]
+    if len(producers) != 1:
+        raise BuildEvidenceError('missing/ambiguous Apple preprocessing job')
+    producer = producers[0]
+    argv = producer['expanded_argv']
+    cwd = Path(producer['cwd'])
+    if (producer.get('observation') != 'direct-child-execution' or
+            producer.get('exit_code') != 0 or
+            (cwd / argv[-1]).resolve() != Path(source).resolve() or
+            argv.count('-o') != 1 or argv.index('-o') + 1 >= len(argv)):
+        raise BuildEvidenceError('incomplete Apple preprocessing source/output')
+    output = (cwd / argv[argv.index('-o') + 1]).resolve()
+    consumers = []
+    for row in jobs:
+        args = row['expanded_argv']
+        if '-x' not in args or args.index('-x') + 1 >= len(args):
+            continue
+        language = args[args.index('-x') + 1]
+        if language not in ('c++-cpp-output', 'cpp-output'):
+            continue
+        if (row.get('observation') == 'direct-child-execution' and
+                row.get('exit_code') == 0 and
+                (Path(row['cwd']) / args[-1]).resolve() == output):
+            consumers.append(row)
+    if len(consumers) != 1:
+        raise BuildEvidenceError('Apple preprocessed output lacks one actual consumer')
+    return output
+
+
 def observe_apple(command, *, cwd, env, directory):
     prepared = prepare_apple_driver(command, cwd=cwd, env=env)
     compiler, selector = prepared['compiler'], prepared['selector']
