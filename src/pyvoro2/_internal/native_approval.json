@@ -4,47 +4,47 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "4920f5aa73a7bfc60699a49fcf160bb290a88b9b91e6ad6c1c0185d6ff485954"
+      "source_sha256": "d128417886fc30bf3d744c0c2d1ca751caeb6d6a308be7155e352455cc942d76"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "05f5266949ab73694d27b734385fa9ec8e9460c9fb84cc5ff6e5d795554fb25c"
+      "source_sha256": "3e22bbc35f99e76f8c105f14301e777aec62ed2b9aeb1592fe5ba954c43cf27f"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "67d2f9011fa9e8fcd07870672cb2400c2447a2f3bd192fb798df50170dc6fa83"
+      "source_sha256": "6f8d6d3ef19a7b9c54720dab5fb5571fb485405fdd8dc6ee516fe89c23425d27"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "6b3c4284b4cd8f4337d528d37e3ee26f4493ed6cb6d2320a9c928b9d189d45e8"
+      "source_sha256": "06d4af3aab9816e6846abfa27ddf49b81f2e61e46b241bed71e8f4532b554f42"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "e9077a1edcca91bac477262458e3918331be3a078b8581f62d4dd71ac68c9dc5"
+      "source_sha256": "07062257b0a987260bae731ab919ac1beee633ea4cc75943264da313e6ca416c"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "4f8f2eb001af668018591467f12a55f8e10bfafc7211dd15bf0771050717d762"
+      "source_sha256": "19c0c3130fd48d7fb0a3dcb98bd6c2bffb87e880fc0540051c00be1e426beaf9"
     }
   },
   "consumer_sha256": "1b57fac7d8f206bfa9e6211292912117479a4b4d32522b66b41066a784ed00fc",
   "policy_revision": "issue88-p1",
   "review": {
     "baseline_commit": "032c0d5befeb88b4a903274d082029c30fcc882f",
-    "decision": "Approved the frozen 381-file correction closure after fresh independent runtime and qualification reviews, resolution of the import-lifetime and Clang OpenCL-control findings, and integration review of Apple/Windows adapters and GNU receipt publication. This source approval does not qualify artifacts; the complete exact-head optimized, sanitizer, platform and distribution matrix remains mandatory. Earlier report files lost with the prior workspace were not reread or recreated; these self-contained reviews supply the current review authority.",
-    "measurement_file_sha256": "4bbf3561ea1cf130ffc00d049e7ec68d922b3f074d30223cd3246d9253bdb16a",
+    "decision": "Approved the frozen 381-file correction closure after independent qualification and runtime continuity reviews. The reviewed changes retain actual Clang evaluation-method expansion, conservative independently approved whole-archive Windows link closure, bounded SDK manifest relocation storage, and the corrected independent sanitizer coverage fixture. The frozen focused run passed 311 tests with six platform-dependent skips. The correction review explicitly supersedes the earlier focused-test timing claim while preserving the prior immutable reports. No native runtime, consumer, geometry or vendor source changed in this round. This source approval does not qualify artifacts: the complete fresh exact-head optimized, platform, sanitizer and distribution matrix and final-byte review remain mandatory.",
+    "measurement_file_sha256": "4e8b073e5ca1297b99ad62574310d420b4a4457b7c7bb4bfaa64bea4926be60f",
     "reports": [
       {
-        "name": "independent-runtime-review-resumed.md",
-        "sha256": "44d9782690fa17f0f309f71189f65c8f992168d6911b9f04885be7ad2791e5c4"
+        "name": "independent-runtime-review-correction-round.md",
+        "sha256": "00a11602ab71fabc51798e69b8d503a60b7de99cd93fe2168ebcc908a858be9f"
       },
       {
-        "name": "independent-qualification-review-resumed.md",
-        "sha256": "c5fb8246550aa60c659614752660b7e9f9e0a4b80dcfbb46f35c7eab35231c81"
+        "name": "independent-qualification-review-correction-round.md",
+        "sha256": "2e57ba0ce06fc13768f6bbc8335a5b18b296a6bb01a1109736d91bfd7b8a7880"
       }
     ],
-    "reviewed_delta_base": "2c1d41dad8812b3c6d116e512b996c492a551bd8"
+    "reviewed_delta_base": "4f04e9008fe9fcbdd7190305d774ce06f9ac1183"
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "8581cda24bc1c26826eb0964a10370ab34ef2525a4a5666be343de7748e3e90e"
+  "source_sha256": "6396d89bc8a45e5b68fbe9bda0c14fa565833af3c3fbf312af6b152fccb01c8e"
 }

@@ -173,11 +173,42 @@ def query_macros(driver, argv, source, family, cwd, env, directory):
         evidence.append(probe)
     else:
         macros = dict(re.findall(r'^#define (\w+) (.*)$', text, re.M))
+        if family == 'clang':
+            # Clang's evaluation-method builtin is expanded at its use site;
+            # it is intentionally absent from -dM's ordinary macro inventory.
+            # Source-local controls and proof-macro overrides are separately
+            # refused from the actual command/dependency/expanded-source input.
+            value, paths = query_clang_evaluation(
+                driver, options, cwd, env, directory)
+            macros['__FLT_EVAL_METHOD__'] = value
+            evidence.extend(paths)
     evidence.extend([output, error, directory / 'macro-query.json'])
     return {key: macros.get(key, '') for key in (
         '__FLT_EVAL_METHOD__', '__DBL_MANT_DIG__', '__DBL_MAX_EXP__',
         '__LDBL_MANT_DIG__', '__SIZEOF_INT__', '__FAST_MATH__',
         '__FINITE_MATH_ONLY__')}, evidence
+
+
+def query_clang_evaluation(driver, options, cwd, env, directory):
+    probe = directory / 'evaluation-query.cpp'
+    probe.write_text('PYVORO2_EVAL_METHOD __FLT_EVAL_METHOD__\n')
+    command = [str(driver), *options, '-E', '-P', '-x', 'c++', str(probe)]
+    run = subprocess.run(command, cwd=cwd, env=env, capture_output=True)
+    output = directory / 'evaluation-query.txt'
+    error = directory / 'evaluation-query.stderr'
+    receipt = directory / 'evaluation-query.json'
+    output.write_bytes(run.stdout)
+    error.write_bytes(run.stderr)
+    receipt.write_bytes(canonical({
+        'argv': command, 'cwd': str(cwd), 'environment': env,
+        'executable': file_identity(driver), 'exit_code': run.returncode,
+    }) + b'\n')
+    values = [line.strip() for line in output.read_text(errors='strict').splitlines()
+              if line.strip().startswith('PYVORO2_EVAL_METHOD')]
+    if (run.returncode or len(values) != 1 or
+            re.fullmatch(r'PYVORO2_EVAL_METHOD\s+0', values[0]) is None):
+        raise BuildEvidenceError('missing or unsafe Clang evaluation-method expansion')
+    return '0', [probe, output, error, receipt]
 
 
 def record_command(command, output_dir):

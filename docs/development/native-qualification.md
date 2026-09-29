@@ -84,14 +84,26 @@ search changes header discovery, not FP algebra; consumed headers still need
 their separately established provider and byte identities. These controls are
 documented in the [Clang driver](https://github.com/llvm/llvm-project/blob/main/clang/lib/Driver/ToolChains/Darwin.cpp)
 and [Apple linker options](https://github.com/apple-oss-distributions/ld64/blob/main/src/ld/Options.cpp).
+[Clang's evaluation-method builtin](https://releases.llvm.org/17.0.1/tools/clang/docs/UsersManual.html)
+is absent from ordinary macro dumps. A separate
+preprocessor expansion under the same effective options and environment retains
+its actual value and refuses missing, ambiguous or nonzero results; it does not
+infer binary64 evaluation from the compiler name.
 
 On Windows, the recorder combines LINK's explicit-input response with its actual
-`/VERBOSE:LIB` search and selected-member report. It reconciles member symbols
-against the observed archives; independently installed runtime paths remain the
-provider authority. LINK writes a retained manifest sidecar, then an independently
+`/VERBOSE:LIB` report. Library-only output declares conservative searched-archive
+coverage: every byte of every searched archive belongs to the checked input
+closure, including default libraries absent from the explicit response. When
+member rows are present, their symbols must also reconcile against those archive
+bytes. Independently installed runtime paths remain the provider authority;
+search output alone cannot approve an archive. Missing, malformed or incomplete
+reports refuse. LINK writes a retained manifest sidecar, then an independently
 resolved SDK `mt.exe` embeds it under direct process/image observation. The receipt
-binds the donor, XML, manifest resource and final PE, checks metadata preservation
-and unchanged non-resource sections, and refuses unobserved helper children.
+binds the donor, XML, manifest resource and final PE and refuses unobserved helper
+children. Numerical/import/data section RVAs and payloads stay unchanged. The
+manifest insertion may move `.reloc` storage only when its table bytes and target
+mapping remain identical and the base-relocation directory follows that table,
+consistent with the [PE relocation format](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-reloc-section-image-only).
 This preserves the existing manifest instead of suppressing it to avoid recording
 its production. GNU completion receipts become readable by the host evidence
 uploader before their fsync and atomic publication.

@@ -75,6 +75,31 @@ def _library_report(tmp_path):
     return obj, archive, positions, rsp, verbose
 
 
+def _library_only_report(tmp_path):
+    """Observed VS 18 grammar: six complete passes, 16 archives, no member rows.
+
+    4f04e90 Windows310 artifact 11004577833 has this same pass shape in all
+    three LINK stdout files. Local fixture paths replace the runner paths.
+    """
+    obj, archive, _, rsp, verbose = _library_report(tmp_path)
+    names = ('python310', 'kernel32', 'user32', 'gdi32', 'winspool', 'shell32',
+             'ole32', 'oleaut32', 'uuid', 'comdlg32', 'advapi32', 'msvcprt',
+             'MSVCRT', 'OLDNAMES', 'vcruntime', 'ucrt')
+    archives = [tmp_path / (name + '.lib') for name in names]
+    content = archive.read_bytes()
+    for path in archives:
+        path.write_bytes(content)
+    rsp.write_text('\n'.join('"' + str(path) + '"'
+                             for path in [obj, *archives[:11]]) + '\n')
+    passes = [archives * 2 + archives[:1], *([archives] * 4), archives[:-1]]
+    blocks = ['\nSearching libraries\n' +
+              ''.join('    Searching ' + str(path) + ':\n' for path in paths) +
+              '\nFinished searching libraries\n' for paths in passes]
+    blocks[0] += '   Creating library image.lib and object image.exp\n'
+    verbose.write_text(''.join(blocks))
+    return obj, archives, rsp, verbose
+
+
 def _pe_image(path, *, dll=True, manifest=None, resource_id=2, code=b'\xc3\x90'):
     """Literal PE32+ fixture with .text and an optional ID/language resource tree."""
     data = bytearray(1536 if manifest is not None else 1024)
@@ -84,6 +109,11 @@ def _pe_image(path, *, dll=True, manifest=None, resource_id=2, code=b'\xc3\x90')
     struct.pack_into('<HH', data, 132, 0x8664, 2 if manifest is not None else 1)
     struct.pack_into('<HH', data, 148, 240, 0x2022 if dll else 0x22)
     struct.pack_into('<H', data, 152, 0x20b)
+    struct.pack_into('<III', data, 156, 512, 512 if manifest is not None else 0, 0)
+    struct.pack_into('<I', data, 168, 4096)
+    struct.pack_into('<Q', data, 176, 0x180000000)
+    struct.pack_into('<II', data, 184, 4096, 512)
+    struct.pack_into('<II', data, 208, 12288 if manifest is not None else 8192, 512)
     struct.pack_into('<I', data, 260, 16)
     data[392:400] = b'.text\0\0\0'
     struct.pack_into('<IIII', data, 400, len(code), 4096, 512, 512)
@@ -102,6 +132,35 @@ def _pe_image(path, *, dll=True, manifest=None, resource_id=2, code=b'\xc3\x90')
         struct.pack_into('<IIII', data, 1096, 8192 + 88, len(manifest), 0, 0)
         data[1112:1112 + len(manifest)] = manifest
     path.write_bytes(data)
+
+
+def _pe_with_relocations(path, *, manifest=None):
+    """mt's observed insertion moves .reloc storage, not its relocation targets."""
+    _pe_image(path, manifest=manifest)
+    data = bytearray(path.read_bytes()) + bytearray(512)
+    final = manifest is not None
+    struct.pack_into('<H', data, 134, 3 if final else 2)
+    struct.pack_into('<I', data, 160, 1024 if final else 512)
+    struct.pack_into('<I', data, 208, 16384 if final else 12288)
+    header = 472 if final else 432
+    address, raw = (12288, 1536) if final else (8192, 1024)
+    data[header:header + 8] = b'.reloc\0\0'
+    struct.pack_into('<IIII', data, header + 8, 12, address, 512, raw)
+    struct.pack_into('<I', data, header + 36, 0x42000040)
+    struct.pack_into('<II', data, 304, address, 12)  # Base relocation directory.
+    struct.pack_into('<IIHH', data, raw, 4096, 12, 0xa008, 0)
+    path.write_bytes(data)
+
+
+def _refresh_pe_claims(row):
+    """Let negative controls reach structural checks after rebinding file bytes."""
+    receipt = row['windows_manifest']
+    receipt['donor'] = file_identity(receipt['donor']['path'])
+    receipt['linked_output'] = {**receipt['donor'], 'path': row['output']['path']}
+    receipt['output'] = row['output'] = file_identity(row['output']['path'])
+    for index, item in enumerate(row['evidence_files']):
+        if item['path'] == receipt['donor']['path']:
+            row['evidence_files'][index] = receipt['donor']
 
 
 def _manifest_row(tmp_path, monkeypatch, *, dll=True):
@@ -202,12 +261,80 @@ def test_windows_actual_defaultlib_selection_resolves_duplicate_import_members(
     report = windows_link.collect_link_inputs(rsp, verbose)
     assert report['explicit_inputs'] == [file_identity(obj)]
     assert report['searched_libraries'] == [file_identity(archive)]
+    assert report['coverage'] == {
+        'mode': 'selected-members-and-searched-archives', 'search_passes': 1,
+    }
     assert report['loaded_members'] == [{
         'archive': str(archive), 'symbol': '__imp_second',
         'reported_member': 'runtime.dll', 'referenced_by': ['unit.obj'],
         'member': {'name': 'runtime.dll', 'offset': offsets[1], 'size': 13,
                    'sha256': hashlib.sha256(b'second import').hexdigest()},
     }]
+
+
+def test_windows_library_only_report_binds_complete_conservative_archive_closure(
+        tmp_path, monkeypatch):
+    row, _ = _manifest_row(tmp_path, monkeypatch)
+    obj, archives, rsp, verbose = _library_only_report(tmp_path)
+    report = windows_link.collect_link_inputs(rsp, verbose)
+    assert report['coverage'] == {
+        'mode': 'conservative-searched-archives', 'search_passes': 6,
+    }
+    assert report['loaded_members'] == []
+    assert report['searched_libraries'] == sorted(
+        [file_identity(path) for path in archives], key=lambda item: item['path'])
+    row.update(windows_link_inputs=report,
+               link_inputs=[file_identity(path) for path in [obj, *archives]],
+               object_inputs=[file_identity(obj)],
+               runtime_link_inputs=[file_identity(path) for path in archives])
+    row['invocations'][0]['expanded_argv'].extend([
+        '/VERBOSE:LIB', '/LINKREPROFULLPATHRSP:' + str(rsp)])
+    row['evidence_files'].extend([file_identity(rsp), file_identity(verbose)])
+    assert verify_link_closure(row, {str(obj): {'output': file_identity(obj)}}) == [
+        file_identity(obj)]
+
+
+@pytest.mark.parametrize('mutation', [
+    'omit_claim', 'omit_input', 'log_tamper', 'partial_search',
+    'provider_substitution', 'shadow_archive', 'archive_tamper',
+])
+def test_windows_library_only_coverage_cannot_hide_missing_or_untrusted_inputs(
+        tmp_path, monkeypatch, mutation):
+    row, _ = _manifest_row(tmp_path, monkeypatch)
+    obj, archives, rsp, verbose = _library_only_report(tmp_path)
+    report = windows_link.collect_link_inputs(rsp, verbose)
+    row.update(windows_link_inputs=report,
+               link_inputs=[file_identity(path) for path in [obj, *archives]],
+               object_inputs=[file_identity(obj)],
+               runtime_link_inputs=[file_identity(path) for path in archives])
+    row['invocations'][0]['expanded_argv'].extend([
+        '/VERBOSE:LIB', '/LINKREPROFULLPATHRSP:' + str(rsp)])
+    row['evidence_files'].extend([file_identity(rsp), file_identity(verbose)])
+    if mutation == 'omit_claim':
+        report['searched_libraries'].pop()
+    elif mutation == 'omit_input':
+        row['link_inputs'].pop()
+    elif mutation == 'log_tamper':
+        verbose.write_text(verbose.read_text() + 'Unrecorded library search\n')
+    elif mutation == 'partial_search':
+        verbose.write_text(verbose.read_text().rsplit(
+            'Finished searching libraries', 1)[0])
+        report['verbose_log'] = file_identity(verbose)
+        row['evidence_files'][-1] = file_identity(verbose)
+    elif mutation == 'provider_substitution':
+        row['runtime_link_inputs'].pop()
+    elif mutation == 'shadow_archive':
+        shadow = tmp_path / 'shadow' / archives[-1].name
+        shadow.parent.mkdir()
+        shadow.write_bytes(archives[-1].read_bytes())
+        verbose.write_text(verbose.read_text().replace(str(archives[-1]), str(shadow)))
+        row['windows_link_inputs'] = windows_link.collect_link_inputs(rsp, verbose)
+        row['link_inputs'][-1] = file_identity(shadow)
+        row['evidence_files'][-1] = file_identity(verbose)
+    else:
+        archives[-1].write_bytes(archives[-1].read_bytes() + b'changed')
+    with pytest.raises(BuildEvidenceError):
+        verify_link_closure(row, {str(obj): {'output': file_identity(obj)}})
 
 
 @pytest.mark.parametrize('before,after', [
@@ -233,6 +360,72 @@ def test_windows_manifest_binds_actual_metadata_and_dll_or_exe_resource_id(
     resources = windows_link.pe_manifest_resources(row['output']['path'])
     assert [(r['resource_id'], r['language'], r['bytes']) for r in resources] == [
         (2 if dll else 1, 1033, MANIFEST)]
+
+
+def test_windows_manifest_preserves_relocation_semantics_when_table_storage_moves(
+        tmp_path, monkeypatch):
+    row, _ = _manifest_row(tmp_path, monkeypatch)
+    _pe_with_relocations(Path(row['windows_manifest']['donor']['path']))
+    _pe_with_relocations(Path(row['output']['path']), manifest=MANIFEST)
+    _refresh_pe_claims(row)
+    windows_link.verify_manifest(row)
+
+
+@pytest.mark.parametrize('mutation', [
+    'code_rva', 'data_rva', 'relocation_bytes', 'relocation_targets',
+    'relocation_directory', 'duplicate_sections', 'image_base', 'entrypoint',
+    'unaligned_raw', 'overlapping_raw', 'virtual_header_overlap',
+])
+def test_windows_manifest_relocation_move_cannot_change_image_semantics(
+        tmp_path, monkeypatch, mutation):
+    row, _ = _manifest_row(tmp_path, monkeypatch)
+    donor, final = (Path(row['windows_manifest']['donor']['path']),
+                    Path(row['output']['path']))
+    _pe_with_relocations(donor)
+    _pe_with_relocations(final, manifest=MANIFEST)
+    data = bytearray(final.read_bytes())
+    if mutation == 'code_rva':
+        struct.pack_into('<I', data, 404, 16384)
+    elif mutation == 'data_rva':
+        before = bytearray(donor.read_bytes())
+        for image in (before, data):
+            image[392:400] = b'.data\0\0\0'
+            struct.pack_into('<I', image, 428, 0xc0000040)
+        donor.write_bytes(before)
+        struct.pack_into('<I', data, 404, 16384)
+    elif mutation == 'relocation_bytes':
+        struct.pack_into('<H', data, 1544, 0xa010)
+    elif mutation == 'relocation_targets':
+        before = bytearray(donor.read_bytes())
+        struct.pack_into('<I', before, 1024, 8192)
+        donor.write_bytes(before)
+        struct.pack_into('<I', data, 1536, 8192)
+    elif mutation == 'relocation_directory':
+        struct.pack_into('<I', data, 304, 12292)
+    elif mutation == 'duplicate_sections':
+        data[432:440] = b'.reloc\0\0'
+    elif mutation == 'image_base':
+        struct.pack_into('<Q', data, 176, 0x140000000)
+    elif mutation == 'entrypoint':
+        struct.pack_into('<I', data, 168, 4100)
+    elif mutation == 'unaligned_raw':
+        data += b'\0' + data[512:1024]
+        struct.pack_into('<I', data, 412, 2049)
+    elif mutation == 'virtual_header_overlap':
+        struct.pack_into('<I', data, 484, 0)
+        struct.pack_into('<I', data, 304, 0)
+        struct.pack_into('<I', data, 208, 12288)
+    else:
+        # Identical bytes cannot justify aliased raw section mappings.
+        before = bytearray(donor.read_bytes())
+        before[512:1024] = before[1024:1536]
+        data[512:1024] = data[1536:2048]
+        donor.write_bytes(before)
+        struct.pack_into('<I', data, 412, 1536)
+    final.write_bytes(data)
+    _refresh_pe_claims(row)
+    with pytest.raises(BuildEvidenceError, match='Windows manifest'):
+        windows_link.verify_manifest(row)
 
 
 @pytest.mark.parametrize('mutation', [

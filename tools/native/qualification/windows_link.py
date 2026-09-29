@@ -1,7 +1,9 @@
 """Closed MSVC library selection and SDK manifest resource evidence.
 
 LINKREPROFULLPATHRSP lists explicit inputs, not DEFAULTLIB resolution. The
-actual /VERBOSE:LIB stream supplies searched archives and selected members.
+actual /VERBOSE:LIB stream supplies a conservative whole-searched-archive
+closure. When LINK also emits member selections, those are reconciled too;
+library-only diagnostics do not claim that individual members were observed.
 The linker writes its actual manifest to a retained sidecar; a separately
 observed SDK mt.exe embeds that XML without opaque rc/cvtres children.
 """
@@ -167,13 +169,21 @@ def collect_link_inputs(response, verbose):
         else:
             raise BuildEvidenceError(
                 'unparsed Windows library selection output: ' + word)
-    if active or found is not None or not completed or not libraries or not selected:
+    if active or found is not None or not completed or not libraries:
         raise BuildEvidenceError('incomplete Windows actual library selection report')
     if any(item['path'] not in libraries for item in explicit.values()
            if Path(item['path']).suffix.lower() == '.lib'):
         raise BuildEvidenceError(
             'Windows explicit archive missing from actual library search')
-    return {'schema': 'pyvoro2.windows-link-inputs.v1',
+    # /VERBOSE:LIB on VS 18 reports complete searched-library passes without
+    # Found/Loaded rows. Every byte of every searched archive remains in the
+    # conservative closure; verify_link_closure separately requires its exact
+    # identity to be independently approved by the installed runtime provider.
+    # A partial member stanza still refuses above and cannot select this mode.
+    mode = ('selected-members-and-searched-archives' if selected else
+            'conservative-searched-archives')
+    return {'schema': 'pyvoro2.windows-link-inputs.v2',
+            'coverage': {'mode': mode, 'search_passes': completed},
             'explicit_response': file_identity(response),
             'verbose_log': file_identity(verbose),
             'explicit_inputs': sorted(explicit.values(), key=lambda row: row['path']),
@@ -263,6 +273,145 @@ def pe_manifest_resources(path):
                                   'codepage': codepage,
                                   'bytes': data[start:start + length]})
     return resources
+
+
+def verify_pe_manifest_transform(donor, output):
+    """Permit mt to insert .rsrc and rebind unchanged base-relocation storage.
+
+    PE base relocations address ImageBase + block PageRVA + entry offset;
+    the .reloc section's storage RVA is not part of those target addresses.
+    Only that storage section may move. All numerical/import/data section
+    RVAs, payloads, and the relocation table bytes and target mappings remain
+    identical. The base-relocation data directory must follow the table.
+    """
+    before, after = _pe(donor), _pe(output)
+
+    def headers(parsed):
+        data, _, sections, _, _ = parsed
+        pe = struct.unpack_from('<I', data, 60)[0]
+        coff = bytearray(data[pe:pe + 24])
+        optional_size = struct.unpack_from('<H', coff, 20)[0]
+        optional = bytearray(data[pe + 24:pe + 24 + optional_size])
+        if optional_size < 160 or len(optional) != optional_size:
+            raise BuildEvidenceError('Windows manifest lacks complete PE headers')
+        directories = struct.unpack_from('<I', optional, 108)[0]
+        if directories < 6 or 112 + directories * 8 > len(optional):
+            raise BuildEvidenceError('Windows manifest has invalid PE data directories')
+        section_alignment, file_alignment = struct.unpack_from('<II', optional, 32)
+        if (file_alignment < 512 or file_alignment & (file_alignment - 1) or
+                section_alignment < file_alignment or
+                section_alignment & (section_alignment - 1)):
+            raise BuildEvidenceError('Windows manifest has unsupported PE alignment')
+        names = {section['name']: section for section in sections}
+        if len(names) != len(sections):
+            raise BuildEvidenceError('Windows manifest has ambiguous PE sections')
+        raw_end = struct.unpack_from('<I', optional, 60)[0]
+        if (raw_end % file_alignment or
+                raw_end < pe + 24 + optional_size + 40 * len(sections)):
+            raise BuildEvidenceError('Windows manifest has invalid PE header storage')
+        for section in sorted(sections, key=lambda row: row['raw_offset']):
+            if not section['raw_size']:  # Uninitialized sections use zero fill.
+                continue
+            if (section['raw_offset'] % file_alignment or
+                    section['raw_size'] % file_alignment or
+                    section['raw_offset'] < raw_end or
+                    section['raw_offset'] + section['raw_size'] > len(data)):
+                raise BuildEvidenceError(
+                    'Windows manifest has unaligned/overlapping raw PE sections')
+            raw_end = section['raw_offset'] + section['raw_size']
+        header_size = struct.unpack_from('<I', optional, 60)[0]
+        end = ((header_size + section_alignment - 1) // section_alignment *
+               section_alignment)
+        for section in sorted(sections, key=lambda row: row['address']):
+            if section['address'] % section_alignment or section['address'] < end:
+                raise BuildEvidenceError('Windows manifest has overlapping PE sections')
+            end = section['address'] + max(section['size'], section['raw_size'])
+        directory = struct.unpack_from('<II', optional, 152)
+        original = bytes(optional)
+        # mt recomputes storage size/checksum fields and the two directories.
+        for offset, size in ((8, 4), (56, 12), (128, 8), (152, 4)):
+            optional[offset:offset + size] = b'\0' * size
+        coff[6:8] = b'\0\0'  # The new .rsrc adds exactly one section below.
+        return names, original, bytes(coff), bytes(optional), directory, pe
+
+    old, _, old_coff, old_control, old_reloc, _ = headers(before)
+    new, new_header, new_coff, new_control, new_reloc, pe = headers(after)
+    if (old_coff != new_coff or old_control != new_control or b'.rsrc' in old or
+            set(new) != {*old, b'.rsrc'}):
+        raise BuildEvidenceError(
+            'Windows manifest changed PE controls or section inventory')
+    for name, section in old.items():
+        keys = ('name', 'size', 'flags', 'bytes')
+        if name != b'.reloc':
+            keys += ('address',)
+        if any(section[key] != new[name][key] for key in keys):
+            raise BuildEvidenceError(
+                'Windows manifest changed non-resource PE payload/RVA')
+    resource = new[b'.rsrc']
+    if (resource['flags'] != 0x40000040 or after[3] != resource['address'] or
+            not 0 < after[4] <= min(resource['size'], resource['raw_size'])):
+        raise BuildEvidenceError('Windows manifest resource directory binding differs')
+
+    def aligned(value, alignment):
+        return (value + alignment - 1) // alignment * alignment
+
+    section_alignment, file_alignment = struct.unpack_from('<II', new_header, 32)
+    image_size = aligned(max(section['address'] +
+                             max(section['size'], section['raw_size'])
+                             for section in new.values()), section_alignment)
+    header_size = aligned(pe + 24 + len(new_header) + 40 * len(new), file_alignment)
+    initialized_size = sum(section['raw_size'] for section in new.values()
+                           if section['flags'] & 0x40)
+    if (struct.unpack_from('<II', new_header, 56) != (image_size, header_size) or
+            struct.unpack_from('<I', new_header, 8)[0] != initialized_size or
+            any(section['raw_size'] and section['raw_offset'] < header_size
+                for section in new.values())):
+        raise BuildEvidenceError('Windows manifest PE storage size binding differs')
+    if b'.reloc' not in old:
+        if old_reloc != (0, 0) or new_reloc != (0, 0):
+            raise BuildEvidenceError(
+                'Windows manifest has an unbound relocation directory')
+        return
+    relocation = old[b'.reloc']
+    if (old_reloc[0] != relocation['address'] or
+            new_reloc != (new[b'.reloc']['address'], old_reloc[1]) or
+            not 0 < old_reloc[1] <= min(relocation['size'], relocation['raw_size']) or
+            relocation['flags'] & 0xa0000020 or
+            relocation['flags'] & 0x40000040 != 0x40000040):
+        raise BuildEvidenceError(
+            'Windows manifest base relocation directory binding differs')
+
+    def targets(sections):
+        table = sections[b'.reloc']['bytes'][:old_reloc[1]]
+        extents = {name: (section['address'], section['address'] +
+                          max(section['size'], section['raw_size']))
+                   for name, section in sections.items()
+                   if name not in (b'.reloc', b'.rsrc')}
+        position, result = 0, []
+        while position < len(table):
+            if position + 8 > len(table):
+                raise BuildEvidenceError(
+                    'Windows manifest has truncated base relocations')
+            page, size = struct.unpack_from('<II', table, position)
+            if (page % 4096 or size < 8 or size % 4 or position + size > len(table)):
+                raise BuildEvidenceError(
+                    'Windows manifest has invalid base relocations')
+            for offset in range(position + 8, position + size, 2):
+                entry = struct.unpack_from('<H', table, offset)[0]
+                kind, target = entry >> 12, page + (entry & 0xfff)
+                if kind == 0:  # IMAGE_REL_BASED_ABSOLUTE is padding.
+                    continue
+                owners = [name for name, (begin, end) in extents.items()
+                          if begin <= target and target + 8 <= end]
+                if kind != 10 or len(owners) != 1:  # IMAGE_REL_BASED_DIR64.
+                    raise BuildEvidenceError(
+                        'Windows manifest changed relocation targets')
+                result.append((target, owners[0]))
+            position += size
+        return result
+
+    if targets(old) != targets(new):
+        raise BuildEvidenceError('Windows manifest changed relocation target mapping')
 
 
 def manifest_xml(data):
@@ -356,7 +505,7 @@ def embed_manifest(output, *, driver, cwd, env, directory, observer):
 def verify_windows_link(row):
     from .effective_build import _verify_identity
     report = row.get('windows_link_inputs')
-    if not report or report.get('schema') != 'pyvoro2.windows-link-inputs.v1':
+    if not report or report.get('schema') != 'pyvoro2.windows-link-inputs.v2':
         raise BuildEvidenceError('missing Windows actual link input selection evidence')
     for key in ('explicit_response', 'verbose_log'):
         _verify_identity(report[key], 'Windows link input report')
@@ -481,13 +630,4 @@ def verify_manifest(row):
             resources[0]['bytes'] != Path(receipt['embedded']['path']).read_bytes() or
             manifest_xml(resources[0]['bytes']) != xml):
         raise BuildEvidenceError('Windows manifest resource equality failed')
-    # mt may relocate PE headers and the resource section. It cannot change
-    # any existing section's numerical/import payload under this adapter.
-
-    def payload(path):
-        keys = ('name', 'address', 'size', 'flags', 'bytes')
-        return [{key: section[key] for key in keys}
-                for section in _pe(path)[2] if section['name'] != b'.rsrc']
-    if payload(donor['path']) != payload(row['output']['path']):
-        raise BuildEvidenceError(
-            'Windows manifest edit changed non-resource PE sections')
+    verify_pe_manifest_transform(donor['path'], row['output']['path'])

@@ -1,7 +1,9 @@
 """Apple default controls must retain native, non-LTO link closure."""
 from pathlib import Path
+import json
 import struct
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -145,3 +147,73 @@ def test_apple_preprocessing_refuses_unbound_expansion(tmp_path, mutation):
         jobs[0]['observation'] = 'executed-driver-plan-only'
     with pytest.raises(BuildEvidenceError, match='preprocess'):
         apple_preprocessed_input(jobs, tmp_path / 'foo.cpp')
+
+
+def _macro_query(tmp_path, monkeypatch, expansion, *, exit_code=0):
+    from qualification import record_command
+    driver = tmp_path / 'clang'
+    driver.write_bytes(b'observed compiler identity')
+    source = tmp_path / 'source.cpp'
+    source.write_text('int value;\n')
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append((command, kwargs))
+        if '-dM' in command:
+            # Clang's dynamic builtin is deliberately absent from -dM output.
+            return SimpleNamespace(returncode=0, stderr=b'', stdout=(
+                b'#define __DBL_MANT_DIG__ 53\n'
+                b'#define __DBL_MAX_EXP__ 1024\n'
+                b'#define __LDBL_MANT_DIG__ 64\n'
+                b'#define __SIZEOF_INT__ 4\n'
+                b'#define __FINITE_MATH_ONLY__ 0\n'))
+        return SimpleNamespace(returncode=exit_code, stdout=expansion,
+                               stderr=b'diagnostic' if exit_code else b'')
+
+    monkeypatch.setattr(record_command.subprocess, 'run', run)
+    options = ['-O3', '-fno-fast-math', '-ffp-contract=off', '-fno-lto',
+               '-arch', 'x86_64', '-isysroot', '/selected/sdk']
+    argv = [str(driver), *options, '-c', str(source), '-o', 'source.o',
+            '-save-temps=obj', '-MD', '-MF', 'source.d']
+    environment = {'SDKROOT': '/selected/sdk', 'LANG': 'C'}
+    return (record_command, driver, source, argv, options, environment, calls)
+
+
+def test_clang_evaluation_builtin_is_expanded_under_the_effective_options(
+        tmp_path, monkeypatch):
+    setup = _macro_query(tmp_path, monkeypatch, b'PYVORO2_EVAL_METHOD 0\n')
+    recorder, driver, source, argv, options, environment, calls = setup
+    macros, evidence = recorder.query_macros(
+        driver, argv, source, 'clang', tmp_path, environment, tmp_path)
+    assert macros['__FLT_EVAL_METHOD__'] == '0'
+    assert len(calls) == 2
+    command, kwargs = calls[1]
+    assert command == [str(driver), *options, '-E', '-P', '-x', 'c++',
+                       str(tmp_path / 'evaluation-query.cpp')]
+    assert kwargs['cwd'] == tmp_path and kwargs['env'] == environment
+    assert (tmp_path / 'evaluation-query.cpp').read_text() == (
+        'PYVORO2_EVAL_METHOD __FLT_EVAL_METHOD__\n')
+    query = json.loads((tmp_path / 'evaluation-query.json').read_text())
+    assert query == {'argv': command, 'cwd': str(tmp_path),
+                     'environment': environment, 'executable': file_identity(driver),
+                     'exit_code': 0}
+    assert {path.name for path in evidence} >= {
+        'evaluation-query.cpp', 'evaluation-query.txt', 'evaluation-query.stderr',
+        'evaluation-query.json', 'type-macros.txt', 'macro-query.json'}
+
+
+@pytest.mark.parametrize('expansion,exit_code', [
+    (b'', 0), (b'PYVORO2_EVAL_METHOD __FLT_EVAL_METHOD__\n', 0),
+    (b'PYVORO2_EVAL_METHOD 0 1\n', 0),
+    (b'PYVORO2_EVAL_METHOD 0\nPYVORO2_EVAL_METHOD 0\n', 0),
+    (b'PYVORO2_EVAL_METHOD -1\n', 0),
+    (b'PYVORO2_EVAL_METHOD 1\n', 0), (b'PYVORO2_EVAL_METHOD 2\n', 0),
+    (b'PYVORO2_EVAL_METHOD 0\n', 1),
+])
+def test_clang_evaluation_query_refuses_missing_ambiguous_unsafe_or_failed_evidence(
+        tmp_path, monkeypatch, expansion, exit_code):
+    setup = _macro_query(tmp_path, monkeypatch, expansion, exit_code=exit_code)
+    recorder, driver, source, argv, _, environment, _ = setup
+    with pytest.raises(BuildEvidenceError, match='evaluation'):
+        recorder.query_macros(
+            driver, argv, source, 'clang', tmp_path, environment, tmp_path)
