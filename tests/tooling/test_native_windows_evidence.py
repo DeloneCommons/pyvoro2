@@ -10,6 +10,7 @@ import shutil
 import struct
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -22,7 +23,7 @@ from qualification.effective_build import (  # noqa: E402
 from qualification.link_provenance import (  # noqa: E402
     verify_link_closure, verify_linker_options,
 )
-from qualification import windows_link  # noqa: E402
+from qualification import windows_link, windows_trace  # noqa: E402
 
 
 MANIFEST = b'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -33,6 +34,129 @@ MANIFEST = b'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     </requestedPrivileges>
   </security></trustInfo>
 </assembly>'''
+
+
+def _compiler_passes():
+    """Actual /nologo /Bv grammar retained by Windows artifact 11006036952."""
+    directory = (r'C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC'
+                 r'\Tools\MSVC\14.51.36231\bin\Hostx64\x64')
+    modules = [('cl.exe', '19.51.36257.0'), ('c1.dll', '19.51.36257.0'),
+               ('c1xx.dll', '19.51.36257.0'), ('c2.dll', '19.51.36257.0'),
+               ('c1xx.dll', '19.51.36257.0'), ('link.exe', '14.51.36257.0'),
+               ('mspdb140.dll', '14.51.36257.0'),
+               (r'1033\clui.dll', '19.51.36257.0')]
+    text = 'Compiler Passes:\r\n' + ''.join(
+        f' {directory}\\{name}:        Version {version}\r\n'
+        for name, version in modules) + '\r\n'
+    return text, {'path': directory + r'\cl.exe', 'size': 1, 'sha256': 'a' * 64}
+
+
+def test_windows_nologo_version_binds_actual_cl_pass_without_guessing_a_banner():
+    text, compiler = _compiler_passes()
+    assert 'Compiler Version' not in text
+    assert windows_trace.compiler_version(text, compiler) == '19.51.36257.0'
+
+
+@pytest.mark.parametrize('mutation', [
+    'no_passes', 'only_banner', 'missing_driver', 'relative_driver',
+    'shadow_driver', 'duplicate_driver', 'conflicting_driver',
+    'malformed_version', 'unparsed_pass', 'unterminated_passes', 'multiple_blocks',
+])
+def test_windows_compiler_version_refuses_unbound_or_ambiguous_pass_rows(mutation):
+    text, compiler = _compiler_passes()
+    driver = next(line for line in text.splitlines() if '\\cl.exe:' in line)
+    if mutation == 'no_passes':
+        text = text.replace('Compiler Passes:\r\n', '')
+    elif mutation == 'only_banner':
+        text = ('Microsoft (R) C/C++ Optimizing Compiler Version '
+                '19.51.36257 for x64\r\n')
+    elif mutation == 'missing_driver':
+        text = text.replace(driver + '\r\n', '')
+    elif mutation == 'relative_driver':
+        text = text.replace(compiler['path'], 'cl.exe')
+    elif mutation == 'shadow_driver':
+        text = text.replace(compiler['path'], r'C:\shadow\cl.exe')
+    elif mutation == 'duplicate_driver':
+        text = text.replace(driver, driver + '\r\n' + driver)
+    elif mutation == 'conflicting_driver':
+        text = text.replace(driver, driver + '\r\n' +
+                            driver.replace('19.51.36257.0', '19.52.99999.0'))
+    elif mutation == 'malformed_version':
+        text = text.replace('19.51.36257.0', 'unknown')
+    elif mutation == 'unparsed_pass':
+        text = text.replace(driver, ' Unsupported compiler pass information')
+    elif mutation == 'unterminated_passes':
+        text = text.rstrip() + '\r\n'
+    else:
+        text += text
+    with pytest.raises(BuildEvidenceError, match='MSVC compiler version'):
+        windows_trace.compiler_version(text, compiler)
+
+
+@pytest.mark.parametrize('tool,diagnostics_present', [
+    ('cl.exe', True), ('cl.exe', False), ('link.exe', False), ('mt.exe', False),
+])
+def test_windows_observer_requires_version_only_for_actual_compiler_process(
+        tmp_path, monkeypatch, tool, diagnostics_present):
+    """Exercise observe's role handling with literal process/image events."""
+    images = [tmp_path / tool]
+    if tool == 'cl.exe':
+        images.extend([tmp_path / 'c1xx.dll', tmp_path / 'c2.dll'])
+    for path in images:
+        path.write_bytes(b'MZ fixture ' + path.name.encode())
+    directory = tmp_path / 'observation'
+    directory.mkdir()
+    events = iter([(3, 1), *[(6, index) for index in range(2, len(images) + 1)],
+                   (5, 0)])
+
+    def create_process(*args):
+        process = args[-1]._obj
+        process.dwProcessId, process.dwThreadId = 42, 43
+        process.hProcess, process.hThread = 100, 101
+        if diagnostics_present:
+            text, compiler = _compiler_passes()
+            text = text.replace(compiler['path'].rsplit('\\', 1)[0], str(tmp_path))
+            (directory / 'stderr.txt').write_text(text)
+        return True
+
+    def wait_event(pointer, timeout):
+        code, handle = next(events)
+        event = pointer._obj
+        event.code, event.pid, event.tid = code, 42, 43
+        if code == 3:
+            event.data.create.hFile = handle
+        elif code == 6:
+            event.data.load.hFile = handle
+        else:
+            event.data.exit_code = 0
+        return True
+
+    def image_path(handle, buffer, length, flags):
+        buffer.value = str(images[handle - 1])
+        return len(buffer.value)
+
+    kernel = SimpleNamespace(
+        CreateProcessW=create_process, WaitForDebugEvent=wait_event,
+        GetFinalPathNameByHandleW=image_path, ContinueDebugEvent=lambda *args: True,
+        CloseHandle=lambda *args: True, GetStdHandle=lambda *args: 0)
+    monkeypatch.setitem(sys.modules, 'msvcrt',
+                        SimpleNamespace(get_osfhandle=lambda n: n))
+    monkeypatch.setattr(windows_trace.C, 'WinDLL', lambda *args, **kwargs: kernel,
+                        raising=False)
+    monkeypatch.setattr(windows_trace.os, 'set_handle_inheritable',
+                        lambda *args: None, raising=False)
+    result = windows_trace.observe([str(images[0])], cwd=tmp_path, env={},
+                                   directory=directory)
+    assert result['exit_code'] == 0
+    if tool == 'cl.exe' and diagnostics_present:
+        assert result['driver_version'] == '19.51.36257.0'
+        assert result['problems'] == []
+    elif tool == 'cl.exe':
+        assert result['driver_version'] is None
+        assert result['problems'] == ['missing/ambiguous MSVC compiler version pass']
+    else:
+        assert result['driver_version'] is None
+        assert result['problems'] == []
 
 
 def _archive(path, members):

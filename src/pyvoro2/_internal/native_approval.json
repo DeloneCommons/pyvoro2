@@ -4,47 +4,47 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "d128417886fc30bf3d744c0c2d1ca751caeb6d6a308be7155e352455cc942d76"
+      "source_sha256": "69659a8948fba4039520f9742e2efc86dfa4124f0a48fc34e171bfb63ab104b7"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "3e22bbc35f99e76f8c105f14301e777aec62ed2b9aeb1592fe5ba954c43cf27f"
+      "source_sha256": "e20f0c8bc296b8850a250dad143de29314910071bd21ec59da637cdc16c3017e"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "6f8d6d3ef19a7b9c54720dab5fb5571fb485405fdd8dc6ee516fe89c23425d27"
+      "source_sha256": "e7f151420eba200548da3a6481c26c05d369e06ccebd794104c7f01bb58e4233"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "06d4af3aab9816e6846abfa27ddf49b81f2e61e46b241bed71e8f4532b554f42"
+      "source_sha256": "9449565e80b1f64315d0947bdab658f6ccc08c844fedb80d4b9292f40c3e2205"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "07062257b0a987260bae731ab919ac1beee633ea4cc75943264da313e6ca416c"
+      "source_sha256": "28508e14b608564c3bc99ea619324b834893d98ce75f5833da5f1d98bffc01dc"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "19c0c3130fd48d7fb0a3dcb98bd6c2bffb87e880fc0540051c00be1e426beaf9"
+      "source_sha256": "738996d4f0616d5d9ae08acaf71ca63711a541114701b8491131985e01596e2f"
     }
   },
   "consumer_sha256": "1b57fac7d8f206bfa9e6211292912117479a4b4d32522b66b41066a784ed00fc",
   "policy_revision": "issue88-p1",
   "review": {
     "baseline_commit": "032c0d5befeb88b4a903274d082029c30fcc882f",
-    "decision": "Approved the frozen 381-file correction closure after independent qualification and runtime continuity reviews. The reviewed changes retain actual Clang evaluation-method expansion, conservative independently approved whole-archive Windows link closure, bounded SDK manifest relocation storage, and the corrected independent sanitizer coverage fixture. The frozen focused run passed 311 tests with six platform-dependent skips. The correction review explicitly supersedes the earlier focused-test timing claim while preserving the prior immutable reports. No native runtime, consumer, geometry or vendor source changed in this round. This source approval does not qualify artifacts: the complete fresh exact-head optimized, platform, sanitizer and distribution matrix and final-byte review remain mandatory.",
-    "measurement_file_sha256": "4e8b073e5ca1297b99ad62574310d420b4a4457b7c7bb4bfaa64bea4926be60f",
+    "decision": "Approved the frozen 381-file provenance-observation closure after reading the independent qualification review and runtime continuity addendum. The post-freeze focused run passed 331 tests with six platform-dependent skips. The changes add only the 13 named Libsystem sublibraries from independently selected SDK paths and bind the MSVC /Bv compiler-version row to the actually observed driver. Candidate paths and labels grant no execution authority; existing whole-file, process/image and effective-build checks remain mandatory. Runtime, numerical sources, consumers, schemas, policy and vendor bytes are unchanged. Prior immutable reviews and their explicit test-timing correction remain part of the review chain. This separate source approval does not qualify artifacts: fresh exact-head complete CI and final-byte acceptance remain mandatory.",
+    "measurement_file_sha256": "d8bc8bdc75c7f670b5d15d999cd2bd9c9d9640c667fda05d260751dea4cfef90",
     "reports": [
       {
-        "name": "independent-runtime-review-correction-round.md",
-        "sha256": "00a11602ab71fabc51798e69b8d503a60b7de99cd93fe2168ebcc908a858be9f"
+        "name": "independent-runtime-review-provenance-round.md",
+        "sha256": "5889d7dffe011d0e86d9079d4ddf09f65df13cbaf21408702f6fa395ad40a684"
       },
       {
-        "name": "independent-qualification-review-correction-round.md",
-        "sha256": "2e57ba0ce06fc13768f6bbc8335a5b18b296a6bb01a1109736d91bfd7b8a7880"
+        "name": "independent-qualification-review-provenance-round.md",
+        "sha256": "81194e5c38ba9faa1c3b806455b73a632581ed1cadf0285c75b1941dc2c29c7c"
       }
     ],
-    "reviewed_delta_base": "4f04e9008fe9fcbdd7190305d774ce06f9ac1183"
+    "reviewed_delta_base": "4442c86de7e6e7e6d2926fe833a683dee70e1b40"
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "6396d89bc8a45e5b68fbe9bda0c14fa565833af3c3fbf312af6b152fccb01c8e"
+  "source_sha256": "a2e9ed8b70d279e7ee42625be5aeb8e4cc16f3a9bfd378811b79fa0adb9bb746"
 }

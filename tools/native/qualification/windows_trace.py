@@ -14,12 +14,47 @@ from __future__ import annotations
 import ctypes as C
 from ctypes import wintypes as W
 import json
+import ntpath
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 
 from .effective_build import BuildEvidenceError, file_identity
+
+
+def compiler_version(diagnostics, executable):
+    """Bind /Bv's cl.exe version row to the actual mapped compiler driver.
+
+    /nologo suppresses the startup banner but leaves the Compiler Passes block.
+    Other listed passes are not evidence of execution: debugger image events
+    remain the authority for the driver and in-process front/back-end images.
+    """
+    active, seen, versions = False, False, []
+    for line in diagnostics.splitlines():
+        if line.strip() == 'Compiler Passes:':
+            if seen:
+                raise BuildEvidenceError('ambiguous MSVC compiler version blocks')
+            active, seen = True, True
+            continue
+        if not active:
+            continue
+        if not line.strip():
+            active = False
+            continue
+        match = re.fullmatch(r'\s+(.+):\s+Version ([0-9]+(?:\.[0-9]+){3})\s*', line)
+        if not match or not ntpath.isabs(match[1]):
+            raise BuildEvidenceError('unparsed MSVC compiler version pass')
+        path, version = match.groups()
+        if ntpath.basename(path).lower() == 'cl.exe':
+            if ntpath.normcase(ntpath.normpath(path)) != ntpath.normcase(
+                    ntpath.normpath(executable['path'])):
+                raise BuildEvidenceError('MSVC compiler version driver differs')
+            versions.append(version)
+    if not seen or active or len(versions) != 1:
+        raise BuildEvidenceError('missing/ambiguous MSVC compiler version pass')
+    return versions[0]
 
 
 def observe(command, *, cwd, env, directory):
@@ -207,14 +242,16 @@ def observe(command, *, cwd, env, directory):
         problems.append('linker loaded code-generation backend (possible LTCG)')
     event_path = directory / 'windows-debug-events.json'
     event_path.write_text(json.dumps(events, sort_keys=True, indent=2) + '\n')
-    version_text = (stdout.read_text(errors='replace') +
+    version_text = (stdout.read_text(errors='replace') + '\n' +
                     stderr.read_text(errors='replace'))
-    version = next((line.strip() for line in version_text.splitlines()
-                    if 'Compiler Version' in line), '')
-    if name != 'cl.exe':
-        # Link jobs bind the same compiler through their matching compile
-        # records; linker version is still present in the captured diagnostics.
-        version = None
+    # Link jobs bind the same compiler through matching compile records;
+    # their actual linker image identity remains independently recorded.
+    version = None
+    if name == 'cl.exe':
+        try:
+            version = compiler_version(version_text, invocations[0]['executable'])
+        except BuildEvidenceError as error:
+            problems.append(str(error))
     return {
         'adapter': 'windows-debug-v1', 'exit_code': root_exit,
         'invocations': invocations, 'problems': problems,

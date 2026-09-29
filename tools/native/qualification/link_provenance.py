@@ -23,6 +23,18 @@ GNU_RUNTIME_FILES = (
     'libubsan.so', 'libatomic.so', 'libatomic.so.1',
 )
 
+# Libsystem's requiredlibs/optionallibs include these sublibraries in addition
+# to libsystem_*. They resolve only inside the independently selected SDK;
+# candidate search paths and arbitrary SDK library names grant no authority.
+# https://github.com/apple-oss-distributions/Libsystem/tree/
+# c23b51183e46e613375dc7639fb4bf11fbf59ba8
+APPLE_SYSTEM_RUNTIME_FILES = (
+    'libcache.tbd', 'libcommonCrypto.tbd', 'libcompiler_rt.tbd',
+    'libcopyfile.tbd', 'libcorecrypto.tbd', 'libdispatch.tbd',
+    'libdyld.tbd', 'libkeymgr.tbd', 'libmacho.tbd', 'libquarantine.tbd',
+    'libremovefile.tbd', 'libunwind.tbd', 'libxpc.tbd',
+)
+
 
 def clean_toolchain_environment(env):
     excluded = {
@@ -154,6 +166,8 @@ def platform_runtime_inputs(driver, family, *, cwd, env, directory):
                      'libobjc.tbd', 'libSystem.B.tbd', 'libc++.1.tbd'):
             candidates.append(sdk / 'usr' / 'lib' / name)
         candidates.extend((sdk / 'usr' / 'lib' / 'system').glob('libsystem_*.tbd'))
+        candidates.extend(sdk / 'usr' / 'lib' / 'system' / name
+                          for name in APPLE_SYSTEM_RUNTIME_FILES)
         for name in ('libclang_rt.osx.a', 'libclang_rt.asan_osx_dynamic.dylib',
                      'libclang_rt.ubsan_osx_dynamic.dylib'):
             candidates.append(resource / 'lib' / 'darwin' / name)

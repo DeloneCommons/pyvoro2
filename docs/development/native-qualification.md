@@ -89,8 +89,17 @@ is absent from ordinary macro dumps. A separate
 preprocessor expansion under the same effective options and environment retains
 its actual value and refuses missing, ambiguous or nonzero results; it does not
 infer binary64 evaluation from the compiler name.
+The independent SDK runtime inventory includes the named Libsystem sublibraries
+from Apple's [required](https://github.com/apple-oss-distributions/Libsystem/blob/c23b51183e46e613375dc7639fb4bf11fbf59ba8/requiredlibs)
+and [optional](https://github.com/apple-oss-distributions/Libsystem/blob/c23b51183e46e613375dc7639fb4bf11fbf59ba8/optionallibs)
+component lists, including those without a `libsystem_` prefix. Their exact
+installed paths and bytes must match actual link inputs; candidate search paths
+cannot establish runtime provenance.
 
-On Windows, the recorder combines LINK's explicit-input response with its actual
+On Windows, the compiler version label comes from the complete `/Bv` pass block,
+whose `cl.exe` path must match the observed compiler image; `/nologo` may suppress
+the startup banner. Actual debugger image identities remain the tool authority.
+The recorder combines LINK's explicit-input response with its actual
 `/VERBOSE:LIB` report. Library-only output declares conservative searched-archive
 coverage: every byte of every searched archive belongs to the checked input
 closure, including default libraries absent from the explicit response. When

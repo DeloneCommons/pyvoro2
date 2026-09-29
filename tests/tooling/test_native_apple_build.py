@@ -18,6 +18,81 @@ from qualification.link_provenance import (  # noqa: E402
 )
 
 
+def _apple_runtime_provider(tmp_path, monkeypatch):
+    from qualification import link_provenance
+    sdk = tmp_path / 'installed-sdk'
+    system = sdk / 'usr/lib/system'
+    system.mkdir(parents=True)
+    resource = tmp_path / 'installed-clang-resource'
+    resource.mkdir()
+    driver = tmp_path / 'clang'
+    driver.write_bytes(b'independently selected compiler')
+    # The actual SDK runtime closure contains these Libsystem sublibraries;
+    # their names do not share the libsystem_ prefix.
+    names = ('libcache.tbd', 'libcommonCrypto.tbd', 'libcompiler_rt.tbd',
+             'libcopyfile.tbd', 'libcorecrypto.tbd', 'libdispatch.tbd',
+             'libdyld.tbd', 'libkeymgr.tbd', 'libmacho.tbd',
+             'libquarantine.tbd', 'libremovefile.tbd', 'libunwind.tbd',
+             'libxpc.tbd')
+    paths = [system / name for name in names]
+    paths += [system / 'libsystem_c.tbd', system / 'libunreviewed.tbd']
+    for path in paths:
+        path.write_text('--- !tapi-tbd\ninstall-name: ' + path.name + '\n')
+    shadow = tmp_path / 'candidate/libcache.tbd'
+    shadow.parent.mkdir()
+    shadow.write_bytes(paths[0].read_bytes())
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        expected = ([str(driver), '-print-resource-dir'],
+                    ['/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-path'])
+        assert argv in expected
+        path = resource if argv == expected[0] else sdk
+        return SimpleNamespace(returncode=0, stdout=str(path) + '\n', stderr='')
+
+    monkeypatch.setattr(link_provenance.subprocess, 'run', run)
+    env = {'SDKROOT': str(shadow.parent), 'LIBRARY_PATH': str(shadow.parent),
+           'LC_ALL': 'C'}
+    identities, evidence = link_provenance.platform_runtime_inputs(
+        driver, 'clang', cwd=tmp_path, env=env, directory=tmp_path)
+    return paths, shadow, identities, evidence, calls
+
+
+def test_apple_libsystem_sublibraries_have_independent_sdk_authority(
+        tmp_path, monkeypatch):
+    paths, _, identities, evidence, calls = _apple_runtime_provider(
+        tmp_path, monkeypatch)
+    assert all(file_identity(path) in identities for path in paths[:-1])
+    assert file_identity(paths[-1]) not in identities
+    assert all('SDKROOT' not in kwargs['env'] and
+               'LIBRARY_PATH' not in kwargs['env'] for _, kwargs in calls)
+    assert json.loads(evidence.read_text())['installed_files'] == identities
+    obj = _object(tmp_path)
+    identity = file_identity(obj)
+    row = {'family': 'clang', 'runtime_link_inputs': identities,
+           'link_inputs': [identity, *(file_identity(p) for p in paths[:-1])],
+           'object_inputs': [identity]}
+    assert verify_link_closure(row, {str(obj): {'output': identity}}) == [identity]
+
+
+@pytest.mark.parametrize('mutation', ['shadow', 'unknown', 'changed-bytes'])
+def test_apple_runtime_provider_does_not_approve_candidate_or_changed_inputs(
+        tmp_path, monkeypatch, mutation):
+    paths, shadow, identities, _, _ = _apple_runtime_provider(tmp_path, monkeypatch)
+    target = shadow if mutation == 'shadow' else paths[-1]
+    if mutation == 'changed-bytes':
+        target = paths[0]
+        target.write_text('changed after independent provider measurement\n')
+    obj = _object(tmp_path)
+    identity = file_identity(obj)
+    row = {'family': 'clang', 'runtime_link_inputs': identities,
+           'link_inputs': [identity, file_identity(target)],
+           'object_inputs': [identity]}
+    with pytest.raises(BuildEvidenceError, match='opaque/unapproved|toolchain link'):
+        verify_link_closure(row, {str(obj): {'output': identity}})
+
+
 def _object(tmp_path, *, segment=b'__TEXT', section=b'__text', cpu=0x01000007):
     # Mach-O 64 header, one LC_SEGMENT_64 and one section_64 with one code byte.
     header = struct.pack('<8I', 0xfeedfacf, cpu, 3, 1, 1, 152, 0, 0)
