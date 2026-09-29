@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import importlib.util
 import hashlib
+from contextlib import nullcontext
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -50,13 +52,53 @@ def test_opaque_shell_is_refused_before_execution(repair_runner, tmp_path):
 
 
 def test_explicit_empty_helper_environment_is_recorded_exactly(repair_runner, tmp_path):
+    command = [sys.executable, '-c', 'pass']
+    empty_block_unsupported = False
+    if sys.platform == 'win32' and sys.version_info[:2] == (3, 10):
+        # CPython gh-105436: the older Windows launcher does not terminate an
+        # empty environment block correctly. Establish the real unwrapped
+        # outcome first; the observer must preserve both the error and env={}.
+        try:
+            subprocess.run(command, env={}, check=True)
+        except OSError as error:
+            if error.winerror != 87:
+                raise
+            empty_block_unsupported = True
     observer = repair_runner.ProcessObserver(tmp_path)
-    with observer:
-        subprocess.run([sys.executable, '-c', 'pass'], env={}, check=True)
+    outcome = pytest.raises(OSError) if empty_block_unsupported else nullcontext()
+    with outcome as caught:
+        with observer:
+            subprocess.run(command, env={}, check=True)
     row, = observer.records
     assert row['environment'] == {}
     assert row['environment_sha256'] == hashlib.sha256(
         repair_runner.canonical({})).hexdigest()
+    if empty_block_unsupported:
+        assert caught.value.winerror == 87
+        assert row['exit_code'] is None
+        assert observer.processes == []
+    else:
+        assert row['exit_code'] == 0
+
+
+def test_explicit_helper_environment_does_not_inherit_parent(
+        repair_runner, tmp_path, monkeypatch):
+    monkeypatch.setenv('ISSUE88_PARENT_ONLY', 'must not reach helper')
+    environment = {'ISSUE88_CHILD_ONLY': 'observed'}
+    if sys.platform == 'win32':
+        environment['SYSTEMROOT'] = os.environ['SYSTEMROOT']
+    observer = repair_runner.ProcessObserver(tmp_path)
+    with observer:
+        subprocess.run([sys.executable, '-c',
+                        'import os; assert "ISSUE88_PARENT_ONLY" not in os.environ; '
+                        'assert os.environ["ISSUE88_CHILD_ONLY"] == "observed"'],
+                       env=environment, check=True)
+    row, = observer.records
+    assert row['exit_code'] == 0
+    assert row['environment'] == {key: value for key, value in environment.items()
+                                  if key == 'SYSTEMROOT'}
+    assert row['environment_sha256'] == hashlib.sha256(
+        repair_runner.canonical(environment)).hexdigest()
 
 
 def test_unconsumed_pipe_refuses_complete_receipt(repair_runner, tmp_path):
