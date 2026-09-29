@@ -221,12 +221,12 @@ def verify_postprocess(receipt, build, installation_root):
     return module_claims, dependency_claims
 
 
-def validate_routes(report, measurement, modules, required):
+def validate_routes(report, measurement, modules, required, *, family=None):
     """Validate a report from our own fixed child, never a submitted success bit."""
     _require(report.get('schema') == 'pyvoro2-native-route-evidence-v1',
              'missing or unknown route evidence schema')
     _validate_route_claims(report, measurement, modules, required)
-    _validate_arithmetic(report)
+    _validate_arithmetic(report, family=family)
     guard = report['discriminators'].get('guard_disassembly')
     _require(isinstance(guard, dict)
              and _digest(guard.get('tool_sha256'))
@@ -272,12 +272,37 @@ def _validate_route_claims(report, measurement, modules, required):
                      f'required route corpus coverage differs: {name}/{corpus}')
 
 
-def _validate_arithmetic(report):
+def _validate_arithmetic(report, *, family=None):
     discriminators = report.get('discriminators')
     _require(isinstance(discriminators, dict), 'missing independent discriminators')
-    _require(discriminators.get('standard_strict_bits') == '4013fffffb000000'
-             and discriminators.get('standard_unsafe_bits') == '4013fffffb000001',
-             'standard operation/contraction discriminator differs')
+    expected = {
+        'standard-xy-v1': ['0x1.ffffff4p-1', '0x1.ffffffep0', '0x0p0'],
+        'standard-xz-v1': ['0x1.ffffff4p-1', '0x0p0', '0x1.ffffffep0'],
+    }
+    fixtures = discriminators.get('standard_fixtures')
+    _require(isinstance(fixtures, list) and len(fixtures) == len(expected)
+             and all(isinstance(row, dict) for row in fixtures)
+             and [row.get('name') for row in fixtures] == list(expected),
+             'standard fixture inventory differs')
+    discriminating = []
+    for row in fixtures:
+        _require(row.get('coordinates_hex') == expected[row['name']]
+                 and row.get('expected_strict_bits') == '4013fffffb000000'
+                 and row.get('expected_fused_bits') == '4013fffffb000001'
+                 and row.get('strict_bits') == ['4013fffffb000000'] * 2
+                 and row.get('unsafe_bits') in (['4013fffffb000000'] * 2,
+                                                ['4013fffffb000001'] * 2),
+                 'standard fixture expectation or actual observation differs')
+        if row['unsafe_bits'] == ['4013fffffb000001'] * 2:
+            discriminating.append(row['name'])
+    claimed = discriminators.get('standard_discriminating_fixtures')
+    historical_unsafe = discriminators.get('standard_unsafe_bits')
+    _require(discriminating
+             and claimed == discriminating
+             and (family != 'GNU' or 'standard-xy-v1' in discriminating)
+             and discriminators.get('standard_strict_bits') == '4013fffffb000000'
+             and historical_unsafe == fixtures[0]['unsafe_bits'][0],
+             'standard operation/contraction control did not discriminate')
     radii = ('0x1.0000000000000p+27', '0x1.0000002000000p+27',
              '0x1.0000004000000p+27')
     expected_power = [{'radius_hex': radius, 'r_scale_bits': '0000000000000000',
@@ -290,13 +315,13 @@ def _validate_arithmetic(report):
              'unsafe power operation-order control did not discriminate')
 
 
-def validate_safety_routes(report, measurement, modules, required):
+def validate_safety_routes(report, measurement, modules, required, *, family=None):
     from qualification.route_suite import SANITIZER_TESTS
     _require(report.get('schema') == 'pyvoro2-native-sanitizer-routes-v1'
              and report.get('scope') == 'sanitizer-safety-only',
              'missing or unknown sanitizer safety evidence schema')
     _validate_route_claims(report, measurement, modules, required)
-    _validate_arithmetic(report)
+    _validate_arithmetic(report, family=family)
     _require('guard_disassembly' not in report['discriminators'],
              'sanitizer safety evidence cannot claim optimized guard qualification')
     tests = report.get('safety_tests')
@@ -313,30 +338,57 @@ def validate_safety_routes(report, measurement, modules, required):
 
 
 def _check_guard_objects(report, build):
+    from qualification.discriminators import guard_summary, inspect_guard_symbols
+    from qualification.guard_symbols import PROTECTED_ENTRY_COUNTS, parse_disassembly
     guard = report['discriminators']['guard_disassembly']
-    expected = {row['output']['path']: row['output']
-                for row in build['translation_units']
-                if Path(row['source']).name in (
-                    'bindings.cpp', 'bindings2d.cpp', 'native_witness.cpp',
-                    'planar_witness.cpp', 'fpguard.cpp')}
-    actual = {}
+    units = {row['output']['path']: row
+             for row in build['translation_units']
+             if Path(row['source']).name in PROTECTED_ENTRY_COUNTS}
+    expected = {path: row['output'] for path, row in units.items()}
+    _require(len(units) == len(PROTECTED_ENTRY_COUNTS) and
+             {Path(row['source']).name for row in units.values()} ==
+             set(PROTECTED_ENTRY_COUNTS), 'guard object inventory is incomplete')
+    actual, inspections = {}, []
     tool = None
     for item in guard['objects']:
         obj = _check_file(item.get('object'))
         _check_file(item.get('disassembly'))
+        _check_file(item.get('raw_disassembly'))
         argv = item.get('argv')
-        _require(isinstance(argv, list) and argv and item.get('exit_code') == 0,
+        _require(isinstance(argv, list) and argv
+                 and argv == [argv[0], '-drC', '--no-show-raw-insn', obj['path']]
+                 and item.get('raw_argv') ==
+                 [argv[0], '-dr', '--no-show-raw-insn', obj['path']]
+                 and item.get('exit_code') == item.get('raw_exit_code') == 0,
                  'guard disassembler process evidence is incomplete')
         current_tool = file_identity(argv[0])
         _require(current_tool['sha256'] == guard['tool_sha256']
                  and (tool is None or current_tool == tool),
                  'guard disassembler identity differs')
         tool = current_tool
+        _require(obj['path'] in units and obj['path'] not in actual,
+                 'unknown or duplicate guard production object')
+        name = Path(units[obj['path']]['source']).name
+        _require(item.get('source') == name, 'guard source association differs')
+        try:
+            inspection = inspect_guard_symbols(
+                parse_disassembly(Path(item['disassembly']['path']).read_text(),
+                                  Path(item['raw_disassembly']['path']).read_text()),
+                require_dispatch=name != 'fpguard.cpp', source_name=name)
+        except BuildEvidenceError as exc:
+            raise FinalizationError(
+                'guard coverage replay failed: ' + str(exc)) from exc
+        _require(item.get('inspection') == inspection,
+                 'guard protected-entry inventory differs from disassembly')
+        inspections.append(inspection)
         actual[obj['path']] = obj
     _require(len(expected) == 5 and actual == expected,
              'guard evidence belongs to different production objects')
     _require(build_digest({'tool': tool, 'objects': guard['objects']})
              == guard['disassembly_sha256'], 'guard disassembly manifest differs')
+    _require(all(guard.get(key) == value
+                 for key, value in guard_summary(inspections).items()),
+             'guard aggregate boundary coverage differs')
 
 
 def _failed_route_output_tail(path, environment):
@@ -723,7 +775,7 @@ def exercise_sanitizer_safety(**arguments):
     checked = _candidate_evidence(**arguments, safety_only=True)
     report = checked.evidence['routes']
     validate_safety_routes(report, checked.measurement, checked.modules,
-                           checked.required)
+                           checked.required, family=checked.toolchain['family'])
     evidence = {**checked.evidence,
                 'schema': 'pyvoro2-native-sanitizer-safety-evidence-v1',
                 'scope': 'sanitizer-safety-only'}
@@ -742,7 +794,8 @@ def finalize(*, source_root, installation_root, records_dir, postprocess_path,
         output=output, candidate_module=candidate_module,
         candidate_records=candidate_records, runtime_environment=runtime_environment)
     contract, report = checked.contract, checked.evidence['routes']
-    validate_routes(report, checked.measurement, checked.modules, checked.required)
+    validate_routes(report, checked.measurement, checked.modules, checked.required,
+                    family=checked.toolchain['family'])
     _check_guard_objects(report, checked.evidence['build'])
     evidence_data = contract.canonical_json(checked.evidence)
     _atomic_write(checked.output / 'qualification-evidence.json', evidence_data)

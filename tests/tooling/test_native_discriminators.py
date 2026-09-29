@@ -5,6 +5,8 @@ import os
 import shutil
 import subprocess
 import sys
+from fractions import Fraction
+import struct
 
 import pytest
 
@@ -21,6 +23,42 @@ from qualification.effective_build import (  # noqa: E402
 )
 
 
+def test_named_standard_fixtures_have_independent_exact_expectations():
+    x = Fraction(float.fromhex('0x1.ffffff4p-1'))
+    y = Fraction(float.fromhex('0x1.ffffffep0'))
+
+    def bits(value):
+        return struct.pack('>d', float(value)).hex()
+    separate = bits(Fraction(float(x * x)) + Fraction(float(y * y)))
+    fused = bits(Fraction(float(x * x)) + y * y)
+    assert separate == '4013fffffb000000'
+    assert fused == '4013fffffb000001'
+    assert bits(x * x + Fraction(float(y * y))) == fused
+    # The same exact calculation applies to XY and XZ; z=0 in XY allows
+    # a final z*z FMA to leave the result unchanged, while XZ exposes it.
+    assert discriminators.parse_standard(
+        'standard 0 4013fffffb000000\nstandard 1 4013fffffb000000\n'
+        'standard-xz 0 4013fffffb000001\nstandard-xz 1 4013fffffb000001\n'
+    ) == {'standard-xy-v1': [separate, separate],
+          'standard-xz-v1': [fused, fused]}
+
+
+@pytest.mark.parametrize('mutation', ['missing', 'duplicate', 'unknown', 'malformed'])
+def test_standard_fixture_parser_requires_both_named_two_owner_observations(mutation):
+    text = ('standard 0 4013fffffb000000\nstandard 1 4013fffffb000000\n'
+            'standard-xz 0 4013fffffb000001\nstandard-xz 1 4013fffffb000001\n')
+    if mutation == 'missing':
+        text = text.rsplit('standard-xz 1', 1)[0]
+    elif mutation == 'duplicate':
+        text += 'standard 0 4013fffffb000000\n'
+    elif mutation == 'unknown':
+        text = text.replace('standard-xz', 'standard-yz')
+    else:
+        text = text.replace('4013fffffb000001', 'not-bits')
+    with pytest.raises(BuildEvidenceError, match='standard fixture'):
+        discriminators.parse_standard(text)
+
+
 RAW = '''0000 <pyvoro2::native_runtime::inspect()>:
  0: fnstcw (%rax)
  2: stmxcsr (%rax)
@@ -31,13 +69,16 @@ RAW = '''0000 <pyvoro2::native_runtime::inspect()>:
      25: R_X86_64_PLT32 pyvoro2::native_runtime::inspect()-0x4
  29: add $0x40,%rsp
  2d: ret
-0010 <pyvoro2::native_runtime::Dispatch<int ()>::operator()() const>:
+0010 <GUARDED_OPERATOR>:
  10: push %rbx
  11: call 16 <pending>
      12: R_X86_64_PLT32 pyvoro2::native_runtime::require_environment()-0x4
  16: addsd %xmm0,%xmm1
  1a: ret
-'''
+'''.replace('GUARDED_OPERATOR',
+            'pyvoro2::native_runtime::Dispatch<int ()>::wrap<Fixture>()::'
+            '{lambda(pybind11::args, pybind11::kwargs)#1}::'
+            'operator()(pybind11::args, pybind11::kwargs) const')
 
 
 def test_guard_inspector_accepts_only_raw_then_guarded_arithmetic():
@@ -49,6 +90,83 @@ def test_guard_inspector_accepts_only_raw_then_guarded_arithmetic():
 def test_guard_inspector_accepts_integer_width_extension():
     text = RAW.replace('0: fnstcw (%rax)', '0: movzwl %ax,%eax')
     assert inspect_guard_symbols(parse_disassembly(text))['fp_before_guard'] is False
+
+
+def test_guard_inspector_accepts_observed_integer_byte_insertion():
+    text = RAW.replace('0: fnstcw (%rax)', '0: pinsrb $0x1,%r14d,%xmm0')
+    assert inspect_guard_symbols(parse_disassembly(text))['fp_before_guard'] is False
+
+
+def _windows_throw_padding():
+    return RAW.replace('2d: ret',
+                       '2d: callq 32 <pending>\n'
+                       ' 2e: IMAGE_REL_AMD64_REL32 _CxxThrowException\n'
+                       ' 32: int3')
+
+
+def test_guard_inspector_accepts_only_terminal_coff_throw_padding():
+    assert inspect_guard_symbols(parse_disassembly(
+        _windows_throw_padding()))['fp_before_guard'] is False
+
+
+@pytest.mark.parametrize('mutation', [
+    lambda text: text.replace('_CxxThrowException', 'foreign_call'),
+    lambda text: text.replace('IMAGE_REL_AMD64_REL32', 'R_X86_64_PLT32'),
+    lambda text: text.replace('32: int3', '33: int3'),
+    lambda text: text.replace('32: int3', '32: int3\n 33: ret'),
+    lambda text: text.replace('20: sub $0x40,%rsp', '20: jmp 32 <bypass>'),
+    lambda text: text.replace('10: push %rbx', '10: int3'),
+])
+def test_throw_padding_does_not_relax_reachable_pre_guard_checks(mutation):
+    with pytest.raises(BuildEvidenceError, match='unreviewed'):
+        inspect_guard_symbols(parse_disassembly(mutation(_windows_throw_padding())))
+
+
+def _inline_callback_text():
+    operator = ('pyvoro2::native_runtime::Dispatch<int ()>::wrap<Fixture>()::'
+                '{lambda(pybind11::args, pybind11::kwargs)#1}')
+    callback = ('int pybind11::detail::function_ref<int (pybind11::args, '
+                'pybind11::kwargs)>::callback_fn<' + operator +
+                '>(long, pybind11::args, pybind11::kwargs)')
+    return RAW.replace(operator + '::operator()(pybind11::args, '
+                       'pybind11::kwargs) const', callback)
+
+
+def test_guard_inspector_accepts_real_inlined_callback_and_counts_its_entry():
+    result = inspect_guard_symbols(parse_disassembly(_inline_callback_text()))
+    assert result['protected_entry_count'] == 1
+    assert len(result['protected_entries']) == 1
+    assert result['protected_entries'][0]['callbacks']
+    assert not result['protected_entries'][0]['operators']
+
+
+def test_guard_inspector_refuses_missing_entry_despite_nonempty_guard_lists():
+    with pytest.raises(BuildEvidenceError, match='inventory|coverage'):
+        inspect_guard_symbols(parse_disassembly(_inline_callback_text()),
+                              source_name='bindings.cpp')
+
+
+@pytest.mark.parametrize('replacement', [
+    '10: cvtsi2sd %rax,%xmm0',
+    '10: call 42 <foreign_conversion()>',
+    '10: jmp 16 <bypass>',
+])
+def test_inlined_callback_retains_preguard_refusal(replacement):
+    text = _inline_callback_text().replace('10: push %rbx', replacement)
+    with pytest.raises(BuildEvidenceError, match='before guard'):
+        inspect_guard_symbols(parse_disassembly(text))
+
+
+def test_unrelated_split_lock_prefix_does_not_prevent_guard_selection():
+    text = ('0000 <Unrelated::~Unrelated()>:\n 0: lock\n 1: xaddq %rax,(%rbx)\n'
+            ' 4: ret\n' + RAW)
+    assert inspect_guard_symbols(parse_disassembly(text))['fp_before_guard'] is False
+
+
+def test_split_prefix_does_not_hide_pre_guard_fp_instruction():
+    text = RAW.replace('10: push %rbx', 'f: data16\n 10: fadd %st(1),%st')
+    with pytest.raises(BuildEvidenceError, match='before guard'):
+        inspect_guard_symbols(parse_disassembly(text))
 
 
 @pytest.mark.parametrize('text,reason', [

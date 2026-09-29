@@ -60,10 +60,14 @@ _ENVIRONMENT = {
     'ZERO_AR_DATE', 'CLANG_CONFIG_FILE_SYSTEM_DIR', 'CLANG_CONFIG_FILE_USER_DIR',
     'CLANG_NO_DEFAULT_CONFIG', 'CCC_OVERRIDE_OPTIONS', 'VSLANG',
 }
-_PAIR_OPTIONS = {
+_GNU_PAIR_OPTIONS = {
     '-o', '-MF', '-MT', '-MQ', '-include', '-imacros', '-I', '-L', '-isystem',
     '-iquote', '-idirafter', '-isysroot', '--sysroot', '-arch', '-target',
     '-x', '-B', '-Xclang', '-Xlinker', '-Xpreprocessor',
+}
+_MSVC_PAIR_OPTIONS = {
+    '/I', '/D', '/U', '/FI', '/external:I', '/Fo', '/Fd', '/Fa',
+    '/sourceDependencies',
 }
 
 
@@ -86,12 +90,14 @@ def output_path(argv, cwd, family):
     raise BuildEvidenceError('explicit output path is required')
 
 
-def sources_in(argv, cwd):
+def sources_in(argv, cwd, family):
     result, skip = [], False
+    pairs = _MSVC_PAIR_OPTIONS if family == 'msvc' else _GNU_PAIR_OPTIONS
     for arg in argv[1:]:
+        option = '/' + arg[1:] if family == 'msvc' and arg.startswith('-') else arg
         if skip:
             skip = False
-        elif arg in _PAIR_OPTIONS:
+        elif option in pairs:
             skip = True
         elif not arg.startswith('-') and Path(arg).suffix.lower() in (
                 '.c', '.cc', '.cpp', '.cxx'):
@@ -116,19 +122,25 @@ def query_options(argv, source, family):
         if skip:
             skip = False
             continue
-        if arg in ('-o', '-MF', '-MT', '-MQ', '-wrapper'):
-            skip = True
-        elif arg in ('-c', '-MD', '-MMD', '-MP'):
-            continue
-        elif arg.startswith(('-save-temps', '-fverbose-asm')):
-            continue
-        elif family == 'msvc' and arg.lower() in ('/c', '/bv'):
-            continue
-        elif family == 'msvc' and arg.lower() in ('/sourcedependencies', '/fa'):
-            skip = True
-        elif family == 'msvc' and arg.lower().startswith(('/fo', '/fa', '/fd')):
-            continue
-        elif Path(arg).suffix.lower() in ('.c', '.cc', '.cpp', '.cxx'):
+        if family == 'msvc':
+            # CL accepts either prefix but its option names are case-sensitive.
+            # In particular, -MD/-MT select CRTs, and /favor is not /Fa output.
+            option = '/' + arg[1:] if arg.startswith('-') else arg
+            if option in ('/sourceDependencies', '/Fo', '/Fa', '/Fd'):
+                skip = True
+                continue
+            if (option in ('/c', '/Bv') or
+                    re.fullmatch(r'/FAc?s?u?', option) or
+                    option.startswith(('/Fo', '/Fa', '/Fd'))):
+                continue
+        else:
+            if arg in ('-o', '-MF', '-MT', '-MQ', '-wrapper'):
+                skip = True
+                continue
+            if (arg in ('-c', '-MD', '-MMD', '-MP') or
+                    arg.startswith(('-save-temps', '-fverbose-asm'))):
+                continue
+        if Path(arg).suffix.lower() in ('.c', '.cc', '.cpp', '.cxx'):
             if Path(arg).resolve() == source:
                 continue
             # Source spelling may be relative to the recorded compiler cwd.
@@ -235,7 +247,7 @@ def record_command(command, output_dir):
     kind = ('compile' if any(a in ('-c', '/c', '/C') for a in expanded[1:])
             else 'link')
     output = output_path(expanded, cwd, family)
-    source_paths = sources_in(expanded, cwd)
+    source_paths = sources_in(expanded, cwd, family)
     if kind == 'compile' and len(source_paths) != 1:
         raise BuildEvidenceError('one explicit translation unit is required')
     source = source_paths[0] if source_paths else None

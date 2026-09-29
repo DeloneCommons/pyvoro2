@@ -20,9 +20,15 @@ from .effective_build import (BuildEvidenceError, SCHEMA, canonical, digest,
                               effective_options, file_identity,
                               unsafe_source_directives)
 from .record_command import query_options
+from .guard_symbols import (PROTECTED_ENTRY_COUNTS, call_target, parse_disassembly,
+                            protected_entries)
 
 STRICT_BITS = '4013fffffb000000'
 UNSAFE_BITS = '4013fffffb000001'
+STANDARD_FIXTURES = {
+    'standard-xy-v1': ['0x1.ffffff4p-1', '0x1.ffffffep0', '0x0p0'],
+    'standard-xz-v1': ['0x1.ffffff4p-1', '0x0p0', '0x1.ffffffep0'],
+}
 _RUNTIME_ENVIRONMENT = ('LD_PRELOAD', 'ASAN_OPTIONS', 'UBSAN_OPTIONS',
                         'PYVORO2_NATIVE_TEST_SANITIZERS')
 _SANITIZER_BUNDLES = {
@@ -82,19 +88,27 @@ struct Radius : voro::radius_poly {
     }
 };
 
-int main() {
-    volatile double dx = 0x1.ffffff4p-1, dy = 0x1.ffffffep0;
+static int standard(const char* name, double x, double y, double z) {
     voro::container container(-4., 4., -4., 4., -4., 4.,
                               1, 1, 1, false, false, false, 8);
     container.put(0, 0., 0., 0.);
-    container.put(1, dx, dy, 0.);
+    container.put(1, x, y, z);
     voro::c_loop_all loop(container);
     if (!loop.start()) return 2;
     do {
         Observed cell;
         if (!container.compute_cell(cell, loop) || cell.count != 1) return 3;
-        std::printf("standard %d %016llx\n", loop.pid(), bits(cell.offset));
+        std::printf("%s %d %016llx\n", name, loop.pid(), bits(cell.offset));
     } while (loop.inc());
+    return 0;
+}
+
+int main() {
+    volatile double dx = 0x1.ffffff4p-1, dy = 0x1.ffffffep0;
+    if (int result = standard("standard", dx, dy, 0.)) return result;
+    // Independent companion exposes fusion of the final nonzero square.
+    // Keep the original XY fixture and its archived expectations unchanged.
+    if (int result = standard("standard-xz", dx, 0., dy)) return result;
     Radius radius;
     for (int index = 0; index != 3; ++index) {
         volatile double value = 134217728. + index;
@@ -102,42 +116,6 @@ int main() {
     }
 }
 '''
-
-
-def parse_disassembly(text):
-    """Read GNU/LLVM disassembly with raw instruction bytes suppressed."""
-    symbols = {}
-    current, previous = None, None
-    for line in text.splitlines():
-        header = re.match(r'^\s*[0-9a-fA-F]+ <(.+)>:$', line)
-        if header:
-            current = symbols.setdefault(header.group(1), [])
-            previous = None
-            continue
-        match = re.match(r'^\s*([0-9a-fA-F]+):\s+([\w.]+)\s*(.*)$', line)
-        if not match or current is None:
-            if current is not None and re.match(r'^\s*[0-9a-fA-F]+:', line):
-                raise BuildEvidenceError('unparsed instruction: ' + line.strip())
-            continue
-        address, mnemonic, operands = match.groups()
-        if mnemonic.startswith(('R_', 'IMAGE_REL_', 'ARM64_RELOC_',
-                                'X86_64_RELOC_')):
-            if previous is not None:
-                previous['relocation'] = operands
-            continue
-        # objdump prints some x86 prefixes as separate words. Classify the
-        # actual instruction, including prefixed x87/SSE operations.
-        while mnemonic in ('data16', 'addr32', 'cs', 'ds', 'es', 'ss',
-                           'fs', 'gs', 'rep', 'repz', 'repe', 'repnz',
-                           'repne', 'lock', 'bnd'):
-            words = operands.split(None, 1)
-            if not words:
-                raise BuildEvidenceError('incomplete prefixed instruction')
-            mnemonic, operands = words[0], words[1] if len(words) > 1 else ''
-        previous = {'address': int(address, 16), 'mnemonic': mnemonic.lower(),
-                    'operands': operands, 'relocation': ''}
-        current.append(previous)
-    return symbols
 
 
 def _trapping_fp(mnemonic):
@@ -162,7 +140,7 @@ _SAFE_X86 = re.compile(
     r'v?(?:mov(?:dqu|dqa|ups|upd|aps|apd|ss|sd|d|q)|'
     r'pxor|pand|por|xorps|xorpd|andps|andpd|orps|orpd|'
     r'punpck[a-z]+|unpck[a-z]+|pshuf[a-z]+|psll[a-z]+|psrl[a-z]+)$|'
-    r'callq?$|fnstcw$|fnstsw$|stmxcsr$|endbr64$|vzeroupper$')
+    r'callq?$|fnstcw$|fnstsw$|stmxcsr$|endbr64$|vzeroupper$|pinsrb$')
 _SAFE_ARM = {
     'adc', 'adcs', 'add', 'adds', 'adr', 'adrp', 'and', 'ands', 'asr',
     'bic', 'bics', 'ccmp', 'cinc', 'cinv', 'clz', 'cmn', 'cmp', 'cneg',
@@ -178,6 +156,9 @@ _SAFE_ARM = {
 
 
 def _check_instruction(instruction, context):
+    if instruction.get('parse_error'):
+        raise BuildEvidenceError('unparsed instruction in ' + context + ': ' +
+                                 instruction['parse_error'])
     mnemonic = instruction['mnemonic']
     if _trapping_fp(mnemonic):
         raise BuildEvidenceError('floating operation in ' + context)
@@ -187,22 +168,21 @@ def _check_instruction(instruction, context):
                                  ': ' + mnemonic)
 
 
-def inspect_guard_symbols(symbols, *, require_dispatch=True):
+def inspect_guard_symbols(symbols, *, require_dispatch=True, source_name=None):
     """Prove the selected emitted entries reach a raw guard before FP work.
 
     Every reachable path before the guard is inspected. Unrecognized calls,
     indirect branches, branches outside the selected symbol, and missing
     instruction/symbol data refuse rather than become a successful report.
     """
-    inspections = [name for name in symbols
-                   if 'native_runtime::inspect(' in name and 'cold' not in name]
-    refusals = [name for name in symbols
-                if 'native_runtime::require_environment(' in name
-                and 'cold' not in name]
-    dispatches = [name for name in symbols
-                  if 'native_runtime::Dispatch<' in name and
-                  '::operator()' in name and 'cold' not in name and
-                  'pybind11::cpp_function::' not in name]
+    inspections = [name for name in symbols if re.search(
+        r'(?:^| )pyvoro2::native_runtime::inspect\((?:void)?\)$', name)]
+    refusals = [name for name in symbols if re.search(
+        r'(?:^| )pyvoro2::native_runtime::require_environment\((?:void)?\)$', name)]
+    entries = protected_entries(symbols, source_name=source_name)
+    owners = {name: entry for entry in entries
+              for name in entry['callbacks'] + entry['operators']}
+    dispatches = sorted(owners)
     if not inspections or not refusals or require_dispatch and not dispatches:
         raise BuildEvidenceError('missing inspect/require/Dispatch disassembly symbols')
     for name in inspections:
@@ -217,7 +197,21 @@ def inspect_guard_symbols(symbols, *, require_dispatch=True):
         if not any(i['mnemonic'] in ('fnstcw', 'stmxcsr', 'mrs') for i in body):
             raise BuildEvidenceError('raw-control instruction missing')
     for name in refusals:
-        for instruction in symbols[name]:
+        body = symbols[name]
+        for index, instruction in enumerate(body):
+            # MSVC emits a final INT3 byte after the nonreturning throw call.
+            # Exempt only this observed COFF padding from the whole-body FP
+            # scan. The reachable pre-inspect CFG below still rejects INT3.
+            previous = body[index - 1] if index else None
+            if (index == len(body) - 1 and instruction['mnemonic'] == 'int3'
+                    and not instruction.get('parse_error')
+                    and not instruction['prefixes'] and previous
+                    and not previous.get('parse_error')
+                    and previous['mnemonic'] in ('call', 'callq')
+                    and previous['relocation_kind'] == 'IMAGE_REL_AMD64_REL32'
+                    and call_target(previous) == '_CxxThrowException'
+                    and instruction['address'] == previous['address'] + 5):
+                continue
             _check_instruction(instruction, 'raw refusal: ' + name)
     for name in dispatches + refusals:
         body = symbols[name]
@@ -225,8 +219,12 @@ def inspect_guard_symbols(symbols, *, require_dispatch=True):
             raise BuildEvidenceError('empty Dispatch symbol')
         by_address = {i['address']: index for index, i in enumerate(body)}
         pending, seen, guarded = [0], set(), False
-        boundary = ('native_runtime::inspect(' if name in refusals else
-                    'native_runtime::require_environment(')
+        boundaries = set(inspections if name in refusals else refusals)
+        if name in owners and name in owners[name]['callbacks']:
+            # A callback may delegate to its own out-of-line Dispatch. Every
+            # such body is independently inspected below; arbitrary wrappers
+            # or another registration cannot establish this entry's boundary.
+            boundaries.update(owners[name]['operators'])
         while pending:
             index = pending.pop()
             if index in seen:
@@ -236,11 +234,12 @@ def inspect_guard_symbols(symbols, *, require_dispatch=True):
             mnemonic = instruction['mnemonic']
             operands = instruction['relocation'] or instruction['operands']
             _check_instruction(instruction, 'before guard: ' + name)
+            target_symbol = call_target(instruction)
             if mnemonic in ('call', 'callq', 'bl', 'blr'):
-                if boundary in operands:
+                if target_symbol in boundaries:
                     guarded = True
                     continue
-                if not any(s in operands for s in ('__chkstk', '___chkstk_ms')):
+                if target_symbol not in ('__chkstk', '___chkstk_ms', '__chkstk_ms'):
                     raise BuildEvidenceError(
                         'unreviewed call before guard: ' + operands)
             if mnemonic.startswith('ret'):
@@ -250,6 +249,9 @@ def inspect_guard_symbols(symbols, *, require_dispatch=True):
                          ('cbz', 'cbnz', 'tbz', 'tbnz', 'br'))
             unconditional = mnemonic in ('jmp', 'jmpq', 'b', 'br')
             if is_branch:
+                if unconditional and target_symbol in boundaries:
+                    guarded = True
+                    continue
                 if instruction['relocation']:
                     raise BuildEvidenceError('external branch before guard')
                 target = re.search(r'(?:^|,\s*)(?:0x)?([0-9a-fA-F]+)\s*(?:<|$)',
@@ -265,7 +267,9 @@ def inspect_guard_symbols(symbols, *, require_dispatch=True):
             raise BuildEvidenceError('Dispatch never reaches raw guard')
     return {'inspect_symbols': sorted(inspections),
             'require_environment_symbols': sorted(refusals),
-            'dispatch_symbols': sorted(dispatches), 'fp_before_guard': False}
+            'dispatch_symbols': sorted(dispatches),
+            'protected_entries': entries, 'protected_entry_count': len(entries),
+            'fp_before_guard': False}
 
 
 def guard_disassembly(build_evidence, output_dir):
@@ -280,42 +284,51 @@ def guard_disassembly(build_evidence, output_dir):
         raise BuildEvidenceError('GNU/LLVM objdump is required for guard inspection')
     program = str(Path(program).resolve())
     selected = [row for row in build_evidence['translation_units']
-                if Path(row['source']).name in ('bindings.cpp', 'bindings2d.cpp',
-                                                'native_witness.cpp',
-                                                'planar_witness.cpp', 'fpguard.cpp')]
-    if {Path(row['source']).name for row in selected} != {
-            'bindings.cpp', 'bindings2d.cpp', 'native_witness.cpp',
-            'planar_witness.cpp', 'fpguard.cpp'}:
+                if Path(row['source']).name in PROTECTED_ENTRY_COUNTS]
+    sources = {Path(row['source']).name for row in selected}
+    if (len(selected) != len(PROTECTED_ENTRY_COUNTS) or
+            sources != set(PROTECTED_ENTRY_COUNTS)):
         raise BuildEvidenceError('missing production guard/dispatch objects')
     reports, manifests = [], []
     for row in selected:
         identity = file_identity(row['output']['path'])
         if identity != row['output']:
             raise BuildEvidenceError('changed production object before disassembly')
-        command = [program, '-drC', '--no-show-raw-insn', identity['path']]
-        run = subprocess.run(command, text=True, capture_output=True,
-                             env=tool_environment(os.environ))
-        if run.returncode:
-            raise BuildEvidenceError('object disassembler failed: ' + run.stderr)
-        path = output_dir / (Path(row['source']).name + '.disassembly.txt')
-        path.write_text(run.stdout)
-        reports.append(inspect_guard_symbols(
-            parse_disassembly(run.stdout),
-            require_dispatch=Path(row['source']).name != 'fpguard.cpp'))
-        manifests.append({'object': identity, 'disassembly': file_identity(path),
-                          'argv': command, 'exit_code': run.returncode})
+        source_name = Path(row['source']).name
+        item, outputs = {'source': source_name, 'object': identity}, {}
+        for label, flags in (('', '-drC'), ('raw_', '-dr')):
+            command = [program, flags, '--no-show-raw-insn', identity['path']]
+            run = subprocess.run(command, text=True, capture_output=True,
+                                 env=tool_environment(os.environ))
+            if run.returncode:
+                raise BuildEvidenceError('object disassembler failed: ' + run.stderr)
+            path = output_dir / (source_name + '.' + label + 'disassembly.txt')
+            path.write_text(run.stdout)
+            item.update({label + 'disassembly': file_identity(path),
+                         label + 'argv': command, label + 'exit_code': run.returncode})
+            outputs[label] = run.stdout
+        if file_identity(identity['path']) != identity:
+            raise BuildEvidenceError('production object changed during disassembly')
+        inspection = inspect_guard_symbols(
+            parse_disassembly(outputs[''], outputs['raw_']),
+            require_dispatch=source_name != 'fpguard.cpp', source_name=source_name)
+        reports.append(inspection)
+        manifests.append({**item, 'inspection': inspection})
     manifest = {'tool': file_identity(program), 'objects': manifests}
     (output_dir / 'guard-disassembly.json').write_bytes(canonical(manifest) + b'\n')
-    refusal_symbols = {name for report in reports
-                       for name in report['require_environment_symbols']}
     return {
         'tool_sha256': manifest['tool']['sha256'],
         'disassembly_sha256': hashlib.sha256(canonical(manifest)).hexdigest(),
-        'inspect_symbols': sorted({n for r in reports for n in r['inspect_symbols']}),
-        'require_environment_symbols': sorted(refusal_symbols),
-        'dispatch_symbols': sorted({n for r in reports for n in r['dispatch_symbols']}),
+        **guard_summary(reports),
         'fp_before_guard': False, 'objects': manifests,
     }
+
+
+def guard_summary(reports):
+    return {**{key: sorted({name for report in reports for name in report[key]})
+               for key in ('inspect_symbols', 'require_environment_symbols',
+                           'dispatch_symbols')},
+            'protected_entry_count': sum(r['protected_entry_count'] for r in reports)}
 
 
 def _primitive_options(unit, family):
@@ -496,6 +509,44 @@ def parse_power(stdout):
             for radius, ordinary, checked in rows]
 
 
+def parse_standard(stdout):
+    """Require both owners of each fixed, independently derived fixture."""
+    rows = {}
+    labels = {'standard': 'standard-xy-v1', 'standard-xz': 'standard-xz-v1'}
+    for line in stdout.splitlines():
+        if not line.startswith('standard'):
+            continue
+        match = re.fullmatch(r'(standard(?:-xz)?) ([01]) ([0-9a-f]{16})', line)
+        if match is None:
+            raise BuildEvidenceError('unknown or malformed standard fixture')
+        label, owner, value = match.groups()
+        key = (labels[label], int(owner))
+        if key in rows:
+            raise BuildEvidenceError('duplicate standard fixture owner')
+        rows[key] = value
+    if set(rows) != {(name, owner) for name in STANDARD_FIXTURES for owner in (0, 1)}:
+        raise BuildEvidenceError('missing standard fixture observation')
+    return {name: [rows[name, owner] for owner in (0, 1)] for name in STANDARD_FIXTURES}
+
+
+def standard_fixture_report(strict, unsafe, family):
+    fixtures, discriminating = [], []
+    for name, coordinates in STANDARD_FIXTURES.items():
+        if strict[name] != [STRICT_BITS] * 2:
+            raise BuildEvidenceError('strict actual-vendor standard fixture mismatch')
+        if unsafe[name] not in ([STRICT_BITS] * 2, [UNSAFE_BITS] * 2):
+            raise BuildEvidenceError('unreviewed unsafe standard fixture output')
+        if unsafe[name] == [UNSAFE_BITS] * 2:
+            discriminating.append(name)
+        fixtures.append({'name': name, 'coordinates_hex': coordinates,
+                         'expected_strict_bits': STRICT_BITS,
+                         'expected_fused_bits': UNSAFE_BITS,
+                         'strict_bits': strict[name], 'unsafe_bits': unsafe[name]})
+    if not discriminating or family == 'GNU' and 'standard-xy-v1' not in discriminating:
+        raise BuildEvidenceError('actual-vendor standard control did not discriminate')
+    return fixtures, discriminating
+
+
 def _control_compiler(build_evidence, unit, family):
     """Reuse the verified bytes without losing Apple's lexical driver mode."""
     compiler_hash = build_evidence['toolchain']['compiler_sha256']
@@ -609,12 +660,7 @@ def run_arithmetic_controls(source_root, build_evidence, output_dir):
                            'result': file_identity(result_path)})
         if run.returncode:
             raise BuildEvidenceError('source-sensitive discriminator execution failed')
-        standard = re.findall(r'^standard [01] ([0-9a-f]{16})$', run.stdout, re.M)
-        expected = UNSAFE_BITS if name == 'unsafe' else STRICT_BITS
-        if name != 'unsafe_power' and (len(standard) != 2 or any(
-                value != expected for value in standard)):
-            raise BuildEvidenceError(
-                name + ' actual-vendor standard bits did not discriminate')
+        standard = parse_standard(run.stdout)
         powers = parse_power(run.stdout)
         if not unsafe and (len(powers) != 3 or any(
                 ordinary != '0000000000000000' or checked != '3ff0000000000000'
@@ -640,9 +686,14 @@ def run_arithmetic_controls(source_root, build_evidence, output_dir):
             'compile_argv': compile_command, 'link_argv': link_command,
             'records': [file_identity(path) for path in sorted(records.glob('*.json'))],
         })
+    fixtures, discriminating = standard_fixture_report(
+        observations['strict']['standard'], observations['unsafe']['standard'],
+        family_name)
     return {
-        'standard_strict_bits': observations['strict']['standard'][0],
-        'standard_unsafe_bits': observations['unsafe']['standard'][0],
+        'standard_strict_bits': observations['strict']['standard']['standard-xy-v1'][0],
+        'standard_unsafe_bits': observations['unsafe']['standard']['standard-xy-v1'][0],
+        'standard_fixtures': fixtures,
+        'standard_discriminating_fixtures': discriminating,
         'power_offsets': [{'radius_hex': radius, 'r_scale_bits': ordinary,
                            'r_scale_check_bits': checked}
                           for radius, ordinary, checked in

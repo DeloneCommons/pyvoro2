@@ -410,26 +410,70 @@ def controlled_fixture(finalizer, tmp_path, monkeypatch):
         },
     }
     controls = report['discriminators']
+    controls['standard_fixtures'] = [
+        {'name': 'standard-xy-v1',
+         'coordinates_hex': ['0x1.ffffff4p-1', '0x1.ffffffep0', '0x0p0'],
+         'expected_strict_bits': '4013fffffb000000',
+         'expected_fused_bits': '4013fffffb000001',
+         'strict_bits': ['4013fffffb000000'] * 2,
+         'unsafe_bits': ['4013fffffb000001'] * 2},
+        {'name': 'standard-xz-v1',
+         'coordinates_hex': ['0x1.ffffff4p-1', '0x0p0', '0x1.ffffffep0'],
+         'expected_strict_bits': '4013fffffb000000',
+         'expected_fused_bits': '4013fffffb000001',
+         'strict_bits': ['4013fffffb000000'] * 2,
+         'unsafe_bits': ['4013fffffb000001'] * 2},
+    ]
+    controls['standard_discriminating_fixtures'] = ['standard-xy-v1', 'standard-xz-v1']
     controls['power_unsafe_offsets'] = [
         {**row, 'r_scale_bits': '3ff0000000000000'}
         for row in controls['power_offsets']]
-    manifests, units = [], []
+    from qualification.discriminators import guard_summary, inspect_guard_symbols
+    from qualification.guard_symbols import PROTECTED_ENTRY_COUNTS, parse_disassembly
+    manifests, units, inspections = [], [], []
     for name in ('bindings.cpp', 'bindings2d.cpp', 'native_witness.cpp',
                  'planar_witness.cpp', 'fpguard.cpp'):
         obj, disassembly = tmp_path / (name + '.o'), tmp_path / (name + '.txt')
         obj.write_bytes(('object ' + name).encode())
-        disassembly.write_bytes(('disassembly ' + name).encode())
+        raw = tmp_path / (name + '.raw.txt')
+        text = ('0000 <pyvoro2::native_runtime::inspect()>:\n'
+                ' 0: fnstcw (%rax)\n 2: stmxcsr (%rax)\n 5: ret\n'
+                '0020 <pyvoro2::native_runtime::require_environment()>:\n'
+                ' 20: call 0 <pyvoro2::native_runtime::inspect()>\n 25: ret\n')
+        for index in range(PROTECTED_ENTRY_COUNTS[name]):
+            closure = ('pyvoro2::native_runtime::Dispatch<int ()>::wrap<Fixture' +
+                       str(index) + '>()::{lambda(pybind11::args, pybind11::kwargs)#1}')
+            symbol = ('int pybind11::detail::function_ref<int (pybind11::args, '
+                      'pybind11::kwargs)>::callback_fn<' + closure +
+                      '>(long, pybind11::args, pybind11::kwargs)')
+            address = 0x100 + index * 0x10
+            text += (f'{address:x} <{symbol}>:\n {address:x}: call 20 '
+                     '<pyvoro2::native_runtime::require_environment()>\n'
+                     f' {address + 5:x}: addsd %xmm0,%xmm1\n'
+                     f' {address + 9:x}: ret\n')
+        disassembly.write_text(text)
+        raw.write_text(text)
+        inspection = inspect_guard_symbols(
+            parse_disassembly(text, text), require_dispatch=name != 'fpguard.cpp',
+            source_name=name)
+        inspections.append(inspection)
         item = finalizer.file_identity(obj)
         dependency = finalizer.file_identity(source / 'cpp' / name)
         build['dependencies'].append(dependency)
         units.append({'source': dependency['path'], 'output': item,
                       'dependencies': [dependency]})
-        manifests.append({'object': item,
+        manifests.append({'object': item, 'source': name, 'inspection': inspection,
                           'disassembly': finalizer.file_identity(disassembly),
-                          'argv': [sys.executable, str(obj)], 'exit_code': 0})
+                          'raw_disassembly': finalizer.file_identity(raw),
+                          'argv': [sys.executable, '-drC', '--no-show-raw-insn',
+                                   str(obj)],
+                          'raw_argv': [sys.executable, '-dr', '--no-show-raw-insn',
+                                       str(obj)],
+                          'exit_code': 0, 'raw_exit_code': 0})
     tool = finalizer.file_identity(sys.executable)
     controls['guard_disassembly'].update(
         tool_sha256=tool['sha256'], objects=manifests,
+        **guard_summary(inspections),
         disassembly_sha256=finalizer.build_digest({'tool': tool, 'objects': manifests}))
     build['translation_units'] = units
     build['fixture'] = report
@@ -456,6 +500,90 @@ def test_fixed_child_completes_before_atomic_record_and_anchor(controlled_fixtur
     assert set(record['components']) == set(report['components'])
     assert (arguments['output'] / 'qualification-evidence.json').is_file()
     assert (arguments['output'] / 'route.stdout').is_file()
+
+
+def test_apple_finalizer_requires_discriminating_named_companion(controlled_fixture):
+    finalizer, _, report, _ = controlled_fixture
+    controls = report['discriminators']
+    controls['standard_unsafe_bits'] = '4013fffffb000000'
+    controls['standard_fixtures'][0]['unsafe_bits'] = ['4013fffffb000000'] * 2
+    controls['standard_discriminating_fixtures'] = ['standard-xz-v1']
+    finalizer._validate_arithmetic(report)
+    with pytest.raises(finalizer.FinalizationError, match='standard'):
+        finalizer._validate_arithmetic(report, family='GNU')
+
+
+@pytest.mark.parametrize('mutation', [
+    'missing', 'renamed', 'coordinates', 'expected', 'strict', 'arbitrary_unsafe',
+    'nondiscriminating', 'false_discrimination', 'mixed_owners',
+])
+def test_finalizer_refuses_incomplete_or_unreviewed_standard_fixtures(
+        controlled_fixture, mutation):
+    finalizer, _, report, _ = controlled_fixture
+    controls = report['discriminators']
+    fixture = controls['standard_fixtures'][1]
+    if mutation == 'missing':
+        controls['standard_fixtures'].pop()
+    elif mutation == 'renamed':
+        fixture['name'] = 'standard-yz-v1'
+    elif mutation == 'coordinates':
+        fixture['coordinates_hex'][2] = '0x1p0'
+    elif mutation == 'expected':
+        fixture['expected_fused_bits'] = '4013fffffb000002'
+    elif mutation == 'strict':
+        fixture['strict_bits'] = ['4013fffffb000001'] * 2
+    elif mutation == 'arbitrary_unsafe':
+        fixture['unsafe_bits'] = ['4013fffffb000002'] * 2
+    elif mutation == 'mixed_owners':
+        fixture['unsafe_bits'][0] = '4013fffffb000000'
+    elif mutation == 'false_discrimination':
+        controls['standard_discriminating_fixtures'] = ['standard-xz-v1']
+    else:
+        controls['standard_unsafe_bits'] = '4013fffffb000000'
+        for row in controls['standard_fixtures']:
+            row['unsafe_bits'] = ['4013fffffb000000'] * 2
+        controls['standard_discriminating_fixtures'] = []
+    with pytest.raises(finalizer.FinalizationError, match='standard'):
+        finalizer._validate_arithmetic(report)
+
+
+@pytest.mark.parametrize('change', [
+    'missing_entry', 'unreported_entry', 'wrong_source', 'aggregate_count',
+    'raw_symbol_mismatch', 'fp_before_guard', 'unexpected_call',
+])
+def test_finalizer_replays_complete_guard_inventory(controlled_fixture, change):
+    finalizer, arguments, report, _ = controlled_fixture
+    guard = report['discriminators']['guard_disassembly']
+    item = guard['objects'][0]
+    if change == 'unreported_entry':
+        item['inspection']['protected_entries'].pop()
+    elif change == 'wrong_source':
+        item['source'] = 'native_witness.cpp'
+    elif change == 'aggregate_count':
+        guard['protected_entry_count'] -= 1
+    else:
+        for key in ('disassembly', 'raw_disassembly'):
+            path = Path(item[key]['path'])
+            text = path.read_text()
+            if change == 'missing_entry':
+                text = text[:text.rfind('\n260 <')]
+            elif change == 'raw_symbol_mismatch':
+                if key != 'raw_disassembly':
+                    continue
+                text = text.replace('260 <', '261 <')
+            elif change == 'fp_before_guard':
+                text = text.replace('100: call', '100: addsd %xmm0,%xmm1\n 101: call')
+            else:
+                text = text.replace('100: call 20 <pyvoro2::native_runtime::'
+                                    'require_environment()>',
+                                    '100: call 40 <unexpected_foreign()>')
+            path.write_text(text)
+            item[key] = finalizer.file_identity(path)
+    # Rehashing edited evidence cannot supply the missing boundary proof.
+    guard['disassembly_sha256'] = finalizer.build_digest({
+        'tool': finalizer.file_identity(sys.executable), 'objects': guard['objects']})
+    with pytest.raises(finalizer.FinalizationError, match='guard'):
+        finalizer.finalize(**arguments)
 
 
 @pytest.mark.parametrize('change', [

@@ -80,6 +80,22 @@ command and source evidence. Same-build stock/observer noninterference remains
 required; whole topology equality across different conforming compilers is not
 a general requirement.
 
+Arithmetic controls identify each fixture and its independent expected bits.
+Every strict fixture must pass; a declared unsafe control must actually
+discriminate a reviewed forbidden transformation on that adapter. This does not
+require every unsafe backend to choose the same contraction placement on every
+fixture. The historical XY control and its expectations remain retained, with
+an independently derived XZ companion exposing fusion of the final nonzero
+square. GNU retains historical XY discrimination.
+
+Guard inspection accounts for the complete protected-entry inventory in all
+five production objects, including real pybind callbacks with inlined Dispatch.
+It binds raw and demangled symbol/relocation identities and preserves instruction
+boundaries across supported split prefixes. Unknown operations in proof-relevant
+ranges, missing entries and unresolved pre-guard calls refuse qualification.
+The finalizer replays the object-bound coverage evidence; nonempty symbol lists
+alone do not establish complete guard coverage.
+
 Compiler family, exact version, target and SDK remain reproducibility provenance.
 They select a reviewed property adapter rather than a compiler patch-version
 allowlist. An adapter's existence alone does not qualify an artifact. Existing

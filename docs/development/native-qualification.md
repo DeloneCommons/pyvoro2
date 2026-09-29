@@ -101,6 +101,12 @@ component lists, including those without a `libsystem_` prefix. Their exact
 installed paths and bytes must match actual link inputs; candidate search paths
 cannot establish runtime provenance.
 
+Reused compiler options retain their compiler-family semantics. In particular,
+MSVC `-MD` selects the dynamic CRT and `-MT` selects the static CRT; neither is
+a GNU dependency-output option on that adapter. The discriminator harness keeps
+the production runtime selection, including slash/dash and debug variants.
+It does not repair a mismatched selection by adding CRT libraries.
+
 On Windows, the compiler version label comes from the complete `/Bv` pass block,
 whose `cl.exe` path must match the observed compiler image; `/nologo` may suppress
 the startup banner. Actual debugger image identities remain the tool authority.
@@ -188,6 +194,32 @@ and needs no certificate or `_core`/`_core2d` import. Independent runtime review
 remains active.
 
 ## Required evidence and support boundary
+
+The unchanged-vendor standard-operation harness retains the historical XY
+fixture and adds a separately named XZ companion. Both use
+`dx = 0x1.ffffff4p-1`, `dy = 0x1.ffffffep0`: coordinates are `(dx, dy, 0)`
+and `(dx, 0, dy)`. Independent exact arithmetic gives separate-rounding bits
+`4013fffffb000000` and discriminating fused bits `4013fffffb000001`.
+Every strict observation must match its independent expectation. An unsafe
+control must discriminate on at least one named fixture; another fixture may
+retain exactly its reviewed strict result when the compiler contracts a zero
+term. Arbitrary unsafe values, mixed owner results and complete nondiscrimination
+refuse. GNU also retains the historical XY discrimination. Archived arithmetic
+and WP6 expectations are unchanged.
+
+Optimized guard evidence inventories every protected entry in each of the five
+production objects: 23 in `bindings.cpp`, 5 in `native_witness.cpp`, 4 in
+`bindings2d.cpp`, 6 in `planar_witness.cpp`, and raw guards without Dispatch
+entries in `fpguard.cpp`. Full callable identities distinguish source lambdas
+with equal signatures. Both actual pybind callbacks containing inlined Dispatch
+and out-of-line Dispatch operators are inspected. MSVC's generated closure
+identities are associated through their emitted registration calls. Destructors
+and initializers mentioning those types do not count as entry coverage.
+Paired raw/demangled disassembly binds relocation identities to the same objects
+and tool. Split instruction prefixes retain their instruction boundary; unknown
+or malformed instructions remain failures in proof-relevant ranges. The
+finalizer replays each object's inspection and checks the inventory and hashes
+before issuing a record. Nonempty symbol lists alone cannot establish coverage.
 
 | Evidence | Issue #88 requirement |
 |---|---|

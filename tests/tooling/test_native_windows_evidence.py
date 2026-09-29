@@ -23,6 +23,8 @@ from qualification.effective_build import (  # noqa: E402
 from qualification.link_provenance import (  # noqa: E402
     verify_link_closure, verify_linker_options,
 )
+from qualification.discriminators import _primitive_options  # noqa: E402
+from qualification.record_command import query_options, sources_in  # noqa: E402
 from qualification import windows_link, windows_trace  # noqa: E402
 
 
@@ -34,6 +36,63 @@ MANIFEST = b'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     </requestedPrivileges>
   </security></trustInfo>
 </assembly>'''
+
+
+@pytest.mark.parametrize('family', ['gnu', 'clang', 'msvc'])
+def test_query_options_interprets_shared_switches_by_compiler_family(
+        tmp_path, family):
+    source = tmp_path / 'unit.cpp'
+    arguments = ['compiler', '-MD', '-MT', '-DKEEP=1', '-MP', '-c', str(source)]
+    # GNU -MT consumes a dependency target; MSVC -MT selects the static CRT.
+    expected = ['-MD', '-MT', '-DKEEP=1', '-MP'] if family == 'msvc' else []
+    assert query_options(arguments, source, family) == expected
+
+
+@pytest.mark.parametrize('runtime', [
+    '/MD', '-MD', '/MDd', '-MDd', '/MT', '-MT', '/MTd', '-MTd',
+])
+@pytest.mark.parametrize('prefix', ['/', '-'])
+def test_msvc_captured_semantic_options_reach_discriminator_harness(
+        tmp_path, runtime, prefix):
+    source = tmp_path / 'v_compute.cc'
+    # Model the effective production command retained by the Windows adapter,
+    # including its injected observation options and CMake's dash-prefixed CRT.
+    semantic = ['/nologo', '/TP', '-DPy_NO_LINK_LIB', '-Ivendor/voro++/src',
+                '/EHsc', '/O2', '-std:c++17', runtime, '/fp:strict', '/GL-',
+                '/FIcpp/native_fp_contract.hpp', '/favor:AMD64',
+                '-favor:INTEL64', '/fastfail', '/FS']
+    arguments = ['cl.exe', *semantic, prefix + 'c', str(source),
+                 prefix + 'Fo' + str(tmp_path / 'v_compute.obj'),
+                 prefix + 'Fd' + str(tmp_path / 'compile.pdb'),
+                 prefix + 'sourceDependencies', str(tmp_path / 'dependencies.json'),
+                 prefix + 'Bv', prefix + 'FAs',
+                 prefix + 'Fa' + str(tmp_path / 'native.asm')]
+    unit = {'source': str(source), 'command': {'argv': arguments}}
+    assert query_options(arguments, source, 'msvc') == semantic
+    assert _primitive_options(unit, 'msvc') == semantic
+
+
+@pytest.mark.parametrize('prefix', ['/', '-'])
+def test_msvc_query_removes_separate_outputs_without_consuming_semantic_options(
+        tmp_path, prefix):
+    source = tmp_path / 'unit.cpp'
+    arguments = ['cl.exe', prefix + 'FA', prefix + 'MD', prefix + 'c', str(source),
+                 prefix + 'Fo', str(tmp_path / 'unit.obj'),
+                 prefix + 'Fa', str(tmp_path / 'unit.asm'),
+                 prefix + 'Fd', str(tmp_path / 'unit.pdb'), '/fp:strict', '/GL-']
+    assert query_options(arguments, source, 'msvc') == [
+        prefix + 'MD', '/fp:strict', '/GL-']
+
+
+@pytest.mark.parametrize('family', ['gnu', 'clang', 'msvc'])
+def test_source_capture_interprets_runtime_and_dependency_target_by_family(
+        tmp_path, family):
+    source = tmp_path / 'unit.cpp'
+    arguments = ['compiler', '-MT']
+    if family != 'msvc':
+        arguments.append('dependency-target.cpp')
+    arguments.append(str(source))
+    assert sources_in(arguments, tmp_path, family) == [source]
 
 
 def _compiler_passes():
@@ -651,7 +710,7 @@ def test_actual_windows_link_observes_default_libraries_and_manifest_resource(
     records = tmp_path / 'records'
     recorder = ROOT / 'tools/native/qualification/record_command.py'
     commands = [
-        [compiler, '/nologo', '/O2', '/MD', '/fp:strict', '/GL-', '/c', str(source),
+        [compiler, '/nologo', '/O2', '-MD', '/fp:strict', '/GL-', '/c', str(source),
          '/Fo' + str(obj)],
         [linker, '/DLL' if dll else '/SUBSYSTEM:CONSOLE', '/LTCG:OFF', '/MANIFEST',
          "/MANIFESTUAC:level='asInvoker' uiAccess='false'", '/OUT:' + str(output),
@@ -664,8 +723,14 @@ def test_actual_windows_link_observes_default_libraries_and_manifest_resource(
         assert run.returncode == 0, run.stdout + run.stderr
     build = verify_build(records, tmp_path)
     assert build['components']['_observed']['output'] == file_identity(output)
-    row = next(json.loads(path.read_text()) for path in records.glob('*.json')
-               if json.loads(path.read_text())['kind'] == 'link')
+    rows = [json.loads(path.read_text()) for path in records.glob('*.json')]
+    compile_row = next(row for row in rows if row['kind'] == 'compile')
+    options = _primitive_options({'source': compile_row['source'],
+                                  'command': {'argv': compile_row['effective_argv']}},
+                                 'msvc')
+    assert '-MD' in options
+    assert '/fp:strict' in options
+    row = next(row for row in rows if row['kind'] == 'link')
     assert any(Path(item['path']).name.lower() == 'msvcrt.lib'
                for item in row['windows_link_inputs']['searched_libraries'])
     assert row['windows_manifest']['resource']['resource_id'] == (2 if dll else 1)
