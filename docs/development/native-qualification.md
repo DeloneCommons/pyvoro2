@@ -34,6 +34,11 @@ initialization, before import returns or a numeric callback can run. Later
 registration rechecks that same immutable file identity. Qualification tools
 use canonical module names and preserve the explicitly requested payload path;
 they refuse a conflicting production module already loaded from another path.
+File identity checks retain device, inode, mode, size and nanosecond `mtime` and
+`ctime` fields. They compare descriptor metadata for the read and a fresh open
+of its pathname, keeping the read handle open during rebinding. Later checks
+use that same descriptor API. Where CPython supplies change time through that
+API, the check retains it even if pathname stat reports creation time instead.
 Initial interpreter and Python/NumPy loading under an already hostile FP state
 is outside the protected operation boundary. Runtime tests import the package
 before installing hostile controls, then exercise the first forward call as
@@ -213,6 +218,12 @@ Adapter availability is not a support claim. WP6/WP7 on a family without the
 required occurrence evidence explicitly refuse. Existing WP5/WP8 Apple/MSVC
 support and final repaired GNU14 qualification are acceptance gates, not optional
 future portability. Linux aarch64 and other new targets remain outside #88.
+
+The fixed route suite keeps boundary-free ghost query metadata checks in WP8.
+Ghost cases that request certified faces or edges are exercised with their
+owning WP7 component, including the original output-flag and large-query-shift
+cases. The WP5/WP8 adapters do not acquire WP7 authority through a shared test
+file, and the complete GNU suite retains those certificate assertions.
 Raw runtime tests with dangerous unmasked traps run in disposable processes;
 surviving harnesses restore exact saved state. The guard never changes it.
 

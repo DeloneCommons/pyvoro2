@@ -104,6 +104,18 @@ def test_windows_observer_requires_version_only_for_actual_compiler_process(
         images.extend([tmp_path / 'c1xx.dll', tmp_path / 'c2.dll'])
     for path in images:
         path.write_bytes(b'MZ fixture ' + path.name.encode())
+    # Simulated Win32 image paths must remain drive-qualified even when this
+    # portable fixture runs on a POSIX host. Python 3.13+ ntpath.isabs correctly
+    # refuses a POSIX /tmp path as a Windows absolute path.
+    image_root = 'C:/observed-msvc'
+    mapped_images = {image_root + '/' + path.name: path for path in images}
+
+    def mapped_identity(path):
+        if str(path) in mapped_images:
+            return {**file_identity(mapped_images[str(path)]), 'path': str(path)}
+        return file_identity(path)
+
+    monkeypatch.setattr(windows_trace, 'file_identity', mapped_identity)
     directory = tmp_path / 'observation'
     directory.mkdir()
     events = iter([(3, 1), *[(6, index) for index in range(2, len(images) + 1)],
@@ -115,7 +127,7 @@ def test_windows_observer_requires_version_only_for_actual_compiler_process(
         process.hProcess, process.hThread = 100, 101
         if diagnostics_present:
             text, compiler = _compiler_passes()
-            text = text.replace(compiler['path'].rsplit('\\', 1)[0], str(tmp_path))
+            text = text.replace(compiler['path'].rsplit('\\', 1)[0], image_root)
             (directory / 'stderr.txt').write_text(text)
         return True
 
@@ -132,7 +144,7 @@ def test_windows_observer_requires_version_only_for_actual_compiler_process(
         return True
 
     def image_path(handle, buffer, length, flags):
-        buffer.value = str(images[handle - 1])
+        buffer.value = image_root + '/' + images[handle - 1].name
         return len(buffer.value)
 
     kernel = SimpleNamespace(

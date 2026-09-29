@@ -134,6 +134,17 @@ def _stat_identity(info):
             info.st_mtime_ns, info.st_ctime_ns)
 
 
+def _opened_identity(path):
+    """Keep the full descriptor identity when checking a pathname again.
+
+    Windows CPython may report creation time through stat(path) but metadata
+    change time through fstat(handle). Reopening uses the same descriptor API
+    as the original read, retaining both the file ID and its change clock.
+    """
+    with path.open('rb') as stream:
+        return _stat_identity(os.fstat(stream.fileno()))
+
+
 @dataclass(frozen=True)
 class _FileIdentity:
     path: Path
@@ -142,7 +153,7 @@ class _FileIdentity:
 
     def unchanged(self, reason='payload_mismatch'):
         try:
-            current = _stat_identity(self.path.stat())
+            current = _opened_identity(self.path)
         except OSError:
             _refuse(reason, f'installed file disappeared: {self.path.name}')
         if current != self.stat:
@@ -155,8 +166,8 @@ def _read_file(path, reason):
             before = _stat_identity(os.fstat(stream.fileno()))
             data = stream.read()
             after = _stat_identity(os.fstat(stream.fileno()))
-        if before != after or after != _stat_identity(path.stat()):
-            _refuse(reason, f'installed file changed while reading: {path.name}')
+            if before != after or after != _opened_identity(path):
+                _refuse(reason, f'installed file changed while reading: {path.name}')
     except OSError:
         _refuse(reason, f'cannot read installed file: {path.name}')
     return data, _FileIdentity(path, after, hashlib.sha256(data).hexdigest())

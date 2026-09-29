@@ -356,6 +356,122 @@ def test_record_path_cannot_escape_installation(installation):
     _refuses(s, s.write(), 'untrusted_qualification')
 
 
+def _file_stat(info, **changes):
+    fields = ('st_dev', 'st_ino', 'st_mode', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
+    return SimpleNamespace(**{**{key: getattr(info, key) for key in fields}, **changes})
+
+
+@pytest.mark.parametrize('phase', ['read', 'cached'])
+def test_immutable_file_uses_consistent_descriptor_timestamps(
+        qualification, tmp_path, monkeypatch, phase):
+    q = qualification
+    path = tmp_path / 'immutable.pyd'
+    path.write_bytes(b'immutable native payload')
+    with path.open('rb') as stream:
+        descriptor = q.os.fstat(stream.fileno())
+    original_stat = Path.stat
+
+    def creation_time_stat(self, *args, **kwargs):
+        if self == path:
+            # CPython 3.12+ Windows path stat preserves creation-time ctime,
+            # whereas fstat reports the file's metadata-change time.
+            return _file_stat(descriptor, st_ctime_ns=descriptor.st_ctime_ns - 100)
+        return original_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'stat', creation_time_stat)
+    if phase == 'read':
+        data, identity = q._read_file(path, 'payload_mismatch')
+        assert data == b'immutable native payload'
+    else:
+        identity = q._FileIdentity(path, q._stat_identity(descriptor),
+                                   _digest(b'immutable native payload'))
+    assert identity.stat == q._stat_identity(descriptor)
+    identity.unchanged()
+
+
+@pytest.mark.parametrize('phase', ['during_read', 'after_registration'])
+def test_immutable_file_change_time_alone_still_refuses(
+        qualification, tmp_path, monkeypatch, phase):
+    q = qualification
+    path = tmp_path / 'changed.pyd'
+    path.write_bytes(b'unchanged size and modification time')
+    original_fstat, original_stat = q.os.fstat, Path.stat
+    with path.open('rb') as stream:
+        descriptor = original_fstat(stream.fileno())
+    identity = q._FileIdentity(path, q._stat_identity(descriptor),
+                               _digest(path.read_bytes()))
+    calls = 0
+
+    def changed_fstat(fd):
+        nonlocal calls
+        info = original_fstat(fd)
+        if (info.st_dev, info.st_ino) == (descriptor.st_dev, descriptor.st_ino):
+            calls += 1
+            if phase == 'after_registration' or calls > 1:
+                return _file_stat(info, st_ctime_ns=descriptor.st_ctime_ns + 100)
+        return info
+
+    def unchanged_path_stat(self, *args, **kwargs):
+        # The pathname API's legacy creation clock does not see ChangeTime.
+        return descriptor if self == path else original_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(q.os, 'fstat', changed_fstat)
+    monkeypatch.setattr(Path, 'stat', unchanged_path_stat)
+    with pytest.raises(q.NativeQualificationError, match='payload_mismatch'):
+        if phase == 'during_read':
+            q._read_file(path, 'payload_mismatch')
+        else:
+            identity.unchanged()
+
+
+def test_read_refuses_same_payload_path_replacement_while_original_is_open(
+        qualification, tmp_path, monkeypatch):
+    q = qualification
+    path, replacement = tmp_path / 'original.pyd', tmp_path / 'replacement.pyd'
+    path.write_bytes(b'identical native payload bytes')
+    shutil.copy2(path, replacement)
+    original_open, original_stat = Path.open, Path.stat
+    replaced, reader = False, None
+
+    class ReplaceAfterRead:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            reader.close()
+
+        def fileno(self):
+            return reader.fileno()
+
+        def read(self):
+            nonlocal replaced
+            data = reader.read()
+            # Simulate the pathname selecting another file without depending
+            # on whether this host permits replacing an open loaded DLL.
+            replaced = True
+            return data
+
+    def selected_open(self, *args, **kwargs):
+        nonlocal reader
+        if self != path:
+            return original_open(self, *args, **kwargs)
+        if replaced:
+            assert not reader.closed
+            return original_open(replacement, *args, **kwargs)
+        reader = original_open(path, *args, **kwargs)
+        return ReplaceAfterRead()
+
+    def selected_stat(self, *args, **kwargs):
+        if self == path:
+            return original_stat(replacement if replaced else path, *args, **kwargs)
+        return original_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', selected_open)
+    monkeypatch.setattr(Path, 'stat', selected_stat)
+    with pytest.raises(q.NativeQualificationError, match='payload_mismatch'):
+        q._read_file(path, 'payload_mismatch')
+
+
 def test_actual_linux_loader_mapping_is_checked(qualification):
     if not sys.platform.startswith('linux'):
         pytest.skip('Linux mapping adapter')
