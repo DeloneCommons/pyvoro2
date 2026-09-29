@@ -30,7 +30,9 @@ from qualification.link_provenance import verify_linker_options  # noqa: E402
 
 
 STRICT = ['-O2', '-fno-fast-math', '-ffp-contract=off', '-fno-lto']
-HAS_GNU = shutil.which('g++-13')
+# These controls require the reviewed ELF/glibc adapter, not a GNU executable
+# installed on an unrelated host (for example Homebrew GCC on macOS).
+HAS_GNU = sys.platform == 'linux' and shutil.which('g++-13')
 
 
 def record(tmp_path, args):
@@ -237,26 +239,29 @@ def test_apple_deployment_target_is_recorded_platform_configuration(version):
                           'clang')
 
 
-def test_clang_plan_is_an_explicit_supported_execution_plan():
+def test_clang_plan_is_an_explicit_supported_execution_plan(tmp_path):
+    compiler = (tmp_path / 'clang').as_posix()
     plan = parse_clang_plan(
         'Apple clang version 17\n'
-        ' "/xcode/bin/clang" "-cc1" "-triple" "arm64-apple-macosx15" '
+        f' "{compiler}" "-cc1" "-triple" "arm64-apple-macosx15" '
         '"-emit-obj" "-o" "a.o" "a.cpp"\n',
-        Path('/xcode/bin/clang'),
+        Path(compiler),
     )
-    assert plan == [['/xcode/bin/clang', '-cc1', '-triple',
+    assert plan == [[compiler, '-cc1', '-triple',
                      'arm64-apple-macosx15', '-emit-obj', '-o', 'a.o', 'a.cpp']]
     assembly = parse_clang_plan(
-        ' "/xcode/bin/clang" "-cc1as" "-triple" "arm64-apple-macosx15" '
-        '"-filetype" "obj" "-o" "a.o" "a.s"\n', Path('/xcode/bin/clang'))
+        f' "{compiler}" "-cc1as" "-triple" "arm64-apple-macosx15" '
+        '"-filetype" "obj" "-o" "a.o" "a.s"\n', Path(compiler))
     assert assembly[0][1] == '-cc1as'
     with pytest.raises(BuildEvidenceError, match='unsupported'):
-        parse_clang_plan(' "/tmp/unknown-wrapper" "a.cpp"\n',
-                         Path('/xcode/bin/clang'))
+        parse_clang_plan(f' "{tmp_path.as_posix()}/unknown-wrapper" "a.cpp"\n',
+                         Path(compiler))
     with pytest.raises(BuildEvidenceError, match='no executable'):
-        parse_clang_plan('Apple clang version 17\n', Path('/xcode/bin/clang'))
+        parse_clang_plan('Apple clang version 17\n', Path(compiler))
 
 
+@pytest.mark.skipif(sys.platform == 'win32',
+                    reason='POSIX selector paths and symlink invocation semantics')
 def test_apple_selector_preserves_driver_mode_and_binds_default_sdk(
         tmp_path, monkeypatch):
     from types import SimpleNamespace
@@ -304,9 +309,11 @@ def test_actual_apple_selector_compiles_and_links_cpp_standard_headers(tmp_path)
     source.write_text('#include <cfloat>\n#include <string>\n'
                       'extern "C" double local(double x) { '
                       'std::string s("cxx"); return x + s.size() * DBL_EPSILON; }\n')
-    records = record(tmp_path, ['/usr/bin/clang++', *STRICT, '-fPIC', '-c',
+    # Match the reviewed production optimization and its closed ld -O3 policy.
+    apple_strict = ['-O3', *STRICT[1:]]
+    records = record(tmp_path, ['/usr/bin/clang++', *apple_strict, '-fPIC', '-c',
                                 str(source), '-o', 'standard.o'])
-    record(tmp_path, ['/usr/bin/clang++', *STRICT, '-shared', 'standard.o',
+    record(tmp_path, ['/usr/bin/clang++', *apple_strict, '-shared', 'standard.o',
                       '-o', '_core.so'])
     assert verify_build(records, tmp_path)['toolchain']['family'] == 'AppleClang'
 

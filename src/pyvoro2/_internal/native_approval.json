@@ -4,34 +4,34 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "81e390df733ae3c8f444a275fea94bc0eb4a53b2eccd08150746be14b7a896dc"
+      "source_sha256": "264a9753ec0d2532915edc1a725693ead97077ac469b86c487e3747fe427a05f"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "25e55e7a37702b7a61a27e31606211f82621a0c795fb4f10f7f48be27267d014"
+      "source_sha256": "321853709f6ee5d24f494b214c97d6152572526bc46ac4c7581df8e39b931ab1"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "b3d6a207d520419f5d18283489d5025af97c5980b50c410566d44e58bad7b1a9"
+      "source_sha256": "b308a6adb97936c950fb421afc423a50ff9cd18d4238815782de23fc3f3d09c7"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "8d92e18e1e0b8d6f19297cf296d52945ddf575f79d33ea87799ef4a78ad435c4"
+      "source_sha256": "f724ef4cb08e37bdf90c279acc296a101e2ec6ae0fdb3460eb28df6fa69b5b44"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "8a48a8636772dc36c748ed9d61c4ace276cb9ac4d8e3d599fc235a0c94ff4833"
+      "source_sha256": "4af92dec8e2665b8894b2414c44d9ff7ac6bd26007bba95960d8c0970641b4ff"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "024d969e7cb69abed9afb7146a14b36bf2059fda148c7d67087ce375ae506643"
+      "source_sha256": "17de0527f7b31fc436a5b3d132b5f27c0216bdc2108bbb02c47f8d23da64f97a"
     }
   },
   "consumer_sha256": "34605c5c583bce9d7a74e771df78084aafeff30883516cb948caa34bbe06f59d",
   "policy_revision": "issue88-p1",
   "review": {
     "date": "2026-09-29",
-    "decision": "Approved the frozen 384-file closure after reading the original independent remediation review and the substantive current-Windows-demangler follow-up. The new delta resolves only exact static-auto Dispatch::wrap<F> factory witnesses whose complete F type already has a validated guarded_def registration, emitted closure edge, operator and callback. Factory helpers confer no callable coverage. Current CI bindings replay preserves all 23 entries and 46 callable bodies; all 20 prior diagnostic objects pass, 137 focused tests pass, and eleven additional reviewer probes preserve full-type, namespace, missing-body and inventory refusal. The original MSVC CRT, named XY/XZ arithmetic, five-object guard coverage and finalizer replay review remains applicable. Native/vendor/consumer bytes, schemas, production FP/ISA flags and Model P authority are unchanged. Retained text replay and earlier CI positives do not qualify this changed source: fresh exact-head complete native and distribution acceptance remains mandatory. No merge, issue closure or Checkpoint B acceptance is implied.",
+    "decision": "Approved the frozen 384-file closure after reading all three independent source reviews and resolving both platform-suite follow-up findings. The final delta preserves exact native, vendor, consumer, schema, arithmetic and guard-policy bytes; it repairs Windows text-stream diagnostic redaction, byte-exact test fixtures and host-specific test selection. WP7 positives admit through the real component verifier and skip only the exact reviewed Apple/MSVC wp7-spatial limitation, while explicit nonempty refusal and empty-work tests retain their separate contracts. GNU/Linux compiler and sanitizer controls remain active on their reviewed host, with explicit non-GNU sanitizer refusal and unchanged-anchor checks. The reviewer independently ran 302 focused tests, the final WP7 file, and 44 additional newline and refusal-selection probes. The original CRT, named XY/XZ arithmetic and complete five-object guard reviews remain applicable. This substantive approval does not transfer earlier artifacts: fresh exact-head native, ordinary-platform and distribution acceptance is mandatory. No merge, issue closure or Checkpoint B acceptance is implied.",
     "reports": [
       {
         "name": "independent-remediation-review.md",
@@ -40,10 +40,14 @@
       {
         "name": "independent-msvc-symbol-review.md",
         "sha256": "cf5b5ddaf29a8bdecfe3233ebff6ca2d7d45a1f0ca80cede5747282338a5c702"
+      },
+      {
+        "name": "independent-platform-suite-review.md",
+        "sha256": "387b554aadcbe6bbd879329ca5330f3cd8c12485f0ad0888d59bc1e9debd83df"
       }
     ],
-    "reviewed_delta_base": "1e0192b89135577b81928f7341e206075024c763"
+    "reviewed_delta_base": "fca6d1453dcf92450790a8448c5b8c219241e281"
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "17b3336a49a729f50d9856e04861632583d77efafca0e354de8270b78c81d10a"
+  "source_sha256": "689e86c5776bd0f3bdb8eb12459432560aefa1cc21d2707418e6298b22d5ee06"
 }

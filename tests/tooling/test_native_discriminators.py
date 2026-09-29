@@ -272,7 +272,8 @@ def test_apple_control_link_keeps_verified_production_cxx_driver_mode(tmp_path):
         _control_compiler(build, unit, 'clang')
 
 
-@pytest.mark.skipif(not shutil.which('g++-13'), reason='GNU actual sanitizer control')
+@pytest.mark.skipif(sys.platform != 'linux' or not shutil.which('g++-13'),
+                    reason='GNU/Linux actual sanitizer control')
 def test_unsafe_power_companion_keeps_frozen_bits_without_changing_strict(tmp_path):
     # Use the unchanged vendor operations, not a copied arithmetic expression.
     source = tmp_path / 'power.cpp'
@@ -355,7 +356,8 @@ int main() {
     assert production == original
 
 
-@pytest.mark.skipif(not shutil.which('g++-13'), reason='GNU actual command control')
+@pytest.mark.skipif(sys.platform != 'linux' or not shutil.which('g++-13'),
+                    reason='GNU/Linux actual command control')
 def test_discriminator_refuses_successful_build_with_incomplete_records(tmp_path):
     source = tmp_path / 'control.cpp'
     source.write_text('int main() { return 0; }\n')

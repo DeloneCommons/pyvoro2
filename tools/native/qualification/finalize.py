@@ -396,8 +396,13 @@ def _failed_route_output_tail(path, environment):
     sensitive = re.compile(
         r'TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTHORIZATION|(?:^|_)KEY(?:$|_)',
         re.I)
-    secrets = {value.encode('utf8') for name, value in environment.items()
-               if value and sensitive.search(name)}
+    # A child text stream can translate an LF-bearing environment value to
+    # CRLF. Match both spellings in raw bytes without changing retained logs.
+    secrets = {spelling.encode('utf8') for name, value in environment.items()
+               if value and sensitive.search(name)
+               for normalized in [value.replace('\r\n', '\n')]
+               for spelling in (value, value.replace('\n', '\r\n'),
+                                normalized, normalized.replace('\n', '\r\n'))}
     overlap = max((len(value) for value in secrets), default=1)
     limit = 12 * 1024
     with Path(path).open('rb') as stream:

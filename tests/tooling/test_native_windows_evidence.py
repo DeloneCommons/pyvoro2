@@ -187,7 +187,8 @@ def test_windows_observer_requires_version_only_for_actual_compiler_process(
         if diagnostics_present:
             text, compiler = _compiler_passes()
             text = text.replace(compiler['path'].rsplit('\\', 1)[0], image_root)
-            (directory / 'stderr.txt').write_text(text)
+            # This fixture already contains the compiler's literal CRLF bytes.
+            (directory / 'stderr.txt').write_bytes(text.encode('utf8'))
         return True
 
     def wait_event(pointer, timeout):

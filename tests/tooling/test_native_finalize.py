@@ -145,9 +145,11 @@ def test_route_tail_drops_url_credentials_cut_by_the_read_boundary(finalizer, tm
 
 
 @pytest.mark.parametrize('cut_inside_context', [False, True])
+@pytest.mark.parametrize('newline', ['\n', '\r\n'])
+@pytest.mark.parametrize('secret_newline', ['\n', '\r\n'])
 def test_route_tail_keeps_multiline_credentials_out_of_the_original_window(
-        finalizer, tmp_path, cut_inside_context):
-    first = 'prefix-credential\nfixture-secret-suffix'
+        finalizer, tmp_path, cut_inside_context, newline, secret_newline):
+    first = 'prefix-credential' + secret_newline + 'fixture-secret-suffix'
     second = 'other-fixture-credential'
     cut = 4 + (len(first) if cut_inside_context else 0)
     ending = '\nlast route diagnostic line\n'
@@ -155,14 +157,15 @@ def test_route_tail_keeps_multiline_credentials_out_of_the_original_window(
     padding = second * (padding_size // len(second))
     raw = first + '\n' + padding + 'x' * (padding_size % len(second)) + ending
     path = tmp_path / 'route.stderr'
-    path.write_text(raw, encoding='utf8')
+    raw_bytes = raw.replace('\n', newline).encode('utf8')
+    path.write_bytes(raw_bytes)
     tail = finalizer._failed_route_output_tail(
         path, {'ONE_TOKEN': first, 'TWO_TOKEN': second})
     assert 'fixture-secret-suffix' not in tail
     assert 'other-fixture-credential' not in tail
     assert tail.endswith('last route diagnostic line')
     assert len(tail.encode('utf8')) <= 12288
-    assert path.read_text(encoding='utf8') == raw
+    assert path.read_bytes() == raw_bytes
 
 
 def test_optimized_issuer_refuses_before_source_approval(finalizer, tmp_path):
@@ -665,6 +668,8 @@ SAFETY_PATHS = (
 @pytest.fixture
 def safety_fixture(controlled_fixture):
     finalizer, arguments, report, contract = controlled_fixture
+    if finalizer.verify_build(None, None)['adapter'] != 'gnu-linux-x86_64-v1':
+        pytest.skip('sanitizer safety has only a reviewed GNU/Linux adapter')
     report['schema'] = 'pyvoro2-native-sanitizer-routes-v1'
     report['scope'] = 'sanitizer-safety-only'
     report['discriminators'].pop('guard_disassembly')
@@ -685,6 +690,22 @@ def safety_fixture(controlled_fixture):
             (directory / (Path(unit['source']).name + '.json')).write_text(
                 json.dumps({**row, 'record_sha256': unit['record_sha256']}))
     return finalizer, arguments, report, contract
+
+
+@pytest.mark.parametrize('adapter', [
+    'appleclang-darwin-arm64-v1', 'appleclang-darwin-x86_64-v1',
+    'msvc-win32-x86_64-v1',
+])
+def test_sanitizer_safety_refuses_unreviewed_adapter(controlled_fixture, adapter):
+    finalizer, arguments, _, _ = controlled_fixture
+    finalizer.verify_build(None, None)['adapter'] = adapter
+    internal = arguments['installation_root'] / 'pyvoro2/_internal'
+    anchor = internal / '_qualification_installation.py'
+    before = anchor.read_bytes()
+    with pytest.raises(finalizer.FinalizationError, match='no reviewed adapter'):
+        finalizer.exercise_sanitizer_safety(**arguments)
+    assert anchor.read_bytes() == before
+    assert not (internal / 'native_qualification_record.json').exists()
 
 
 def test_safety_exercise_cannot_issue_or_change_the_default_anchor(safety_fixture):

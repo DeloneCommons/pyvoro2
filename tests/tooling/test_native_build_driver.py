@@ -167,7 +167,9 @@ def test_process_receipt_contains_actual_exit_and_output_identity(driver, tmp_pa
                                  cwd=tmp_path, directory=tmp_path / 'process')
     assert receipt['exit_code'] == 0
     assert Path(receipt['stdout']['path']).read_text().strip() == 'observed'
-    assert receipt['stdout']['sha256'] == hashlib.sha256(b'observed\n').hexdigest()
+    expected_output = b'observed\r\n' if sys.platform == 'win32' else b'observed\n'
+    assert Path(receipt['stdout']['path']).read_bytes() == expected_output
+    assert receipt['stdout']['sha256'] == hashlib.sha256(expected_output).hexdigest()
     expected = driver.file_identity(sys.executable)['sha256']
     assert receipt['executable']['sha256'] == expected
 
@@ -230,9 +232,11 @@ def test_failure_tail_drops_url_credentials_cut_by_the_read_boundary(driver, tmp
 
 
 @pytest.mark.parametrize('cut_inside_context', [False, True])
+@pytest.mark.parametrize('newline', ['\n', '\r\n'])
+@pytest.mark.parametrize('secret_newline', ['\n', '\r\n'])
 def test_failure_tail_keeps_multiline_credentials_out_of_the_original_window(
-        driver, tmp_path, cut_inside_context):
-    first = 'prefix-credential\nfixture-secret-suffix'
+        driver, tmp_path, cut_inside_context, newline, secret_newline):
+    first = 'prefix-credential' + secret_newline + 'fixture-secret-suffix'
     second = 'other-fixture-credential'
     cut = 4 + (len(first) if cut_inside_context else 0)
     ending = '\nlast diagnostic line\n'
@@ -240,13 +244,14 @@ def test_failure_tail_keeps_multiline_credentials_out_of_the_original_window(
     padding = second * (padding_size // len(second))
     raw = first + '\n' + padding + 'x' * (padding_size % len(second)) + ending
     path = tmp_path / 'stderr'
-    path.write_text(raw, encoding='utf8')
+    raw_bytes = raw.replace('\n', newline).encode('utf8')
+    path.write_bytes(raw_bytes)
     tail = driver._failed_output_tail(path, {'ONE_TOKEN': first, 'TWO_TOKEN': second})
     assert 'fixture-secret-suffix' not in tail
     assert 'other-fixture-credential' not in tail
     assert tail.endswith('last diagnostic line')
     assert len(tail.encode('utf8')) <= 12288
-    assert path.read_text(encoding='utf8') == raw
+    assert path.read_bytes() == raw_bytes
 
 
 def test_output_inside_source_is_rejected_before_build(driver, tmp_path):
