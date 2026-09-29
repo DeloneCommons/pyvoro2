@@ -201,6 +201,13 @@ MSVC_CB = ('private: static int __cdecl pybind11::detail::function_ref<'
            'int __cdecl(class pybind11::args, class pybind11::kwargs)>'
            '::callback_fn<class ' + MSVC_G +
            '>(__int64, class pybind11::args, class pybind11::kwargs)')
+MSVC_WRAP = (
+    'public: static auto __cdecl pyvoro2::native_runtime::Dispatch<'
+    'int __cdecl(__int64)>::wrap<class ' + MSVC_F + '>(class ' + MSVC_F +
+    ', enum pyvoro2::native_runtime::Family, class pybind11::object, '
+    'class std::basic_string<char, struct std::char_traits<char>, '
+    'class std::allocator<char>>, '
+    'class std::array<struct pyvoro2::native_runtime::Argument, 1>)')
 
 
 def coff():
@@ -223,6 +230,49 @@ def test_coff_opaque_closure_is_bound_through_actual_guarded_def_relocation():
     assert rows[0]['registration'] == MSVC_REG
     assert rows[0]['callbacks'] == [MSVC_CB]
     assert rows[0]['operators'] == [MSVC_OP]
+
+
+def test_current_windows_auto_wrap_helper_matches_validated_registration():
+    # Current CI LLVM demangles this auto-return helper; LLVM18 leaves its
+    # name mangled. It witnesses the same F as guarded_def, not a new entry.
+    symbols = coff()
+    symbols.update(parse_disassembly(body(MSVC_WRAP)))
+    rows = protected_entries(symbols)
+    assert len(rows) == 1
+    assert rows[0]['registration'] == MSVC_REG
+    assert rows[0]['callbacks'] == [MSVC_CB]
+    assert rows[0]['operators'] == [MSVC_OP]
+
+
+def test_auto_wrap_helper_with_unmatched_source_type_still_refuses():
+    symbols = coff()
+    symbols.update(parse_disassembly(body(MSVC_WRAP.replace(
+        MSVC_F, '<lambda_1234567890abcdef1234567890abcdef>'))))
+    with pytest.raises(BuildEvidenceError, match='missing.*protected callable body'):
+        protected_entries(symbols)
+
+
+def test_auto_wrap_function_pointer_type_keeps_nested_commas_in_identity():
+    source_type = ('int (__cdecl *)(class std::array<int, 2>, '
+                   'class std::tuple<bool, bool>)')
+    symbols = coff()
+    registration = MSVC_REG.replace('class ' + MSVC_F, source_type)
+    symbols[registration] = symbols.pop(MSVC_REG)
+    helper = MSVC_WRAP.replace('class ' + MSVC_F, source_type)
+    symbols.update(parse_disassembly(body(helper)))
+    rows = protected_entries(symbols)
+    assert len(rows) == 1
+    assert rows[0]['registration'] == registration
+    assert source_type in rows[0]['identity']
+
+
+@pytest.mark.parametrize('missing', [MSVC_REG, MSVC_CB, MSVC_OP])
+def test_auto_wrap_helper_never_replaces_a_missing_registration_or_body(missing):
+    symbols = coff()
+    symbols.update(parse_disassembly(body(MSVC_WRAP)))
+    del symbols[missing]
+    with pytest.raises(BuildEvidenceError, match='missing.*protected callable body'):
+        protected_entries(symbols)
 
 
 @pytest.mark.parametrize('missing', [MSVC_OP, MSVC_CB, MSVC_REG])

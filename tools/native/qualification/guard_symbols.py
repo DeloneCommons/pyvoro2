@@ -195,6 +195,18 @@ def _closing(text, start, opening='<', closing='>'):
     return None
 
 
+def _first_template_argument(text, start, end):
+    """Read F without splitting commas inside a function-pointer type."""
+    angles, parentheses = 0, 0
+    for index in range(start + 1, end):
+        character = text[index]
+        angles += (character == '<') - (character == '>')
+        parentheses += (character == '(') - (character == ')')
+        if character == ',' and angles == parentheses == 0:
+            return text[start + 1:index].strip()
+    return text[start + 1:end].strip()
+
+
 def _dispatch_identity(name):
     start = name.find(_DISPATCH)
     if start < 0:
@@ -299,6 +311,7 @@ def protected_entries(symbols, source_name=None):
     if source_name is not None and source_name not in PROTECTED_ENTRY_COUNTS:
         raise BuildEvidenceError('unreviewed protected-entry source')
     entries, callbacks, witnesses = {}, {}, set()
+    msvc_helpers, validated_msvc_types = {}, set()
 
     def entry(identity):
         return entries.setdefault(identity, {'identity': identity,
@@ -310,6 +323,13 @@ def protected_entries(symbols, source_name=None):
         witness = _dispatch_identity(name)
         if witness:
             witnesses.add(witness[0])
+            # Current Windows LLVM demangles auto-return wrap constructors;
+            # LLVM18 left them mangled. Match this exact helper's complete F
+            # to an independently validated guarded_def entry below. It is
+            # never itself a callable boundary or an excuse to drop a witness.
+            if name.startswith('public: static auto __cdecl ' + _DISPATCH):
+                start = witness[0].index('::wrap<') + len('::wrap<')
+                msvc_helpers[witness[0]] = witness[0][start:-1]
         wrapped = _callback_type(name)
         if wrapped is not None:
             callbacks.setdefault(wrapped, []).append(name)
@@ -347,8 +367,12 @@ def protected_entries(symbols, source_name=None):
         row = entry(identity)
         row.update(operators=operators, callbacks=actual_callbacks,
                    registration=name)
+        validated_msvc_types.add(_first_template_argument(
+            name, len(prefix) - 1, end))
 
-    if witnesses - entries.keys():
+    resolved_helpers = {identity for identity, source_type in msvc_helpers.items()
+                        if source_type in validated_msvc_types}
+    if witnesses - entries.keys() - resolved_helpers:
         raise BuildEvidenceError('missing protected callable body')
     rows = sorted(entries.values(), key=lambda row: row['identity'])
     if (source_name is not None and
