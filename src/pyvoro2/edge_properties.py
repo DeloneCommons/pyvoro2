@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 
 from ._internal.planar.domain_geometry import geometry2d
+from ._internal.normalization import require_shift
 from .planar.domains import Box, RectangularCell
 
 
@@ -24,6 +25,9 @@ def annotate_edge_properties(
       - normal: [nx, ny] unit normal oriented from site -> edge
       - length: float
       - other_site: [x, y] if the neighboring site can be resolved
+
+    In a periodic domain, ``other_site`` is None when ``adjacent_shift``
+    is absent or invalid. Missing image metadata never implies a zero shift.
     """
 
     sites: dict[int, np.ndarray] = {}
@@ -43,10 +47,18 @@ def annotate_edge_properties(
         other = sites.get(nid)
         if other is None:
             return None
-        if periodic and 'adjacent_shift' in edge:
-            shift = np.asarray(edge.get('adjacent_shift', (0, 0)), dtype=np.int64)
-            if shift.shape == (2,):
-                other = other + geom.shift_vector(shift)
+        if periodic:
+            if 'adjacent_shift' not in edge:
+                return None
+            try:
+                shift = require_shift(edge['adjacent_shift'],
+                                      name='adjacent_shift', dim=2)
+            except (TypeError, ValueError, OverflowError):
+                return None
+            if any(value and not geom.periodic_axes[axis]
+                   for axis, value in enumerate(shift)):
+                return None
+            other = other + geom.shift_vector(shift)
         return other
 
     eps = float(max(tol, 1e-15))

@@ -312,7 +312,8 @@ def validate_normalized_topology(
                 if cj is None:
                     continue
                 gids_here = tuple(
-                    sorted(int(gids[v]) for v in _iter_edge_vertex_indices(edge))
+                    sorted((int(gids[v]), _as_shift(cell['vertex_shift'][v]))
+                           for v in _iter_edge_vertex_indices(edge))
                 )
                 found = False
                 for edge_j in cj.get('edges') or []:
@@ -328,7 +329,9 @@ def validate_normalized_topology(
                         continue
                     peer = tuple(
                         sorted(
-                            int(gids_j[v])
+                            (int(gids_j[v]), tuple(
+                                int(cj['vertex_shift'][v][axis]) + s[axis]
+                                for axis in range(2)))
                             for v in _iter_edge_vertex_indices(edge_j)
                         )
                     )
@@ -346,7 +349,7 @@ def validate_normalized_topology(
                     severity='error',
                     message=(
                         'Reciprocal periodic edges do not reference the same set '
-                        'of global vertex ids.'
+                        'of image-qualified global vertices.'
                     ),
                     examples=tuple(examples[:max_examples]),
                 )
@@ -359,10 +362,13 @@ def validate_normalized_topology(
         and fully_periodic
         and not has_wall_edges
     ):
-        inc: dict[int, set[int]] = {i: set() for i in range(n_global_vertices)}
+        inc: dict[int, set[tuple]] = {i: set() for i in range(n_global_vertices)}
         for eid, edge in enumerate(normalized.global_edges):
-            for gid in edge.get('vertices', ()):
-                inc[int(gid)].add(eid)
+            for gid, shift in zip(edge.get('vertices', ()),
+                                  edge.get('vertex_shifts', ())):
+                # A periodic loop meets the vertex through both endpoint
+                # images; distinct lifts must not collapse to one bare eid.
+                inc[int(gid)].add((eid, tuple(-int(value) for value in shift)))
         examples: list[tuple[int, int]] = []
         for gid, eids in inc.items():
             if len(eids) < 3:

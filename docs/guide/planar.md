@@ -325,13 +325,28 @@ refuse a mapping that collapses distinct public edge endpoints, whether caused
 by tolerance pooling or periodic seam remapping. Equal public endpoints can be
 retained but do not by themselves prove native internal collapse.
 `normalize_vertices` alone remains a numerical vertex pool with raw vertices
-and local mappings. Normalization tolerance never determines exact semantic
-positivity.
+and local mappings. Periodic vertex incidence is completed through reciprocal
+owner/image boundary records: a global vertex may occur at several local
+image shifts, including within one cell. Validation compares those image
+occurrences and counts incident edge images, including both ends of a
+periodic loop. Ambiguous coincident local incidence classes retain their
+original identities; normalization does not guess their correspondence.
+Certified edge shifts and raw occurrence order are preserved.
+
+Normalized views own their edge metadata dictionaries when copying cells.
+Raw output selectors therefore cannot remove required normalized shifts;
+normalization does not require callers to request those raw fields.
+Normalization tolerance never determines exact semantic positivity.
 
 These helpers normalize an ordinary partition of persistent cells. A batch of
 independent `id=-1` ghost records is not that partition and is explicitly
 rejected by whole-tessellation normalization and validation; use the returned
 ghost boundary references directly.
+
+For edge annotation, a periodic `other_site` requires an explicitly present,
+valid `adjacent_shift`, including a genuine zero tuple. Missing or unusable
+image metadata yields `None`, as does a wall or an unavailable neighboring
+site. Nonperiodic generator neighbors do not require image shifts.
 
 ## Planar plotting
 
