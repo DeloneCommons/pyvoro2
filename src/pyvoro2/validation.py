@@ -133,12 +133,13 @@ def validate_normalized_topology(
     periodic bookkeeping bugs) is:
 
         For every periodic face i -> j with adjacent_shift = s,
-        every shared vertex gid must satisfy:
+        every local face vertex occurrence (gid, t_i) must have a peer
+        occurrence (gid, t_j) satisfying:
 
-            vertex_shift_i(gid) == vertex_shift_j(gid) + s
+            t_i == t_j + s
 
-    where vertex_shift_* are the per-cell lattice-image shifts returned by
-    :func:`pyvoro2.normalize_vertices`.
+    Here t_i and t_j are the per-cell lattice-image shifts returned by
+    :func:`pyvoro2.normalize_vertices`; one gid may have several local images.
 
     Args:
         normalized: Output of :func:`pyvoro2.normalize_vertices` or
@@ -147,10 +148,10 @@ def validate_normalized_topology(
         level: 'basic' returns diagnostics; 'strict' raises
             :class:`NormalizationError` on any error-level issue.
         check_vertex_face_shift: Check the key vertex/face shift invariant.
-        check_face_vertex_sets: Check that reciprocal faces reference the same
-            set of global vertex IDs.
+        check_face_vertex_sets: Check that reciprocal face classes reference
+            the same image-qualified vertices after shift transport.
         check_incidence: In fully periodic domains, check minimal incidence
-            counts for vertices (>=4) and edges (>=3). Only runs when
+            counts of cell images for vertices (>=4) and edges (>=3). Runs when
             `normalized` includes edges (i.e., is a NormalizedTopology).
         check_euler: Check Euler characteristic per cell (V - E + F == 2)
             as a warning-level sanity check.
@@ -215,7 +216,7 @@ def validate_normalized_topology(
     # Build id->cell mapping and per-cell gid->shift mapping
     # ------------------------------------------------------------------
     cell_by_id: dict[int, dict[str, Any]] = {}
-    gid_shift_by_cell: dict[int, dict[int, tuple[int, int, int]]] = {}
+    gid_shift_by_cell: dict[int, dict[int, set[tuple[int, int, int]]]] = {}
 
     for c in cells:
         cid = int(c.get('id', -1))
@@ -227,30 +228,10 @@ def validate_normalized_topology(
         vsh = c.get('vertex_shift')
         if gids is None or vsh is None:
             continue
-        m: dict[int, tuple[int, int, int]] = {}
-        dup_examples: list[
-            tuple[int, int, tuple[int, int, int], tuple[int, int, int]]
-        ] = []
+        # One quotient vertex may occur in several images of the same cell.
+        m: dict[int, set[tuple[int, int, int]]] = {}
         for k, gid in enumerate(gids):
-            g = int(gid)
-            s = _as_shift(vsh[k])
-            if g in m and m[g] != s:
-                if len(dup_examples) < example_probe_limit:
-                    dup_examples.append((cid, g, m[g], s))
-            else:
-                m[g] = s
-        if dup_examples:
-            issues.append(
-                NormalizationIssue(
-                    code='DUPLICATE_GID_DIFFERENT_SHIFT',
-                    severity='error',
-                    message=(
-                        'A cell contains the same global vertex id with different '
-                        'vertex_shift values. This indicates a broken normalization.'
-                    ),
-                    examples=tuple(dup_examples[:max_examples]),
-                )
-            )
+            m.setdefault(int(gid), set()).add(_as_shift(vsh[k]))
         gid_shift_by_cell[cid] = m
 
     # ------------------------------------------------------------------
@@ -265,7 +246,7 @@ def validate_normalized_topology(
                 tuple[int, int, int],
                 int,
                 tuple[int, int, int],
-                tuple[int, int, int],
+                tuple[tuple[int, int, int], ...],
             ]
         ] = []
         missing_neighbor_cells: list[tuple[int, int, tuple[int, int, int]]] = []
@@ -318,16 +299,16 @@ def validate_normalized_topology(
                         continue
                     gid = gids_list[vk]
                     ti = vsh_list[vk]
-                    tj = map_j.get(gid)
-                    if tj is None:
+                    tj_set = map_j.get(gid)
+                    if not tj_set:
                         if len(missing_shared_vertex) < example_probe_limit:
                             missing_shared_vertex.append((cid, j, s, gid))
                         continue
-                    exp = (tj[0] + s[0], tj[1] + s[1], tj[2] + s[2])
-                    if ti != exp:
+                    expected = tuple(ti[axis] - s[axis] for axis in range(3))
+                    if expected not in tj_set:
                         n_vfs_mismatch += 1
                         if len(examples) < example_probe_limit:
-                            examples.append((cid, j, s, gid, ti, tj))
+                            examples.append((cid, j, s, gid, ti, tuple(sorted(tj_set))))
 
         if missing_neighbor_cells:
             issues.append(
@@ -369,11 +350,13 @@ def validate_normalized_topology(
             )
 
     # ------------------------------------------------------------------
-    # Check 2: reciprocal faces have matching vertex-id sets
+    # Check 2: reciprocal face classes have matching image-qualified vertices
     # ------------------------------------------------------------------
     n_face_set_mismatch = 0
     if periodic and check_face_vertex_sets:
-        face_map: dict[tuple[int, int, tuple[int, int, int]], dict[str, Any]] = {}
+        face_map: dict[
+            tuple[int, int, tuple[int, int, int]], list[dict[str, Any]]
+        ] = {}
         for c in cells:
             i = int(c.get('id', -1))
             if i < 0 or bool(c.get('empty', False)):
@@ -386,42 +369,42 @@ def validate_normalized_topology(
                 if 'adjacent_shift' not in f:
                     continue
                 s = _as_shift(f.get('adjacent_shift', (0, 0, 0)))
-                face_map[(i, j, s)] = f
+                face_map.setdefault((i, j, s), []).append(f)
 
         checked: set[tuple[int, int, tuple[int, int, int]]] = set()
         examples: list[
-            tuple[int, int, tuple[int, int, int], tuple[int, ...], tuple[int, ...]]
+            tuple[int, int, tuple[int, int, int], tuple[Any, ...], tuple[Any, ...]]
         ] = []
 
-        def _face_gid_set(cid: int, face: dict[str, Any]) -> set[int]:
-            c = cell_by_id.get(cid)
-            if c is None:
+        def _face_vertices(cid, faces, translation):
+            c = cell_by_id[cid]
+            gids, shifts = c.get('vertex_global_id'), c.get('vertex_shift')
+            if gids is None or shifts is None:
                 return set()
-            gids = c.get('vertex_global_id')
-            if gids is None:
-                return set()
-            gids_list = [int(x) for x in gids]
-            out: set[int] = set()
-            for vk in _iter_face_vertex_indices(face):
-                if 0 <= vk < len(gids_list):
-                    out.add(gids_list[vk])
-            return out
+            # Keep all fragments in a directed class; never overwrite one
+            # occurrence or guess a one-to-one reciprocal fragment pairing.
+            return {
+                (int(gids[v]), tuple(
+                    int(shifts[v][axis]) + translation[axis] for axis in range(3)))
+                for face in faces for v in _iter_face_vertex_indices(face)
+                if 0 <= v < len(gids)
+            }
 
-        for (i, j, s), f in list(face_map.items()):
+        for (i, j, s), faces in face_map.items():
             if (i, j, s) in checked:
                 continue
-            r = (j, i, (-s[0], -s[1], -s[2]))
-            checked.add((i, j, s))
-            checked.add(r)
-            fr = face_map.get(r)
-            if fr is None:
+            r = (j, i, tuple(-value for value in s))
+            checked.update(((i, j, s), r))
+            reverse = face_map.get(r)
+            if reverse is None:
                 continue
-            si = _face_gid_set(i, f)
-            sj = _face_gid_set(j, fr)
-            if si != sj:
+            here = _face_vertices(i, faces, (0, 0, 0))
+            there = _face_vertices(j, reverse, s)
+            if here != there:
                 n_face_set_mismatch += 1
                 if len(examples) < example_probe_limit:
-                    examples.append((i, j, s, tuple(sorted(si)), tuple(sorted(sj))))
+                    examples.append(
+                        (i, j, s, tuple(sorted(here)), tuple(sorted(there))))
 
         if examples:
             issues.append(
@@ -430,7 +413,7 @@ def validate_normalized_topology(
                     severity='error',
                     message=(
                         'Reciprocal periodic faces do not reference the same set of '
-                        'global vertex ids.'
+                        'image-qualified global vertices.'
                     ),
                     examples=tuple(examples[:max_examples]),
                 )
@@ -448,21 +431,25 @@ def validate_normalized_topology(
         and (not has_wall_faces)
         and isinstance(normalized, NormalizedTopology)
     ):
-        vertex_to_cells: dict[int, set[int]] = {}
-        edge_to_cells: dict[int, set[int]] = {}
+        vertex_to_cells: dict[int, set[tuple]] = {}
+        edge_to_cells: dict[int, set[tuple]] = {}
 
         for c in cells:
             cid = int(c.get('id', -1))
             if cid < 0 or bool(c.get('empty', False)):
                 continue
-            gids = c.get('vertex_global_id')
-            if gids is not None:
-                for gid in set(int(x) for x in gids):
-                    vertex_to_cells.setdefault(gid, set()).add(cid)
-            eids = c.get('edge_global_id')
-            if eids is not None:
-                for eid in set(int(x) for x in eids):
-                    edge_to_cells.setdefault(eid, set()).add(cid)
+            gids, shifts = c.get('vertex_global_id'), c.get('vertex_shift')
+            if gids is None or shifts is None:
+                continue
+            for gid, shift in zip(gids, shifts):
+                image = tuple(-int(value) for value in shift)
+                vertex_to_cells.setdefault(int(gid), set()).add((cid, image))
+            # Anchor each local edge at its canonical first endpoint. This
+            # distinguishes the cell images meeting one lift of a pooled edge.
+            for edge, eid in zip(c.get('edges') or [], c.get('edge_global_id') or []):
+                anchor = min(edge, key=lambda v: (int(gids[v]), _as_shift(shifts[v])))
+                image = tuple(-int(value) for value in shifts[anchor])
+                edge_to_cells.setdefault(int(eid), set()).add((cid, image))
 
         v_warn, v_err = 4, 3
         e_warn, e_err = 3, 2
@@ -500,7 +487,7 @@ def validate_normalized_topology(
                     severity='error',
                     message=(
                         'In a fully periodic tessellation, some global vertices are '
-                        'incident to fewer than 3 cells.'
+                        'incident to fewer than 3 cell images.'
                     ),
                     examples=tuple(bad_v_err[:max_examples]),
                 )
@@ -511,7 +498,7 @@ def validate_normalized_topology(
                     code='VERTEX_INCIDENCE_LOW',
                     severity='warning',
                     message=(
-                        'Some global vertices are incident to fewer than 4 cells '
+                        'Some global vertices are incident to fewer than 4 cell images '
                         '(may indicate degeneracy or issues).'
                     ),
                     examples=tuple(bad_v_warn[:max_examples]),
@@ -524,7 +511,7 @@ def validate_normalized_topology(
                     severity='error',
                     message=(
                         'In a fully periodic tessellation, some global edges are '
-                        'incident to fewer than 2 cells.'
+                        'incident to fewer than 2 cell images.'
                     ),
                     examples=tuple(bad_e_err[:max_examples]),
                 )
@@ -535,7 +522,7 @@ def validate_normalized_topology(
                     code='EDGE_INCIDENCE_LOW',
                     severity='warning',
                     message=(
-                        'Some global edges are incident to fewer than 3 cells '
+                        'Some global edges are incident to fewer than 3 cell images '
                         '(may indicate degeneracy or issues).'
                     ),
                     examples=tuple(bad_e_warn[:max_examples]),

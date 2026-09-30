@@ -6,6 +6,15 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+### Fixed
+
+- Periodic normalization and validation now support self-image vertex
+  identifications and image-qualified incidence in both dimensions (#92).
+- Planar edge annotation reports unavailable neighbor images as `None` when
+  periodic shift metadata is absent or invalid (#92).
+- Planar normalized edge metadata survives raw-output field selection (#92).
+
+
 ### Added
 
 - Periodic spatial/planar locate now returns original and exact-user-wrapped

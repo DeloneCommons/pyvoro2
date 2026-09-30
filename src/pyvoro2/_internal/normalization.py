@@ -17,6 +17,89 @@ from .validation import (
 )
 
 
+def periodic_vertex_incidence(prepared, *, boundary_key: str):
+    """Complete local incidence through reciprocal, image-qualified vertices.
+
+    A local corner need not see every incident generator image (a square
+    corner sees three of four, a cube corner four of eight). Join numerical
+    vertex occurrences only across a supplied reciprocal boundary class,
+    with the *given* integer shift and equal numerical coordinate keys.
+    No image is recovered from coordinates. Raw boundary records and their
+    multiplicity are untouched; this is a numerical vertex view, not an N/E/S
+    certificate or an inferred pairing of boundary fragments.
+
+    If a cell/image has distinct incident classes at the same numerical
+    coordinate, correspondence is ambiguous. Retain the original local
+    incidence for that coordinate throughout the partition: even individually
+    unique reciprocal links could otherwise merge the classes transitively.
+
+    Incidence is accumulated in each vertex's primary chart. Integer transport
+    stays in Python integers; callers check representability when canonicalizing
+    relative shifts. Walls have side identity, not periodic image identity.
+    """
+    parent, labels, walls, directions = {}, {}, {}, {}
+    for item in prepared:
+        for k, shift in enumerate(item['remap_shifts']):
+            node = (item['position'], k)
+            parent[node] = node
+            labels[node] = {(item['id'], tuple(-int(x) for x in shift))}
+            walls[node] = set()
+        for boundary in item[boundary_key]:
+            adjacent, shift = boundary['adjacent'], boundary['shift']
+            direction = (item['id'], adjacent, shift)
+            endpoints = directions.setdefault(direction, {})
+            for k in boundary['vertices']:
+                node = (item['position'], k)
+                vertex_shift = tuple(int(x) for x in item['remap_shifts'][k])
+                if adjacent < 0:
+                    walls[node].add(adjacent)
+                else:
+                    image = tuple(s - v for s, v in zip(shift, vertex_shift))
+                    labels[node].add((adjacent, image))
+                    key = (item['quantized'][k], vertex_shift)
+                    endpoints.setdefault(key, set()).add(node)
+
+    local_classes, ambiguous = {}, set()
+    for item in prepared:
+        for k, shift in enumerate(item['remap_shifts']):
+            node = (item['position'], k)
+            coordinate = item['quantized'][k]
+            key = (item['position'], coordinate, tuple(int(x) for x in shift))
+            signature = (frozenset(labels[node]), frozenset(walls[node]))
+            if local_classes.setdefault(key, signature) != signature:
+                ambiguous.add(coordinate)
+
+    def root(node):
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    for (cid, adjacent, shift), endpoints in directions.items():
+        if adjacent < 0:
+            continue
+        reverse = directions.get((adjacent, cid, tuple(-s for s in shift)), {})
+        for (coordinate, vertex_shift), nodes in endpoints.items():
+            if coordinate in ambiguous:
+                continue
+            peer_shift = tuple(v - s for v, s in zip(vertex_shift, shift))
+            peers = reverse.get((coordinate, peer_shift), ())
+            for node in nodes:
+                for peer in peers:
+                    first, second = root(node), root(peer)
+                    if first != second:
+                        parent[max(first, second)] = min(first, second)
+
+    completed, completed_walls = {}, {}
+    for node in parent:
+        anchor = root(node)
+        completed.setdefault(anchor, set()).update(labels[node])
+        completed_walls.setdefault(anchor, set()).update(walls[node])
+    return {node: (tuple(sorted(completed[root(node)])),
+                   tuple(sorted(completed_walls[root(node)])))
+            for node in parent}
+
+
 def coerce_normalization_vertices(
     values: Any,
     *,

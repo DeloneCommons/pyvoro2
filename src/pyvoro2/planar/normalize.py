@@ -16,6 +16,7 @@ from .._internal.normalization import (
     checked_add_shift_arrays,
     checked_shift_difference,
     coerce_normalization_vertices,
+    periodic_vertex_incidence,
     quantize_coordinates,
     quantized_key_matches,
     require_adjacent_cell_id,
@@ -32,6 +33,29 @@ from .domains import Box, RectangularCell
 
 
 Domain2D = Box | RectangularCell
+
+
+def _copy_cell_records(cells, prepared):
+    """Own edge metadata separately from raw-output stripping and annotation.
+
+    Coordinate/index values are retained; mutable edge dictionaries are copied.
+    This is not deep immutability of the public nested data.
+    """
+    copied = [dict(cell) for cell in cells]
+    for cell, item in zip(copied, prepared):
+        edges = cell.get('edges')
+        records = item.get('edge_records')
+        if records is not None:
+            # Reuse the consumed snapshot, including non-list containers.
+            owned = [dict(edge) for edge in records]
+        # Nonperiodic vertex pooling does not consume boundary metadata.
+        # Preserve unconsumed values while owning usable edge dictionaries.
+        elif isinstance(edges, (list, tuple)):
+            owned = [dict(edge) if isinstance(edge, dict) else edge for edge in edges]
+        else:
+            continue
+        cell['edges'] = tuple(owned) if isinstance(edges, tuple) else owned
+    return copied
 
 
 @dataclass(frozen=True)
@@ -261,6 +285,7 @@ def _prepare_vertex_cells(
                 'id': cid,
                 'vertices': vertices,
                 'edges': tuple(edge_data),
+                'edge_records': edge_records if periodic else None,
                 'remapped': remapped,
                 'remap_shifts': remap_shifts,
                 'quantized': quantized,
@@ -372,7 +397,7 @@ def normalize_vertices(
                 shifts.append((0, 0))
             mappings[item['position']] = (gids, shifts)
 
-        out_cells = [dict(cell) for cell in cells] if copy_cells else cells
+        out_cells = _copy_cell_records(cells, prepared) if copy_cells else cells
         for position, (gids, shifts) in mappings.items():
             out_cells[position]['vertex_global_id'] = gids
             out_cells[position]['vertex_shift'] = shifts
@@ -386,17 +411,9 @@ def normalize_vertices(
             cells=out_cells,
         )
 
+    incidence = periodic_vertex_incidence(prepared, boundary_key='edges')
     for item in sorted(prepared, key=lambda record: record['id']):
         verts = item['vertices']
-        edges = item['edges']
-
-        v_edges: list[list[dict[str, Any]]] = [
-            [] for _ in range(int(verts.shape[0]))
-        ]
-        for edge in edges:
-            for vertex_index in edge['vertices']:
-                v_edges[vertex_index].append(edge)
-
         gids: list[int] = []
         shifts: list[tuple[int, int]] = []
 
@@ -406,19 +423,10 @@ def normalize_vertices(
         for k in range(int(verts.shape[0])):
             v0 = remapped[k]
             s0 = (int(rem_shifts[k, 0]), int(rem_shifts[k, 1]))
-            incident: list[tuple[int, tuple[int, int]]] = []
-            cid_here = item['id']
-            incident.append((cid_here, (0, 0)))
-            walls = set()
-            for edge in v_edges[k]:
-                if edge['adjacent'] < 0:
-                    walls.add(edge['adjacent'])
-                else:
-                    incident.append((edge['adjacent'], edge['shift']))
-
+            incident, walls = incidence[(item['position'], k)]
             topo_key = _canonical_incident_key(incident)
             coord_key = item['quantized'][k]
-            key = ('pbc', topo_key, tuple(sorted(walls)), coord_key)
+            key = ('pbc', topo_key, walls, coord_key)
             gid = key_to_gid.get(key)
             if gid is None:
                 gid = len(global_vertices)
@@ -437,7 +445,7 @@ def normalize_vertices(
             shifts.append(s0)
         mappings[item['position']] = (gids, shifts)
 
-    out_cells = [dict(cell) for cell in cells] if copy_cells else cells
+    out_cells = _copy_cell_records(cells, prepared) if copy_cells else cells
     for position, (gids, shifts) in mappings.items():
         out_cells[position]['vertex_global_id'] = gids
         out_cells[position]['vertex_shift'] = shifts
@@ -634,6 +642,7 @@ def _prepare_topology_cells(
                 'gids': gids,
                 'vertex_shifts': vertex_shifts,
                 'edges': tuple(edge_data),
+                'edge_records': edge_records,
             }
         )
     return global_vertices, prepared
@@ -726,7 +735,7 @@ def normalize_edges(
             edge_ids.append(eid)
         annotations[item['position']] = edge_ids
 
-    cells = [dict(cell) for cell in nv.cells] if copy_cells else nv.cells
+    cells = _copy_cell_records(nv.cells, prepared) if copy_cells else nv.cells
     for position, edge_ids in annotations.items():
         cells[position]['edge_global_id'] = edge_ids
 

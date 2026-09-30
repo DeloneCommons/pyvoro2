@@ -36,6 +36,7 @@ from ._internal.normalization import (
     checked_add_shift_arrays,
     checked_shift_difference,
     coerce_normalization_vertices,
+    periodic_vertex_incidence,
     quantize_coordinates,
     quantized_key_matches,
     require_adjacent_cell_id,
@@ -408,18 +409,9 @@ def normalize_vertices(
 
     # Build per-cell local->global mapping
     # Process deterministically by sorted cell id then vertex index.
+    incidence = periodic_vertex_incidence(prepared, boundary_key='faces')
     for item in sorted(prepared, key=lambda record: record['id']):
         verts = item['vertices']
-        faces = item['faces']
-
-        # Build vertex -> incident faces list
-        v_faces: List[List[Dict[str, Any]]] = [
-            [] for _ in range(int(verts.shape[0]))
-        ]
-        for face in faces:
-            for vertex_index in face['vertices']:
-                v_faces[vertex_index].append(face)
-
         gids: List[int] = []
         shifts: List[Tuple[int, int, int]] = []
         remapped = item['remapped']
@@ -429,20 +421,10 @@ def normalize_vertices(
             v0 = remapped[k]
             s0 = tuple(int(x) for x in rem_shifts[k])
 
-            # Build incident set: include this cell (id, shift=(0,0,0)) plus
-            # each adjacent cell image meeting at this vertex.
-            incident: List[Tuple[int, Tuple[int, int, int]]] = []
-            cid_here = item['id']
-            incident.append((cid_here, (0, 0, 0)))
-            for face in v_faces[k]:
-                incident.append((face['adjacent'], face['shift']))
-
+            incident, walls = incidence[(item['position'], k)]
             topo_key = _canonical_incident_key(incident)
             coord_key = item['quantized'][k]
-            # Coordinate tolerance cannot merge distinct owner/image
-            # incidence: the exact integer topology key remains part of the
-            # vertex identity even for coincident numerical coordinates.
-            key: Tuple[Any, ...] = ('pbc',) + topo_key + ('@',) + coord_key
+            key = ('pbc', topo_key, walls, coord_key)
 
             gid = key_to_gid.get(key)
             if gid is None:

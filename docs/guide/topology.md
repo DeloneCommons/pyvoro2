@@ -104,7 +104,16 @@ pyvoro2 provides:
 - `normalize_edges_faces(...)`
 - `normalize_topology(...)`
 
-These utilities are most useful for periodic settings.
+These utilities are most useful for periodic settings. A periodic global
+vertex can have several local representatives with different `vertex_shift`
+values, even in the same cell. Normalization completes vertex incidence
+through reciprocal boundary records and their supplied image shifts.
+Ambiguous coincident local incidence classes retain their original identities;
+normalization does not guess their correspondence.
+Validation compares image-qualified reciprocal vertices and counts incident
+cell images, so a one-generator periodic cube is supported. Coordinate
+tolerance remains a numerical-view control; it does not infer or repair
+certified boundary images. Raw face multiplicity is retained.
 
 ## Diagnostics: catching subtle issues early
 
