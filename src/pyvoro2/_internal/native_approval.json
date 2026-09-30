@@ -4,34 +4,35 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "9847bd78ae2f7fe3f1a0dbc8faecf4ca4e76a8b749ff47b4ece5a303c641949d"
+      "source_sha256": "279f859b4bb6ccd38d2a3054e7588f240a7a4f2ff3452fa9401f65c00dda0a8d"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "d77a8841d897b303411b5aea8dfd6c5b89137cfbc6bdbf563df2efe2363d12a3"
+      "source_sha256": "4619ac6eeedad34e41f1994e08adf3fee1d7549c2fea62ee81f99162443560ac"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "4a165eb5d1ba0b5ae33270ebb6dac0d290509cc5436207d3ca329704cab0a636"
+      "source_sha256": "baa952f6c7909bec6f68561beed2922823c0518051713b7a2194784abc27c14c"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "65de7836092a0677c1fa1a10e8b461dd3205af488a109706c6423cf4aadedeb6"
+      "source_sha256": "30d88fbcca85de8f5dcd9ddec1c1ba596967d9ca846230c7cc6e13dddcf588d2"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "e284e8929b4e962ac07adc197fb42f7012738e03d0eba27855fd51752c9145a0"
+      "source_sha256": "75e0118ff58aceb2b3d51ad2e205380d3947e1e7ccf092f4414766cabf265f3b"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "70bfa6d647ddc12a5bf9402f283c8ff21ad4a4c76831a146b71dec403f5f4e75"
+      "source_sha256": "b96b82e03de67d54faa66ddc8b15b962c0bcc821451d19f839383508ade37cc4"
     }
   },
   "consumer_sha256": "34605c5c583bce9d7a74e771df78084aafeff30883516cb948caa34bbe06f59d",
   "policy_revision": "issue88-p1",
   "review": {
-    "date": "2026-09-29",
-    "decision": "Approved the frozen 384-file closure after reading all four independent source reviews and resolving the platform-suite follow-ups. The final test-only delta preserves native, vendor, consumer, schema, arithmetic, guard and issuance-policy bytes. The Windows Python 3.10 empty-environment test requires an actual identical unwrapped WinError 87 before expecting that error from the observer, retains the exact empty environment, and rejects fabricated exit-zero or completed-process evidence. A separate real child proves explicit environments do not inherit parent values. Independent review ran all 8 file tests and 32 adversarial launcher, receipt and finalizer probes with no findings. The preceding CRT, named XY/XZ arithmetic, complete five-object guard, newline-redaction and exact missing-component selection reviews remain applicable. This substantive approval does not transfer earlier artifacts: fresh exact-head native, ordinary-platform and distribution acceptance is mandatory. No merge, issue closure or Checkpoint B acceptance is implied.",
+    "date": "2026-09-30",
+    "decision": "Approved the 384-file closure after independent review of the sole workflow delta from 8ad11ad: the docs job downloads the Python 3.11 qualified wheel only when the runtime job did not succeed, preserving the existing Python 3.13 runtime-wheel preference when both prerequisites succeed. The independent review checked all 384 file identities, 144 routing states, five actual Bash controls and 39 classifier tests with no findings. Native, vendor, consumer, schema, fixture, test and qualification-policy bytes are unchanged. Prior source reviews remain historical authority for the unchanged implementation; this approval does not transfer earlier artifact evidence. Fresh exact-head CI and artifact reconciliation remain required. No merge, issue closure or Checkpoint B acceptance is implied.",
+    "previous_approval_sha256": "c139dde2f0667dca25abb80d9aaa78aac120455c60ac4711b34d9cf0a094adba",
     "reports": [
       {
         "name": "independent-remediation-review.md",
@@ -48,10 +49,14 @@
       {
         "name": "independent-empty-environment-review.md",
         "sha256": "264a1a0bd3c7d90c5dcc2d1bf04594402052809e31349f3bb7aef74f7ac535d6"
+      },
+      {
+        "name": "issue88-docs-wheel-source-review-20260930.md",
+        "sha256": "92c2deb8c46b8ff2ff7a787fa96415bca7f6c59257c3c245f0618020cb5c7c7e"
       }
     ],
-    "reviewed_delta_base": "26041ff8bf9f9be42bad93e5f77bfce8718806bd"
+    "reviewed_delta_base": "8ad11ad779475ebb9b6bc5a38b6b5fcb4fb312f2"
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "43419f3a698c918d6e3d286d22faced9cd08952a2308391422504e81370fe746"
+  "source_sha256": "8bedbdd305e9fc9f767ee3d1a05a6ccd61d30d5f4a27810cacaaa224bbaaa370"
 }

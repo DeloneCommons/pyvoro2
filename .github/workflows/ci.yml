@@ -86,7 +86,7 @@ jobs:
         with:
           python-version: ${{ needs.test-linux-runtime.result == 'success' && '3.13' || '3.11' }}
       - name: Reuse qualified Linux wheel
-        if: needs.test-linux-qualified.result == 'success'
+        if: needs.test-linux-qualified.result == 'success' && needs.test-linux-runtime.result != 'success'
         uses: actions/download-artifact@v7
         with:
           name: qualified-linux-py3.11
