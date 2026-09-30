@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import Any, Literal, Sequence
 from dataclasses import replace
 
-import warnings
+from .._internal.native_runtime import checked_warn
 
 import numpy as np
+from .._internal.native_runtime import guarded_public
 
 from .._internal.cell_output import remap_ids_inplace
 from .._internal.inputs import (
@@ -124,7 +125,7 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, domain: Domain2D) -> None:
         return
 
     if length_scale < 1e-3:
-        warnings.warn(
+        checked_warn(
             'The planar domain length scale appears very small '
             f'(L≈{length_scale:.3g}). pyvoro2 reserves distances through '
             '1e-5 for backend safety, and Voro++ uses other fixed absolute '
@@ -134,7 +135,7 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, domain: Domain2D) -> None:
             stacklevel=3,
         )
     elif length_scale > 1e9:
-        warnings.warn(
+        checked_warn(
             'The planar domain length scale appears very large '
             f'(L≈{length_scale:.3g}). Floating-point precision may be poor at '
             'this scale; consider rescaling your coordinates.',
@@ -264,6 +265,13 @@ def _attach_wp6_findings(diag, findings, prepared):
 
 def _raise_wp6_failure(failure, domain, prepared, mode):
     """Abort atomically without claiming that unobserved native geometry passed."""
+    from .._internal.native_runtime import (
+        RuntimeFPError, _public_refusal, check_before_native_import,
+    )
+    try:
+        check_before_native_import()
+    except RuntimeFPError as exc:
+        _public_refusal(exc, 'compute', 2)
     findings = (failure,) if isinstance(failure, WP6Failure) else tuple(failure)
     diag = TessellationDiagnostics(
         domain_area=float('nan'), sum_cell_area=float('nan'), area_ratio=float('nan'),
@@ -420,6 +428,7 @@ def _compute_with_certificate(points, *, semantic_weights=None, **options):
     return result, sink[0]
 
 
+@guarded_public('compute', 2)
 def _compute_impl(
     points: Sequence[Sequence[float]] | np.ndarray,
     *,
@@ -701,7 +710,7 @@ def _compute_impl(
                 )
                 if tessellation_check == 'raise':
                     raise TessellationError(msg, diag)
-                warnings.warn(msg, stacklevel=2)
+                checked_warn(msg, stacklevel=2)
 
     normalized_vertices = None
     normalized_topology = None
@@ -755,6 +764,7 @@ def _compute_impl(
     )
 
 
+@guarded_public('locate', 2)
 def locate(
     points: Sequence[Sequence[float]] | np.ndarray,
     queries: Sequence[Sequence[float]] | np.ndarray,
@@ -864,6 +874,7 @@ def locate(
     )
 
 
+@guarded_public('ghost', 2)
 def ghost_cells(
     points: Sequence[Sequence[float]] | np.ndarray,
     queries: Sequence[Sequence[float]] | np.ndarray,

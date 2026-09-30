@@ -8,10 +8,24 @@ import numpy as np
 
 from ..ghost import (GhostFailure, GhostOccurrence, certify_semantics,
                      from_native_failure, semantic_weights)
+from ..native_admission import require_component, require_environment
+from ..native_qualification import NativeQualificationError
 from .domain_geometry import geometry2d
 from .wp6_certificate import (AttributionLimits, WP6Failure, _bits,
                               _checked_packet, _finite)
 from .wp6_ideal import ExactAuditBudget
+
+
+def _admit(query_index=None, *, artifact=False):
+    try:
+        if artifact:
+            require_component('wp7-planar')
+        else:
+            require_environment()
+    except NativeQualificationError as exc:
+        raise GhostFailure('GHOST_NATIVE_UNSUPPORTED', str(exc), stage='native',
+                           query_index=query_index, dimension=2,
+                           reason=exc.reason, detail=exc.detail) from exc
 
 
 def certify_ghost_packets(cells, packets, *, prepared, temporary, power_input,
@@ -19,12 +33,18 @@ def certify_ghost_packets(cells, packets, *, prepared, temporary, power_input,
     """Return a complete batch or raise before any partial list escapes."""
     n = len(prepared.internal_ids)
     m = len(temporary.internal_ids)
-    geom = geometry2d(domain)
-    budget = ExactAuditBudget()
     if len(cells) != m or len(packets) != m:
         raise GhostFailure('GHOST_PROVENANCE_INCONSISTENT',
                            'Selected native packet batch is incomplete',
                            stage='provenance', dimension=2)
+    if not m:
+        return []
+    _admit(artifact=True)
+    try:
+        geom = geometry2d(domain)
+    finally:
+        _admit()
+    budget = ExactAuditBudget()
     result = []
     count = 0
     for qi, (native, packet) in enumerate(zip(cells, packets)):
@@ -88,6 +108,7 @@ def certify_ghost_packets(cells, packets, *, prepared, temporary, power_input,
                 present=not native['empty'], query_index=qi,
                 external_ids=prepared.external_ids, budget=budget,
             )
+            _admit(qi)
             out = dict(native, site=site, edges=[])
             for raw, o, ref in zip(native['edges'], occurrences, semantic.references):
                 edge = dict(raw)

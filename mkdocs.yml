@@ -85,6 +85,8 @@ nav:
               - v0.7 archived plan: development/plans/archive/v0.7.md
       - Documentation conventions: development/documentation-conventions.md
       - Architecture: development/architecture.md
+      - Native qualification: development/native-qualification.md
+      - Issue 88 implementation map: development/issue88-implementation.md
       - API lifecycle: development/api-lifecycle.md
       - v0.8 implemented / v0.9 target API inventory: development/api-inventory.md
       - Development audits:
@@ -116,6 +118,7 @@ nav:
           - WP5 native occurrence and exact face certification: development/decisions/0021-wp5-native-occurrence-and-exact-face-certification.md
           - WP6 source-certified planar edge provenance: development/decisions/0022-wp6-source-certified-planar-edge-provenance.md
           - WP7 source-certified ghost boundaries: development/decisions/0023-wp7-certified-ghost-boundaries.md
+          - External native artifact qualification: development/decisions/0024-external-native-artifact-qualification.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

@@ -14,6 +14,7 @@ from ..inputs import (
     coerce_native_block_parameters,
     coerce_point_array,
 )
+from ..native_runtime import checked_call, checked_tuple
 from .backend_frame import prepare_backend_frame
 from ..periodic_images import (
     MinimumImageBatch,
@@ -203,7 +204,8 @@ class DomainGeometry3D:
         if self.domain is None or isinstance(self.domain, Box):
             return (False, False, False)
         if isinstance(self.domain, OrthorhombicCell):
-            return tuple(bool(v) for v in self.domain.periodic)
+            return tuple(checked_call(bool, v) for v in checked_tuple(
+                checked_call(getattr, self.domain, 'periodic')))
         return (True, True, True)
 
     @property
@@ -215,7 +217,7 @@ class DomainGeometry3D:
         tuple[float, float], tuple[float, float], tuple[float, float]
     ] | None:
         if self.is_rectangular:
-            return self.domain.bounds  # type: ignore[return-value]
+            return checked_call(getattr, self.domain, 'bounds')
         return None
 
     @property
@@ -253,8 +255,8 @@ class DomainGeometry3D:
         if not isinstance(self.domain, PeriodicCell):
             raise ValueError('periodic native parameters require a PeriodicCell')
         return _NativePeriodicSnapshot.from_raw(
-            vectors=self.domain.vectors,
-            origin=self.domain.origin,
+            vectors=checked_call(getattr, self.domain, 'vectors'),
+            origin=checked_call(getattr, self.domain, 'origin'),
         )
 
     @property
@@ -272,13 +274,13 @@ class DomainGeometry3D:
         if self.domain is None:
             raise ValueError('a domain is required to determine lattice vectors')
         if isinstance(self.domain, PeriodicCell):
-            a, b, c = (
-                np.asarray(vec, dtype=np.float64).reshape(3)
-                for vec in self.domain.vectors
+            a, b, c = coerce_finite_matrix(
+                checked_call(getattr, self.domain, 'vectors'),
+                name='vectors', shape=(3, 3),
             )
             return a, b, c
 
-        (xmin, xmax), (ymin, ymax), (zmin, zmax) = self.domain.bounds
+        (xmin, xmax), (ymin, ymax), (zmin, zmax) = self.native_bounds
         a = np.array([xmax - xmin, 0.0, 0.0], dtype=np.float64)
         b = np.array([0.0, ymax - ymin, 0.0], dtype=np.float64)
         c = np.array([0.0, 0.0, zmax - zmin], dtype=np.float64)
@@ -288,7 +290,9 @@ class DomainGeometry3D:
         pts = coerce_point_array(points, name='points', dim=3)
         if self.domain is None or isinstance(self.domain, Box):
             return pts
-        return self.domain.remap_cart(pts, return_shifts=False)
+        remap = checked_call(getattr, self.domain, 'remap_cart')
+        return coerce_point_array(checked_call(remap, pts, return_shifts=False),
+                                  name='remapped points', dim=3)
 
     def shift_to_cart(self, shifts: np.ndarray) -> np.ndarray:
         raw = np.asarray(shifts, dtype=object)

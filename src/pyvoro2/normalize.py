@@ -22,7 +22,8 @@ from ._internal.ghost import reject_ghost_records
 from dataclasses import dataclass
 from typing import Any, Dict, List, Sequence, Tuple
 
-import warnings
+from ._internal.domain_access import call_domain_method
+from ._internal.native_runtime import checked_tuple, checked_warn
 
 import numpy as np
 
@@ -206,17 +207,29 @@ def _prepare_vertex_cells(
                 )
 
             # type: ignore[arg-type]
-            remapped, remap_shifts = domain.remap_cart(
-                vertices,
-                return_shifts=True,
+            remapped, remap_shifts = checked_tuple(call_domain_method(
+                domain, 'remap_cart', vertices, return_shifts=True,
+            ))
+            remapped = coerce_normalization_vertices(
+                remapped, name=f'cells[{cell_index}].remapped vertices', dim=3,
             )
+            remap_shifts = np.asarray(require_shift_rows(
+                remap_shifts, name=f'cells[{cell_index}].vertex_shift',
+                rows=vertices.shape[0], dim=3,
+            ), dtype=np.int64).reshape(vertices.shape)
             for _ in range(2):
                 # type: ignore[arg-type]
-                remapped2, extra = domain.remap_cart(
-                    remapped,
-                    return_shifts=True,
+                remapped2, extra = checked_tuple(call_domain_method(
+                    domain, 'remap_cart', remapped, return_shifts=True,
+                ))
+                remapped = coerce_normalization_vertices(
+                    remapped2, name=f'cells[{cell_index}].remapped vertices',
+                    dim=3,
                 )
-                remapped = remapped2
+                extra = np.asarray(require_shift_rows(
+                    extra, name=f'cells[{cell_index}].vertex_shift',
+                    rows=vertices.shape[0], dim=3,
+                ), dtype=np.int64).reshape(vertices.shape)
                 remap_shifts = checked_add_shift_arrays(
                     remap_shifts,
                     extra,
@@ -330,7 +343,7 @@ def normalize_vertices(
         # If the user relies on defaults under a suspicious unit system,
         # highlight that pyvoro2 expects explicit rescaling.
         if float(L) < 1e-3 or float(L) > 1e9:
-            warnings.warn(
+            checked_warn(
                 'normalize_vertices is using a default tolerance proportional to the '
                 f'domain length scale (L≈{float(L):.3g}). For very small/large units '
                 'this may be too strict/too loose. Consider rescaling your coordinates '
@@ -711,7 +724,7 @@ def normalize_edges_faces(
                 'For very small/large units this may be too strict/too loose. '
                 'Consider rescaling your coordinates or passing an explicit tol=... .'
             )
-            warnings.warn(msg, RuntimeWarning, stacklevel=2)
+            checked_warn(msg, RuntimeWarning, stacklevel=2)
     tol = require_positive_finite_real(tol, name='tol')
 
     global_edges: List[Dict[str, Any]] = []

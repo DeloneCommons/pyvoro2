@@ -17,8 +17,12 @@ from pathlib import Path
 
 import numpy as np
 
+from qualification.native_import import load_production_module
+
 
 def load(path, name):
+    if name in ('pyvoro2._core', 'pyvoro2._core2d'):
+        return load_production_module(path, name)
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -37,7 +41,7 @@ def main():
     results = []
     for dim in (2, 3):
         suffix = '_core2d' if dim == 2 else '_core'
-        current = load(getattr(args, f'module{dim}'), f'current{dim}.{suffix}')
+        current = load(getattr(args, f'module{dim}'), f'pyvoro2.{suffix}')
         stock = load(getattr(args, f'baseline{dim}'), f'stock{dim}.{suffix}')
         rng = np.random.default_rng(7900 + dim)
         for power, mask, blocks in itertools.product(

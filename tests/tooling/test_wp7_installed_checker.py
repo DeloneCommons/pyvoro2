@@ -6,7 +6,6 @@ from pathlib import Path
 import subprocess
 import sys
 
-import numpy as np
 import pytest
 
 
@@ -53,27 +52,19 @@ def test_installed_boundary_guard_keeps_ghost_self_distinct_from_wall(
 
 
 def test_installed_ghost_call_uses_boundary_selector_without_public_vertices():
-    import pyvoro2._core as core3d
-    import pyvoro2._core2d as core2d
-
-    from pyvoro2._internal.planar.wp6_profile import SOURCE_SHA256
-    from pyvoro2._internal.spatial.ghost_certificate import (
-        _QUALIFIED_GHOST_SOURCE_SHA256,
-    )
-
-    supported2d = (core2d._planar_witness_profile()['source_sha256'] ==
-                   SOURCE_SHA256 and core2d._planar_witness_profile()['qualified'])
-    # A stale extension is a build failure, never a platform refusal.
-    assert core2d._planar_witness_profile()['source_sha256'] == SOURCE_SHA256
-    packet, = core3d._observe_ghost_box(
-        np.empty((0, 3)), np.empty((0,), dtype=np.int32),
-        ((0., 1.),) * 3, (1, 1, 1), (False,) * 3, 1,
-        np.array([[.5, .5, .5]]),
-    )
-    assert packet['build']['ghost_source_sha256'] == _QUALIFIED_GHOST_SOURCE_SHA256
-    if supported2d:
+    from pyvoro2._internal.native_admission import require_component
+    from pyvoro2._internal.native_qualification import NativeQualificationError
+    try:
+        require_component('wp7-planar')
+        require_component('wp7-spatial')
+    except NativeQualificationError as exc:
+        if exc.reason != 'missing_component':
+            for refusal in (False, True):
+                with pytest.raises(CHECKER.InstalledPackageCheckError):
+                    CHECKER._check_ghost_workflows(refusal=refusal)
+            return
+        CHECKER._check_ghost_workflows(refusal=True)
+    else:
         CHECKER._check_ghost_workflows(refusal=False)
         with pytest.raises(CHECKER.InstalledPackageCheckError):
             CHECKER._check_ghost_workflows(refusal=True)
-    else:
-        CHECKER._check_ghost_workflows(refusal=True)

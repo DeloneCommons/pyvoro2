@@ -19,6 +19,13 @@ import pyvoro2.inverse.separator as separator
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2] / 'src' / 'pyvoro2'
 INTERNAL_ROOT = PACKAGE_ROOT / '_internal'
+# Issue #88 isolates native import/control checks and artifact identity to these
+# private boundaries. Mathematical helpers remain independent of the backends.
+NATIVE_BOUNDARY_MODULES = {
+    'pyvoro2._internal.native_admission',
+    'pyvoro2._internal.native_qualification',
+    'pyvoro2._internal.native_runtime',
+}
 INTERNAL_MODULES = (
     'pyvoro2._internal.cell_output',
     'pyvoro2._internal.inputs',
@@ -123,17 +130,23 @@ def test_internal_initializers_do_not_reexport_helpers() -> None:
         )
 
 
+def test_native_dependencies_are_confined_to_admission_boundaries() -> None:
+    paths = sorted(INTERNAL_ROOT.rglob('*.py'))
+    native_owners = set()
+    for path in paths:
+        source = path.read_text(encoding='utf-8')
+        assert 'powerfit' not in source
+        if 'pyvoro2._core' in source or 'pyvoro2._core2d' in source:
+            native_owners.add(_module_name(path))
+    assert native_owners == NATIVE_BOUNDARY_MODULES
+
+
 def test_internal_dependency_graph_is_acyclic_and_has_clean_direction() -> None:
     paths = sorted(INTERNAL_ROOT.rglob('*.py'))
     graph = {
         _module_name(path): _internal_dependencies(path)
         for path in paths
     }
-    for path in paths:
-        source = path.read_text(encoding='utf-8')
-        assert 'powerfit' not in source
-        assert 'pyvoro2._core' not in source
-        assert 'pyvoro2._core2d' not in source
 
     pending = {module: set(dependencies) for module, dependencies in graph.items()}
     resolved: set[str] = set()
@@ -150,6 +163,20 @@ def test_internal_dependency_graph_is_acyclic_and_has_clean_direction() -> None:
             for module, dependencies in pending.items()
             if module not in ready
         }
+
+
+def test_first_entry_failures_are_leaves_and_keep_existing_identities() -> None:
+    from pyvoro2._internal import ghost, ghost_failure, locate, locate_failure
+    from pyvoro2._internal import native_runtime
+
+    assert ghost.GhostFailure is ghost_failure.GhostFailure
+    assert native_runtime.GhostFailure is ghost.GhostFailure
+    assert locate.LocateFailure is locate_failure.LocateFailure
+    assert native_runtime.LocateFailure is locate.LocateFailure
+    assert not _internal_dependencies(INTERNAL_ROOT / 'ghost_failure.py')
+    assert _internal_dependencies(INTERNAL_ROOT / 'locate_failure.py') == {
+        'pyvoro2._internal.ghost_failure',
+    }
 
 
 def test_public_weight_transform_exports_remain_identical() -> None:

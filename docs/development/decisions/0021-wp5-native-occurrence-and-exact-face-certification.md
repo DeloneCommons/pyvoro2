@@ -29,6 +29,13 @@ envelope, native-area, zero-face deletion and optional-reciprocity assumptions
 in earlier target documents. Source and tests define current implemented
 behavior. The source identity below remains the historical G0 review baseline.
 
+**Qualification amendment, 2026-09-28:**
+[ADR 0024](0024-external-native-artifact-qualification.md) owns source approval,
+external effective-build/artifact qualification and current-thread FP admission.
+WP5 consumes its spatial component; packet self-metadata is consistency data,
+not qualification authority. This amendment leaves the N/E/S mathematics and
+public actions below unchanged. Issue #88 acceptance remains separate.
+
 The reviewed starting point is `dev`
 `e2e520e84619ce4300137a9b953cb9e6bddab785`, tree
 `6f2241acbafab91517676d8e5f06a991eef90d22`. Characterization

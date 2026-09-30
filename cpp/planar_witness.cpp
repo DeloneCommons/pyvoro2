@@ -53,30 +53,18 @@ static_assert(FLT_EVAL_METHOD == 0, "ordinary planar witness requires binary64 e
 #error "ordinary planar witness must use its target FP contract"
 #endif
 
-bool qualified_cohort() {
-#if defined(__linux__) && defined(__x86_64__) && defined(__SSE2__) && \
-    defined(__GNUC__) && !defined(__clang__) && __GNUC__ == 13 && \
-    __GNUC_MINOR__ == 3 && !defined(__AVX__) && !defined(__FMA__) && !defined(__FMA4__)
-  return true;
-#else
-  return false;
-#endif
-}
-
 py::dict profile() {
-  const bool source = std::strcmp(PYVORO2_PLANAR_SOURCE_SHA256,
-                                  PYVORO2_PLANAR_APPROVED_SHA256) == 0;
-  const bool nearest = std::fegetround() == FE_TONEAREST;
-  const bool gradual = gradual_underflow();
+  const auto runtime = native_runtime::inspect();
+  const bool nearest = runtime.supported && runtime.nearest;
+  const bool gradual = runtime.supported && runtime.subnormal;
   py::dict out;
   out["schema"] = PYVORO2_PLANAR_SCHEMA;
   out["source_sha256"] = PYVORO2_PLANAR_SOURCE_SHA256;
   out["build_sha256"] = PYVORO2_PLANAR_BUILD_SHA256;
   out["compiler"] = PYVORO2_PLANAR_COMPILER_ID;
   out["compiler_version"] = PYVORO2_PLANAR_COMPILER_VERSION;
-  out["cohort"] = "linux-x86_64-gcc13.3-sse2";
-  out["cohort_supported"] = qualified_cohort();
-  out["source_supported"] = source;
+  out["runtime_compatible"] = runtime.compatible();
+  out["runtime_state"] = native_runtime::state_dictionary();
   out["flt_eval_method"] = FLT_EVAL_METHOD;
   out["int_bits"] = 32;
   out["uint_bits"] = 32;
@@ -94,17 +82,13 @@ py::dict profile() {
   out["ghost_inserted_row_charge_bytes"] = ghost_inserted_row_bytes;
   out["ghost_packet_charge_bytes"] = ghost_packet_bytes;
   out["ghost_occurrence_charge_bytes"] = ghost_occurrence_bytes;
-  out["qualified"] = source && qualified_cohort() && nearest && gradual;
   return out;
 }
 
 void require_profile() {
+  // Generic dispatch admitted the exact module through the external record.
+  // Recheck controls here before the first replay or native arithmetic.
   require_evaluation();
-  if (std::strcmp(PYVORO2_PLANAR_SOURCE_SHA256,
-                  PYVORO2_PLANAR_APPROVED_SHA256) != 0)
-    fail("profile", "source", "compiled ordinary planar source closure is unqualified");
-  if (!qualified_cohort())
-    fail("profile", "cohort", "ordinary planar compiler/target cohort is unqualified");
 }
 
 bool same_bits(double a, double b) {
@@ -457,11 +441,11 @@ py::tuple run(Points points, IDs ids, Points radii, Bounds bounds, Blocks blocks
 
 template<bool Observe, bool VerifyProfile = true>
 void bind_compute(py::module_& m, const char* standard, const char* power) {
-  m.def(standard, [](Points p, IDs ids, Bounds b, Blocks n, Mask mask, int mem, Options opts) {
+  pyvoro2::native_runtime::guarded_def(m, standard, [](Points p, IDs ids, Bounds b, Blocks n, Mask mask, int mem, Options opts) {
     return run<container_2d, false, Observe, VerifyProfile>(p, ids, Points(), b, n, mask, mem, opts);
   }, py::arg("points"), py::arg("ids"), py::arg("bounds"), py::arg("blocks"),
      py::arg("periodic"), py::arg("init_mem"), py::arg("opts"));
-  m.def(power, &run<container_poly_2d, true, Observe, VerifyProfile>, py::arg("points"), py::arg("ids"),
+  pyvoro2::native_runtime::guarded_def(m, power, &run<container_poly_2d, true, Observe, VerifyProfile>, py::arg("points"), py::arg("ids"),
         py::arg("radii"), py::arg("bounds"), py::arg("blocks"), py::arg("periodic"),
         py::arg("init_mem"), py::arg("opts"));
 }
@@ -697,7 +681,7 @@ py::tuple run_ghost(Points points, IDs ids, Points radii, Bounds bounds,
 
 template<bool Observe, bool VerifyProfile, bool EmitPacket>
 void bind_ghost(py::module_& m, const char* standard, const char* power) {
-  m.def(standard, [](Points p, IDs ids, Bounds b, Blocks n, Mask mask,
+  pyvoro2::native_runtime::guarded_def(m, standard, [](Points p, IDs ids, Bounds b, Blocks n, Mask mask,
                      int mem, Options opts, Points queries) -> py::object {
     py::tuple selected = run_ghost<container_2d, false, Observe, VerifyProfile, EmitPacket>(
         p, ids, Points(), b, n, mask, mem, opts, queries, Points());
@@ -706,7 +690,7 @@ void bind_ghost(py::module_& m, const char* standard, const char* power) {
   }, py::arg("points"), py::arg("ids"), py::arg("bounds"), py::arg("blocks"),
      py::arg("periodic") = Mask{false, false}, py::arg("init_mem"),
      py::arg("opts"), py::arg("queries"));
-  m.def(power, [](Points p, IDs ids, Points r, Bounds b, Blocks n, Mask mask,
+  pyvoro2::native_runtime::guarded_def(m, power, [](Points p, IDs ids, Points r, Bounds b, Blocks n, Mask mask,
                   int mem, Options opts, Points queries, Points ghost_radii) -> py::object {
     py::tuple selected = run_ghost<container_poly_2d, true, Observe, VerifyProfile, EmitPacket>(
         p, ids, r, b, n, mask, mem, opts, queries, ghost_radii);
@@ -720,7 +704,7 @@ void bind_ghost(py::module_& m, const char* standard, const char* power) {
 }  // namespace
 
 void bind(pybind11::module_& module) {
-  module.def("_planar_witness_profile", &profile);
+  pyvoro2::native_runtime::inspection_def(module, "_planar_witness_profile", &profile);
   bind_compute<true>(module, "_compute_box_standard_witness", "_compute_box_power_witness");
   bind_ghost<true, true, true>(module, "_ghost_box_standard_witness", "_ghost_box_power_witness");
   bind_ghost<false, false, false>(module, "ghost_box_standard", "ghost_box_power");

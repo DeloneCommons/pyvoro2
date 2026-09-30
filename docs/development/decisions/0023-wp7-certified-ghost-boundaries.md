@@ -1,6 +1,6 @@
 # 0023 — WP7 source-certified ghost boundaries
 
-- **Status:** Accepted contract; production implementation and independent acceptance pending
+- **Status:** Accepted; production implementation independently accepted and merged
 - **Date:** 2026-09-26
 - **Related issue:** [#77 — WP7 ghost boundary identity](https://github.com/DeloneCommons/pyvoro2/issues/77)
 - **Related plan:** [v0.9 WP7](../plans/v0.9.md#wp7-define-ghost-boundary-identity-and-certify-periodic-ghost-shifts)
@@ -193,23 +193,30 @@ ordinary diagnostic severity contract is unchanged.
 ## Qualification and consequences
 
 Safe initialized identity is distinct from qualified source certification.
-The initial admitted certificate-bearing cohort is Linux x86_64 GCC 13.3 under
+The initial admitted certificate-bearing cohort was Linux x86_64 GCC 13.3 under
 the reviewed strict binary64/SSE2 noncontracting, nearest-rounding, gradual-
 underflow, 32-bit-native-integer and no-fast-math/no-AVX-FMA/no-LTO profile.
-Other cohorts explicitly refuse certificate-bearing calls until separately
-qualified; initialized geometry-only availability may be broader. The source
-closure and actual compile/link commands, native module identity and installed
-artifacts must agree. A changed planar binding source also requires renewed
-ordinary WP6 qualification and noninterference evidence, not merely a digest
-update.
+That cohort records historical evidence, not a permanent compiler/ISA allowlist.
+The 2026-09-28 qualification amendment in
+[ADR 0024](0024-external-native-artifact-qualification.md) requires externally
+qualified installed artifacts and current-thread FP checks. Spatial selected
+ghost admission composes WP5 with its selected spatial component; planar
+selected ghost admission composes WP6 with its selected planar component.
+Unqualified components explicitly refuse; initialized geometry-only availability
+may be broader. Source approval, actual compile/link evidence, native module and
+installed artifact identity must agree. A changed planar binding closure also
+requires renewed ordinary WP6 qualification and noninterference evidence, not
+merely a digest update. The mathematical and public-action contract above is
+unchanged.
 
 Independent rational oracles, a defined initialized selected-cell reference,
 legacy poisoned-slot or MemorySanitizer evidence, corrected-path memory tests,
 native parity and installed source/wheel/sdist qualification are required by
-#77. ASan/UBSan alone cannot demonstrate the old uninitialized read. Production
-implementation and green CI do not constitute independent exact-head
-mathematical/native/API acceptance. WP7, Checkpoint B, #77 and #47 remain open
-until that separate review and maintainer acceptance.
+#77. ASan/UBSan alone cannot demonstrate the old uninitialized read. WP7's
+subsequent independent acceptance and merge are recorded in the active plan;
+green CI alone did not establish that acceptance. Issue #88's changed
+qualification architecture still requires its own exact-head evidence and
+independent review. Checkpoint B and #47 acceptance remain separate.
 
 ## Alternatives rejected
 

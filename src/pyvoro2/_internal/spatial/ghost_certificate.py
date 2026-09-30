@@ -8,13 +8,16 @@ the independent exact public-semantic gate sees its class.
 from __future__ import annotations
 
 import math
-import platform
-import sys
 
 import numpy as np
 
 from ..ghost import (GhostFailure, GhostOccurrence, certify_semantics,
                      from_native_failure, semantic_weights)
+from ..inputs import coerce_finite_matrix
+from ..native_admission import require_component, require_environment
+from ..native_qualification import NativeQualificationError
+from ..native_runtime import checked_call, checked_tuple
+from ..validation import require_ordered_bounds
 from .wp5_certificate import _check_packet
 from .wp5_common import WP5Budget, WP5Failure
 from .wp5_cycle import audit_cycle
@@ -22,11 +25,20 @@ from .wp5_producer import Producer
 
 
 _SCHEMA = 'wp7-selected-ghost-3d-v1'
-_QUALIFIED_GHOST_SOURCE_SHA256 = (
-    'ab3a064a2b44b18236d1f1300ff12610d32463fc049d02d1499aea17e66098ea'
-)
 _MAX_OCCURRENCES = 262_144
 _MAX_SOURCE_TOKENS = 1_000_000
+
+
+def _admit(query_index=None, *, artifact=False):
+    try:
+        if artifact:
+            return require_component('wp7-spatial')
+        else:
+            require_environment()
+    except NativeQualificationError as exc:
+        raise GhostFailure('GHOST_NATIVE_UNSUPPORTED', str(exc), stage='native',
+                           query_index=query_index, dimension=3,
+                           reason=exc.reason, detail=exc.detail) from exc
 
 
 def _inconsistent(message, query_index, **details):
@@ -60,16 +72,22 @@ def _finite_point(row, query_index, *, field):
 
 
 def _stored_cart(site, snapshot, query_index):
+    _admit(query_index)
     values = _finite_point(site, query_index, field='stored site')
     if snapshot is not None:
         with np.errstate(over='ignore', invalid='ignore'):
-            values = snapshot.internal_to_cart(
-                np.asarray(values, dtype=np.float64).reshape(1, 3)
-            ).reshape(3)
+            try:
+                values = snapshot.internal_to_cart(
+                    np.asarray(values, dtype=np.float64).reshape(1, 3)
+                )
+            finally:
+                _admit(query_index)
+            values = values.reshape(3)
     return _finite_point(values, query_index, field='stored Cartesian site')
 
 
 def _public_vertices(cell, snapshot, query_index):
+    _admit(query_index)
     # Voro++'s ordinary vertex view adds half the doubled local coordinate
     # to the stored native site, before transforming the whole point once.
     points = [
@@ -79,22 +97,28 @@ def _public_vertices(cell, snapshot, query_index):
     ]
     if points and snapshot is not None:
         with np.errstate(over='ignore', invalid='ignore'):
-            points = snapshot.internal_to_cart(np.asarray(points)).tolist()
+            try:
+                points = snapshot.internal_to_cart(np.asarray(points))
+            finally:
+                _admit(query_index)
+            points = points.tolist()
     return [_finite_point(point, query_index, field='Cartesian vertex')
             for point in points]
 
 
 def _cohort(packet, query_index):
+    # This is packet consistency after external component admission, not a
+    # compiler-version or enabled-ISA allowlist.
+    module = _admit(query_index, artifact=True)
+    try:
+        expected = module._spatial_witness_profile()
+    finally:
+        _admit(query_index)
     build = packet.get('build', {})
-    if (not isinstance(build, dict) or sys.platform != 'linux'
-            or platform.machine().lower() not in
-            ('x86_64', 'amd64')
-            or build.get('compiler_id') != 'GNU'
-            or build.get('compiler') != '13.3.0'
-            or build.get('x86_64') is not True
-            or build.get('sse2') is not True
-            or build.get('avx') is not False
-            or build.get('fma') is not False
+    if (not isinstance(build, dict)
+            or any(build.get(key) != expected.get(key) for key in (
+                'source_sha256', 'ghost_source_sha256', 'compiler_id', 'compiler',
+                'x86_64', 'sse2', 'avx', 'fma'))
             or build.get('int_bits') != 32
             or build.get('int_min') != -(1 << 31)
             or build.get('int_max') != (1 << 31) - 1
@@ -102,16 +126,15 @@ def _cohort(packet, query_index):
             or build.get('float_eval_method') != 0
             or build.get('round_to_nearest') is not True
             or build.get('gradual_underflow') is not True
+            or build.get('runtime_compatible') is not True
             or build.get('fast_math') is not False
             or build.get('fp_contract') != 'off'
             or build.get('ipo') is not False
             or build.get('native_fp_policy') != 'binary64-noncontracting-v1'
-            or build.get('ghost_selected_route') != 'wp7-initialized-selected-v1'
-            or build.get('ghost_source_sha256') !=
-            _QUALIFIED_GHOST_SOURCE_SHA256):
+            or build.get('ghost_selected_route') != 'wp7-initialized-selected-v1'):
         raise GhostFailure(
             'GHOST_NATIVE_UNSUPPORTED',
-            'Selected ghost source/FP cohort is not qualified', stage='native',
+            'Selected ghost source/FP packet metadata is inconsistent', stage='native',
             query_index=query_index, dimension=3,
         )
 
@@ -219,6 +242,11 @@ def _occurrences(packet, producer, prepared, query_index, n, budget):
 
 
 def _map_wp5(exc, query_index, stage):
+    if exc.context.get('stage') == 'profile':
+        return GhostFailure('GHOST_NATIVE_UNSUPPORTED', str(exc), stage='native',
+                            query_index=query_index, dimension=3,
+                            reason=exc.context.get('reason'),
+                            detail=exc.context.get('detail'))
     message = str(exc)
     if exc.code == 'WP5_SOURCE_PROFILE_MISMATCH' and any(
             phrase in message for phrase in (
@@ -245,19 +273,36 @@ def certify_ghost_packets(packets, *, prepared, temporary, power_input,
     if len(packets) != m:
         _inconsistent('Ghost packet count differs from query count', None,
                       packets=len(packets), queries=m)
+    if not m:
+        return []
+    _admit(artifact=True)
     budget = WP5Budget()
-    periodic = tuple(domain.periodic) if hasattr(domain, 'periodic') else (
-        (False, False, False) if snapshot is None else (True, True, True))
-    if snapshot is not None:
-        lattice = snapshot.vectors
-    elif hasattr(domain, 'lattice_vectors'):
-        lattice = domain.lattice_vectors
-    else:
-        # A nonperiodic Box has no declared lattice; these rows are only the
-        # positive spans needed by the exact ideal's bounded outer polytope.
-        spans = [hi - lo for lo, hi in domain.bounds]
-        lattice = np.diag(spans)
-    bounds = None if snapshot is not None else domain.bounds
+    try:
+        periodic = tuple(checked_call(bool, value) for value in checked_tuple(
+            checked_call(getattr, domain, 'periodic')
+        )) if checked_call(hasattr, domain, 'periodic') else (
+            (False, False, False) if snapshot is None else (True, True, True))
+        if snapshot is not None:
+            lattice = snapshot.vectors
+        elif checked_call(hasattr, domain, 'lattice_vectors'):
+            lattice = coerce_finite_matrix(
+                checked_call(getattr, domain, 'lattice_vectors'),
+                name='lattice vectors', shape=(3, 3),
+            )
+        else:
+            # A nonperiodic Box has no declared lattice; these rows are only
+            # positive spans used by the exact ideal's bounded outer polytope.
+            spans = [hi - lo for lo, hi in require_ordered_bounds(
+                checked_call(getattr, domain, 'bounds'),
+                name='domain bounds', dim=3,
+            )]
+            lattice = np.diag(spans)
+        bounds = None if snapshot is not None else require_ordered_bounds(
+            checked_call(getattr, domain, 'bounds'),
+            name='domain bounds', dim=3,
+        )
+    finally:
+        _admit()
     result = []
     for query_index, packet in enumerate(packets):
         try:
@@ -295,6 +340,7 @@ def certify_ghost_packets(packets, *, prepared, temporary, power_input,
                 query_index=query_index, external_ids=prepared.external_ids,
                 budget=budget,
             )
+            _admit(query_index)
             references = semantic.references
             if len(references) != len(cell['faces']):
                 _inconsistent('Semantic reference count differs from native faces',

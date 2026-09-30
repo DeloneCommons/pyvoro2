@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-import warnings
+from .native_runtime import checked_call, checked_tuple, checked_warn, original_array
 
 import numpy as np
 
@@ -24,6 +24,7 @@ from .inputs import (
     validate_duplicate_check_mode,
     validate_duplicate_options,
 )
+from .validation import INT64_MAX, INT64_MIN, require_index
 
 
 BACKEND_SAFETY_DISTANCE_SQUARED = 1e-10
@@ -109,18 +110,34 @@ def _prepare_coordinates(
 
     if geometry.has_any_periodic_axis:
         if unbounded_planar_shifts or unbounded_query_shifts:
-            primary_cart, shifts = geometry.domain._remap_cart(
+            remap = checked_call(getattr, geometry.domain, '_remap_cart')
+            primary_cart, shifts = checked_tuple(checked_call(
+                remap,
                 input_points, return_shifts=True, integer_view=False,
-            )
+            ))
         else:
-            primary_cart, shifts = geometry.domain.remap_cart(
+            remap = checked_call(getattr, geometry.domain, 'remap_cart')
+            primary_cart, shifts = checked_tuple(checked_call(
+                remap,
                 input_points, return_shifts=True,
-            )
+            ))
         primary_cart = coerce_point_array(
             primary_cart,
             name=f'primary {name}',
             dim=dim,
         )
+        # Domain overrides may also return foreign shift containers. Freeze
+        # exact integers before owned arrays or geometry consume their values.
+        raw_shifts = original_array(shifts)
+        if raw_shifts.shape != (n, dim):
+            raise ValueError(f'remap shifts must have shape ({n}, {dim})')
+        unbounded = unbounded_planar_shifts or unbounded_query_shifts
+        shifts = np.array([
+            require_index(value, name='remap shift',
+                          minimum=None if unbounded else INT64_MIN,
+                          maximum=None if unbounded else INT64_MAX)
+            for value in raw_shifts.flat
+        ], dtype=object if unbounded else np.int64).reshape((n, dim))
     else:
         primary_cart = np.array(input_points, copy=True, order='C')
     return input_points, primary_cart, primary_cart, shifts
@@ -298,7 +315,7 @@ def _scan_persistent_policy(
         operation=prepared.operation,
     )
     if duplicate_check == 'warn':
-        warnings.warn(message, RuntimeWarning, stacklevel=4)
+        checked_warn(message, RuntimeWarning, stacklevel=4)
         return
     _raise_duplicate_error(
         scan=optional,
@@ -535,7 +552,7 @@ def prepare_temporary_generators(
         operation='ghost_cells',
     )
     if mode == 'warn':
-        warnings.warn(message, RuntimeWarning, stacklevel=4)
+        checked_warn(message, RuntimeWarning, stacklevel=4)
         return temporary
     _raise_duplicate_error(
         scan=optional,

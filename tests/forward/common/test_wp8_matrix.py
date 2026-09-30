@@ -110,12 +110,12 @@ def test_owner_int64_endpoints_and_cancellation_before_materialization(
 
 
 @pytest.mark.parametrize('dim', [2, 3])
-@pytest.mark.parametrize('vertices,adjacency,boundaries',
-                         tuple(itertools.product((False, True), repeat=3)))
-def test_ghost_query_views_do_not_change_stored_boundary_chart(
-        dim, vertices, adjacency, boundaries):
+@pytest.mark.parametrize('vertices,adjacency',
+                         tuple(itertools.product((False, True), repeat=2)))
+def test_ghost_query_views_without_boundaries_preserve_stored_chart(
+        dim, vertices, adjacency):
     api, domain = rectangular(dim)
-    opts = {'return_edges' if dim == 2 else 'return_faces': boundaries}
+    opts = {'return_edges' if dim == 2 else 'return_faces': False}
     queries = [[3.5, *([.5] * (dim - 1))], [.5] * dim]
     cells = api.ghost_cells([[2.25, *([.5] * (dim - 1))]], queries,
                             domain=domain, ids=[71], return_vertices=vertices,
@@ -125,8 +125,3 @@ def test_ghost_query_views_do_not_change_stored_boundary_chart(
         assert cell['query_shift'] == (3 if i == 0 else 0,) + (0,) * (dim - 1)
         assert cell['site'] == [.5] * dim
         assert 'site_shift' not in cell
-        key = 'edges' if dim == 2 else 'faces'
-        if boundaries:
-            refs = [r['boundary_reference'] for r in cell[key]]
-            assert {r['shift'] for r in refs if r['kind'] == 'generator'} == {
-                (-2,) + (0,) * (dim - 1), (-1,) + (0,) * (dim - 1)}

@@ -1,6 +1,8 @@
 #ifndef PYVORO2_NATIVE_PRECONDITIONS_HPP
 #define PYVORO2_NATIVE_PRECONDITIONS_HPP
 
+#include "native_runtime.hpp"
+
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 
@@ -718,6 +720,7 @@ inline void preflight_box(
     const py::array* ghost_radii = nullptr,
     bool queries_are_inserted = false,
     bool reserve_ghost_id = false) {
+  native_runtime::require_environment();
   require_positive_controls(blocks.data(), Dim, init_mem);
   validate_arrays<Dim>(points, ids, radii, queries, ghost_radii,
                        reserve_ghost_id);
@@ -987,17 +990,7 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
               "native duplicate certification requires IEC binary64 double");
 
 inline void require_binary64_interval_environment() {
-  if (std::fegetround() != FE_TONEAREST) {
-    fail("native duplicate certification",
-         "requires round-to-nearest binary64 arithmetic");
-  }
-  volatile double minimum = std::numeric_limits<double>::denorm_min();
-  volatile double two = 2.0;
-  volatile double doubled = minimum * two;
-  if (!(doubled > minimum)) {
-    fail("native duplicate certification",
-         "requires gradual binary64 underflow without flush-to-zero");
-  }
+  native_runtime::require_environment();
 }
 
 inline bool binary64_interval_is_valid(const Binary64Interval& value) {
@@ -1740,6 +1733,7 @@ inline void preflight_periodic_3d(
     const py::array* ghost_radii = nullptr,
     bool queries_are_inserted = false,
     bool reserve_ghost_id = false) {
+  native_runtime::require_environment();
   require_positive_controls(blocks.data(), blocks.size(), init_mem);
   validate_arrays<3>(points, ids, radii, queries, ghost_radii,
                      reserve_ghost_id);

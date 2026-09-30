@@ -26,6 +26,17 @@ TEST_WHEEL_COPYING = f'{TEST_DIST_INFO_ROOT}/licenses/COPYING'
 TEST_WHEEL_NOTICE = f'{TEST_DIST_INFO_ROOT}/licenses/NOTICE.md'
 TEST_WHEEL_VORO_LICENSE = f'{TEST_DIST_INFO_ROOT}/licenses/LICENSE.voro++'
 TEST_WHEEL_METADATA = f'{TEST_DIST_INFO_ROOT}/METADATA'
+TEST_QUALIFICATION_FILES = (
+    'pyvoro2/_internal/native_qualification.py',
+    'pyvoro2/_internal/native_runtime.py',
+    'pyvoro2/_internal/native_admission.py',
+    'pyvoro2/_internal/locate_failure.py',
+    'pyvoro2/_internal/native_approval.json',
+    'pyvoro2/_internal/_qualification_installation.py',
+)
+TEST_QUALIFICATION_RECORD = (
+    'pyvoro2/_internal/native_qualification_record.json'
+)
 TEST_WHEEL_FILES = (
     'pyvoro2/__init__.py',
     'pyvoro2/__about__.py',
@@ -53,6 +64,8 @@ TEST_WHEEL_FILES = (
     'pyvoro2/viz3d.py',
     'pyvoro2/_core.test.so',
     'pyvoro2/_core2d.test.so',
+    'pyvoro2/_fpguard.test.so',
+    *TEST_QUALIFICATION_FILES,
     TEST_WHEEL_METADATA,
     TEST_WHEEL_LICENSE,
     TEST_WHEEL_COPYING,
@@ -148,6 +161,19 @@ tools/release_check.py
 tools/README.md
 """.split()
 )
+TEST_SDIST_FILES = tuple(sorted({
+    *TEST_SDIST_FILES,
+    'CMakeLists.txt',
+    *(f'src/{name}' for name in TEST_QUALIFICATION_FILES),
+    *(path.relative_to(REPO_ROOT).as_posix()
+      for tree in ('cpp', 'cmake', 'vendor/voro++', 'src/pyvoro2', 'tools',
+                   'tests', '.github/workflows')
+      for path in (REPO_ROOT / tree).rglob('*')
+      if path.is_file()
+      and not {'__pycache__', '.pytest_cache', '.git'} & set(path.parts)
+      and path.suffix not in {'.pyc', '.pyo', '.o', '.obj', '.a', '.so',
+                              '.pyd', '.dll', '.dylib'}),
+}))
 
 
 def _load_tool_module(script_name: str) -> ModuleType:
@@ -416,6 +442,64 @@ def test_wheel_content_check_requires_core2d(tmp_path: Path) -> None:
         check_wheel(wheel)
 
 
+def test_wheel_content_check_requires_fpguard(tmp_path: Path) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(wheel, omitted_members=('pyvoro2/_fpguard.test.so',))
+
+    with pytest.raises(DistCheckError, match=r'pyvoro2/_fpguard native.*found 0'):
+        check_wheel(wheel)
+
+
+def test_production_wheel_content_check_requires_record(tmp_path: Path) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(wheel)
+    check_wheel(wheel)
+
+    with pytest.raises(DistCheckError, match='native_qualification_record.json'):
+        check_wheel(wheel, require_qualification=True)
+
+    _write_content_wheel(wheel, extra_members=(TEST_QUALIFICATION_RECORD,))
+    check_wheel(wheel, require_qualification=True)
+
+
+@pytest.mark.parametrize('member', TEST_QUALIFICATION_FILES)
+@pytest.mark.parametrize('kind', ['wheel', 'sdist'])
+def test_distribution_requires_native_qualification_consumers(
+    tmp_path: Path, member: str, kind: str,
+) -> None:
+    if kind == 'wheel':
+        artifact = tmp_path / 'pyvoro2-test.whl'
+        _write_content_wheel(artifact, omitted_members=(member,))
+        checker = check_wheel
+    else:
+        artifact = tmp_path / 'pyvoro2-test.tar.gz'
+        _write_content_sdist(artifact, omitted_members=(f'src/{member}',))
+        checker = check_sdist
+
+    with pytest.raises(DistCheckError, match=Path(member).name):
+        checker(artifact)
+
+
+@pytest.mark.parametrize('member', [
+    'cpp/fpguard.cpp',
+    'cpp/native_runtime.hpp',
+    'cmake/NativeQualification.cmake',
+    'tools/native/qualification/finalize.py',
+    'tools/native/qualification/fixtures/wp6-predecessor.zip',
+    'tools/native/qualification/fixtures/expected-arithmetic.json',
+    'tests/integration/test_import_behavior.py',
+    '.github/workflows/ci.yml',
+])
+def test_sdist_retains_qualification_source_closure(
+    tmp_path: Path, member: str,
+) -> None:
+    artifact = tmp_path / 'pyvoro2-test.tar.gz'
+    _write_content_sdist(artifact, omitted_members=(member,))
+
+    with pytest.raises(DistCheckError, match=Path(member).name):
+        check_sdist(artifact)
+
+
 def test_wheel_content_check_rejects_misleading_core_name(
     tmp_path: Path,
 ) -> None:
@@ -430,7 +514,7 @@ def test_wheel_content_check_rejects_misleading_core_name(
         check_wheel(wheel)
 
 
-@pytest.mark.parametrize('module_name', ['_core', '_core2d'])
+@pytest.mark.parametrize('module_name', ['_core', '_core2d', '_fpguard'])
 def test_wheel_content_check_rejects_ambiguous_native_modules(
     tmp_path: Path,
     module_name: str,
@@ -854,6 +938,39 @@ def test_distribution_content_checks_reject_obsolete_private_paths(
         check_sdist(sdist)
 
 
+def test_overlay_extracts_raw_guard_payload(tmp_path: Path) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(wheel)
+    installed = overlay_tool._extract_extensions_from_wheel(
+        wheel, tmp_path / 'package',
+    )
+    assert set(installed) == {'_core', '_core2d', '_fpguard'}
+    assert installed['_fpguard'].is_file()
+
+
+def test_overlay_finds_untagged_guard_without_aliasing_core2d(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package = tmp_path / 'pyvoro2'
+    package.mkdir()
+    (package / '_core2d.test.so').touch()
+    guard = package / '_fpguard.so'
+    guard.touch()
+    monkeypatch.setattr(overlay_tool, '_candidate_site_packages', lambda: [tmp_path])
+
+    assert overlay_tool._installed_extension_paths() == {
+        '_core2d': package / '_core2d.test.so', '_fpguard': guard,
+    }
+
+
+def test_overlay_rejects_missing_raw_guard_payload(tmp_path: Path) -> None:
+    wheel = tmp_path / 'pyvoro2-test.whl'
+    _write_content_wheel(wheel, omitted_members=('pyvoro2/_fpguard.test.so',))
+
+    with pytest.raises(overlay_tool.OverlayError, match='_fpguard'):
+        overlay_tool._extract_extensions_from_wheel(wheel, tmp_path / 'package')
+
+
 def test_overlay_verification_imports_extensions_explicitly(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -863,6 +980,7 @@ def test_overlay_verification_imports_extensions_explicitly(
     py_file = package_dir / '__init__.py'
     core_file = package_dir / '_core.test.so'
     core2d_file = package_dir / '_core2d.test.so'
+    fpguard_file = package_dir / '_fpguard.test.so'
     observed: dict[str, str] = {}
 
     def fake_run(
@@ -876,7 +994,7 @@ def test_overlay_verification_imports_extensions_explicitly(
         assert capture_output is True
         assert text is True
         observed['code'] = command[-1]
-        stdout = f'{py_file}\n{core_file}\n{core2d_file}\n'
+        stdout = f'{py_file}\n{core_file}\n{core2d_file}\n{fpguard_file}\n'
         return subprocess.CompletedProcess(command, 0, stdout=stdout)
 
     monkeypatch.setattr(overlay_tool.subprocess, 'run', fake_run)
@@ -885,9 +1003,11 @@ def test_overlay_verification_imports_extensions_explicitly(
         str(py_file),
         str(core_file),
         str(core2d_file),
+        str(fpguard_file),
     )
     assert "import_module('pyvoro2._core')" in observed['code']
     assert "import_module('pyvoro2._core2d')" in observed['code']
+    assert "import_module('pyvoro2._fpguard')" in observed['code']
     assert 'api._core.__file__' not in observed['code']
     assert 'api2._core2d' not in observed['code']
 
@@ -1179,6 +1299,9 @@ def _write_fake_wheel(
     optional_requirements: tuple[str, ...] = WHEEL_MATRIX_OPTIONAL_REQUIREMENTS,
     include_core: bool = True,
     include_core2d: bool = True,
+    include_fpguard: bool = True,
+    omitted_qualification_members: tuple[str, ...] = (),
+    include_qualification_record: bool = False,
     extra_native_members: tuple[str, ...] = (),
 ) -> Path:
     abi = python_tag if abi_tag is None else abi_tag
@@ -1231,6 +1354,13 @@ def _write_fake_wheel(
                 'pyvoro2/_core2d.test.so',
                 b'native-core2d',
             )
+        if include_fpguard:
+            _writestr_exact(zf, 'pyvoro2/_fpguard.test.so', b'native-fpguard')
+        for member in TEST_QUALIFICATION_FILES:
+            if member not in omitted_qualification_members:
+                _writestr_exact(zf, member, b'')
+        if include_qualification_record:
+            _writestr_exact(zf, TEST_QUALIFICATION_RECORD, b'{}')
         for member in extra_native_members:
             _writestr_exact(zf, member, b'extra-native')
     return path
@@ -1266,10 +1396,15 @@ def _write_fake_sdist(
     return path
 
 
-def _write_complete_wheel_matrix(directory: Path) -> None:
+def _write_complete_wheel_matrix(
+    directory: Path, *, include_qualification_record: bool = False,
+) -> None:
     for python_tag in wheel_matrix_tool.EXPECTED_PYTHON_TAGS:
         for platform_tag in WHEEL_MATRIX_PLATFORM_TAGS:
-            _write_fake_wheel(directory, python_tag, platform_tag)
+            _write_fake_wheel(
+                directory, python_tag, platform_tag,
+                include_qualification_record=include_qualification_record,
+            )
     _write_fake_sdist(directory)
 
 
@@ -1282,6 +1417,33 @@ def test_wheel_matrix_accepts_complete_release_set(tmp_path: Path) -> None:
     assert summary.version == WHEEL_MATRIX_VERSION
     assert summary.wheel_count == 20
     assert summary.sdist_count == 1
+
+
+def test_production_wheel_matrix_requires_record_per_artifact(
+    tmp_path: Path,
+) -> None:
+    _write_complete_wheel_matrix(tmp_path, include_qualification_record=True)
+    validate_wheel_matrix(tmp_path, require_qualification=True)
+    _write_fake_wheel(tmp_path, 'cp310', 'win_amd64')
+
+    with pytest.raises(WheelMatrixError, match='native_qualification_record.json'):
+        validate_wheel_matrix(tmp_path, require_qualification=True)
+
+
+@pytest.mark.parametrize('tool', ['check_dist.py', 'check_wheel_matrix.py'])
+def test_archive_cli_production_record_mode(tmp_path: Path, tool: str) -> None:
+    if tool == 'check_dist.py':
+        _write_content_wheel(tmp_path / 'pyvoro2-test.whl',
+                             extra_members=(TEST_QUALIFICATION_RECORD,))
+        _write_content_sdist(tmp_path / 'pyvoro2-test.tar.gz')
+    else:
+        _write_complete_wheel_matrix(tmp_path, include_qualification_record=True)
+    process = subprocess.run(
+        [sys.executable, str(REPO_ROOT / 'tools' / tool),
+         '--require-qualification', str(tmp_path)],
+        capture_output=True, text=True, check=False,
+    )
+    assert process.returncode == 0, process.stdout + process.stderr
 
 
 def test_wheel_matrix_rejects_duplicate_contract(tmp_path: Path) -> None:
@@ -1428,20 +1590,37 @@ def test_wheel_matrix_accepts_equivalent_specifier_order(
     validate_wheel_matrix(tmp_path)
 
 
-def test_wheel_matrix_requires_both_native_modules(tmp_path: Path) -> None:
+@pytest.mark.parametrize('module_name', ['_core', '_core2d', '_fpguard'])
+def test_wheel_matrix_requires_all_native_modules(
+    tmp_path: Path, module_name: str,
+) -> None:
     _write_complete_wheel_matrix(tmp_path)
     _write_fake_wheel(
         tmp_path,
         'cp310',
         'win_amd64',
-        include_core2d=False,
+        include_core=module_name != '_core',
+        include_core2d=module_name != '_core2d',
+        include_fpguard=module_name != '_fpguard',
     )
 
-    with pytest.raises(WheelMatrixError, match=r'pyvoro2/_core2d'):
+    with pytest.raises(WheelMatrixError, match=rf'pyvoro2/{module_name}'):
         validate_wheel_matrix(tmp_path)
 
 
-@pytest.mark.parametrize('module_name', ['_core', '_core2d'])
+@pytest.mark.parametrize('member', TEST_QUALIFICATION_FILES)
+def test_wheel_matrix_requires_qualification_consumers(
+    tmp_path: Path, member: str,
+) -> None:
+    _write_complete_wheel_matrix(tmp_path)
+    _write_fake_wheel(tmp_path, 'cp310', 'win_amd64',
+                      omitted_qualification_members=(member,))
+
+    with pytest.raises(WheelMatrixError, match=Path(member).name):
+        validate_wheel_matrix(tmp_path)
+
+
+@pytest.mark.parametrize('module_name', ['_core', '_core2d', '_fpguard'])
 @pytest.mark.parametrize(
     'member_template',
     [
@@ -1462,6 +1641,7 @@ def test_wheel_matrix_rejects_non_file_or_aliased_native_members(
         'win_amd64',
         include_core=module_name != '_core',
         include_core2d=module_name != '_core2d',
+        include_fpguard=module_name != '_fpguard',
         extra_native_members=(
             member_template.format(module=module_name),
         ),
@@ -1479,6 +1659,7 @@ def test_wheel_matrix_rejects_non_file_or_aliased_native_members(
     [
         ('_core', 'pyvoro2\\_core.test.so'),
         ('_core2d', 'pyvoro2\\_core2d.test.pyd'),
+        ('_fpguard', 'pyvoro2\\_fpguard.test.pyd'),
     ],
 )
 def test_wheel_matrix_rejects_backslash_native_aliases(
@@ -1493,6 +1674,7 @@ def test_wheel_matrix_rejects_backslash_native_aliases(
         'win_amd64',
         include_core=module_name != '_core',
         include_core2d=module_name != '_core2d',
+        include_fpguard=module_name != '_fpguard',
         extra_native_members=(malformed_member,),
     )
 
@@ -1508,6 +1690,7 @@ def test_wheel_matrix_rejects_backslash_native_aliases(
     [
         ('_core', 'pyvoro2/_core.extra.so'),
         ('_core2d', 'pyvoro2/_core2d.extra.so'),
+        ('_fpguard', 'pyvoro2/_fpguard.extra.so'),
     ],
 )
 def test_wheel_matrix_rejects_ambiguous_native_modules(

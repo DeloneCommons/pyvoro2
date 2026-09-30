@@ -30,6 +30,16 @@ EXPECTED_CONTRACTS = frozenset(
     for platform in EXPECTED_PLATFORMS
 )
 EXPECTED_WHEEL_COUNT = len(EXPECTED_CONTRACTS)
+NATIVE_MODULES = ('_core', '_core2d', '_fpguard')
+REQUIRED_QUALIFICATION_FILES = frozenset({
+    'pyvoro2/_internal/native_qualification.py',
+    'pyvoro2/_internal/native_runtime.py',
+    'pyvoro2/_internal/native_admission.py',
+    'pyvoro2/_internal/locate_failure.py',
+    'pyvoro2/_internal/native_approval.json',
+    'pyvoro2/_internal/_qualification_installation.py',
+})
+QUALIFICATION_RECORD = 'pyvoro2/_internal/native_qualification_record.json'
 EXPECTED_RUNTIME_REQUIREMENTS = frozenset(
     {
         ('numpy', ('<2', '>=1.23'), 'python_version < "3.11"'),
@@ -321,8 +331,10 @@ def _expanded_filename_tags(filename: WheelFilename) -> set[str]:
     }
 
 
-def check_wheel(path: Path) -> WheelFilename:
-    """Validate filename, metadata, tags, and native modules for one wheel."""
+def check_wheel(
+    path: Path, *, require_qualification: bool = False,
+) -> WheelFilename:
+    """Validate packaging; record presence never substitutes for installed admission."""
 
     filename = parse_wheel_filename(path)
     if normalize_project_name(filename.distribution) != EXPECTED_PROJECT_NAME:
@@ -406,12 +418,22 @@ def check_wheel(path: Path) -> WheelFilename:
             f'filename tags {sorted(expected_tags)!r}'
         )
 
-    for module_name in ('_core', '_core2d'):
+    for module_name in NATIVE_MODULES:
         members = native_module_members(file_names, module_name)
         if len(members) != 1:
             raise WheelMatrixError(
                 f'{path.name} expected exactly one pyvoro2/{module_name} '
                 f'native module, found {len(members)}'
+            )
+
+    required = REQUIRED_QUALIFICATION_FILES
+    if require_qualification:
+        required = required | {QUALIFICATION_RECORD}
+    for member in sorted(required):
+        count = file_names.count(member)
+        if count != 1:
+            raise WheelMatrixError(
+                f'{path.name} expected exactly one {member}, found {count}'
             )
 
     return filename
@@ -467,7 +489,9 @@ def _format_contract(contract: tuple[str, str]) -> str:
     return f'{contract[0]}/{contract[1]}'
 
 
-def validate_wheel_matrix(dist_dir: Path) -> WheelMatrixSummary:
+def validate_wheel_matrix(
+    dist_dir: Path, *, require_qualification: bool = False,
+) -> WheelMatrixSummary:
     """Validate exactly 20 supported wheels and one matching sdist."""
 
     if not dist_dir.is_dir():
@@ -499,7 +523,7 @@ def validate_wheel_matrix(dist_dir: Path) -> WheelMatrixSummary:
     contracts: dict[tuple[str, str], Path] = {}
     versions: set[str] = set()
     for wheel in wheels:
-        filename = check_wheel(wheel)
+        filename = check_wheel(wheel, require_qualification=require_qualification)
         previous = contracts.get(filename.contract)
         if previous is not None:
             raise WheelMatrixError(
@@ -551,9 +575,16 @@ def main() -> int:
         default=Path('dist'),
         help='directory containing the merged wheels and sdist',
     )
+    parser.add_argument(
+        '--require-qualification', action='store_true',
+        help=('require a detached record in every wheel; actual qualification '
+              'must also pass the installed verifier and route checks'),
+    )
     args = parser.parse_args()
 
-    summary = validate_wheel_matrix(args.dist_dir)
+    summary = validate_wheel_matrix(
+        args.dist_dir, require_qualification=args.require_qualification,
+    )
     print(
         f'validated {summary.project_name} {summary.version}: '
         f'{summary.wheel_count} wheels and {summary.sdist_count} sdist'

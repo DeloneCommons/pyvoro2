@@ -10,6 +10,12 @@ for requested periodic 3D face shifts and independent exact-consistency
 diagnostics. The packet remains private; it does not expose unrequested public
 vertices, adjacency, or shift capabilities.
 
+[ADR 0024](decisions/0024-external-native-artifact-qualification.md) and the
+[qualification workflow](native-qualification.md) now own source approval,
+effective-build evidence, installed-artifact identity and safe runtime admission.
+The packet and induction below retain their WP5 meaning; packet metadata alone
+does not grant qualification. Issue #88's final artifact acceptance is pending.
+
 ## Entry points and evidence
 
 The private `_core._observe_box` and `_core._observe_periodic` entry points
@@ -26,7 +32,7 @@ Its structure is private and may change at the next G0 review:
 | `context` | Native domain, periodicity, mode, construction controls, actual block widths/reciprocals, mask/image-grid bounds, and triclinic seed tolerances |
 | `sites` | Every persistent dense ID, indexed by ID, with actual stored native site/radius, primary block/index/slot; standard mode has `radius=None` |
 | `cells` | A computation record for every stored generator, including failed/empty computations |
-| `build` | Compiler, signed-native-int profile and arithmetic qualification metadata, with relevant source fingerprints |
+| `build` | Compiler, signed-native-int and arithmetic consistency metadata, with relevant source fingerprints; external artifact qualification remains separate |
 | Cell `origins` | Ordered origin occurrences with packet-local token, semantic owner, actual binary64 plane, and legacy label |
 | Cell `vertices_doubled` | Final `pts[4*v:4*v+3]`, indexed by the final native vertex identity |
 | Cell `vertex_orders`, `adjacency` | Native vertex degrees and ordered edge connections |
@@ -132,34 +138,42 @@ retain their existing meaning.
 implicit LTO. Target and configuration-specific CMake IPO properties are off;
 explicit compiler/link options also counter inherited LTO flags. The GNU/Clang
 link policy prevents fast-math startup code from enabling FTZ/DAZ. Optimization
-remains enabled (`-O3`, or the normal MSVC Release optimization). The separate
-`_core2d` target is outside this repair.
+remains enabled (`-O3`, or the normal MSVC Release optimization). The initial
+repair concerned `_core`; current `_core2d` uses the shared build policy with
+its independently owned planar occurrence contract.
 
 CMake force-includes the binding-owned `cpp/native_fp_contract.hpp` into every
 participating translation unit, including unchanged vendored sources. It
 rejects fast-math macros, non-IEC binary64 doubles, and `FLT_EVAL_METHOD != 0`.
 Thus wider intermediate evaluation is excluded rather than merely rounded at
-assignments. No vendored file is modified. Build options injected after the
-policy, source pragmas overriding it, or another compiler family require new
-qualification; a metadata string is not evidence for such a custom build.
+assignments. No vendored file is modified. These requested settings do not
+establish their own effectiveness. ADR 0024 additionally requires actual
+compiler/backend/link commands, ordered overrides, response files, dependency
+and source-local option evidence, outputs and final installed identity. Opaque
+or incomplete evidence refuses qualification.
 
 The qualified runtime environment is round-to-nearest, ties-to-even, with
-gradual underflow for both inputs and results, and normal nontrapping FP
-execution. Private entry points check the rounding mode and exercise subnormal
-input and output arithmetic, refusing FTZ/DAZ. Neither native path changes the
-floating environment during computation. The argument is conditional on
-defined execution and finite observed operands; it does not supply the later
-complete overflow/error envelope. FP exception flags are not geometric state
-and are not promised identical across label bookkeeping.
+gradual underflow and masked exception classes. The binding-owned guard reads
+raw controls using integer predicates before numeric coercion or precondition
+arithmetic. On GNU x86-64 it checks x87 and MXCSR rounding separately, FTZ/DAZ,
+both exception-mask domains and PC64 when required by declared extended
+`long double`. It rechecks the executing thread after foreign callback
+boundaries; no subnormal arithmetic probe runs under unverified trap masks.
+The guard ignores and preserves sticky status and never normalizes caller
+state. The argument remains conditional on defined execution and finite
+observed operands; it does not supply the later complete overflow/error
+envelope. Label bookkeeping does not promise identical exception status.
 
 The relevant build semantics are described by the
 [GCC optimization options](https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html),
 [Clang floating-point model](https://clang.llvm.org/docs/UsersManual.html#controlling-floating-point-behavior),
 [MSVC floating-point options](https://learn.microsoft.com/en-us/cpp/build/reference/fp-specify-floating-point-behavior),
 and [pybind11 CMake helpers](https://pybind11.readthedocs.io/en/stable/cmake/index.html).
-Verbose package and standalone build logs qualify the effective commands on
-the supported CI matrix. Source hashes in the packet still cover only the
-listed files; exact repository source and build logs are required alongside it.
+Verbose logs support review but do not establish effective-command completeness.
+The external workflow records actual tool execution and its source/object/link
+closure, then binds component evidence to the final installed payload. Packet
+hashes remain consistency fields rather than substitutes for that complete
+approved closure.
 
 ### Translation-unit coverage
 

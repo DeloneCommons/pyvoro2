@@ -7,12 +7,28 @@ import platform
 import sys
 
 from pyvoro2 import _core
+from pyvoro2._internal.native_admission import require_component
+from pyvoro2._internal.native_qualification import NativeQualificationError
+
+
+@pytest.fixture
+def wp7_native():
+    try:
+        require_component('wp7-spatial')
+    except NativeQualificationError as error:
+        # These positives belong to the GNU adapter. A damaged or unqualified
+        # installation must still fail; only the reviewed component refusal
+        # on the ordinary Apple/MSVC adapters is an expected limitation.
+        assert sys.platform in ('darwin', 'win32')
+        assert error.reason == 'missing_component'
+        assert error.detail == 'reviewed adapter does not qualify wp7-spatial'
+        pytest.skip('reviewed Apple/MSVC adapter does not qualify wp7-spatial')
 
 
 @pytest.mark.parametrize('power', [False, True])
 @pytest.mark.parametrize('periodic', [(False, False, False), (True, False, True),
                                       (True, True, True)])
-def test_selected_box_packet(power, periodic):
+def test_selected_box_packet(wp7_native, power, periodic):
     points = np.array([[.2, .3, .4]], dtype=float)
     ids = np.array([0], dtype=np.int32)
     queries = np.array([[.8, .7, .6], [.8, .7, .6]])
@@ -34,7 +50,7 @@ def test_selected_box_packet(power, periodic):
 
 
 @pytest.mark.parametrize('power', [False, True])
-def test_selected_triclinic_packet(power):
+def test_selected_triclinic_packet(wp7_native, power):
     points = np.array([[.2, .3, .4]], dtype=float)
     ids = np.array([0], dtype=np.int32)
     queries = np.array([[.8, .7, .6]], dtype=float)
@@ -52,7 +68,7 @@ def test_selected_triclinic_packet(power):
     assert packet['cells'][0]['noninterference']['computed'] is True
 
 
-def test_selected_ghost_growth_and_empty_population():
+def test_selected_ghost_growth_and_empty_population(wp7_native):
     points = np.empty((0, 3), dtype=float)
     ids = np.empty((0,), dtype=np.int32)
     queries = np.array([[.5, .5, .5]])
@@ -121,14 +137,14 @@ def test_geometry_only_all_native_routes_replay_augmented_storage(
 
 @pytest.mark.skipif(
     sys.platform != 'linux' or platform.machine().lower() not in ('x86_64', 'amd64'),
-    reason='FE_UPWARD constant belongs to the qualified Linux x86_64 cohort',
+    reason='FE_UPWARD constant belongs to the Linux x86_64 adapter',
 )
 def test_selected_environment_refusal_and_zero_query_validation():
     libc = ctypes.CDLL(None)
     if not hasattr(libc, 'fegetround') or not hasattr(libc, 'fesetround'):
         pytest.skip('C floating environment unavailable')
     nearest = libc.fegetround()
-    upward = 0x800  # FE_UPWARD on the qualified Linux x86_64 cohort.
+    upward = 0x800  # FE_UPWARD on Linux x86_64.
     points = np.empty((0, 3), dtype=float)
     ids = np.empty((0,), dtype=np.int32)
     bounds = ((0., 1.),) * 3
@@ -141,15 +157,25 @@ def test_selected_environment_refusal_and_zero_query_validation():
                 points, ids, bounds, (1, 1, 1),
                 (True, True, True), 1, np.array([[.5, .5, .5]]),
             )
-        assert _core._observe_ghost_box(
-            points, ids, bounds, (1, 1, 1),
-            (True, True, True), 1, np.empty((0, 3)),
-        ) == []
+        # Empty batches omit artifact admission, but still cast and validate
+        # floating inputs. Their raw-control safety boundary is therefore the
+        # same as for a nonempty batch.
+        with pytest.raises(ValueError, match=(
+            r'^ghost_native:native:None:GHOST_NATIVE_UNSUPPORTED:'
+        )):
+            _core._observe_ghost_box(
+                points, ids, bounds, (1, 1, 1),
+                (True, True, True), 1, np.empty((0, 3)),
+            )
     finally:
         libc.fesetround(nearest)
+    assert _core._observe_ghost_box(
+        points, ids, bounds, (1, 1, 1),
+        (True, True, True), 1, np.empty((0, 3)),
+    ) == []
 
 
-def test_selected_batch_rejects_retained_packet_budget_before_computation():
+def test_selected_batch_rejects_retained_packet_budget_before_computation(wp7_native):
     # 105 * ((1000+1)*2048 + 16384) exceeds the private 64 MiB packet cap.
     grid = np.arange(10, dtype=float) / 10 + .04
     points = np.array(np.meshgrid(grid, grid, grid)).reshape(3, -1).T.copy()
@@ -164,7 +190,7 @@ def test_selected_batch_rejects_retained_packet_budget_before_computation():
         )
 
 
-def test_selected_packet_budget_covers_recursive_python_payload():
+def test_selected_packet_budget_covers_recursive_python_payload(wp7_native):
     # A representative larger 3D packet checks the CPython charged envelope,
     # including topology lists/dicts. It does not assert exact allocator RSS.
     grid = np.arange(5, dtype=float) / 5 + .06
@@ -194,3 +220,33 @@ def test_selected_packet_budget_covers_recursive_python_payload():
         return size
 
     assert recursive_size(packet) <= charged
+
+
+@pytest.mark.skipif(sys.platform not in ('darwin', 'win32'),
+                    reason='reviewed Apple/MSVC missing-component contract')
+@pytest.mark.parametrize('periodic_domain', [False, True])
+@pytest.mark.parametrize('power', [False, True])
+def test_selected_observation_refuses_missing_component_but_empty_work_does_not(
+        periodic_domain, power):
+    with pytest.raises(NativeQualificationError) as missing:
+        require_component('wp7-spatial')
+    assert missing.value.reason == 'missing_component'
+    assert missing.value.detail == 'reviewed adapter does not qualify wp7-spatial'
+    points = np.array([[.2, .3, .4]])
+    ids = np.array([0], dtype=np.int32)
+    if periodic_domain:
+        native = _core._observe_ghost_periodic
+        common = (points, ids, (1., .1, 1., .2, .1, 1.), (1, 1, 1), 1)
+    else:
+        native = _core._observe_ghost_box
+        common = (points, ids, ((0., 1.),) * 3, (1, 1, 1), (True,) * 3, 1)
+    radii = np.array([.1]) if power else None
+    ghost_radii = np.array([.2]) if power else None
+    with pytest.raises(ValueError, match=(
+        r'^ghost_native:native:None:GHOST_NATIVE_UNSUPPORTED:'
+        r'native qualification:missing_component:'
+        r' reviewed adapter does not qualify wp7-spatial$'
+    )):
+        native(*common, np.array([[.8, .7, .6]]), radii, ghost_radii)
+    assert native(*common, np.empty((0, 3)), radii,
+                  np.empty(0) if power else None) == []

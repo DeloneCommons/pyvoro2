@@ -94,6 +94,7 @@ def test_ghost_large_query_shift_materializes_only_retained_records(dim):
     api, domain = rectangular(dim)
     query = [[float(2**70), *([.5] * (dim - 1))]]
     opts = dict(domain=domain, mode='power', weights=[4.], ghost_weights=[0.])
+    opts['return_edges' if dim == 2 else 'return_faces'] = False
     assert api.ghost_cells([[.5] * dim], query, include_empty=False, **opts) == []
     with pytest.raises(ValueError) as caught:
         api.ghost_cells([[.5] * dim], query, include_empty=True, **opts)

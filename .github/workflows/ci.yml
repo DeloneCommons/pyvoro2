@@ -1,21 +1,29 @@
+# Every qualification uses the reviewed head and retains the full evidence tree.
+# Source approval must already exist; these workflows cannot issue source approval.
 name: CI
-
-on:
+'on':
   push:
-    branches: [dev, main]
+    branches:
+      - dev
+      - main
+      - issue88-native-qualification
   pull_request:
-    branches: [dev, main]
-
+    branches:
+      - dev
+      - main
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: '2'
 jobs:
+
   classify:
     runs-on: ubuntu-24.04
     outputs:
       requirements: ${{ steps.route.outputs.requirements }}
     steps:
-      # Run the classifier from the PR merge tree so existing branches need
-      # not carry this script. Full history includes the actual base/head.
       - uses: actions/checkout@v5
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
           fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
@@ -37,17 +45,18 @@ jobs:
   lint-sync:
     needs: classify
     runs-on: ubuntu-24.04
-    env:
-      CXX: g++-13
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: Install lint dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .[dev]
+          python -m pip install flake8 nbformat
       - name: Lint
         run: flake8 src tests tools benchmarks examples
       - name: Check notebook exports
@@ -55,21 +64,61 @@ jobs:
       - name: Check README sync
         run: python tools/gen_readme.py --check
 
+  # Reuse a wheel that completed the full numerical gate in this exact run.
+  # Docs-only changes qualify their own artifact when neither Linux job runs.
   docs-and-notebooks:
-    needs: classify
-    if: contains(fromJSON(needs.classify.outputs.requirements), 'docs-and-notebooks')
+    needs:
+      - classify
+      - test-linux-qualified
+      - test-linux-runtime
+    if: always() && !cancelled() && contains(fromJSON(needs.classify.outputs.requirements), 'docs-and-notebooks') && (needs.test-linux-qualified.result
+      == 'success' || needs.test-linux-qualified.result == 'skipped') && (needs.test-linux-runtime.result == 'success' ||
+      needs.test-linux-runtime.result == 'skipped')
     runs-on: ubuntu-24.04
     env:
       CXX: g++-13
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
-      - name: Install full optional stack
+          python-version: ${{ needs.test-linux-runtime.result == 'success' && '3.13' || '3.11' }}
+      - name: Reuse qualified Linux wheel
+        if: needs.test-linux-qualified.result == 'success' && needs.test-linux-runtime.result != 'success'
+        uses: actions/download-artifact@v7
+        with:
+          name: qualified-linux-py3.11
+          path: ${{ runner.temp }}/docs-wheel
+      - name: Reuse qualified Linux wheel
+        if: needs.test-linux-runtime.result == 'success'
+        uses: actions/download-artifact@v7
+        with:
+          name: qualified-runtime-py3.13
+          path: ${{ runner.temp }}/docs-wheel
+      - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .[all]
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy
+        if: needs.test-linux-qualified.result == 'skipped' && needs.test-linux-runtime.result == 'skipped'
+      - name: Qualify final installed production artifact
+        run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
+          full
+        if: needs.test-linux-qualified.result == 'skipped' && needs.test-linux-runtime.result == 'skipped'
+      - name: Collect documentation-only qualified wheel
+        shell: bash
+        if: needs.test-linux-qualified.result == 'skipped' && needs.test-linux-runtime.result == 'skipped'
+        run: |
+          mkdir -p "${{ runner.temp }}/docs-wheel"
+          cp "${{ runner.temp }}/qualification/final-wheel/"*.whl "${{ runner.temp }}/docs-wheel/"
+      - name: Install qualified wheel and full optional stack
+        shell: bash
+        run: |
+          shopt -s nullglob
+          wheels=("${{ runner.temp }}/docs-wheel/"*.whl)
+          test "${#wheels[@]}" -eq 1
+          python -m pip install "${wheels[0]}[all]"
       - name: Require the installed qualified planar profile
         run: python tools/check_installed_package.py --require-scipy
       - name: Validate notebooks
@@ -82,6 +131,13 @@ jobs:
           python tools/gen_readme.py --check
       - name: Build docs
         run: mkdocs build --strict
+      - name: Preserve complete build and qualification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-docs-qualification
+          path: ${{ runner.temp }}/qualification
+          include-hidden-files: true
+        if: always() && needs.test-linux-qualified.result == 'skipped' && needs.test-linux-runtime.result == 'skipped'
 
   native-sanitizers:
     needs: classify
@@ -91,122 +147,118 @@ jobs:
       CXX: g++-13
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - name: Install sanitizer build dependencies
+      - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -U cmake ninja
-      - name: Build and install with ASan and UBSan
-        env:
-          CXXFLAGS: >-
-            -fsanitize=address,undefined,float-cast-overflow
-            -fno-omit-frame-pointer -O1 -g
-          LDFLAGS: -fsanitize=address,undefined,float-cast-overflow
-        run: python -m pip install -v .[test]
-      - name: Run native safety regressions under ASan and UBSan
-        shell: bash
-        run: |
-          ASAN_LIB="$(g++-13 -print-file-name=libasan.so)"
-          UBSAN_LIB="$(g++-13 -print-file-name=libubsan.so)"
-          STDCXX_LIB="$(g++-13 -print-file-name=libstdc++.so)"
-          test -f "$ASAN_LIB"
-          test -f "$UBSAN_LIB"
-          test -f "$STDCXX_LIB"
-          env \
-            LD_PRELOAD="${ASAN_LIB}:${UBSAN_LIB}:${STDCXX_LIB}" \
-            ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
-            UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
-            PYVORO2_NATIVE_TEST_SANITIZERS=1 \
-            python -m pytest -q -s \
-              tests/forward/common/test_native_boundary_validation.py \
-              tests/forward/common/test_native_preconditions.py \
-              tests/forward/common/test_generator_preparation.py \
-              tests/forward/spatial/test_duplicate_check.py \
-              tests/forward/spatial/test_ghost_cells.py \
-              tests/forward/spatial/test_native_witness.py \
-              tests/forward/spatial/test_wp7_native_selected.py \
-              tests/tooling/test_native_witness_cpp.py \
-              tests/forward/planar/test_api_dispatch.py \
-              tests/forward/planar/test_wp6_native.py \
-              tests/forward/planar/test_wp6_profile_refusal.py \
-              tests/forward/planar/test_wp7_native.py \
-              tests/forward/test_wp7_oracle.py
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy
+      - name: Run controlled native safety checks under ASan and UBSan
+        run: >-
+          python tools/native/qualification/build.py --output "${{ runner.temp }}/sanitizer-safety"
+          --repair none --suite adapter --sanitizers
+      - name: Preserve complete sanitizer build and safety evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-sanitizer-safety
+          path: ${{ runner.temp }}/sanitizer-safety
+          include-hidden-files: true
+        if: always()
 
-  # Authoritative certificate qualification on native/CI PRs and every
-  # integration push. Never replace these source, profile, parity, and full
-  # suite steps with the ordinary runtime compatibility checks below.
-  test-linux-qualified:
+  # This hardware-capable strict control does not change distribution ISA.
+  native-avx-fma:
     needs: classify
-    if: contains(fromJSON(needs.classify.outputs.requirements), 'test-linux-qualified')
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+    if: contains(fromJSON(needs.classify.outputs.requirements), 'native-avx-fma')
     runs-on: ubuntu-24.04
     env:
       CXX: g++-13
+      CXXFLAGS: -mavx -mfma
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Require AVX and FMA capable hardware
+        shell: bash
+        run: |
+          lscpu > "${{ runner.temp }}/avx-fma-cpu.txt"
+          python - <<'PYCPU'
+          from pathlib import Path
+          flags = next(line.split(':', 1)[1].split()
+                       for line in Path('/proc/cpuinfo').read_text().splitlines()
+                       if line.startswith('flags'))
+          assert {'avx', 'fma'} <= set(flags), 'strict control requires AVX/FMA hardware'
+          PYCPU
+      - name: Install controlled build and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy
+      - name: Qualify final installed production artifact
+        run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
+          full
+      - name: Preserve complete build and qualification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-avx-fma-qualification
+          path: |
+            ${{ runner.temp }}/qualification
+            ${{ runner.temp }}/avx-fma-cpu.txt
+          include-hidden-files: true
+        if: always()
+
+  # The driver performs source/build checks, route corpora and the full suite
+  # against the final installed production wheel for every Python version.
+  test-linux-qualified:
+    needs: classify
+    if: contains(fromJSON(needs.classify.outputs.requirements), 'test-linux-qualified')
+    runs-on: ubuntu-24.04
+    env:
+      CXX: g++-13
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - '3.13'
+          - '3.14'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install build tools
-        run: python -m pip install -U pip cmake ninja pybind11
-      - name: Install package and record effective native commands
+      - name: Install controlled build and test dependencies
         run: |
-          g++-13 --version
-          python -m pip install -v .[test]
-      - name: Check installed source/profile and SciPy-enabled workflows
-        shell: bash
-        run: |
-          python tools/check_installed_package.py --require-scipy \
-            | tee installed-package-profile.txt
-      - name: Record 3D native FP qualification
-        run: >-
-          python -m pytest -q -s tests/forward/spatial/test_native_witness.py
-          tests/tooling/test_native_witness_cpp.py
-          -k "surviving_seed_legacy_zero or uncontracted or offset_operation_order"
-      - name: Compare optimized planar witness with qualified stock producer
-        shell: bash
-        run: |
-          cmake -S . -B build/wp6-qualification -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-13 \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DPYVORO2_PLANAR_QUALIFICATION=ON \
-            -DPython_EXECUTABLE="$(python -c 'import sys; print(sys.executable)')" \
-            -Dpybind11_DIR="$(python -m pybind11 --cmakedir)"
-          cmake --build build/wp6-qualification --target _core2d --parallel 2
-          PLANAR_INSTALLED="$(python -c 'import importlib.util; print(importlib.util.find_spec("pyvoro2._core2d").origin)')"
-          PLANAR_QUALIFIED="$(python -c 'from pathlib import Path; print(next(Path("build/wp6-qualification/pyvoro2").glob("_core2d*.so")))')"
-          python tools/native/check_planar_witness.py \
-            --module "$PLANAR_INSTALLED" \
-            --qualification-module "$PLANAR_QUALIFIED" \
-            --source-manifest build/wp6-qualification/planar-source-closure.txt \
-            --output wp6-qualification.json
-          python tools/native/check_ghost_planar.py \
-            --module "$PLANAR_QUALIFIED" \
-            --production-module "$PLANAR_INSTALLED" \
-            --source-manifest build/wp6-qualification/planar-source-closure.txt \
-            --output wp7-planar-qualification.json
-      - name: Run full installed-package suite including seeded fuzz
-        run: python -m pytest -q
-      - name: Preserve compiled planar profile and qualification evidence
-        if: always()
+          python -m pip install --upgrade pip
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'"
+      - name: Qualify final installed production artifact
+        run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
+          full
+      - name: Upload qualified wheel
         uses: actions/upload-artifact@v6
         with:
-          name: wp6-linux-py${{ matrix.python-version }}
-          path: |
-            installed-package-profile.txt
-            wp6-qualification.json
-            wp7-planar-qualification.json
-            build/wp6-qualification/planar-source-closure.txt
-            build/wp6-qualification/planar-build-profile.txt
-            build/wp6-qualification/compile_commands.json
+          name: qualified-linux-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/qualification/final-wheel/*.whl
+          if-no-files-found: error
+      - name: Preserve complete build and qualification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-linux-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/qualification
+          include-hidden-files: true
+        if: always()
 
-  # Ordinary Python PRs still get one complete installed public/runtime suite.
-  # The four other Python versions get a smaller API/inverse compatibility set.
   test-linux-runtime:
     needs: classify
     if: contains(fromJSON(needs.classify.outputs.requirements), 'test-linux-runtime')
@@ -215,97 +267,136 @@ jobs:
       CXX: g++-13
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - name: Install package and test dependencies
-        run: python -m pip install -v .[test]
-      - name: Check installed source and profile
-        run: python tools/check_installed_package.py --require-scipy
-      - name: Run complete installed-package suite including seeded fuzz
-        run: python -m pytest -q
+      - name: Install controlled build and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy
+      - name: Qualify final installed production artifact
+        run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
+          full
+      - name: Upload qualified wheel
+        uses: actions/upload-artifact@v6
+        with:
+          name: qualified-runtime-py3.13
+          path: ${{ runner.temp }}/qualification/final-wheel/*.whl
+          if-no-files-found: error
+      - name: Preserve complete build and qualification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-linux-runtime
+          path: ${{ runner.temp }}/qualification
+          include-hidden-files: true
+        if: always()
 
   test-linux-compat:
     needs: classify
     if: contains(fromJSON(needs.classify.outputs.requirements), 'test-linux-compat')
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.14']
     runs-on: ubuntu-24.04
     env:
       CXX: g++-13
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - '3.14'
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install package and test dependencies
-        run: python -m pip install -v .[test]
-      - name: Check installed source and profile
-        run: python tools/check_installed_package.py --require-scipy
+      - name: Install controlled build and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'"
+      - name: Qualify final installed production artifact
+        run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
+          adapter
+      - name: Install qualified artifact
+        shell: bash
+        run: python -m pip install "${{ runner.temp }}/qualification/final-wheel/"*.whl
       - name: Exercise Python compatibility without seeded fuzz
-        run: >-
-          python -m pytest -q
-          tests/forward/common/test_internal_validation.py
-          tests/forward/common/test_periodic_images.py
-          tests/inverse/separator/test_constraints.py
-          tests/inverse/separator/test_fit.py
-          tests/inverse/separator/test_objective_contract.py
+        run: python -m pytest -q tests/forward/common/test_internal_validation.py tests/forward/common/test_periodic_images.py
+          tests/inverse/separator/test_constraints.py tests/inverse/separator/test_fit.py tests/inverse/separator/test_objective_contract.py
+      - name: Preserve complete build and qualification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-linux-compat-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/qualification
+          include-hidden-files: true
+        if: always()
 
-  # These builds retain ordinary 3D, safe geometry-only ghosts and pure-Python
-  # coverage. Both ghost certificates and ordinary planar provenance refuse.
+  # AppleClang and MSVC retain WP5/WP8 positives and explicit WP6/WP7 refusal.
   test-other-platforms:
     needs: classify
     if: contains(fromJSON(needs.classify.outputs.requirements), 'test-other-platforms')
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        os:
+          - macos-15
+          - windows-latest
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - '3.13'
+          - '3.14'
     runs-on: ${{ matrix.os }}
     steps:
       - name: Preserve reviewed source bytes on checkout
         run: git config --global core.autocrlf false
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install build tools
-        run: python -m pip install -U pip cmake ninja
-      - name: Build and install package
-        run: python -m pip install -v .[test]
-      - name: Check ordinary 3D/algebra and explicit ghost/planar refusal
-        shell: bash
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with:
+          arch: x64
+      - name: Install controlled build and test dependencies
         run: |
-          python tools/check_installed_package.py \
-            --require-scipy --planar-refusal --ghost-refusal \
-            | tee installed-package-profile.txt
+          python -m pip install --upgrade pip
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'"
+      - name: Qualify final installed production artifact
+        run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
+          adapter
+        env:
+          CMAKE_GENERATOR: Ninja
+          CXX: ${{ runner.os == 'Windows' && 'cl' || 'clang++' }}
+      - name: Install qualified artifact
+        shell: bash
+        run: python -m pip install "${{ runner.temp }}/qualification/final-wheel/"*.whl
       - name: Run ordinary spatial, geometry-only, tooling and refusal tests
-        run: >-
-          python -m pytest -q
-          tests/forward/spatial
-          --ignore=tests/forward/spatial/test_ghost_cells.py
-          --ignore=tests/forward/spatial/test_wp7_spatial_certificate.py
-          -k "not ghost_reflection_transport"
-          tests/forward/planar/test_wp6_ideal.py
-          tests/forward/planar/test_wp6_consumers.py
-          tests/forward/planar/test_wp6_profile_refusal.py
-          tests/forward/common/test_internal_validation.py
-          tests/forward/common/test_exact_lattice_reduction.py
-          tests/forward/common/test_periodic_images.py
-          tests/forward/common/test_native_translation.py
-          tests/inverse/separator/test_constraints.py
-          tests/inverse/separator/test_fit.py
-          tests/inverse/separator/test_objective_contract.py
-          tests/inverse/separator/test_numerics.py
-          tests/tooling
-      - name: Preserve installed source/profile and refusal evidence
-        if: always()
+        run: python -m pytest -q tests/forward/spatial --ignore=tests/forward/spatial/test_ghost_cells.py --ignore=tests/forward/spatial/test_wp7_spatial_certificate.py
+          -k "not ghost_reflection_transport" tests/forward/planar/test_wp6_ideal.py tests/forward/planar/test_wp6_consumers.py
+          tests/forward/planar/test_wp6_profile_refusal.py tests/forward/common/test_internal_validation.py tests/forward/common/test_exact_lattice_reduction.py
+          tests/forward/common/test_periodic_images.py tests/forward/common/test_native_translation.py tests/inverse/separator/test_constraints.py
+          tests/inverse/separator/test_fit.py tests/inverse/separator/test_objective_contract.py tests/inverse/separator/test_numerics.py
+          tests/tooling > "${{ runner.temp }}/adapter-tests.log" 2>&1
+      - name: Preserve complete build and qualification evidence
         uses: actions/upload-artifact@v6
         with:
-          name: wp6-refusal-${{ matrix.os }}-py${{ matrix.python-version }}
-          path: installed-package-profile.txt
+          name: native-adapter-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            ${{ runner.temp }}/qualification
+            ${{ runner.temp }}/adapter-tests.log
+          include-hidden-files: true
+        if: always()
 
   build-dist:
     needs: classify
@@ -315,41 +406,62 @@ jobs:
       CXX: g++-13
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.14'
-      - name: Install build dependencies
+      - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install cmake ninja build twine
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy twine
       - name: Build sdist
-        run: python -m build --sdist
-      - name: Build wheel from sdist in build isolation
-        run: python tools/build_wheel_from_sdist.py dist
-      - name: Validate metadata
-        run: python tools/check_dist_metadata.py dist
-      - name: Check packaged files
-        run: python tools/check_dist.py dist
-      - name: Create fresh no-SciPy environment
-        run: python -m venv "${{ runner.temp }}/pyvoro2-sdist-venv"
-      - name: Install wheel rebuilt from sdist
+        run: python -m build --sdist --outdir "${{ runner.temp }}/sdist-dist"
+      - name: Qualify wheel from the actual extracted sdist
+        shell: bash
         run: |
-          "${{ runner.temp }}/pyvoro2-sdist-venv/bin/python" \
-            -m pip install dist/*.whl
-      - name: Check no-SciPy installation and qualified planar profile
+          shopt -s nullglob
+          sdists=("${{ runner.temp }}/sdist-dist/"*.tar.gz)
+          test "${#sdists[@]}" -eq 1
+          mkdir "${{ runner.temp }}/sdist-source"
+          tar -xf "${sdists[0]}" -C "${{ runner.temp }}/sdist-source"
+          sources=("${{ runner.temp }}/sdist-source/"*)
+          test "${#sources[@]}" -eq 1
+          sdist_source="${sources[0]}"
+          python "$sdist_source/tools/native/qualification/build.py" \
+            --source-root "$sdist_source" \
+            --output "${{ runner.temp }}/qualification" --repair none --suite full
+          cp "${{ runner.temp }}/qualification/final-wheel/"*.whl "${{ runner.temp }}/sdist-dist/"
+      - name: Validate finalized distribution metadata and contents
+        run: |
+          python tools/check_dist_metadata.py "${{ runner.temp }}/sdist-dist"
+          python tools/check_dist.py --require-qualification "${{ runner.temp }}/sdist-dist"
+      - name: Create fresh no-SciPy environment and install rebuilt wheel
+        shell: bash
+        run: |
+          python -m venv "${{ runner.temp }}/pyvoro2-sdist-venv"
+          "${{ runner.temp }}/pyvoro2-sdist-venv/bin/python" -m pip install "${{ runner.temp }}/sdist-dist/"*.whl
+      - name: Check no-SciPy installation and positive certificate routes
         run: |
           "${{ runner.temp }}/pyvoro2-sdist-venv/bin/python" -m pip check
-          "${{ runner.temp }}/pyvoro2-sdist-venv/bin/python" \
-            tools/check_installed_package.py --forbid-scipy
+          "${{ runner.temp }}/pyvoro2-sdist-venv/bin/python" tools/check_installed_package.py --forbid-scipy
+      - name: Preserve complete build and qualification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-sdist-qualification
+          path: |
+            ${{ runner.temp }}/qualification
+            ${{ runner.temp }}/sdist-source
+            ${{ runner.temp }}/sdist-dist
+          include-hidden-files: true
+        if: always()
 
-  # Reuse the release wheel pipeline instead of keeping a second PR copy.
   wheels:
     needs: classify
     if: contains(fromJSON(needs.classify.outputs.requirements), 'wheels')
     uses: ./.github/workflows/wheels.yml
 
-  # Stable future branch-protection target; a skipped job is acceptable only
-  # when the classifier did not require it. Failed/cancelled requirements fail.
   ci-gate:
     name: CI gate
     if: always()
@@ -358,6 +470,7 @@ jobs:
       - lint-sync
       - docs-and-notebooks
       - native-sanitizers
+      - native-avx-fma
       - test-linux-qualified
       - test-linux-runtime
       - test-linux-compat
@@ -367,6 +480,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'

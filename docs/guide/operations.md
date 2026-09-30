@@ -235,6 +235,13 @@ Provisional protocol exposes `code`, `stage`, `query_index` and bounded
 `details`; see the [reference](../reference/api.md). Native selection remains
 the owner answer, without an additional exact ownership theorem.
 
+Requested periodic owner-image metadata requires the separately qualified WP8
+component for the installed native artifact and compatible current-thread FP
+controls. ID-only calls do not acquire an occurrence or owner-image certificate.
+Missing/untrusted qualification and runtime mismatch use
+`LOCATE_NATIVE_UNSUPPORTED`; source, enclosure and representation failures keep
+their distinct reasons. See the [support boundary](capabilities.md#periodic-certification-and-remaining-wrapper-work).
+
 ## 3) `ghost_cells(...)`: compute probe (ghost) cells
 
 `ghost_cells` asks a slightly different question:
@@ -281,13 +288,15 @@ not remove a positive reference. `adjacent_cell` is a compatibility view for
 qualified persistent generators and walls; ghost self has no
 `adjacent_cell`. Requested public vertices are not needed for certification.
 
-Certificate-bearing calls are initially qualified on Linux x86_64 GCC 13.3
-under the reviewed strict binary64 native profile. Unsupported source/build
-profiles and incomplete or inconsistent certificates raise a
+Certificate-bearing calls require qualified ordinary and selected ghost
+components for the installed artifact and dimension. Unsupported source/build,
+artifact or current-thread FP profiles and incomplete or inconsistent
+certificates raise a
 `ValueError`-compatible error with `code`, `stage`, `query_index` and bounded
 `details`; no partial batch is returned. Geometry-only calls use the safe
-initialized native route without claiming this boundary certificate. WP7 has been independently accepted; WP8 metadata implementation remains
-subject to its separate exact-head review.
+initialized native route without claiming this boundary certificate. WP7 and
+WP8 are independently accepted; issue #88's qualification changes remain subject
+to separate exact-head acceptance.
 
 ### `query` vs `site` in periodic domains
 

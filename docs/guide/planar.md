@@ -158,11 +158,12 @@ omitted while requesting edge shifts. `has_periodic_shifts` reports requested
 shift availability, including available-but-empty output; it does not assert
 that every native edge is a positive exact semantic boundary.
 
-Ordinary planar computation currently admits the qualified Linux x86_64
-GCC 13.3 baseline-SSE2 native profile, with binary64 evaluation, contraction and
-fast-math disabled, and no LTO or AVX/FMA target. Unsupported source/build or
-runtime arithmetic profiles fail explicitly. Package support on another
-platform does not by itself qualify this planar certification path.
+Ordinary planar occurrence provenance requires a qualified installed WP6
+component and compatible current-thread floating-point controls. Unsupported
+source/build/artifact or runtime profiles fail explicitly; a compiler version or
+package platform label does not itself qualify this path. See the
+[support boundary](capabilities.md#periodic-certification-and-remaining-wrapper-work)
+for issue #88's pending final-artifact acceptance.
 
 The ordinary `compute` keywords `edge_shift_search`, `validate_edge_shifts`,
 `repair_edge_shifts` and `edge_shift_tol` are removed. See the
@@ -210,12 +211,12 @@ edges; walls and collapsed raw edges omit it. The four ghost-only controls
 `edge_shift_tol` are removed without aliases. Geometry-only ghost calls use
 the initialized selected-cell route without the full S certificate.
 
-Certificate-bearing ghosts initially require the qualified Linux x86_64 GCC
-13.3 strict binary64 native profile. Source/profile, insertion, provenance,
+Certificate-bearing planar ghosts require qualified ordinary planar and selected
+ghost components. Source/artifact/runtime profile, insertion, provenance,
 exact semantic, resource and shift-representation failures abort the entire
 batch with a `ValueError`-compatible `GHOST_*` error exposing `code`, `stage`,
-`query_index` and bounded `details`. Independent exact-head WP7 acceptance
-remains pending.
+`query_index` and bounded `details`. WP7 is independently accepted; issue #88's
+qualification changes require separate exact-head acceptance.
 
 ## Diagnostics and wrapper-level convenience
 

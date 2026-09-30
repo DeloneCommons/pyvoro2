@@ -37,6 +37,7 @@ Each record has a status:
 21. [WP5 native occurrence and exact periodic face certification](0021-wp5-native-occurrence-and-exact-face-certification.md)
 22. [WP6 source-certified ordinary planar edge provenance](0022-wp6-source-certified-planar-edge-provenance.md)
 23. [WP7 source-certified ghost boundaries](0023-wp7-certified-ghost-boundaries.md)
+24. [External native artifact qualification](0024-external-native-artifact-qualification.md)
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the

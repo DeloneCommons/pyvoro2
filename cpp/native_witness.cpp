@@ -71,18 +71,15 @@ void require_environment() {
   pre::require_binary64_interval_environment();
   if (FLT_EVAL_METHOD != 0)
     throw std::runtime_error("native witness requires binary64 expression evaluation");
-  volatile double minimum = std::numeric_limits<double>::min();
-  volatile double two = 2.0;
-  volatile double half = minimum / two;
-  if (!(half > 0.0 && half < minimum))
-    throw std::runtime_error("native witness requires gradual binary64 underflow");
 }
 
-py::dict build_metadata() {
+py::dict profile_metadata() {
   py::dict build;
+  const auto runtime = native_runtime::inspect();
   build["binary64"] = true;
-  build["round_to_nearest"] = true;
-  build["gradual_underflow"] = true;
+  build["round_to_nearest"] = runtime.supported && runtime.nearest;
+  build["gradual_underflow"] = runtime.supported && runtime.subnormal;
+  build["runtime_compatible"] = runtime.compatible();
   build["float_eval_method"] = FLT_EVAL_METHOD;
   build["fast_math"] = false;
   build["fp_contract"] = "off";
@@ -120,13 +117,25 @@ py::dict build_metadata() {
 #endif
   build["source_sha256"] = PYVORO2_WITNESS_SOURCE_SHA256;
   build["source_sha256_scope"] = "listed files; not a complete source fingerprint";
-  build["tolerance"] = voro::tolerance;
-  build["big_tolerance_factor"] = voro::big_tolerance_fac;
   build["max_unit_voro_shells"] = voro::max_unit_voro_shells;
   build["int_bits"] = sizeof(int) * CHAR_BIT;
   build["int_min"] = std::numeric_limits<int>::min();
   build["int_max"] = std::numeric_limits<int>::max();
   return build;
+}
+
+py::dict build_metadata() {
+  py::dict build = profile_metadata();
+  build["tolerance"] = voro::tolerance;
+  build["big_tolerance_factor"] = voro::big_tolerance_fac;
+  return build;
+}
+
+void ghost_metadata(py::dict& build) {
+  build["ghost_selected_route"] = "wp7-initialized-selected-v1";
+  build["ghost_source_sha256"] = PYVORO2_GHOST_SOURCE_SHA256;
+  build["ghost_source_sha256_scope"] =
+      "all vendored 3D source files plus 3D bindings/witness/preconditions/FP guard/CMake/NativeFP/pyproject";
 }
 
 template <class Ordinary, class Observer>
@@ -707,10 +716,7 @@ py::dict collect_selected_ghost(Ordinary& ordinary, Observer& observer,
   packet["cells"] = cells;
   packet["context"] = context;
   py::dict build = build_metadata();
-  build["ghost_selected_route"] = "wp7-initialized-selected-v1";
-  build["ghost_source_sha256"] = PYVORO2_GHOST_SOURCE_SHA256;
-  build["ghost_source_sha256_scope"] =
-      "all vendored 3D source files plus 3D bindings/witness/preconditions/FP guard/CMake/NativeFP/pyproject";
+  ghost_metadata(build);
   packet["build"] = build;
   return packet;
 }
@@ -857,7 +863,14 @@ class RadiusPrimitiveProbe : public voro::radius_poly {
 }  // namespace
 
 void register_bindings(py::module_& module) {
-  module.def("_observe_ghost_box", [](Doubles points, Integers ids, Bounds bounds,
+  // Consistency data, never qualification authority. Inspection contains only
+  // integer/string/bool materialization and is safe under hostile FP controls.
+  pyvoro2::native_runtime::inspection_def(module, "_spatial_witness_profile", [] {
+    py::dict build = profile_metadata();
+    ghost_metadata(build);
+    return build;
+  });
+  pyvoro2::native_runtime::guarded_def(module, "_observe_ghost_box", [](Doubles points, Integers ids, Bounds bounds,
       std::array<int, 3> blocks, std::array<bool, 3> periodic, int init_mem,
       Doubles queries, py::object radii_object, py::object ghost_radii_object) {
     if (queries.shape(0) != 0)
@@ -871,11 +884,11 @@ void register_bindings(py::module_& module) {
     const Doubles* native_radii = nullptr;
     const Doubles* native_ghost_radii = nullptr;
     if (!radii_object.is_none()) {
-      radii = py::cast<Doubles>(radii_object);
+      radii = native_runtime::guarded_cast<Doubles>(radii_object);
       native_radii = &radii;
     }
     if (!ghost_radii_object.is_none()) {
-      ghost_radii = py::cast<Doubles>(ghost_radii_object);
+      ghost_radii = native_runtime::guarded_cast<Doubles>(ghost_radii_object);
       native_ghost_radii = &ghost_radii;
     }
     if ((native_radii == nullptr) != (native_ghost_radii == nullptr))
@@ -898,7 +911,7 @@ void register_bindings(py::module_& module) {
      py::arg("queries"), py::arg("radii") = py::none(),
      py::arg("ghost_radii") = py::none());
 
-  module.def("_observe_ghost_periodic", [](Doubles points, Integers ids,
+  pyvoro2::native_runtime::guarded_def(module, "_observe_ghost_periodic", [](Doubles points, Integers ids,
       std::array<double, 6> params, std::array<int, 3> blocks, int init_mem,
       Doubles queries, py::object radii_object, py::object ghost_radii_object) {
     if (queries.shape(0) != 0)
@@ -912,11 +925,11 @@ void register_bindings(py::module_& module) {
     const Doubles* native_radii = nullptr;
     const Doubles* native_ghost_radii = nullptr;
     if (!radii_object.is_none()) {
-      radii = py::cast<Doubles>(radii_object);
+      radii = native_runtime::guarded_cast<Doubles>(radii_object);
       native_radii = &radii;
     }
     if (!ghost_radii_object.is_none()) {
-      ghost_radii = py::cast<Doubles>(ghost_radii_object);
+      ghost_radii = native_runtime::guarded_cast<Doubles>(ghost_radii_object);
       native_ghost_radii = &ghost_radii;
     }
     if ((native_radii == nullptr) != (native_ghost_radii == nullptr))
@@ -938,14 +951,14 @@ void register_bindings(py::module_& module) {
      py::arg("blocks"), py::arg("init_mem"), py::arg("queries"),
      py::arg("radii") = py::none(), py::arg("ghost_radii") = py::none());
 
-  module.def("_observe_box", [](Doubles points, Integers ids, Bounds bounds,
+  pyvoro2::native_runtime::guarded_def(module, "_observe_box", [](Doubles points, Integers ids, Bounds bounds,
       std::array<int, 3> blocks, std::array<bool, 3> periodic, int init_mem,
       py::object radii_object) {
     require_environment();
     Doubles radii;
     const Doubles* native_radii = nullptr;
     if (!radii_object.is_none()) {
-      radii = py::cast<Doubles>(radii_object);
+      radii = native_runtime::guarded_cast<Doubles>(radii_object);
       native_radii = &radii;
     }
     pre::preflight_box<3>(points, ids, native_radii, bounds, blocks, periodic,
@@ -958,14 +971,14 @@ void register_bindings(py::module_& module) {
   }, py::arg("points"), py::arg("ids"), py::arg("bounds"), py::arg("blocks"),
      py::arg("periodic"), py::arg("init_mem"), py::arg("radii") = py::none());
 
-  module.def("_observe_periodic", [](Doubles points, Integers ids,
+  pyvoro2::native_runtime::guarded_def(module, "_observe_periodic", [](Doubles points, Integers ids,
       std::array<double, 6> params, std::array<int, 3> blocks, int init_mem,
       py::object radii_object) {
     require_environment();
     Doubles radii;
     const Doubles* native_radii = nullptr;
     if (!radii_object.is_none()) {
-      radii = py::cast<Doubles>(radii_object);
+      radii = native_runtime::guarded_cast<Doubles>(radii_object);
       native_radii = &radii;
     }
     pre::preflight_periodic_3d(points, ids, native_radii, params, blocks, init_mem,
@@ -979,7 +992,7 @@ void register_bindings(py::module_& module) {
   }, py::arg("points"), py::arg("ids"), py::arg("cell_params"),
      py::arg("blocks"), py::arg("init_mem"), py::arg("radii") = py::none());
 
-  module.def("_test_power_offset_order", [](double distance_squared,
+  pyvoro2::native_runtime::guarded_def(module, "_test_power_offset_order", [](double distance_squared,
       double owner_radius, double neighbor_radius, double max_radius_squared) {
     require_environment();
     return RadiusPrimitiveProbe{}.evaluate(distance_squared, owner_radius,

@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from fractions import Fraction
 
+from ..native_admission import require_component, require_environment
+from ..native_qualification import NativeQualificationError
+
 
 class WP5Failure(Exception):
     """A certificate reason, converted to TessellationError by the API boundary."""
@@ -13,6 +16,19 @@ class WP5Failure(Exception):
         super().__init__(message)
         self.code = code
         self.context = context
+
+
+def require_wp5(*, artifact=True):
+    """Keep artifact refusal distinct from the unchanged N/E/S proof stages."""
+    try:
+        if artifact:
+            return require_component('wp5-spatial')
+        require_environment()
+    except NativeQualificationError as exc:
+        code = ('WP5_UNSUPPORTED_FP_PROFILE' if exc.reason == 'runtime_environment'
+                else 'WP5_SOURCE_PROFILE_MISMATCH')
+        raise WP5Failure(code, str(exc), stage='profile', reason=exc.reason,
+                         detail=exc.detail) from exc
 
 
 @dataclass(frozen=True, slots=True)

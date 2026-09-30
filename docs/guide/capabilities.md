@@ -40,34 +40,41 @@ use their separately qualified source contracts. Their exact native-effective
 and public-semantic consistency audits remain distinct from native attribution.
 Raw boundary occurrences are not automatically positive semantic boundaries.
 
-The initial ordinary planar compute profile is Linux x86_64, GCC 13.3 and the
-qualified baseline-SSE2 binary64 evaluation policy, without fast-math,
-contraction, LTO or AVX/FMA targets. Other compiler/platform profiles require
-qualification and currently refuse; the broader package distribution matrix
-does not imply planar-certification support. Source/profile, insertion,
+Native certificate support belongs to the installed artifact and the current
+thread's floating-point environment. It requires externally qualified source,
+build and native payload identities for each consumed route. A compiler version,
+package platform label or successful import does not establish qualification.
+Ordinary planar and selected ghost occurrence contracts remain separately
+qualified; unsupported components refuse explicitly. Source/profile, insertion,
 attribution, exact-audit resource and public-representation failures remain
-distinct.
+distinct. See [native qualification](../development/native-qualification.md) for
+the required evidence and the current issue #88 acceptance boundary.
 
-CI runs the full success gate on Ubuntu 24.04 with the actual GCC 13.3 profile
-checked. macOS 15 and Windows build and run spatial/pure-Python checks plus
-explicit unsupported-planar refusal checks; those passes do not qualify
-ordinary planar geometry on those platforms.
-The current manylinux, Windows and macOS release-wheel cohorts also test
-explicit ordinary-planar refusal. Ordinary planar computation is admitted on
-the separately built Linux GCC 13.3 source wheel.
+The historical Linux x86_64 GCC 13.3 positive is retained as a control. Issue #88
+requires a positive final repaired GNU 14.2.1 manylinux artifact and preservation
+of existing AppleClang/macOS and MSVC/Windows spatial/WP8 support. Those new
+artifact acceptance results remain pending. Planar/ghost refusal tests on an
+unqualified platform do not establish positive certificate support.
 
 Ordinary planar and planar ghost reconstruction search, validation, repair and
 matching-tolerance keywords are removed by WP6 and WP7 respectively. WP5's
 corresponding 3D controls are removed by WP9 without replacements. Ghost boundary
 references use same-computation native provenance plus complete exact
-public-semantic positivity/coverage; their initial qualified certificate
-profile is Linux x86_64 GCC 13.3 under strict binary64 settings. Other
-certificate-bearing cohorts refuse pending qualification; safe geometry-only
-ghost calls have separate availability. WP8 adds exact user query views and
+public-semantic positivity/coverage. They require both the ordinary producer
+and selected ghost components for their dimension; safe geometry-only ghost
+calls have separate availability. WP8 adds exact user query views and
 certified owner-image metadata while preserving native owner positions and the
 WP7 ghost chart. WP7 and WP8 are independently accepted and merged. Separator
 `image_search` stays a performance seed, never a correctness radius. These
 boundaries are recorded in the [active plan](../development/plans/v0.9.md).
+
+Qualification refusal is atomic and uses the existing WP5, WP6, GHOST or LOCATE
+failure family. Private details distinguish missing/untrusted records, changed
+source/schema or payload, incomplete effective-build evidence, missing route
+components and incompatible current FP controls. The package does not repair
+caller rounding, precision, subnormal or trap-mask state. Geometry-only ghosts
+and ID-only locate do not acquire unused certificate requirements; zero-query
+calls issue no native certificate. There is no public correctness override.
 
 ## Backend and binary64 limits
 

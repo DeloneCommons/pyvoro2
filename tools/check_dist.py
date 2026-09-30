@@ -13,7 +13,10 @@ import tarfile
 import zipfile
 
 try:
-    from check_wheel_matrix import native_module_members
+    from check_wheel_matrix import (
+        NATIVE_MODULES, QUALIFICATION_RECORD, REQUIRED_QUALIFICATION_FILES,
+        native_module_members,
+    )
 except ModuleNotFoundError:  # Imported as ``tools.check_dist`` in tests.
     _matrix_path = Path(__file__).with_name('check_wheel_matrix.py')
     _matrix_spec = importlib.util.spec_from_file_location(
@@ -25,6 +28,9 @@ except ModuleNotFoundError:  # Imported as ``tools.check_dist`` in tests.
     _matrix_module = importlib.util.module_from_spec(_matrix_spec)
     _matrix_spec.loader.exec_module(_matrix_module)
     native_module_members = _matrix_module.native_module_members
+    NATIVE_MODULES = _matrix_module.NATIVE_MODULES
+    QUALIFICATION_RECORD = _matrix_module.QUALIFICATION_RECORD
+    REQUIRED_QUALIFICATION_FILES = _matrix_module.REQUIRED_QUALIFICATION_FILES
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -54,6 +60,7 @@ WHEEL_LICENSE_RELATIVE_PATHS = {
 
 
 REQUIRED_WHEEL_FILES = {
+    *REQUIRED_QUALIFICATION_FILES,
     'pyvoro2/__init__.py',
     'pyvoro2/__about__.py',
     'pyvoro2/_internal/__init__.py',
@@ -81,6 +88,7 @@ REQUIRED_WHEEL_FILES = {
 }
 
 REQUIRED_SDIST_FILES = {
+    *(f'src/{member}' for member in REQUIRED_QUALIFICATION_FILES),
     'README.md',
     'CHANGELOG.md',
     'AGENTS.md',
@@ -88,6 +96,10 @@ REQUIRED_SDIST_FILES = {
     *REQUIRED_LICENSE_FILES,
     'vendor/voro++/LICENSE',
     'pyproject.toml',
+    'CMakeLists.txt',
+    'cpp/fpguard.cpp',
+    'cpp/native_runtime.hpp',
+    'cmake/NativeQualification.cmake',
     'PKG-INFO',
     'src/pyvoro2/_internal/__init__.py',
     'src/pyvoro2/_internal/cell_output.py',
@@ -162,6 +174,20 @@ REQUIRED_SDIST_FILES = {
     'tools/export_notebooks.py',
     'tools/gen_readme.py',
     'tools/release_check.py',
+    'tools/native/qualification/__init__.py',
+    'tools/native/qualification/adapters.py',
+    'tools/native/qualification/build.py',
+    'tools/native/qualification/child_record.py',
+    'tools/native/qualification/discriminators.py',
+    'tools/native/qualification/effective_build.py',
+    'tools/native/qualification/finalize.py',
+    'tools/native/qualification/record_command.py',
+    'tools/native/qualification/route_suite.py',
+    'tools/native/qualification/source_policy.py',
+    'tools/native/qualification/windows_trace.py',
+    'tools/native/qualification/fixtures/README.md',
+    'tools/native/qualification/fixtures/expected-arithmetic.json',
+    'tools/native/qualification/fixtures/wp6-predecessor.zip',
     'tools/README.md',
 }
 
@@ -328,8 +354,12 @@ def _assert_members_absent(
         raise DistCheckError(f'{label} contains removed members: {joined}')
 
 
-def check_wheel(path: Path) -> None:
-    """Validate the contents of one built wheel."""
+def check_wheel(path: Path, *, require_qualification: bool = False) -> None:
+    """Validate packaging, optionally requiring the externally issued record.
+
+    Presence is only a distribution gate. The installed verifier and controlled
+    route suite separately establish qualification and exact payload binding.
+    """
 
     with zipfile.ZipFile(path) as zf:
         entries = zf.infolist()
@@ -354,9 +384,11 @@ def check_wheel(path: Path) -> None:
             entry.orig_filename: entry for entry in file_entries
         }
         _assert_members_present(files, REQUIRED_WHEEL_FILES, label=path.name)
+        if require_qualification:
+            _assert_members_present(files, {QUALIFICATION_RECORD}, label=path.name)
         _assert_members_absent(files, FORBIDDEN_WHEEL_MARKERS, label=path.name)
 
-        for module_name in ('_core', '_core2d'):
+        for module_name in NATIVE_MODULES:
             members = native_module_members(file_names, module_name)
             if len(members) != 1:
                 raise DistCheckError(
@@ -397,6 +429,21 @@ def check_wheel(path: Path) -> None:
         )
 
 
+def _qualification_source_members() -> set[str]:
+    """Keep every measured input, including tests/workflows, in source archives."""
+
+    source = REPO_ROOT / 'tools/native/qualification/source_policy.py'
+    spec = importlib.util.spec_from_file_location('_pyvoro2_dist_source_policy', source)
+    if spec is None or spec.loader is None:
+        raise DistCheckError(f'cannot load source policy from {source}')
+    policy = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(policy)
+        return set(policy.measure_source(REPO_ROOT)['files'])
+    except (OSError, ValueError, ImportError) as exc:
+        raise DistCheckError(f'cannot measure required source closure: {exc}') from exc
+
+
 def check_sdist(path: Path) -> None:
     """Validate the contents of one built source distribution."""
 
@@ -429,7 +476,7 @@ def check_sdist(path: Path) -> None:
         relative = set(relative_names)
         _assert_members_present(
             relative,
-            REQUIRED_SDIST_FILES,
+            REQUIRED_SDIST_FILES | _qualification_source_members(),
             label=path.name,
         )
         _assert_members_absent(
@@ -526,6 +573,11 @@ def main() -> None:
         nargs='*',
         help='distribution directory or explicit .whl/.tar.gz artifacts',
     )
+    parser.add_argument(
+        '--require-qualification', action='store_true',
+        help=('require a detached record in every wheel; actual qualification '
+              'must also pass the installed verifier and route checks'),
+    )
     args = parser.parse_args()
 
     artifacts = distribution_artifacts(args.dist_dir_or_artifact)
@@ -537,7 +589,7 @@ def main() -> None:
         raise DistCheckError('no source distributions found in selected artifacts')
 
     for wheel in wheels:
-        check_wheel(wheel)
+        check_wheel(wheel, require_qualification=args.require_qualification)
     for sdist in sdists:
         check_sdist(sdist)
 

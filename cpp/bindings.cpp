@@ -389,26 +389,27 @@ py::dict safe_selected_ghost(ContainerT& con,
 }  // namespace
 
 PYBIND11_MODULE(_core, m) {
+  pyvoro2::native_runtime::bind_inspection(m);
   m.doc() = "pyvoro2 core bindings (Voro++)";
   pyvoro2::native_witness::register_bindings(m);
   m.attr("_EAGER_ALLOCATION_LIMIT_BYTES") =
       py::int_(native::eager_allocation_limit_bytes);
-  m.def("_test_checked_count", [](py::ssize_t value) {
+  pyvoro2::native_runtime::guarded_def(m, "_test_checked_count", [](py::ssize_t value) {
     return native::checked_int(value, "test count");
-  });
-  m.def("_test_checked_int_add", [](int lhs, int rhs) {
+  }, py::arg());
+  pyvoro2::native_runtime::guarded_def(m, "_test_checked_int_add", [](int lhs, int rhs) {
     return native::checked_int_add(lhs, rhs, "test addition");
-  });
-  m.def("_test_checked_int_multiply", [](int lhs, int rhs) {
+  }, py::arg(), py::arg());
+  pyvoro2::native_runtime::guarded_def(m, "_test_checked_int_multiply", [](int lhs, int rhs) {
     return native::checked_int_multiply(lhs, rhs, "test multiplication");
-  });
-  m.def("_test_allocation_estimate", [](std::size_t bytes) {
+  }, py::arg(), py::arg());
+  pyvoro2::native_runtime::guarded_def(m, "_test_allocation_estimate", [](std::size_t bytes) {
     native::ByteEstimate estimate;
     estimate.add_bytes(bytes, "test byte accumulation");
     estimate.enforce_limit();
     return estimate.total();
-  });
-  m.def(
+  }, py::arg());
+  pyvoro2::native_runtime::guarded_def(m,
       "_test_rectangular_safety_candidate_count",
       [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
          std::array<std::array<double, 2>, 3> bounds,
@@ -429,7 +430,7 @@ PYBIND11_MODULE(_core, m) {
       py::arg("bounds"),
       py::arg("periodic"),
       py::arg("inserted_queries"));
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "_test_periodic_safety_candidate_count",
       [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
          std::array<double, 6> cell_params,
@@ -449,7 +450,7 @@ PYBIND11_MODULE(_core, m) {
       py::arg("points"),
       py::arg("cell_params"),
       py::arg("inserted_queries"));
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "_test_periodic_safety_certificate",
       [](std::array<double, 6> cell_params) {
         const native::PeriodicSafetyGeometry geometry =
@@ -458,7 +459,7 @@ PYBIND11_MODULE(_core, m) {
                               geometry.bins);
       },
       py::arg("cell_params"));
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "_test_periodic_safety_keys",
       [](std::array<double, 3> point,
          std::array<double, 6> cell_params) {
@@ -468,7 +469,7 @@ PYBIND11_MODULE(_core, m) {
       },
       py::arg("point"),
       py::arg("cell_params"));
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "_test_periodic_pair_is_unsafe",
       [](std::array<double, 3> left,
          std::array<double, 3> right,
@@ -481,7 +482,7 @@ PYBIND11_MODULE(_core, m) {
       py::arg("left"),
       py::arg("right"),
       py::arg("cell_params"));
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "_test_periodic_key_alias_budget",
       [](std::vector<std::size_t> key_counts) {
         std::size_t cumulative_aliases = 0;
@@ -492,7 +493,7 @@ PYBIND11_MODULE(_core, m) {
         return cumulative_aliases;
       },
       py::arg("key_counts"));
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "_test_periodic_resource_estimate",
       [](std::array<double, 6> cell_params,
          std::array<int, 3> blocks,
@@ -537,7 +538,7 @@ PYBIND11_MODULE(_core, m) {
       py::arg("init_mem"),
       py::arg("particle_stride"));
 
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "compute_box_standard",
       [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
          py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -583,7 +584,7 @@ PYBIND11_MODULE(_core, m) {
       py::arg("init_mem"),
       py::arg("opts"));
 
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "compute_box_power",
       [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
          py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -633,7 +634,7 @@ PYBIND11_MODULE(_core, m) {
       py::arg("opts"));
 
   // Periodic cell variants
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "compute_periodic_standard",
       [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
          py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -674,7 +675,7 @@ PYBIND11_MODULE(_core, m) {
       py::arg("init_mem"),
       py::arg("opts"));
 
-  m.def(
+  pyvoro2::native_runtime::guarded_def(m,
       "compute_periodic_power",
       [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
          py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -719,7 +720,7 @@ PYBIND11_MODULE(_core, m) {
       py::arg("opts"));
 
 // Batch point-location queries (find_voronoi_cell)
-m.def(
+pyvoro2::native_runtime::guarded_def(m,
     "locate_box_standard",
     [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
        py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -792,7 +793,7 @@ m.def(
     py::arg("init_mem"),
     py::arg("queries"), py::arg("return_source") = false);
 
-m.def(
+pyvoro2::native_runtime::guarded_def(m,
     "locate_box_power",
     [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
        py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -868,7 +869,7 @@ m.def(
     py::arg("init_mem"),
     py::arg("queries"), py::arg("return_source") = false);
 
-m.def(
+pyvoro2::native_runtime::guarded_def(m,
     "locate_periodic_standard",
     [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
        py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -936,7 +937,7 @@ m.def(
     py::arg("init_mem"),
     py::arg("queries"), py::arg("return_source") = false);
 
-m.def(
+pyvoro2::native_runtime::guarded_def(m,
     "locate_periodic_power",
     [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
        py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -1009,7 +1010,7 @@ m.def(
 
 
 // Batch ghost-cell computations (compute_ghost_cell)
-m.def(
+pyvoro2::native_runtime::guarded_def(m,
     "ghost_box_standard",
     [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
        py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -1054,7 +1055,7 @@ m.def(
     py::arg("opts"),
     py::arg("queries"));
 
-m.def(
+pyvoro2::native_runtime::guarded_def(m,
     "ghost_box_power",
     [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
        py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -1106,7 +1107,7 @@ m.def(
     py::arg("ghost_radii"));
 
 // Periodic container variants
-m.def(
+pyvoro2::native_runtime::guarded_def(m,
     "ghost_periodic_standard",
     [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
        py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -1159,7 +1160,7 @@ m.def(
     py::arg("opts"),
     py::arg("queries"));
 
-m.def(
+pyvoro2::native_runtime::guarded_def(m,
     "ghost_periodic_power",
     [](py::array_t<double, py::array::c_style | py::array::forcecast> points,
        py::array_t<int, py::array::c_style | py::array::forcecast> ids,
@@ -1217,4 +1218,5 @@ m.def(
     py::arg("queries"),
     py::arg("ghost_radii"));
 
+  pyvoro2::native_runtime::register_imported_module(m);
 }

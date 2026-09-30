@@ -6,6 +6,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
+include(cmake/NativeQualification.cmake)
+
+# Use the real linker directly in controlled Windows builds. Ninja supplies
+# parallelism; cl.exe /MP would hide independent compile attribution. The
+# recorder retains LINK's manifest, then directly observes SDK mt.exe embedding
+# its exact metadata. /MANIFEST:EMBED hides rc/cvtres input invocations.
+if(MSVC AND DEFINED ENV{PYVORO2_EVIDENCE_DIR})
+  set(CMAKE_CXX_CREATE_SHARED_MODULE
+    "<CMAKE_LINKER> /nologo <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> /DLL /MANIFEST /MANIFESTUAC:\"level='asInvoker' uiAccess='false'\" /OUT:<TARGET> /IMPLIB:<TARGET_IMPLIB> /PDB:<TARGET_PDB> <OBJECTS> <LINK_LIBRARIES>")
+endif()
 
 # Voro++ sources (vendored)
 set(VORO_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/voro++/src")
@@ -45,12 +55,16 @@ pybind11_add_module(_core NO_EXTRAS
   ${VORO_SOURCES}
 )
 if(MSVC)
-  # NO_EXTRAS also omits these non-IPO defaults; retain /bigobj and /MP.
-  target_link_libraries(_core PRIVATE pybind11::windows_extras)
+  target_compile_options(_core PRIVATE /bigobj)
 endif()
 
 include(cmake/NativeFP.cmake)
 pyvoro2_native_fp(_core)
+# This small raw inspector is preloaded without loading either geometry
+# backend. A forward first call must check controls before CPython's lazy
+# extension import (whose filesystem timestamps can involve FP conversion).
+pybind11_add_module(_fpguard NO_EXTRAS cpp/fpguard.cpp)
+pyvoro2_native_fp(_fpguard)
 set(_PYVORO2_WITNESS_SOURCE_HASHES "")
 foreach(_source unitcell.hh unitcell.cc cell.hh cell.cc v_compute.hh v_compute.cc
                 rad_option.hh container.hh container.cc container_prd.hh
@@ -129,7 +143,11 @@ endfunction()
 
 configure_pyvoro_module(_core)
 configure_pyvoro_module(_core2d)
+configure_pyvoro_module(_fpguard)
+pyvoro2_native_qualification(_core)
+pyvoro2_native_qualification(_core2d)
+pyvoro2_native_qualification(_fpguard)
 include(cmake/PlanarWitness.cmake)
 pyvoro2_planar_witness(_core2d)
 
-install(TARGETS _core _core2d DESTINATION pyvoro2)
+install(TARGETS _core _core2d _fpguard DESTINATION pyvoro2)

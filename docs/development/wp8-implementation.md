@@ -4,6 +4,13 @@ The normative specification is [issue #79](https://github.com/DeloneCommons/pyvo
 Base: `6a57db7da693a40a777c9a6e3cfb4df588248d13`. This is an implementation
 map and proof record, not independent acceptance.
 
+WP8 was subsequently independently accepted and merged, as recorded in the
+[active plan](plans/v0.9.md). Issue #88's
+[artifact qualification](native-qualification.md) remains a separate gate.
+WP8 keeps its own spatial/planar source-enclosure components and the bounded
+final-transform association/FMA allowance below; it does not inherit WP5/WP6
+occurrence qualification merely because they share a native module.
+
 ## Architecture and constraints
 
 Keep the existing native locate selection and native Cartesian output. A small

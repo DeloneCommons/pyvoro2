@@ -3,7 +3,7 @@
 function(pyvoro2_planar_witness target_name)
   pyvoro2_native_fp(${target_name})
   if(MSVC)
-    target_link_libraries(${target_name} PRIVATE pybind11::windows_extras)
+    target_compile_options(${target_name} PRIVATE /bigobj)
   endif()
 
   # This conservative closure includes all linked 2D routes as well as the

@@ -21,13 +21,13 @@ from ._internal.ghost import reject_ghost_records
 from dataclasses import dataclass
 from typing import Any, Literal, Sequence
 
-import warnings
+from ._internal.native_runtime import checked_call, checked_tuple, checked_warn
 
 import numpy as np
 
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.exact_lattice import exact_basis_3d
-from ._internal.inputs import coerce_external_id_array
+from ._internal.inputs import coerce_external_id_array, coerce_finite_matrix
 from ._internal.tessellation_diagnostics import (
     classify_expected_ids,
     diagnostics_ok,
@@ -41,6 +41,7 @@ from ._internal.validation import (
     require_nonnegative_finite_real,
     require_optional_bool,
     require_optional_nonnegative_finite_real,
+    require_ordered_bounds,
     require_string,
     require_string_choice,
 )
@@ -106,9 +107,11 @@ class TessellationError(ValueError):
 
 def _domain_volume(domain: Box | OrthorhombicCell | PeriodicCell) -> float:
     if isinstance(domain, (Box, OrthorhombicCell)):
-        (xmin, xmax), (ymin, ymax), (zmin, zmax) = domain.bounds
+        (xmin, xmax), (ymin, ymax), (zmin, zmax) = require_ordered_bounds(
+            checked_call(getattr, domain, 'bounds'), name='domain bounds', dim=3)
         return float((xmax - xmin) * (ymax - ymin) * (zmax - zmin))
-    vec = np.asarray(domain.vectors, dtype=np.float64)
+    vec = coerce_finite_matrix(checked_call(getattr, domain, 'vectors'),
+                               name='vectors', shape=(3, 3))
     # Vectors are rows. Use the exact source-binary64 determinant, rounded
     # only at this diagnostics boundary.
     try:
@@ -125,10 +128,12 @@ def _domain_volume(domain: Box | OrthorhombicCell | PeriodicCell) -> float:
 
 def _characteristic_length(domain: Box | OrthorhombicCell | PeriodicCell) -> float:
     if isinstance(domain, (Box, OrthorhombicCell)):
-        (xmin, xmax), (ymin, ymax), (zmin, zmax) = domain.bounds
+        (xmin, xmax), (ymin, ymax), (zmin, zmax) = require_ordered_bounds(
+            checked_call(getattr, domain, 'bounds'), name='domain bounds', dim=3)
         L = float(max(xmax - xmin, ymax - ymin, zmax - zmin))
         return L if np.isfinite(L) else 0.0
-    vec = np.asarray(domain.vectors, dtype=np.float64)
+    vec = coerce_finite_matrix(checked_call(getattr, domain, 'vectors'),
+                               name='vectors', shape=(3, 3))
     L = float(
         max(
             np.linalg.norm(vec[0]),
@@ -144,7 +149,8 @@ def _is_periodic_domain(domain: Box | OrthorhombicCell | PeriodicCell) -> bool:
     if isinstance(domain, PeriodicCell):
         return True
     if isinstance(domain, OrthorhombicCell):
-        return bool(any(bool(x) for x in domain.periodic))
+        return any(checked_call(bool, value) for value in checked_tuple(
+            checked_call(getattr, domain, 'periodic')))
     return False
 
 
@@ -163,10 +169,12 @@ def _lattice_vectors_cart(
     returned, but they are only meaningful if face shifts are provided.
     """
     if isinstance(domain, PeriodicCell):
-        vec = np.asarray(domain.vectors, dtype=np.float64)
+        vec = coerce_finite_matrix(checked_call(getattr, domain, 'vectors'),
+                                   name='vectors', shape=(3, 3))
         return vec[0], vec[1], vec[2]
 
-    bounds = domain.bounds  # type: ignore[attr-defined]
+    bounds = require_ordered_bounds(checked_call(getattr, domain, 'bounds'),
+                                    name='domain bounds', dim=3)
     (xmin, xmax), (ymin, ymax), (zmin, zmax) = bounds
     a = np.array([xmax - xmin, 0.0, 0.0], dtype=np.float64)
     b = np.array([0.0, ymax - ymin, 0.0], dtype=np.float64)
@@ -509,7 +517,7 @@ def _analyze_tessellation(
                     'Consider rescaling inputs or passing plane_offset_tol=... '
                     'and/or plane_angle_tol=... explicitly.'
                 )
-                warnings.warn(msg, RuntimeWarning, stacklevel=2)
+                checked_warn(msg, RuntimeWarning, stacklevel=2)
             off_tol = (
                 (1e-6 * L) if plane_offset_tol is None else float(plane_offset_tol)
             )

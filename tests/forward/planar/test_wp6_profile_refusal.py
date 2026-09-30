@@ -1,8 +1,4 @@
-"""Actual cohort behavior and explicitly constructed malformed profile records.
-
-No platform is silently skipped. Unsupported targets must preserve package
-source/schema identity and refuse ordinary planar provenance atomically.
-"""
+"""External artifact admission and malformed planar consistency records."""
 from __future__ import annotations
 
 import itertools
@@ -14,8 +10,10 @@ import pytest
 from pyvoro2 import _core2d
 import pyvoro2.planar as planar
 from pyvoro2._internal.planar.wp6_profile import (
-    SCHEMA, SOURCE_SHA256, SUPPORTED_COHORTS, validate_profile,
+    SCHEMA, _validate_metadata, validate_profile,
 )
+from pyvoro2._internal.native_admission import require_component
+from pyvoro2._internal.native_qualification import NativeQualificationError
 
 
 BOUNDS = ((0.0, 1.0), (0.0, 1.0))
@@ -24,23 +22,22 @@ BOUNDS = ((0.0, 1.0), (0.0, 1.0))
 def test_actual_native_profile_matches_installed_python_source_schema():
     profile = _core2d._planar_witness_profile()
     print('WP6 native profile: ' + json.dumps(profile, sort_keys=True))
-    assert profile['source_supported'] is True
-    assert profile['source_sha256'] == SOURCE_SHA256
     assert profile['schema'] == SCHEMA
-    if profile['cohort_supported']:
-        validate_profile(profile)
-        assert profile['qualified'] is True
-    else:
-        assert profile['qualified'] is False
-        with pytest.raises(RuntimeError,
-                           match='planar_certification:profile:cohort:'):
+    assert not {'qualified', 'cohort_supported', 'source_supported'} & profile.keys()
+    assert len(profile['source_sha256']) == 64
+    try:
+        require_component('wp6-planar')
+    except NativeQualificationError as exc:
+        with pytest.raises(RuntimeError, match=f'profile:{exc.reason}:'):
             validate_profile(profile)
+    else:
+        validate_profile(profile)
+        assert profile['runtime_compatible'] is True
 
 
 @pytest.mark.parametrize('periodic', tuple(itertools.product((False, True), repeat=2)))
 @pytest.mark.parametrize('mode', ['standard', 'radii', 'weights'])
 def test_all_masks_and_modes_qualify_or_refuse_structurally(periodic, mode):
-    profile = _core2d._planar_witness_profile()
     points = np.array([[0.25, 0.5]])
     args = [points, np.array([0], dtype=np.int32)]
     if mode == 'standard':
@@ -54,14 +51,10 @@ def test_all_masks_and_modes_qualify_or_refuse_structurally(periodic, mode):
     options = dict(domain=planar.RectangularCell(BOUNDS, periodic=periodic),
                    return_edges=True, return_edge_shifts=any(periodic),
                    tessellation_check='none', **representation)
-    if profile['cohort_supported']:
-        cells, packet = native(*args)
-        assert len(cells) == 1
-        validate_profile(packet['profile'])
-        assert len(planar.compute(points, **options).cells) == 1
-    else:
-        with pytest.raises(RuntimeError,
-                           match='planar_certification:profile:cohort:'):
+    try:
+        require_component('wp6-planar')
+    except NativeQualificationError:
+        with pytest.raises((RuntimeError, ValueError)):
             native(*args)
         with pytest.raises(planar.TessellationError) as caught:
             planar.compute(points, **options)
@@ -70,13 +63,18 @@ def test_all_masks_and_modes_qualify_or_refuse_structurally(periodic, mode):
         assert {issue.code for issue in diagnostic.issues} == {
             'WP6_PROFILE_UNSUPPORTED',
         }
+    else:
+        cells, packet = native(*args)
+        assert len(cells) == 1
+        validate_profile(packet['profile'])
+        assert len(planar.compute(points, **options).cells) == 1
 
 
 @pytest.mark.parametrize(('field', 'value', 'reason'), [
     ('schema', 'invented', 'schema'),
     ('source_sha256', '0' * 64, 'source'),
-    ('source_supported', False, 'source'),
-    ('cohort_supported', False, 'cohort'),
+    ('compiler', 'invented', 'build'),
+    ('runtime_compatible', False, 'evaluation'),
     ('round_to_nearest', False, 'evaluation'),
     ('gradual_underflow', False, 'evaluation'),
     ('flt_eval_method', 2, 'evaluation'),
@@ -86,18 +84,17 @@ def test_all_masks_and_modes_qualify_or_refuse_structurally(periodic, mode):
     ('build_sha256', 'not-a-digest', 'build'),
 ])
 def test_constructed_malformed_profile_is_never_accepted(field, value, reason):
-    # A test-only nominal record, not a statement that this platform is
-    # qualified. The preceding tests independently inspect the real binary.
+    # Test consistency separately: this helper grants no artifact admission.
     record = {
-        'schema': SCHEMA, 'source_sha256': SOURCE_SHA256,
-        'source_supported': True, 'cohort': next(iter(SUPPORTED_COHORTS)),
-        'cohort_supported': True, 'qualified': True,
+        'schema': SCHEMA, 'source_sha256': '2' * 64,
+        'compiler': 'example-compiler', 'compiler_version': 'example-version',
+        'runtime_compatible': True,
         'flt_eval_method': 0, 'int_bits': 32, 'uint_bits': 32,
         'double_digits': 53, 'round_to_nearest': True,
         'gradual_underflow': True, 'fp_contract': 'off',
         'fast_math': False, 'lto': False, 'build_sha256': '1' * 64,
     }
-    record[field] = value
+    changed = dict(record, **{field: value})
     with pytest.raises(RuntimeError,
                        match=f'planar_certification:profile:{reason}:'):
-        validate_profile(record)
+        _validate_metadata(changed, record)

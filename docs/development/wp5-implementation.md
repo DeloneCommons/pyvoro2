@@ -18,6 +18,12 @@ The branch rebases onto the documentation-only policy amendment from PR #71:
 `c624e68e82ee01577cd6c2105ffadbe5f055532d`. No producer implementation changed
 between these reviewed bases.
 
+Issue #88 changes qualification authority and safe entry under
+[ADR 0024](decisions/0024-external-native-artifact-qualification.md), with the
+[native qualification workflow](native-qualification.md) retaining final
+artifact evidence separately from this historical WP5 acceptance. The N/E/S
+contract below is unchanged.
+
 ## Components and authorities
 
 | Component | Responsibility and authority |

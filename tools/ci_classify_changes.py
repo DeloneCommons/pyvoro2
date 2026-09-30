@@ -23,7 +23,8 @@ RUNTIME = DOCS | {
     'build-dist',
 }
 FULL = DOCS | {
-    'native-sanitizers', 'test-linux-qualified', 'test-other-platforms',
+    'native-sanitizers', 'native-avx-fma',
+    'test-linux-qualified', 'test-other-platforms',
     'build-dist', 'wheels',
 }
 
@@ -130,7 +131,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--full', action='store_true',
-                       help='push to dev/main: ignore changed paths')
+                       help='integration or qualification push: ignore changed paths')
     group.add_argument('--pr-base', help='pull request base commit SHA')
     group.add_argument('--check-gate', action='store_true',
                        help='verify results passed in NEEDS_JSON')

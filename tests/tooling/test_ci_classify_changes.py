@@ -23,7 +23,8 @@ def classifier():
 DOCS = {'lint-sync', 'docs-and-notebooks'}
 DIST_ONLY = DOCS | {'build-dist'}
 FULL = DOCS | {
-    'native-sanitizers', 'test-linux-qualified', 'test-other-platforms',
+    'native-sanitizers', 'native-avx-fma',
+    'test-linux-qualified', 'test-other-platforms',
     'build-dist', 'wheels',
 }
 RUNTIME = DOCS | {
@@ -124,4 +125,19 @@ def test_aggregate_fails_missing_classifier_or_required_wheels(classifier):
     assert classifier.gate_failures(FULL, results) == ['wheels: skipped']
     assert classifier.gate_failures(None, results) == [
         'classification: missing or failed'
+    ]
+
+
+@pytest.mark.parametrize('result', ['missing', 'skipped', 'failure', 'cancelled'])
+@pytest.mark.parametrize('job', ['native-sanitizers', 'native-avx-fma'])
+def test_native_changes_require_safety_and_strict_controls(classifier, result, job):
+    required = classifier.classify_paths(['cpp/native_runtime.hpp'])
+    assert job in required
+    results = {job: 'success' for job in required}
+    if result == 'missing':
+        results.pop(job)
+    else:
+        results[job] = result
+    assert classifier.gate_failures(required, results) == [
+        f'{job}: {result}'
     ]
