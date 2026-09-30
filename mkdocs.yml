@@ -77,6 +77,7 @@ nav:
       - Development plans:
           - Overview: development/plans/index.md
           - v0.9.0 active stabilization plan: development/plans/v0.9.md
+          - v0.9 post-functional audit intake: development/review-notes/v0.9-post-functional-audit-backlog.md
           - Plan template: development/plans/template.md
           - Archive:
               - Overview: development/plans/archive/index.md
