@@ -338,6 +338,16 @@ Raw output selectors therefore cannot remove required normalized shifts;
 normalization does not require callers to request those raw fields.
 Normalization tolerance never determines exact semantic positivity.
 
+This is a normalized **raw quotient**, not an exact public-semantic S mesh.
+Strict normalized validation acts on enabled/applicable representation checks;
+its success is not an exact-S reconstruction certificate. Current compute-owned
+normalization still lacks the proof-assisted repair tracked by
+[#98](https://github.com/DeloneCommons/pyvoro2/issues/98), so certified retained
+point artifacts can cause strict failure despite a successful forward E/S
+audit. The accepted target keeps every raw occurrence and separates an artifact
+exemption from an S-linked vertex alias; see
+[ADR 0025](../development/decisions/0025-native-occurrence-normalization-and-proof-assisted-identities.md).
+
 These helpers normalize an ordinary partition of persistent cells. A batch of
 independent `id=-1` ghost records is not that partition and is explicitly
 rejected by whole-tessellation normalization and validation; use the returned

@@ -94,9 +94,10 @@ In many scientific applications you will then:
 
 ## Normalization utilities
 
-When you want to build a **reproducible** periodic graph, it is often helpful to normalize
-geometric entities (vertices, edges, faces) so that they have a global indexing.
-This makes it easier to compare results across different runs or different point orders.
+Normalization gives native vertex, edge and face representations a global
+indexing for numerical graph bookkeeping. Raw refinements and their grouping
+can depend on the native representation; global indexing does not promise
+perturbation-, compiler- or input-order-independent exact semantic topology.
 
 pyvoro2 provides:
 
@@ -114,6 +115,20 @@ Validation compares image-qualified reciprocal vertices and counts incident
 cell images, so a one-generator periodic cube is supported. Coordinate
 tolerance remains a numerical-view control; it does not infer or repair
 certified boundary images. Raw face multiplicity is retained.
+
+The normalized raw quotient is **not an exact public-semantic S mesh**.
+Global edge/face counts need not equal the exact S counts, and a zero-area exact
+contact can be a ridge with two distinct endpoints. Neither coordinate equality
+nor zero contact measure proves semantic vertex identity.
+
+`validate_normalized_topology(..., level="strict")` raises on error findings
+from the enabled and applicable representation checks. Success does not certify
+exact S reconstruction, equality of E/S topology, ideal membership of every
+native endpoint, disabled checks or native artifact qualification. The bounded
+proof-assisted planar target and retained numerical spatial scope are recorded
+in [ADR 0025](../development/decisions/0025-native-occurrence-normalization-and-proof-assisted-identities.md);
+the [planar guide](planar.md#planar-normalization) states the current repair
+boundary.
 
 ## Diagnostics: catching subtle issues early
 

@@ -287,6 +287,18 @@ independent of NumPy warning and floating-point error settings while leaving
 the raw records themselves mutable. ADR 0011 fixes this R3-B contract and its
 boundary from R4–R9.
 
+Normalization organizes a numerical quotient of native raw representations;
+its global boundary classes preserve local occurrence mappings and multiplicity.
+It is not an exact public-semantic S mesh, and successful strict normalized
+validation is not an S reconstruction certificate.
+[ADR 0025](decisions/0025-native-occurrence-normalization-and-proof-assisted-identities.md)
+fixes the accepted bounded target: a WP6-specific adapter proves eligible planar
+identities/exemptions, while minimal shared machinery checks bindings, exact
+integer lifts and admitted identity closure. Implementation is owned by
+[#98](https://github.com/DeloneCommons/pyvoro2/issues/98) and remains pending.
+Spatial normalization retains its numerical raw scope; no new spatial
+vertex projection or generic collapse engine is required.
+
 ### Certified periodic minimum-image geometry
 
 The dimension-neutral private module `_internal.periodic_images` is the one

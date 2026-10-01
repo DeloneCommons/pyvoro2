@@ -343,6 +343,12 @@ documented numerical/raw-record scope and cannot claim full E/S or native
 collapse certification. Result capabilities describe constructed availability,
 not authenticity after arbitrary caller mutation.
 
+See [ADR 0025](0025-native-occurrence-normalization-and-proof-assisted-identities.md)
+for the cross-cutting normalized raw quotient, separate artifact-exemption and
+S-linked identity predicates, proof lifetime and strict-validation contract.
+It governs the accepted planar normalization target without changing WP6's
+source association or exact-audit mathematics here.
+
 ### Immediate ordinary-compute lifecycle change
 
 Remove `edge_shift_search`, `validate_edge_shifts`, `repair_edge_shifts`, and
