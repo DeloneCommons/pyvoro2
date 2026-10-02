@@ -48,7 +48,7 @@ from .diagnostics import (
 )
 from .domains import Box, RectangularCell
 from .._internal.planar.wp6_certificate import WP6Failure
-from .normalize import normalize_edges, normalize_vertices
+from .normalize import normalize_edges, _normalize_vertices
 
 _core2d = None
 _CORE2D_IMPORT_ERROR: BaseException | None = None
@@ -371,6 +371,15 @@ def compute(
     copies, so the raw ``cells`` field can stay lightweight even when internal
     geometry was needed for diagnostics or normalization.
 
+    Compute-owned normalized views privately consume a complete successful WP6
+    audit for admitted exact identities and nonpositive artifact exemptions.
+    All native occurrences remain present. The audit uses its existing resource
+    limits even with public diagnostics disabled; an unavailable audit grants
+    no proof assistance to an otherwise valid numerical view. These outputs
+    are raw quotients, not exact-S meshes. Mutation/domain mismatch invalidates
+    retained authority; deepcopy, serialization and public reconstruction
+    preserve numerical data without that authority.
+
     For periodic domains, diagnostics and normalization automatically compute
     temporary edge shifts and the required edge/vertex geometry internally,
     even when those fields were not requested by the caller. Any such
@@ -625,7 +634,7 @@ def _compute_impl(
         certificate = _certify_wp6(
             native_cells, packet, prepared, domain, power_input, mode,
             semantic_weights=_semantic_weights,
-            audit=need_diag or _certificate_sink is not None,
+            audit=need_diag or need_norm_vertices or _certificate_sink is not None,
             reciprocity_required=(
                 periodic if tessellation_require_reciprocity_value is None
                 else tessellation_require_reciprocity_value
@@ -714,28 +723,50 @@ def _compute_impl(
 
     normalized_vertices = None
     normalized_topology = None
+    from .._internal.normalization_proof import ProofFailure
+    from .validation import NormalizationError, _precondition_error
     try:
         if need_norm_vertices:
-            normalized_vertices = normalize_vertices(
+            from .._internal.planar.normalization_context import (
+                compile_context, audit_resource_failure,
+            )
+            from .._internal.planar.wp6_ideal import ExactAuditRefusal
+
+            context = None
+            try:
+                if certificate.semantic_consistent:
+                    context = compile_context(certificate, cells, domain)
+            except ExactAuditRefusal as exc:
+                _raise_wp6_failure(audit_resource_failure(exc), domain, prepared, mode)
+            normalized_vertices = _normalize_vertices(
                 cells,
                 domain=domain,
                 tol=normalization_tol_value,
                 require_edge_shifts=True,
                 copy_cells=True,
+                context=context,
             )
             if need_norm_topology:
                 normalized_topology = normalize_edges(
                     normalized_vertices,
                     domain=domain,
                     tol=normalization_tol_value,
-                    copy_cells=False,
+                    copy_cells=True,
                 )
+    except ProofFailure as exc:
+        from .normalize import NormalizedVertices
+        _precondition_error(NormalizedVertices(np.zeros((0, 2)), cells), domain,
+                            'strict', exc.code, str(exc))
+    except (TessellationError, NormalizationError):
+        raise
     except (ValueError, OverflowError) as exc:
+        failure = WP6Failure('WP6_NORMALIZATION_REPRESENTATION',
+                             'Required planar normalization has no valid '
+                             'representation',
+                             stage='representation', normalization=normalize,
+                             detail=str(exc))
         _raise_wp6_failure(
-            WP6Failure('WP6_NORMALIZATION_REPRESENTATION',
-                       'Required planar normalization has no valid representation',
-                       stage='representation', normalization=normalize,
-                       detail=str(exc)),
+            tuple(e for e in certificate.issues if e.severity == 'error') + (failure,),
             domain, prepared, mode,
         )
 

@@ -9,6 +9,9 @@ import sys
 from typing import Any, Literal
 
 from .._internal.planar.domain_geometry import geometry2d
+from .._internal.planar.normalization_context import context_for
+from .._internal.normalization_proof import ProofFailure
+from .._internal.normalization import require_global_vertex_ids
 from .._internal.tessellation_diagnostics import diagnostics_ok
 from .._internal.validation import (
     require_bool,
@@ -17,7 +20,10 @@ from .._internal.validation import (
     require_string_choice,
 )
 from .domains import Box, RectangularCell
-from .normalize import NormalizedTopology, NormalizedVertices
+from .normalize import (
+    NormalizedTopology, NormalizedVertices, _prepare_topology_cells,
+    _prepare_vertex_mappings, _canon_edge, _canon_cell_pair,
+)
 
 
 Domain2D = Box | RectangularCell
@@ -102,6 +108,51 @@ def _iter_edge_vertex_indices(edge: dict[str, Any]) -> list[int]:
     return [int(x) for x in idx]
 
 
+def _precondition_error(normalized, domain, level, code, message):
+    """A failed precondition checks no representation or semantic obligation."""
+    diag = NormalizationDiagnostics(
+        n_cells=len(normalized.cells),
+        n_global_vertices=len(normalized.global_vertices),
+        n_global_edges=(len(normalized.global_edges)
+                        if isinstance(normalized, NormalizedTopology) else None),
+        is_periodic_domain=_is_periodic_domain(domain),
+        fully_periodic_domain=_fully_periodic(domain), has_wall_edges=False,
+        n_vertex_edge_shift_mismatch=0, n_edge_vertex_set_mismatch=0,
+        n_vertices_low_incidence=0, n_cells_bad_polygon=0,
+        issues=(NormalizationIssue(code, 'error', message),),
+        ok_vertex_edge_shift=False, ok_edge_vertex_sets=False,
+        ok_incidence=False, ok_polygon=False, ok=False)
+    if level == 'strict':
+        raise NormalizationError(f'{code}: {message}', diag)
+    return diag
+
+
+def _check_global_mappings(normalized, prepared):
+    if not isinstance(normalized, NormalizedTopology):
+        return
+    for item, cell in zip(prepared, normalized.cells):
+        ids = require_global_vertex_ids(
+            cell.get('edge_global_id'), name='edge_global_id',
+            n_vertices=len(item['edges']),
+            n_global_vertices=len(normalized.global_edges))
+        for edge, eid in zip(item['edges'], ids):
+            pair = _canon_cell_pair(item['id'], edge['adjacent'], edge['shift'])
+            u, v = edge['vertices']
+            _key, rep = _canon_edge((item['gids'][u], item['vertex_shifts'][u]),
+                                    (item['gids'][v], item['vertex_shifts'][v]))
+            expected = dict(cells=(pair[0], pair[3]),
+                            cell_shifts=((0, 0), (pair[4], pair[5])),
+                            vertices=(rep[0][0], rep[1][0]),
+                            vertex_shifts=((0, 0), (rep[1][1], rep[1][2])))
+            actual = normalized.global_edges[eid]
+            if not isinstance(actual, dict) or any(
+                    tuple(tuple(v) if isinstance(v, (list, tuple)) else v
+                          for v in actual.get(key, ())) != value
+                    for key, value in expected.items()):
+                raise ValueError('edge_global_id does not preserve raw provenance '
+                                 'and endpoints')
+
+
 def validate_normalized_topology(
     normalized: NormalizedVertices | NormalizedTopology,
     domain: Domain2D,
@@ -113,7 +164,15 @@ def validate_normalized_topology(
     check_polygon: bool = True,
     max_examples: int = 10,
 ) -> NormalizationDiagnostics:
-    """Validate periodic shift and topology consistency after normalization."""
+    """Validate enabled, applicable raw representation checks.
+
+    Live compute-owned views additionally require their bound audit, identity
+    lifts, protected distinctions and occurrence obligations. Eligible retained
+    artifacts are exempt only from positive reciprocity; their records remain
+    structurally checked. Standalone/copied views have no such exemptions.
+    Stale retained authority is an explicit error, never a numerical fallback.
+    Strict success does not certify exact S reconstruction or artifact support.
+    """
 
     level = require_string_choice(
         level,
@@ -137,6 +196,23 @@ def validate_normalized_topology(
         maximum=sys.maxsize,
     )
     example_probe_limit = max(max_examples, 1)
+    reject_ghost_records(normalized.cells)
+
+    try:
+        context = context_for(normalized, domain)
+        periodic = _is_periodic_domain(domain)
+        if (isinstance(normalized, NormalizedTopology) or check_polygon
+                or (periodic and (check_vertex_edge_shift or check_edge_vertex_sets))):
+            _vertices, prepared = _prepare_topology_cells(
+                normalized, domain=domain, periodic=periodic)
+        else:
+            _vertices, prepared = _prepare_vertex_mappings(normalized, domain=domain)
+        _check_global_mappings(normalized, prepared)
+    except ProofFailure as exc:
+        return _precondition_error(normalized, domain, level, exc.code, str(exc))
+    except (ValueError, TypeError, KeyError, IndexError) as exc:
+        return _precondition_error(normalized, domain, level,
+                                   'INVALID_NORMALIZED_MAPPING', str(exc))
 
     cells = list(normalized.cells)
     reject_ghost_records(cells)
@@ -195,7 +271,7 @@ def validate_normalized_topology(
         missing_neighbor_cells: list[tuple[int, int, tuple[int, int]]] = []
         missing_shared_vertex: list[tuple[int, int, tuple[int, int], int]] = []
 
-        for cell in cells:
+        for position, cell in enumerate(cells):
             cid = int(cell.get('id', -1))
             if cid < 0 or bool(cell.get('empty', False)):
                 continue
@@ -208,7 +284,9 @@ def validate_normalized_topology(
             gids_list = [int(x) for x in gids]
             vsh_list = [_as_shift(x) for x in vsh]
 
-            for edge in edges:
+            for slot, edge in enumerate(edges):
+                if context is not None and (position, slot) in context.artifacts:
+                    continue
                 j = int(edge.get('adjacent_cell', -1))
                 if j < 0:
                     continue
@@ -295,7 +373,8 @@ def validate_normalized_topology(
     n_evt_mismatch = 0
     if periodic and check_edge_vertex_sets:
         examples: list[tuple[int, int, tuple[int, int]]] = []
-        for cell in cells:
+        classes = {}
+        for position, cell in enumerate(cells):
             cid = int(cell.get('id', -1))
             if cid < 0 or bool(cell.get('empty', False)):
                 continue
@@ -303,45 +382,26 @@ def validate_normalized_topology(
             if gids is None:
                 continue
             edges = cell.get('edges') or []
-            for edge in edges:
+            for slot, edge in enumerate(edges):
+                if context is not None and (position, slot) in context.artifacts:
+                    continue
                 j = int(edge.get('adjacent_cell', -1))
                 if j < 0 or 'adjacent_shift' not in edge:
                     continue
                 s = _as_shift(edge.get('adjacent_shift', (0, 0)))
-                cj = cell_by_id.get(j)
-                if cj is None:
-                    continue
-                gids_here = tuple(
-                    sorted((int(gids[v]), _as_shift(cell['vertex_shift'][v]))
-                           for v in _iter_edge_vertex_indices(edge))
-                )
-                found = False
-                for edge_j in cj.get('edges') or []:
-                    if int(edge_j.get('adjacent_cell', -1)) != cid:
-                        continue
-                    if _as_shift(edge_j.get('adjacent_shift', (0, 0))) != (
-                        -s[0],
-                        -s[1],
-                    ):
-                        continue
-                    gids_j = cj.get('vertex_global_id')
-                    if gids_j is None:
-                        continue
-                    peer = tuple(
-                        sorted(
-                            (int(gids_j[v]), tuple(
-                                int(cj['vertex_shift'][v][axis]) + s[axis]
-                                for axis in range(2)))
-                            for v in _iter_edge_vertex_indices(edge_j)
-                        )
-                    )
-                    if peer == gids_here:
-                        found = True
-                        break
-                if not found:
-                    n_evt_mismatch += 1
-                    if len(examples) < example_probe_limit:
-                        examples.append((cid, j, s))
+                points = classes.setdefault((cid, j, s), set())
+                points.update((int(gids[v]), _as_shift(cell['vertex_shift'][v]))
+                              for v in _iter_edge_vertex_indices(edge))
+        for (cid, j, s), points in classes.items():
+            if j not in cell_by_id:
+                continue
+            peer = classes.get((j, cid, (-s[0], -s[1])), set())
+            transported = {(gid, (shift[0] + s[0], shift[1] + s[1]))
+                           for gid, shift in peer}
+            if points != transported:
+                n_evt_mismatch += 1
+                if len(examples) < example_probe_limit:
+                    examples.append((cid, j, s))
         if examples:
             issues.append(
                 NormalizationIssue(

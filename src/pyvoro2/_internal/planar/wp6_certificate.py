@@ -491,6 +491,9 @@ def certify_packet(
             reciprocity_required,
             audit_budget,
         )
+        if certificate.semantic_consistent:
+            from .normalization_context import seal_certificate
+            seal_certificate(certificate)
     return certificate
 
 

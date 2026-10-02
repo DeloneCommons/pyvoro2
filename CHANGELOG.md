@@ -8,6 +8,13 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Compute-owned planar normalization preserves WP6 proof-backed vertex
+  identities and separately exempts eligible retained point artifacts from
+  positive reciprocity. The periodic four-site square retains all 20 native
+  occurrences in 4 global vertices and 12 raw edge classes (#98).
+- Planar proof-assisted normalized views detect stale data/domain bindings;
+  copying, serialization and public reconstruction retain numerical data
+  without live proof authority. Standalone helpers remain conservative (#98).
 - Periodic normalization and validation now support self-image vertex
   identifications and image-qualified incidence in both dimensions (#92).
 - Planar edge annotation reports unavailable neighbor images as `None` when

@@ -340,12 +340,43 @@ Normalization tolerance never determines exact semantic positivity.
 
 This is a normalized **raw quotient**, not an exact public-semantic S mesh.
 Strict normalized validation acts on enabled/applicable representation checks;
-its success is not an exact-S reconstruction certificate. Current compute-owned
-normalization still lacks the proof-assisted repair tracked by
-[#98](https://github.com/DeloneCommons/pyvoro2/issues/98), so certified retained
-point artifacts can cause strict failure despite a successful forward E/S
-audit. The accepted target keeps every raw occurrence and separates an artifact
-exemption from an S-linked vertex alias; see
+its success is not an exact-S reconstruction certificate. Compute-owned
+normalization uses the same execution's WP6 certificate and complete successful
+E/S audit to refine proved vertex identities before numerical pooling. The
+audit is requested privately when normalization needs it, even with public
+diagnostics disabled, using the existing bounded exact-work budget.
+
+Artifact exemption and vertex identity are separate. An internally collapsed,
+consistently nonpositive audited occurrence can be exempt from positive
+reciprocity while remaining in the raw inventory. An S-linked alias additionally
+requires exact endpoint agreement with both singleton E/S points and exact
+chart/image transport. Positive reciprocal endpoint extensions require unique
+source-associated exact correspondence. Coordinates and tolerance supply no
+such authority. Distinct proved S anchors retain distinct IDs, including when
+their public float coordinates coincide.
+
+The periodic four-site square at quarter/three-quarter coordinates therefore
+has four global vertices, twelve raw edge classes and all twenty native
+occurrences. Eight edge classes cover positive boundaries; four retain point
+artifacts. Strict validation of the live compute-owned view passes.
+
+Private authority binds the actual normalized arrays, mappings, raw occurrence
+snapshot, domain, audit and qualification operands. Editing bound data or
+validating with another domain reports `NORMALIZATION_PROOF_CONTEXT_STALE`.
+Conflicting certified paths report `NORMALIZATION_IDENTITY_CONFLICT`. Separately
+owned parent raw dictionaries can be edited without changing the normalized
+snapshot. Deepcopy, pickle, public-field reconstruction and dictionary extraction
+preserve numerical data but strip proof authority. Result capability metadata
+survives those copies and does not certify them.
+
+Standalone helpers consume mutable dictionaries as numerical data. They keep
+the conservative coincident-incidence guard and receive no artifact exemptions;
+a stripped copy can consequently fail strict validation when the original live
+view passes. If the exact audit is unsuccessful or incomplete, compute selects
+only that numerical path before any proof operation, under the existing
+diagnostic actions. It never certifies an audited prefix or retries a failed
+proof operation heuristically. A numerically unrepresentable view refuses, with
+the owning audit findings retained. See
 [ADR 0025](../development/decisions/0025-native-occurrence-normalization-and-proof-assisted-identities.md).
 
 These helpers normalize an ordinary partition of persistent cells. A batch of

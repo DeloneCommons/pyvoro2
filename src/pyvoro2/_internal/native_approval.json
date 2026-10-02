@@ -4,63 +4,50 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "d213778e30922ffeef6e984cf5d57e0085984fdea254eae2d3f288df9c3a81e5"
+      "source_sha256": "1da7650eb20a4f91d6222bba474b889514f768de16afdfb4cbbfefadc88178a7"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "a07ee4d9ea66d9415c7b3dbfe178b4ee705d1d5fb1ac25ec6727e903ad5b616a"
+      "source_sha256": "109a09aa9ba58ab4a7ad94e71475630093d425441844eb2516f5c43ab261f1f8"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "b13e2d6b92b131cac0b9b0ce4f096635db97d54102eebec8547a31123a484194"
+      "source_sha256": "40c8937b0e49604387a9b4e952ac9afdbe9bd3aced321000bf017ae516980571"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "559dd19b0d292ed4a400f7d3daa3aa284d6353c60ae46267c53ae92203778a8c"
+      "source_sha256": "e8b93cb13e360c74e8c211ff32fa256951f82a058aaed47fe4a08bf95a2dd817"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "88debcec94002e7c86111caef7d98830c8f8cec61aebf0c478ac8c91572de9d1"
+      "source_sha256": "63433d2cbe20ed84e34bb7646c4437778b385a550cd30a9608f3e97d3bbd45c7"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "d7eeca9b51d008691f2da3fcef968c340a41479bfa51aa9c01e4e0549ae2785d"
+      "source_sha256": "29fb9a3777bc6720af166bbdb89041274c04fa73a0d6d60a32a60c7b2d0295d8"
     }
   },
-  "consumer_sha256": "6e21764e49494779fd5c023c3568d48be07dc9c04f87dc3937e0550666721465",
+  "consumer_sha256": "dba2a9b60d747726186f3b0285a5ffcd26df1d94582b2bffd2299055c6a04bb4",
   "policy_revision": "issue88-p1",
   "review": {
-    "date": "2026-09-30",
-    "decision": "Approved the 385-file closure after independent whole-patch source review against 55029b3aa82e6ea57555984e4286255fa177078a: periodic numerical incidence completion and image-qualified validation, truthful unavailable planar images, and normalized boundary dictionary ownership. Direct/transitive coincident-provenance and consumed/unconsumed container findings were corrected and independently retested. Native/vendor implementation, certificate producers, build configuration, qualification policy and schemas are unchanged. Six runtime consumers and one integration test change the global source/consumer and all six component source identities. This is source approval only: fresh artifact qualification, full installed changed-consumer validation and exact-head CI remain required. No merge, issue closure or Checkpoint B acceptance is implied.",
-    "previous_approval_sha256": "aacd1063558f0ff3bedf1d178797872fd1b54c5500ae72bddb1f3affb8e3350a",
+    "date": "2026-10-02",
+    "decision": "Approved the exact 389-file source closure and 78-consumer inventory after independent whole-patch source review against f70593dca3a3caa2c49b7326200328ab6ba382bc and independent corrected-head follow-up. ADR 0025 architecture C is implemented through the private WP6 adapter, typed exact identity/lift and snapshot binding utility, raw-preserving planar normalization and validation, and copy/serialization authority stripping. The initial nonperiodic shift, unused boundary precondition and private admission-exception findings were corrected and independently retested. Native/vendor code, build inputs, witness schemas, qualification policy, WP5/WP6 mathematics, public API and WP7/WP8 semantics are unchanged. All six conservative component source identities change. This approves source for fresh qualification only; final installed payload reconciliation, exact-head FULL CI and independent implementation/artifact acceptance remain required. No merge, issue closure or Checkpoint B acceptance is implied.",
+    "previous_approval_sha256": "b64c0d976fddaffcc9400654e29badbbe6439142f9f335902fe6102142a4dfe4",
     "reports": [
       {
-        "name": "independent-remediation-review.md",
-        "sha256": "142380f8e2c75813dd848b7b48d2cc0fbbae0840a5e2caad797b10227ae02e43"
-      },
-      {
-        "name": "independent-msvc-symbol-review.md",
-        "sha256": "cf5b5ddaf29a8bdecfe3233ebff6ca2d7d45a1f0ca80cede5747282338a5c702"
-      },
-      {
-        "name": "independent-platform-suite-review.md",
-        "sha256": "387b554aadcbe6bbd879329ca5330f3cd8c12485f0ad0888d59bc1e9debd83df"
-      },
-      {
-        "name": "independent-empty-environment-review.md",
-        "sha256": "264a1a0bd3c7d90c5dcc2d1bf04594402052809e31349f3bb7aef74f7ac535d6"
-      },
-      {
-        "name": "issue88-docs-wheel-source-review-20260930.md",
-        "sha256": "92c2deb8c46b8ff2ff7a787fa96415bca7f6c59257c3c245f0618020cb5c7c7e"
-      },
-      {
         "name": "independent-source-review.md",
-        "sha256": "cf18e44fd9d978def11710394505149aae41deded59798ef79d1dc18e73e3398"
+        "sha256": "4773b09317cda0e39d7cc4444ef061ccc5664b9a4256d9520574ca16a7be1426"
+      },
+      {
+        "name": "independent-source-review-corrected.md",
+        "sha256": "10516a2cfe99635ec5d1c257b81af5d0d49d015641939aae88c431500714e7f0"
       }
     ],
-    "reviewed_delta_base": "55029b3aa82e6ea57555984e4286255fa177078a"
+    "reviewed_delta_base": "f70593dca3a3caa2c49b7326200328ab6ba382bc",
+    "reviewed_head": "5200ef017185521149672b5c1c3ba3f412a76c13",
+    "reviewed_tree": "9786da3f36954c5d4736614203490b0e0cf648ef",
+    "reviewer": "Independent source_review agent; exact-head whole-patch review and corrected-head follow-up"
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "21cd1f138cd7eee2d02279677e886fc253f1d55ed26b18bb9c13c1385bad985f"
+  "source_sha256": "5ae97f07b858c97c755516de9ebc6882f889b3d9cc5531a646bede5fda7b5129"
 }
