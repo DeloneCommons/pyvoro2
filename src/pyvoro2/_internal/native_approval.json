@@ -4,66 +4,47 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "fbd75074396c525440ec3811e2ad2f8fb9c9a69d6be774ab9c1fe49364ae7546"
+      "source_sha256": "40f44bc6312de1f643c24962da836c95b5b16e7d9681d2cccab6b8fdfb9289d8"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "77e6e81d0e95eed8b9e15067464037ae95d4cd3df6832f09f9f3aa31834a2830"
+      "source_sha256": "d231a0dc4d6e682823f46377c52a1c20ac88778dfde8e7687540331045e62382"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "933f7b58cbcb4a0125fa37c7270a103e991426565fda95ce6dc88638ca0ec679"
+      "source_sha256": "16a9f8c0cb7ca3d85805a34cfaf3d84e5a385128e3eadd42667f6645484e91b0"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "d0fa2f1464f39dd305c0f642f48fcff7e117b25cbe0a4f7d62494f6592e3897b"
+      "source_sha256": "54066d497c8c23892f3f35fa6d670cc2f568e119d6f3da90cc3c49096c647dcc"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "a0f4ae2002515196fa5a6dc2f2c767424a0430f70a8f6596635ee340fd2b38e7"
+      "source_sha256": "d0dc747e85977a86daaa62316d23efe7fde4c79d8f470d09ceebc06cd21913a3"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "6ebc30d3479dd77ab3e28ee10d8c67e500e87a66ad6054fee082cdd8c61bcdb7"
+      "source_sha256": "90c3edc903a9bef61b869ce9cd11536a62ddb5a6439ddc543b79d40043e3e540"
     }
   },
-  "consumer_sha256": "9defe2d6de7bf7ed6d3073b9b56d1068095d710ae7132e02ee1d4ebb5eb643cf",
+  "consumer_sha256": "8650b548dfbdf07b696d3023e59d6f3d08a7303fc346c6b8097c3d07f8667813",
   "policy_revision": "issue88-p1",
   "review": {
     "date": "2026-10-02",
-    "decision": "Independent exact-source approval for the strictly targeted issue #98 N1/N2 evidence remediation only. The full 390-file closure and unchanged 79-consumer inventory were independently verified against accepted c67752f671550d69964d132027ca62f93afc2c71. Exactly three measured files change: selected-notebook CLI failure diagnostics, raw qualification stream capture through EOF before receipt binding, and fail-first regressions. No native/vendor, runtime consumer, mathematical, public API, WP7/WP8, schema or policy change. The actual selected CLI reproduces environment EPERM with complete child diagnostics. The regular-file capture-completion gap is proved; the historical direct stdout truncation trigger remains unproved and historical evidence is unchanged. All six conservative component source identities change and require fresh qualification. This approves source for fresh qualification only; final payload/receipt reconciliation and exact-head FULL CI remain required. No merge, issue closure, Checkpoint B, #95, #99 or Phase C authorization is implied.",
-    "previous_approval_sha256": "d20088019de0497047cefef97d4b0361d6225056b782e099e311d81e18657062",
+    "decision": "Independent ADR 0024 source approval for the bounded issue #99 spatial regression and missing-validation-operand correction. Reviewed all ten changed files and the full 394-file measured closure against the accepted 390-file base; independently verified all 33 atlas-derived input selections, all 16 base archetypes, all seven strict-pass raw/S-count disagreements, exact oracle soundness and extraction, preserved numerical applicability and raw class-union semantics. The only changed runtime consumer is spatial validation.py; no native/vendor, build, policy/schema, public signature, spatial proof adapter or mesh/collapse engine change exists. All six component source identities change. This approves source for fresh qualification only. UNQUALIFIED pure-Python probes and predecessor artifacts grant no changed-consumer/artifact authority. Final installed artifact/platform qualification, exact-head FULL CI and the separate independent user acceptance remain required. No merge, issue closure, Checkpoint B/#95 acceptance or Phase C authorization is implied.",
+    "previous_approval_sha256": "339c0bf623c4aad45b8507d2a33be02d85b28c9bfa1ca73b89936eacdce0da40",
     "reports": [
       {
         "name": "independent-source-review.md",
-        "sha256": "4773b09317cda0e39d7cc4444ef061ccc5664b9a4256d9520574ca16a7be1426"
-      },
-      {
-        "name": "independent-source-review-corrected.md",
-        "sha256": "10516a2cfe99635ec5d1c257b81af5d0d49d015641939aae88c431500714e7f0"
-      },
-      {
-        "name": "independent-publication-reconciliation.md",
-        "sha256": "1d51552be3e61fa9aed8dd55ce595e948e6675714a975de5e1f35cfe1951f8cd"
-      },
-      {
-        "name": "independent-source-review-final-candidate.md",
-        "sha256": "d523c10d01e216c602b7b551cad5e348385287e214c8e7c925d3d76f4c18ff64"
-      },
-      {
-        "name": "independent-source-review-final-corrected.md",
-        "sha256": "5d5aeff9d379b447aec9745fc64606d86dd9ac5fd2e1acc596cb7c2eabf23cd5"
-      },
-      {
-        "name": "issue98-remediation-independent-source-review.md",
-        "sha256": "f396101d0bf3ba00d40b1f57b66ca6ec53148f0010e3e8596ec9cde8747d74a3"
+        "sha256": "c7f9ff5c798862dc7621caffaac7ea8d3bce7709b031003a3d6e7e4ff2d0a500"
       }
     ],
-    "reviewed_delta_base": "c67752f671550d69964d132027ca62f93afc2c71",
-    "reviewed_head": "343a9524979974f1db92bc099f1fab6dd32ea1e9",
-    "reviewed_tree": "e086dfaf979d6955c0b62ed748c098722f2663d6",
-    "reviewer": "independent remediation_review agent"
+    "reviewed_delta_base": "47a3ebf25870e7ccd750fe6cc47d446816c05088",
+    "reviewed_delta_base_tree": "95061d16eabca763b86003a968a146dd8c8a9ca6",
+    "reviewed_head": "4e4db48015dbed715d844821dd853bd6c0fda1cb",
+    "reviewed_tree": "ddd44a259d55156f1981443082897c985266adb1",
+    "reviewer": "independent source_review agent (/root/source_review)"
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "723dba662062e82f4e6b643fb05b8c3f0b61032991022cb8069ea44cd83e32ad"
+  "source_sha256": "b1902d3c64be6e5949d75ad9774ce619bb04b5300d8b9176460df22db7b8a39f"
 }

@@ -52,6 +52,14 @@ spatial normalization remains a numerical raw view. See
 [ADR 0025](../development/decisions/0025-native-occurrence-normalization-and-proof-assisted-identities.md)
 for the contract and its implementation boundary.
 
+Spatial global V/E/F counts may differ from exact S even after strict success.
+Exact point/ridge/face contacts do not identify normalized raw vertices;
+unavailable N-to-S membership is allowed for the numerical view. Missing data
+required by an applicable representation check reports an error. See the
+[spatial regression dispositions](../development/spatial-degeneracy-regressions.md)
+for the evidence-backed boundary and preserved failures. The finite absence of
+retained lower-dimensional native faces is not an impossibility claim.
+
 Native certificate support belongs to the installed artifact and the current
 thread's floating-point environment. It requires externally qualified source,
 build and native payload identities for each consumed route. A compiler version,

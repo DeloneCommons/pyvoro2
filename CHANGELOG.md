@@ -8,6 +8,9 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Spatial normalized validation reports missing/corrupt consumed mappings,
+  ownership and nonperiodic image shifts as representation errors instead of
+  checked success. Strict success retains its numerical raw-view scope (#99).
 - Compute-owned planar normalization preserves WP6 proof-backed vertex
   identities and separately exempts eligible retained point artifacts from
   positive reciprocity. The periodic four-site square retains all 20 native

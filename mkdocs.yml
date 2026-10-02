@@ -87,6 +87,7 @@ nav:
       - Documentation conventions: development/documentation-conventions.md
       - Architecture: development/architecture.md
       - Native qualification: development/native-qualification.md
+      - Spatial degeneracy regressions: development/spatial-degeneracy-regressions.md
       - Issue 88 implementation map: development/issue88-implementation.md
       - API lifecycle: development/api-lifecycle.md
       - v0.8 implemented / v0.9 target API inventory: development/api-inventory.md
