@@ -456,3 +456,59 @@ def test_later_admission_loss_has_public_normalization_diagnostics(
                                                _domain(), level='strict')
         diagnostics = caught.value.diagnostics
     assert diagnostics.issues[0].code == 'WP6_PROFILE_UNSUPPORTED'
+
+
+@pytest.mark.parametrize('operation', ['basic', 'strict', 'edges'])
+def test_missing_periodic_shift_keeps_its_public_diagnostic_family(operation):
+    vertices = p.NormalizedVertices(
+        np.array([[.25, .5], [.75, .5]]),
+        [dict(id=0, vertices=[[.25, .5], [.75, .5]],
+              vertex_global_id=[0, 1], vertex_shift=[(0, 0)] * 2,
+              edges=[dict(adjacent_cell=1, vertices=[0, 1])])])
+    if operation == 'basic':
+        diagnostics = p.validate_normalized_topology(
+            vertices, _domain(), max_examples=0, check_polygon=False)
+    else:
+        with pytest.raises(p.NormalizationError) as caught:
+            if operation == 'edges':
+                p.normalize_edges(vertices, domain=_domain())
+            else:
+                p.validate_normalized_topology(vertices, _domain(), level='strict',
+                                               max_examples=0, check_polygon=False)
+        diagnostics = caught.value.diagnostics
+    assert not diagnostics.ok
+    assert diagnostics.issues[0].code == 'EDGE_MISSING_ADJACENT_SHIFT'
+    assert diagnostics.issues[0].examples == ()
+
+
+@pytest.mark.parametrize('stage', ['compile_context', 'check_raw', 'bind'])
+@pytest.mark.parametrize('normalize', ['vertices', 'topology'])
+@pytest.mark.parametrize('diagnostics', [False, True])
+def test_compute_admission_loss_after_audit_aborts_with_public_diagnostics(
+        monkeypatch, stage, normalize, diagnostics):
+    from pyvoro2._internal import native_qualification as authority
+    from pyvoro2._internal.planar import normalization_context as context
+
+    owner = context if stage == 'compile_context' else context.PlanarContext
+    original = getattr(owner, stage)
+    refusals = []
+
+    def refuse(module, component):
+        refusals.append(component)
+        raise authority.NativeQualificationError(
+            'source_schema_mismatch', 'installed consumer changed after audit')
+
+    def enter_consumer(*args, **kwargs):
+        monkeypatch.setattr(authority, 'require_native', refuse)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(owner, stage, enter_consumer)
+    with pytest.raises(p.TessellationError) as caught:
+        p.compute(SQUARE, domain=_domain(), normalize=normalize,
+                  return_diagnostics=diagnostics)
+    finding = caught.value.diagnostics.issues[0]
+    assert not caught.value.diagnostics.ok
+    assert finding.code == 'WP6_PROFILE_UNSUPPORTED'
+    assert finding.examples[0]['reason'] == 'source_schema_mismatch'
+    assert 'installed consumer changed after audit' in finding.message
+    assert refusals == ['wp6-planar']

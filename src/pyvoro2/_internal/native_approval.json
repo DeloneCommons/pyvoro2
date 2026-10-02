@@ -4,35 +4,35 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "1da7650eb20a4f91d6222bba474b889514f768de16afdfb4cbbfefadc88178a7"
+      "source_sha256": "fc18e92cc6039c449ee65ecc35ae2e5b9aa39a32d3f013249b5364613e6b975c"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "109a09aa9ba58ab4a7ad94e71475630093d425441844eb2516f5c43ab261f1f8"
+      "source_sha256": "9487f6ad5ebdec068a48d72a3cb1638b46ba9c49f16074138c21d8edc319f711"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "40c8937b0e49604387a9b4e952ac9afdbe9bd3aced321000bf017ae516980571"
+      "source_sha256": "d9e2b0dad83d53d8538b8129dbfda7d24292442976d511f7a51e44e33653c87c"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "e8b93cb13e360c74e8c211ff32fa256951f82a058aaed47fe4a08bf95a2dd817"
+      "source_sha256": "e754e537144a21bdd2a3241f3f1c8f029769cc8a1cc37d437f0ca3d3d5ea71c4"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "63433d2cbe20ed84e34bb7646c4437778b385a550cd30a9608f3e97d3bbd45c7"
+      "source_sha256": "09b8aeae1d25469845b3b6a5724ac024818a1efc137d07513daaf87cfb64dc61"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "29fb9a3777bc6720af166bbdb89041274c04fa73a0d6d60a32a60c7b2d0295d8"
+      "source_sha256": "db3bcfaaaef5d5828751de3814ce825f7c11044bb50d0393beb95cb7d19ea084"
     }
   },
-  "consumer_sha256": "dba2a9b60d747726186f3b0285a5ffcd26df1d94582b2bffd2299055c6a04bb4",
+  "consumer_sha256": "9defe2d6de7bf7ed6d3073b9b56d1068095d710ae7132e02ee1d4ebb5eb643cf",
   "policy_revision": "issue88-p1",
   "review": {
     "date": "2026-10-02",
-    "decision": "Approved the exact 389-file source closure and 78-consumer inventory after independent whole-patch source review against f70593dca3a3caa2c49b7326200328ab6ba382bc and independent corrected-head follow-up. ADR 0025 architecture C is implemented through the private WP6 adapter, typed exact identity/lift and snapshot binding utility, raw-preserving planar normalization and validation, and copy/serialization authority stripping. The initial nonperiodic shift, unused boundary precondition and private admission-exception findings were corrected and independently retested. Native/vendor code, build inputs, witness schemas, qualification policy, WP5/WP6 mathematics, public API and WP7/WP8 semantics are unchanged. All six conservative component source identities change. This approves source for fresh qualification only; final installed payload reconciliation, exact-head FULL CI and independent implementation/artifact acceptance remain required. No merge, issue closure or Checkpoint B acceptance is implied.",
-    "previous_approval_sha256": "b64c0d976fddaffcc9400654e29badbbe6439142f9f335902fe6102142a4dfe4",
+    "decision": "Approved the exact 390-file source closure and 79-consumer inventory after independent whole-patch source review against f70593dca3a3caa2c49b7326200328ab6ba382bc and exact final corrected-head review. ADR 0025 architecture C preserves raw N through the private WP6 adapter, typed exact identity/lift and snapshot binding utility, planar normalization/validation, and copy/serialization authority stripping. R1-R4 and the four installed integration corrections are resolved, including acyclic audit snapshot dependencies, consumed-schema diagnostic fixtures, and atomic public compute translation of admission revocation without fallback. Earlier negative reviews and failed artifact/full-suite runs remain preserved. Native/vendor code, build inputs, witness schemas, qualification policy, WP5/WP6 mathematics, public API and WP7/WP8 semantics are unchanged. All six conservative component source identities change. This approves source for fresh qualification only; final installed payload reconciliation, exact-head FULL CI and independent implementation/artifact acceptance remain required. No merge, issue closure or Checkpoint B acceptance is implied.",
+    "previous_approval_sha256": "3596e8ee81df1ba3e52b0ba775f4fbf7520581c83c85f627cf9385a7475eb8e6",
     "reports": [
       {
         "name": "independent-source-review.md",
@@ -41,13 +41,25 @@
       {
         "name": "independent-source-review-corrected.md",
         "sha256": "10516a2cfe99635ec5d1c257b81af5d0d49d015641939aae88c431500714e7f0"
+      },
+      {
+        "name": "independent-publication-reconciliation.md",
+        "sha256": "1d51552be3e61fa9aed8dd55ce595e948e6675714a975de5e1f35cfe1951f8cd"
+      },
+      {
+        "name": "independent-source-review-final-candidate.md",
+        "sha256": "d523c10d01e216c602b7b551cad5e348385287e214c8e7c925d3d76f4c18ff64"
+      },
+      {
+        "name": "independent-source-review-final-corrected.md",
+        "sha256": "5d5aeff9d379b447aec9745fc64606d86dd9ac5fd2e1acc596cb7c2eabf23cd5"
       }
     ],
     "reviewed_delta_base": "f70593dca3a3caa2c49b7326200328ab6ba382bc",
-    "reviewed_head": "5200ef017185521149672b5c1c3ba3f412a76c13",
-    "reviewed_tree": "9786da3f36954c5d4736614203490b0e0cf648ef",
-    "reviewer": "Independent source_review agent; exact-head whole-patch review and corrected-head follow-up"
+    "reviewed_head": "5ae9f6a34a31ba22b24f890e4135df1a3357c60c",
+    "reviewed_tree": "bd70b0ef3ca9165014cc32f6c359f15635216158",
+    "reviewer": "Independent source_review agent; cumulative whole-patch review and exact corrected-head follow-up"
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "5ae97f07b858c97c755516de9ebc6882f889b3d9cc5531a646bede5fda7b5129"
+  "source_sha256": "35080ab12d95e51f616d7c037d71c2c033bd9f17f1d38006ee8e42f56589c408"
 }

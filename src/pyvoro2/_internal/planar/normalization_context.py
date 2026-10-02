@@ -6,54 +6,16 @@ artifact exemptions are separate, and do not enter the identity graph.
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from fractions import Fraction
 import secrets
 
 from ..normalization_proof import (
     ProofFailure, VertexIdentity, identity_closure, normalized_operands, value_digest,
 )
-from .domain_geometry import geometry2d
 from .wp6_certificate import WP6Failure, require_wp6
 from .wp6_ideal import ExactAuditRefusal
-
-
-def domain_operands(domain):
-    g = geometry2d(domain)
-    return g.kind, g.native_bounds, g.periodic_axes, g.lattice_vectors_cart
-
-
-def _contact_operands(contact):
-    return contact.status, contact.dimension, contact.endpoints, contact.length_squared
-
-
-def _ideal_operands(ideal):
-    return (ideal.points, ideal.weights, ideal.bounds, ideal.periods, ideal.periodic,
-            tuple((i, cell.dimension, cell.vertices, cell.area,
-                   {label: _contact_operands(c) for label, c in cell.contacts.items()},
-                   {label: _contact_operands(c) for label, c in cell.positive.items()},
-                   {label: _contact_operands(c) for label, c in cell._contacts.items()})
-                  for i, cell in sorted(ideal._cells.items())))
-
-
-def certificate_operands(c):
-    """Bind the actual provenance, interpretation, transports and checked scope."""
-    return (c.native_cells, c.packet, c.rows, c.storage, c.mode,
-            tuple((f.name, getattr(c.prepared, f.name)) for f in fields(c.prepared)),
-            domain_operands(c.domain), c.transport, c.periods, c.epsilon,
-            c.lattice_defect,
-            tuple(tuple(getattr(o, f.name) for f in fields(o)) for o in c.occurrences),
-            c.audit_complete, c.audit_work,
-            tuple((e.code, e.severity, str(e), e.context) for e in c.issues),
-            _ideal_operands(c.effective), _ideal_operands(c.semantic))
-
-
-def seal_certificate(c):
-    """Bind the completed owning audit at its producer boundary, before export."""
-    module = require_wp6()
-    c._normalization_audit_binding = value_digest(
-        (certificate_operands(c), module._qualification_identity()))
-    require_wp6(artifact=False)
+from .normalization_snapshot import certificate_operands, domain_operands
 
 
 def _contact(c, occurrence, ideal):

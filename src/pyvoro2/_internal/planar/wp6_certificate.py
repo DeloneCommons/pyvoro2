@@ -492,8 +492,10 @@ def certify_packet(
             audit_budget,
         )
         if certificate.semantic_consistent:
-            from .normalization_context import seal_certificate
-            seal_certificate(certificate)
+            from .normalization_snapshot import seal_certificate
+            module = require_wp6()
+            seal_certificate(certificate, module._qualification_identity())
+            require_wp6(artifact=False)
     return certificate
 
 

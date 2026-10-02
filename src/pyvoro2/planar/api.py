@@ -753,6 +753,8 @@ def _compute_impl(
                     tol=normalization_tol_value,
                     copy_cells=True,
                 )
+    except WP6Failure as exc:
+        _raise_wp6_failure(exc, domain, prepared, mode)
     except ProofFailure as exc:
         from .normalize import NormalizedVertices
         _precondition_error(NormalizedVertices(np.zeros((0, 2)), cells), domain,

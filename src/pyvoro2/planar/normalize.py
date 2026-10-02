@@ -693,7 +693,8 @@ def _prepare_topology_cells(
                     dim=2,
                 )
             elif periodic and adjacent >= 0:
-                raise ValueError(
+                raise ProofFailure(
+                    'EDGE_MISSING_ADJACENT_SHIFT',
                     'Periodic domain edge missing adjacent_shift; compute '
                     'with return_edge_shifts=True'
                 )
