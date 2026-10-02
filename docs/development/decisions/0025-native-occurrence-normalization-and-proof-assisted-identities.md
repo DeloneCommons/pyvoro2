@@ -1,7 +1,6 @@
 # 0025 — Native occurrence normalization, proof-assisted identities, and exact contact scope
 
-- **Status:** Accepted mathematical/architectural contract; implementation and
-  independent acceptance of the source-controlled wording remain separate
+- **Status:** Accepted
 - **Date:** 2026-10-01
 - **Related issues:** [#95 — Checkpoint B degeneracy closure](https://github.com/DeloneCommons/pyvoro2/issues/95),
   [#97 — contract freeze](https://github.com/DeloneCommons/pyvoro2/issues/97),
