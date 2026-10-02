@@ -4,63 +4,66 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "d213778e30922ffeef6e984cf5d57e0085984fdea254eae2d3f288df9c3a81e5"
+      "source_sha256": "fbd75074396c525440ec3811e2ad2f8fb9c9a69d6be774ab9c1fe49364ae7546"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "a07ee4d9ea66d9415c7b3dbfe178b4ee705d1d5fb1ac25ec6727e903ad5b616a"
+      "source_sha256": "77e6e81d0e95eed8b9e15067464037ae95d4cd3df6832f09f9f3aa31834a2830"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "b13e2d6b92b131cac0b9b0ce4f096635db97d54102eebec8547a31123a484194"
+      "source_sha256": "933f7b58cbcb4a0125fa37c7270a103e991426565fda95ce6dc88638ca0ec679"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "559dd19b0d292ed4a400f7d3daa3aa284d6353c60ae46267c53ae92203778a8c"
+      "source_sha256": "d0fa2f1464f39dd305c0f642f48fcff7e117b25cbe0a4f7d62494f6592e3897b"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "88debcec94002e7c86111caef7d98830c8f8cec61aebf0c478ac8c91572de9d1"
+      "source_sha256": "a0f4ae2002515196fa5a6dc2f2c767424a0430f70a8f6596635ee340fd2b38e7"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "d7eeca9b51d008691f2da3fcef968c340a41479bfa51aa9c01e4e0549ae2785d"
+      "source_sha256": "6ebc30d3479dd77ab3e28ee10d8c67e500e87a66ad6054fee082cdd8c61bcdb7"
     }
   },
-  "consumer_sha256": "6e21764e49494779fd5c023c3568d48be07dc9c04f87dc3937e0550666721465",
+  "consumer_sha256": "9defe2d6de7bf7ed6d3073b9b56d1068095d710ae7132e02ee1d4ebb5eb643cf",
   "policy_revision": "issue88-p1",
   "review": {
-    "date": "2026-09-30",
-    "decision": "Approved the 385-file closure after independent whole-patch source review against 55029b3aa82e6ea57555984e4286255fa177078a: periodic numerical incidence completion and image-qualified validation, truthful unavailable planar images, and normalized boundary dictionary ownership. Direct/transitive coincident-provenance and consumed/unconsumed container findings were corrected and independently retested. Native/vendor implementation, certificate producers, build configuration, qualification policy and schemas are unchanged. Six runtime consumers and one integration test change the global source/consumer and all six component source identities. This is source approval only: fresh artifact qualification, full installed changed-consumer validation and exact-head CI remain required. No merge, issue closure or Checkpoint B acceptance is implied.",
-    "previous_approval_sha256": "aacd1063558f0ff3bedf1d178797872fd1b54c5500ae72bddb1f3affb8e3350a",
+    "date": "2026-10-02",
+    "decision": "Independent exact-source approval for the strictly targeted issue #98 N1/N2 evidence remediation only. The full 390-file closure and unchanged 79-consumer inventory were independently verified against accepted c67752f671550d69964d132027ca62f93afc2c71. Exactly three measured files change: selected-notebook CLI failure diagnostics, raw qualification stream capture through EOF before receipt binding, and fail-first regressions. No native/vendor, runtime consumer, mathematical, public API, WP7/WP8, schema or policy change. The actual selected CLI reproduces environment EPERM with complete child diagnostics. The regular-file capture-completion gap is proved; the historical direct stdout truncation trigger remains unproved and historical evidence is unchanged. All six conservative component source identities change and require fresh qualification. This approves source for fresh qualification only; final payload/receipt reconciliation and exact-head FULL CI remain required. No merge, issue closure, Checkpoint B, #95, #99 or Phase C authorization is implied.",
+    "previous_approval_sha256": "d20088019de0497047cefef97d4b0361d6225056b782e099e311d81e18657062",
     "reports": [
       {
-        "name": "independent-remediation-review.md",
-        "sha256": "142380f8e2c75813dd848b7b48d2cc0fbbae0840a5e2caad797b10227ae02e43"
-      },
-      {
-        "name": "independent-msvc-symbol-review.md",
-        "sha256": "cf5b5ddaf29a8bdecfe3233ebff6ca2d7d45a1f0ca80cede5747282338a5c702"
-      },
-      {
-        "name": "independent-platform-suite-review.md",
-        "sha256": "387b554aadcbe6bbd879329ca5330f3cd8c12485f0ad0888d59bc1e9debd83df"
-      },
-      {
-        "name": "independent-empty-environment-review.md",
-        "sha256": "264a1a0bd3c7d90c5dcc2d1bf04594402052809e31349f3bb7aef74f7ac535d6"
-      },
-      {
-        "name": "issue88-docs-wheel-source-review-20260930.md",
-        "sha256": "92c2deb8c46b8ff2ff7a787fa96415bca7f6c59257c3c245f0618020cb5c7c7e"
-      },
-      {
         "name": "independent-source-review.md",
-        "sha256": "cf18e44fd9d978def11710394505149aae41deded59798ef79d1dc18e73e3398"
+        "sha256": "4773b09317cda0e39d7cc4444ef061ccc5664b9a4256d9520574ca16a7be1426"
+      },
+      {
+        "name": "independent-source-review-corrected.md",
+        "sha256": "10516a2cfe99635ec5d1c257b81af5d0d49d015641939aae88c431500714e7f0"
+      },
+      {
+        "name": "independent-publication-reconciliation.md",
+        "sha256": "1d51552be3e61fa9aed8dd55ce595e948e6675714a975de5e1f35cfe1951f8cd"
+      },
+      {
+        "name": "independent-source-review-final-candidate.md",
+        "sha256": "d523c10d01e216c602b7b551cad5e348385287e214c8e7c925d3d76f4c18ff64"
+      },
+      {
+        "name": "independent-source-review-final-corrected.md",
+        "sha256": "5d5aeff9d379b447aec9745fc64606d86dd9ac5fd2e1acc596cb7c2eabf23cd5"
+      },
+      {
+        "name": "issue98-remediation-independent-source-review.md",
+        "sha256": "f396101d0bf3ba00d40b1f57b66ca6ec53148f0010e3e8596ec9cde8747d74a3"
       }
     ],
-    "reviewed_delta_base": "55029b3aa82e6ea57555984e4286255fa177078a"
+    "reviewed_delta_base": "c67752f671550d69964d132027ca62f93afc2c71",
+    "reviewed_head": "343a9524979974f1db92bc099f1fab6dd32ea1e9",
+    "reviewed_tree": "e086dfaf979d6955c0b62ed748c098722f2663d6",
+    "reviewer": "independent remediation_review agent"
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "21cd1f138cd7eee2d02279677e886fc253f1d55ed26b18bb9c13c1385bad985f"
+  "source_sha256": "723dba662062e82f4e6b643fb05b8c3f0b61032991022cb8069ea44cd83e32ad"
 }

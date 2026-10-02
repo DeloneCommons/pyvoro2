@@ -462,10 +462,12 @@ def run_routes(*, source_root, installation_root, corpus, output,
     environment = controlled_environment()
     environment.update(runtime_environment or {})
     environment['PYTHONPATH'] = str(installation_root)
-    with (output / 'route.stdout').open('wb') as stdout:
-        with (output / 'route.stderr').open('wb') as stderr:
-            process = subprocess.run(command, cwd=output, env=environment,
-                                     stdout=stdout, stderr=stderr, check=False)
+    # communicate() drains both streams through EOF, including output handles
+    # inherited by descendants, before their final bytes enter the receipt.
+    process = subprocess.run(command, cwd=output, env=environment,
+                             capture_output=True, check=False)
+    _atomic_write(output / 'route.stdout', process.stdout)
+    _atomic_write(output / 'route.stderr', process.stderr)
     if process.returncode != 0:
         details = [f'controlled route runner failed ({process.returncode}); '
                    f'retained logs: {output}']

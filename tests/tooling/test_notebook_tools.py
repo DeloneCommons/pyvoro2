@@ -253,8 +253,38 @@ def test_selected_notebook_cli_is_usable() -> None:
             '07_powerfit_infeasibility.ipynb',
         ],
         cwd=REPO_ROOT,
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
+    assert result.returncode == 0, (
+        f'{result.args!r} exited {result.returncode}\n'
+        f'stdout:\n{result.stdout}\nstderr:\n{result.stderr}'
+    )
     assert 'Validated 1 notebook(s).' in result.stdout
+
+
+def test_selected_notebook_cli_failure_preserves_child_diagnostics(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tools = tmp_path / 'tools'
+    tools.mkdir()
+    (tools / 'check_notebooks.py').write_text(
+        'import sys\n'
+        'print("selected notebook child stdout")\n'
+        'print("selected notebook child stderr", file=sys.stderr)\n'
+        'raise SystemExit(7)\n',
+        encoding='utf-8',
+    )
+    monkeypatch.setattr(sys.modules[__name__], 'REPO_ROOT', tmp_path)
+
+    with pytest.raises((AssertionError, subprocess.CalledProcessError)) as caught:
+        test_selected_notebook_cli_is_usable()
+
+    message = str(caught.value)
+    assert 'selected notebook child stdout' in message
+    assert 'selected notebook child stderr' in message
+    assert 'tools/check_notebooks.py' in message
+    assert '07_powerfit_infeasibility.ipynb' in message
+    assert 'exited 7' in message

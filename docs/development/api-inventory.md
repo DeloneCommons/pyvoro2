@@ -475,6 +475,18 @@ standalone helpers cannot recreate full E/S or native-collapse evidence from
 mutable dictionaries. No inverse solver, report schema or ghost contract is
 redesigned.
 
+Compute-owned planar normalization now privately consumes complete successful
+WP6 audits before numerical pooling, including with public diagnostics disabled.
+It applies source-associated exact S-linked identities and independently scoped
+nonpositive artifact exemptions while preserving every N occurrence. The square
+target is 4 vertices / 12 raw edge classes / 20 occurrences. Bound validation
+checks snapshot/domain lifetime, identity lifts and positive class obligations;
+standalone dictionary normalization retains its conservative numerical scope.
+Mutation makes retained authority stale; deepcopy, serialization and public
+reconstruction strip it. Public signatures, result fields, raw schemas and
+capability metadata are unchanged. This implementation does not accept
+Checkpoint B or change spatial/WP7/WP8 semantics.
+
 ### Target separator measurement-space model
 
 The following existing provisional model constructors gain a keyword-only

@@ -668,6 +668,10 @@ def test_zero_normalization_example_limit_retains_issues_without_examples(
         'vertex_shift': [(0,) * dim],
         boundary_key: [{'adjacent_cell': 1, 'vertices': [0]}],
     }
+    if dim == 2:
+        # Isolate the missing shift with an otherwise aligned planar schema.
+        cell['vertices'] = [[0., 0.]]
+        cell[boundary_key][0]['vertices'] = [0, 0]
     normalized = api.NormalizedVertices(
         global_vertices=np.zeros((1, dim)),
         cells=[cell],

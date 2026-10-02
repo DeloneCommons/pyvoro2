@@ -125,10 +125,11 @@ nor zero contact measure proves semantic vertex identity.
 from the enabled and applicable representation checks. Success does not certify
 exact S reconstruction, equality of E/S topology, ideal membership of every
 native endpoint, disabled checks or native artifact qualification. The bounded
-proof-assisted planar target and retained numerical spatial scope are recorded
+proof-assisted planar implementation and retained numerical spatial scope are recorded
 in [ADR 0025](../development/decisions/0025-native-occurrence-normalization-and-proof-assisted-identities.md);
-the [planar guide](planar.md#planar-normalization) states the current repair
-boundary.
+the [planar guide](planar.md#planar-normalization) describes compute-owned
+identities, artifact exemptions and the loss of proof authority on copying or
+serialization. Standalone dictionary normalization remains numerical.
 
 ## Diagnostics: catching subtle issues early
 

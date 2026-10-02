@@ -5,6 +5,7 @@ from __future__ import annotations
 from .._internal.ghost import reject_ghost_records
 
 from dataclasses import dataclass
+from copy import deepcopy
 from typing import Any, Sequence
 
 from .._internal.domain_access import call_domain_method
@@ -28,6 +29,8 @@ from .._internal.normalization import (
     validate_pairwise_shift_differences,
 )
 from .._internal.planar.domain_geometry import geometry2d
+from .._internal.normalization_proof import NumericalCopy, ProofFailure
+from .._internal.planar.normalization_context import context_for
 from .._internal.validation import require_bool, require_positive_finite_real
 from .domains import Box, RectangularCell
 
@@ -59,8 +62,12 @@ def _copy_cell_records(cells, prepared):
 
 
 @dataclass(frozen=True)
-class NormalizedVertices:
+class NormalizedVertices(NumericalCopy):
     """Result of :func:`normalize_vertices` for planar tessellations.
+
+    Compute-owned instances may retain private snapshot-bound WP6 identities.
+    Deepcopy, serialization and public reconstruction retain numerical fields
+    without live proof authority. This is a raw quotient, not an exact-S mesh.
 
     Attributes:
         global_vertices: Array of unique planar vertices in Cartesian coordinates,
@@ -75,8 +82,12 @@ class NormalizedVertices:
 
 
 @dataclass(frozen=True)
-class NormalizedTopology:
+class NormalizedTopology(NumericalCopy):
     """Result of :func:`normalize_topology` for planar tessellations.
+
+    Live compute-owned views may carry private identity and artifact-exemption
+    authority. Bound-data mutation or domain mismatch makes it stale. Copying
+    and serialization strip it; the public numerical fields remain unchanged.
 
     Attributes:
         global_vertices: Unique planar vertices in Cartesian coordinates.
@@ -320,6 +331,58 @@ def _canonical_incident_key(
     return best
 
 
+def _proof_pool_keys(prepared, incidence, context):
+    """Numerical organization may coalesce proof components, never certify paths.
+
+    Partition a numerical bucket containing distinct proved anchors before
+    pooling. Then honor the separate, certificate-only identity graph. Its
+    paths and lift consistency remain those checked by the private context.
+    """
+    anchors = dict(context.anchors)
+    buckets = {}
+    for item in prepared:
+        for slot, coord in enumerate(item['quantized']):
+            node = item['position'], slot
+            if incidence is None:
+                key = ('box',) + coord
+            else:
+                incident, walls = incidence[node]
+                key = ('pbc', _canonical_incident_key(incident), walls, coord)
+            buckets.setdefault(key, []).append(node)
+    parents, protected = {}, {}
+    for key, nodes in buckets.items():
+        points = {anchors[n][0] for n in nodes if n in anchors}
+        groups = {}
+        for node in nodes:
+            partition = (anchors[node][0] if node in anchors else node)
+            group = partition if len(points) > 1 else None
+            groups.setdefault(group, []).append(node)
+        for members in groups.values():
+            root = members[0]
+            for node in members:
+                parents[node] = root
+            protected[root] = {anchors[n][0] for n in members if n in anchors}
+
+    def root(node):
+        while parents[node] != node:
+            parents[node] = parents[parents[node]]
+            node = parents[node]
+        return node
+
+    for edge in context.identities:
+        first, second = root(edge.first), root(edge.second)
+        if first == second:
+            continue
+        points = protected[first] | protected[second]
+        if len(points) > 1:
+            raise ProofFailure('NORMALIZATION_IDENTITY_CONFLICT',
+                               'Numerical pooling would merge distinct '
+                               'proved S anchors')
+        parents[second] = first
+        protected[first] = points
+    return {node: root(node) for node in parents}, anchors
+
+
 def normalize_vertices(
     cells: list[dict[str, Any]],
     *,
@@ -335,6 +398,41 @@ def normalize_vertices(
     view: mutable public records cannot certify native endpoint collapse or
     exact positive boundary classes.
     """
+
+    return _normalize_vertices(cells, domain=domain, tol=tol,
+                               require_edge_shifts=require_edge_shifts,
+                               copy_cells=copy_cells)
+
+
+def _normalize_vertices(cells, *, domain, tol=None, require_edge_shifts=True,
+                        copy_cells=True, context=None):
+    """Compute's private entry; proof participates before numerical grouping."""
+    if context is not None:
+        context.check_raw(cells, domain)
+
+    def pool_key(position, slot, numerical_key, shift):
+        if context is None:
+            return numerical_key, shift
+        node = position, slot
+        anchor = anchors.get(node)
+        if anchor is not None:
+            shift = require_shift(anchor[1], name='proved vertex_shift', dim=2)
+        return ('bound-numerical-pool', pools[node]), shift
+
+    def finish(global_vertices, prepared, mappings):
+        # Proof binds an independently owned raw/provenance snapshot, including
+        # coordinates and nested index data, rather than the parent's dicts.
+        out_cells = (deepcopy(cells) if context is not None else
+                     _copy_cell_records(cells, prepared) if copy_cells else cells)
+        for position, (gids, shifts) in mappings.items():
+            out_cells[position]['vertex_global_id'] = gids
+            out_cells[position]['vertex_shift'] = shifts
+        result = NormalizedVertices(
+            global_vertices=(np.stack(global_vertices, axis=0) if global_vertices
+                             else np.zeros((0, 2), dtype=np.float64)), cells=out_cells)
+        if context is not None:
+            context.bind(result, domain)
+        return result
 
     require_edge_shifts = require_bool(
         require_edge_shifts,
@@ -368,6 +466,10 @@ def normalize_vertices(
         periodic=periodic,
         require_edge_shifts=require_edge_shifts,
     )
+    incidence = (periodic_vertex_incidence(prepared, boundary_key='edges')
+                 if periodic else None)
+    if context is not None:
+        pools, anchors = _proof_pool_keys(prepared, incidence, context)
     global_vertices: list[np.ndarray] = []
     key_to_gid: dict[tuple[Any, ...], int] = {}
     mappings: dict[int, tuple[list[int], list[tuple[int, int]]]] = {}
@@ -377,8 +479,8 @@ def normalize_vertices(
             verts = item['vertices']
             gids: list[int] = []
             shifts: list[tuple[int, int]] = []
-            for v, coord_key in zip(verts, item['quantized']):
-                key = ('box',) + coord_key
+            for k, (v, coord_key) in enumerate(zip(verts, item['quantized'])):
+                key, shift = pool_key(item['position'], k, ('box',) + coord_key, (0, 0))
                 gid = key_to_gid.get(key)
                 if gid is None:
                     gid = len(global_vertices)
@@ -394,24 +496,11 @@ def normalize_vertices(
                         'farther apart than tol'
                     )
                 gids.append(gid)
-                shifts.append((0, 0))
+                shifts.append(shift)
             mappings[item['position']] = (gids, shifts)
 
-        out_cells = _copy_cell_records(cells, prepared) if copy_cells else cells
-        for position, (gids, shifts) in mappings.items():
-            out_cells[position]['vertex_global_id'] = gids
-            out_cells[position]['vertex_shift'] = shifts
+        return finish(global_vertices, prepared, mappings)
 
-        return NormalizedVertices(
-            global_vertices=(
-                np.stack(global_vertices, axis=0)
-                if global_vertices
-                else np.zeros((0, 2), dtype=np.float64)
-            ),
-            cells=out_cells,
-        )
-
-    incidence = periodic_vertex_incidence(prepared, boundary_key='edges')
     for item in sorted(prepared, key=lambda record: record['id']):
         verts = item['vertices']
         gids: list[int] = []
@@ -426,7 +515,8 @@ def normalize_vertices(
             incident, walls = incidence[(item['position'], k)]
             topo_key = _canonical_incident_key(incident)
             coord_key = item['quantized'][k]
-            key = ('pbc', topo_key, walls, coord_key)
+            key, s0 = pool_key(item['position'], k,
+                               ('pbc', topo_key, walls, coord_key), s0)
             gid = key_to_gid.get(key)
             if gid is None:
                 gid = len(global_vertices)
@@ -445,19 +535,7 @@ def normalize_vertices(
             shifts.append(s0)
         mappings[item['position']] = (gids, shifts)
 
-    out_cells = _copy_cell_records(cells, prepared) if copy_cells else cells
-    for position, (gids, shifts) in mappings.items():
-        out_cells[position]['vertex_global_id'] = gids
-        out_cells[position]['vertex_shift'] = shifts
-
-    return NormalizedVertices(
-        global_vertices=(
-            np.stack(global_vertices, axis=0)
-            if global_vertices
-            else np.zeros((0, 2), dtype=np.float64)
-        ),
-        cells=out_cells,
-    )
+    return finish(global_vertices, prepared, mappings)
 
 
 def _canon_edge(
@@ -503,14 +581,14 @@ def _canon_cell_pair(
     return rep2 if rep2 < rep1 else rep1
 
 
-def _prepare_topology_cells(
+def _prepare_vertex_mappings(
     nv: NormalizedVertices,
     *,
     domain: Domain2D,
-    periodic: bool,
 ) -> tuple[np.ndarray, list[dict[str, Any]]]:
-    """Validate every record consumed by planar edge construction."""
+    """Validate the vertex mapping independently of boundary consumers."""
 
+    periodic_axes = geometry2d(domain).periodic_axes
     global_vertices = coerce_normalization_vertices(
         nv.global_vertices,
         name='normalized.global_vertices',
@@ -538,14 +616,6 @@ def _prepare_topology_cells(
             name=f'{prefix}.vertices',
             dim=2,
         )
-        edges = cell.get('edges')
-        if edges is None:
-            raise ValueError('cells must include edges')
-        try:
-            edge_records = tuple(edges)
-        except TypeError:
-            raise ValueError(f'{prefix}.edges must be a sequence of dicts') from None
-
         gids_raw = cell.get('vertex_global_id')
         shifts_raw = cell.get('vertex_shift')
         if gids_raw is None or shifts_raw is None:
@@ -565,6 +635,36 @@ def _prepare_topology_cells(
             rows=int(vertices.shape[0]),
             dim=2,
         )
+        if any(value and not periodic_axes[axis]
+               for shift in vertex_shifts for axis, value in enumerate(shift)):
+            raise ValueError(f'{prefix}.vertex_shift must vanish on nonperiodic axes')
+        prepared.append(dict(position=cell_index, id=cid, vertices=vertices,
+                             gids=gids, vertex_shifts=vertex_shifts))
+    return global_vertices, prepared
+
+
+def _prepare_topology_cells(
+    nv: NormalizedVertices,
+    *,
+    domain: Domain2D,
+    periodic: bool,
+) -> tuple[np.ndarray, list[dict[str, Any]]]:
+    """Validate every record consumed by planar edge construction."""
+
+    context = context_for(nv, domain)
+    global_vertices, prepared = _prepare_vertex_mappings(nv, domain=domain)
+    for item in prepared:
+        cell_index = item['position']
+        prefix = f'normalized.cells[{cell_index}]'
+        vertices = item['vertices']
+        gids, vertex_shifts = item['gids'], item['vertex_shifts']
+        edges = nv.cells[cell_index].get('edges')
+        if edges is None:
+            raise ValueError('cells must include edges')
+        try:
+            edge_records = tuple(edges)
+        except TypeError:
+            raise ValueError(f'{prefix}.edges must be a sequence of dicts') from None
 
         edge_data: list[dict[str, Any]] = []
         for edge_index, edge in enumerate(edge_records):
@@ -593,7 +693,8 @@ def _prepare_topology_cells(
                     dim=2,
                 )
             elif periodic and adjacent >= 0:
-                raise ValueError(
+                raise ProofFailure(
+                    'EDGE_MISSING_ADJACENT_SHIFT',
                     'Periodic domain edge missing adjacent_shift; compute '
                     'with return_edge_shifts=True'
                 )
@@ -622,6 +723,8 @@ def _prepare_topology_cells(
                 np.array_equal(global_vertices[gids[u]], global_vertices[gids[v]])
                 and vertex_shifts[u] == vertex_shifts[v]
                 and not np.array_equal(vertices[u], vertices[v])
+                and not (context is not None and gids[u] != gids[v]
+                         and context.distinct(cell_index, u, v))
             ):
                 raise ValueError(
                     f'{edge_prefix} normalization collapses distinct public '
@@ -635,16 +738,8 @@ def _prepare_topology_cells(
                 }
             )
 
-        prepared.append(
-            {
-                'position': cell_index,
-                'id': cid,
-                'gids': gids,
-                'vertex_shifts': vertex_shifts,
-                'edges': tuple(edge_data),
-                'edge_records': edge_records,
-            }
-        )
+        item['edges'] = tuple(edge_data)
+        item['edge_records'] = edge_records
     return global_vertices, prepared
 
 
@@ -655,15 +750,26 @@ def normalize_edges(
     tol: float | None = None,
     copy_cells: bool = True,
 ) -> NormalizedTopology:
-    """Pool numerical edges only within canonical provenance classes.
+    """Pool raw edges only within canonical provenance classes.
 
     Local occurrences remain aligned through ``edge_global_id`` even when
     repeated records share a global edge. A mapping that collapses distinct
     public endpoints is refused. Already coincident public endpoints remain
     representable; they are not evidence of native collapse or zero exact
-    semantic length. This utility has no private native/ideal witness.
+    semantic length. A live compute-owned vertex view retains its private
+    proof obligations. Copied/reconstructed views are numerical-only.
     """
 
+    try:
+        return _normalize_edges(nv, domain=domain, tol=tol, copy_cells=copy_cells)
+    except ProofFailure as exc:
+        from .validation import _precondition_error
+        return _precondition_error(nv, domain, 'strict', exc.code, str(exc))
+
+
+def _normalize_edges(nv, *, domain, tol=None, copy_cells=True):
+
+    context = context_for(nv, domain)
     copy_cells = require_bool(copy_cells, name='copy_cells')
     if tol is not None:
         tol = require_positive_finite_real(tol, name='tol')
@@ -735,15 +841,20 @@ def normalize_edges(
             edge_ids.append(eid)
         annotations[item['position']] = edge_ids
 
-    cells = _copy_cell_records(nv.cells, prepared) if copy_cells else nv.cells
+    cells = (deepcopy(nv.cells) if context is not None else
+             _copy_cell_records(nv.cells, prepared) if copy_cells else nv.cells)
     for position, edge_ids in annotations.items():
         cells[position]['edge_global_id'] = edge_ids
 
-    return NormalizedTopology(
-        global_vertices=nv.global_vertices,
+    result = NormalizedTopology(
+        global_vertices=(nv.global_vertices.copy() if context is not None
+                         else nv.global_vertices),
         global_edges=global_edges,
         cells=cells,
     )
+    if context is not None:
+        context.bind(result, domain)
+    return result
 
 
 def normalize_topology(

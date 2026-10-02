@@ -132,6 +132,9 @@ class TessellationResult:
     copies and same-version pickle round trips preserve the existing snapshot
     state while restoring read-only owned arrays and capability state, even
     after allowed raw-record mutation.
+    Planar normalized snapshots copied or serialized with the result retain
+    their numerical data but lose private compute-owned proof authority.
+    Capability metadata indicates availability, not certification.
     """
 
     dimension: Literal[2, 3]

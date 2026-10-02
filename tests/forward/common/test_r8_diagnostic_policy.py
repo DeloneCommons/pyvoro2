@@ -747,6 +747,7 @@ def test_planar_warning_only_normalized_topology_is_nonfatal() -> None:
     )
     bad_polygon = copy.deepcopy(topology)
     bad_polygon.cells[0]['edges'].pop()
+    bad_polygon.cells[0]['edge_global_id'].pop()
 
     polygon_diag = planar.validate_normalized_topology(
         bad_polygon,
@@ -766,6 +767,9 @@ def test_planar_warning_only_normalized_topology_is_nonfatal() -> None:
 
     low_incidence = copy.deepcopy(topology)
     low_incidence.global_edges.clear()
+    for cell in low_incidence.cells:
+        cell['edges'].clear()
+        cell['edge_global_id'].clear()
     incidence_diag = planar.validate_normalized_topology(
         low_incidence,
         case.periodic_domain,
@@ -791,7 +795,10 @@ def test_planar_normalized_error_findings_remain_fatal() -> None:
         domain=case.periodic_domain,
     )
 
-    shift_mismatch = copy.deepcopy(topology)
+    # These findings consume local periodic vertex mappings. Omit a separate
+    # global edge pool so its consistency precondition does not mask them.
+    shift_mismatch = planar.NormalizedVertices(
+        topology.global_vertices.copy(), copy.deepcopy(topology.cells))
     shift_location = next(
         (cell_index, vertex_index)
         for cell_index, cell in enumerate(shift_mismatch.cells)
@@ -819,7 +826,8 @@ def test_planar_normalized_error_findings_remain_fatal() -> None:
             level='strict',
         )
 
-    set_mismatch = copy.deepcopy(topology)
+    set_mismatch = planar.NormalizedVertices(
+        topology.global_vertices.copy(), copy.deepcopy(topology.cells))
     original_gid = int(set_mismatch.cells[0]['vertex_global_id'][0])
     replacement_gid = (original_gid + 1) % len(set_mismatch.global_vertices)
     set_mismatch.cells[0]['vertex_global_id'][0] = replacement_gid

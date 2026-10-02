@@ -43,10 +43,11 @@ Raw boundary occurrences are not automatically positive semantic boundaries.
 Normalized topology is a numerical organization of those raw occurrences, not
 an exact public-semantic S mesh. Successful `level="strict"` normalization
 validation covers enabled/applicable representation checks; it does not certify
-exact S reconstruction, E=S topology or native artifact qualification. Current
-planar normalization can still fail on certified point artifacts even when the
-forward exact audit succeeds. The accepted bounded proof-assisted repair is
-tracked by [#98](https://github.com/DeloneCommons/pyvoro2/issues/98);
+exact S reconstruction, E=S topology or native artifact qualification.
+Compute-owned planar normalization now consumes complete WP6 audits for proved
+identities and separate nonpositive artifact exemptions. Its authority binds
+the consumed snapshot/domain and is lost on copying or serialization.
+Standalone dictionary normalization remains conservative;
 spatial normalization remains a numerical raw view. See
 [ADR 0025](../development/decisions/0025-native-occurrence-normalization-and-proof-assisted-identities.md)
 for the contract and its implementation boundary.
