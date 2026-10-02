@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import importlib.util
 import ctypes
+import hashlib
 import json
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import sysconfig
+import time
 
 import pytest
 
@@ -88,6 +90,66 @@ def test_route_child_ignores_inherited_python_and_pytest_controls(
         'PYTHONPATH': str(tmp_path / 'installed'),
         'PYTHONNOUSERSITE': '1', 'PYTHONDONTWRITEBYTECODE': '1',
         'PYTEST_DISABLE_PLUGIN_AUTOLOAD': '1'}
+
+
+@pytest.mark.parametrize('exit_code', [0, 7])
+def test_route_capture_drains_streams_before_binding_final_bytes(
+        finalizer, tmp_path, exit_code):
+    # A descendant retains the inherited output handles after the route process
+    # exits. Its delayed footer must precede the stream identities in evidence.
+    stdout_tail = b'x' * 32768 + b'\nfinal stdout footer'
+    expected_stdout = b'route start\n' + stdout_tail
+    expected_stderr = b'y' * 32768 + b'\nfinal stderr footer\xff\x00'
+    done = tmp_path / 'writer-done'
+    writer = tmp_path / 'late_writer.py'
+    writer.write_text(
+        'import pathlib, sys, time\n'
+        'time.sleep(1)\n'
+        f'sys.stdout.buffer.write({stdout_tail!r})\n'
+        'sys.stdout.buffer.flush()\n'
+        f'sys.stderr.buffer.write({expected_stderr!r})\n'
+        'sys.stderr.buffer.flush()\n'
+        f'pathlib.Path({str(done)!r}).write_text("done")\n', encoding='utf8')
+    runner = tmp_path / 'tools/native/qualification/route_suite.py'
+    runner.parent.mkdir(parents=True)
+    runner.write_text(
+        'import json, pathlib, subprocess, sys\n'
+        'args = dict(zip(sys.argv[1::2], sys.argv[2::2]))\n'
+        'pathlib.Path(args["--output"]).write_text(json.dumps({"passed": True}))\n'
+        'sys.stdout.buffer.write(b"route start\\n")\n'
+        'sys.stdout.buffer.flush()\n'
+        f'writer = subprocess.Popen([sys.executable, {str(writer)!r}],\n'
+        '                          stdout=sys.stdout, stderr=sys.stderr)\n'
+        f'raise SystemExit({exit_code})\n', encoding='utf8')
+    output = tmp_path / 'evidence'
+    output.mkdir()
+    arguments = dict(source_root=tmp_path,
+                     installation_root=tmp_path / 'installed',
+                     corpus=tmp_path / 'corpus', output=output,
+                     build_evidence_path=tmp_path / 'build.json',
+                     components={'wp5-spatial'})
+    try:
+        if exit_code:
+            with pytest.raises(finalizer.FinalizationError) as caught:
+                finalizer.run_routes(**arguments)
+            assert 'controlled route runner failed (7)' in str(caught.value)
+        else:
+            report, receipt = finalizer.run_routes(**arguments)
+            assert report == {'passed': True}
+            assert receipt['exit_code'] == 0
+        assert (output / 'route.stdout').read_bytes() == expected_stdout
+        assert (output / 'route.stderr').read_bytes() == expected_stderr
+        if not exit_code:
+            for key, expected in (('stdout', expected_stdout),
+                                  ('stderr', expected_stderr)):
+                assert receipt[key]['size'] == len(expected)
+                digest = hashlib.sha256(expected).hexdigest()
+                assert receipt[key]['sha256'] == digest
+    finally:
+        deadline = time.monotonic() + 5
+        while not done.exists() and time.monotonic() < deadline:
+            time.sleep(.01)
+        assert done.exists(), 'late output writer did not finish'
 
 
 def test_failed_route_child_reports_bounded_redacted_tails_and_keeps_raw_logs(
