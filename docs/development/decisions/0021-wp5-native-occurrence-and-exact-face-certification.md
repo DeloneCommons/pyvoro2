@@ -650,6 +650,11 @@ have the same owner and nonzero public shift.
 
 ## Public output, diagnostics and consumers
 
+The cross-cutting raw-quotient normalization and strict-validation boundary is
+recorded in [ADR 0025](0025-native-occurrence-normalization-and-proof-assisted-identities.md).
+That bounded consumer contract preserves the WP5 N/E/S mathematics and public
+actions here; normalized spatial topology remains a numerical raw view.
+
 When `return_face_shifts=False`, every existing ordinary combination of
 `return_faces`, `return_vertices`, and `return_adjacency` retains its
 ordinary geometry/output behavior; a requested diagnostic still invokes
