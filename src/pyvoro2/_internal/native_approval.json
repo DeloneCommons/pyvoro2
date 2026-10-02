@@ -4,47 +4,53 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "40f44bc6312de1f643c24962da836c95b5b16e7d9681d2cccab6b8fdfb9289d8"
+      "source_sha256": "4c14476adad394add0d580a9d2582fe0d1cc4f4fe1ebb8592c5869f37cfcf5cc"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "d231a0dc4d6e682823f46377c52a1c20ac88778dfde8e7687540331045e62382"
+      "source_sha256": "c34b1c746a7de1458818e6e02c7f1766029b9af212e838bb66381a8490f8eb07"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "16a9f8c0cb7ca3d85805a34cfaf3d84e5a385128e3eadd42667f6645484e91b0"
+      "source_sha256": "48390c7cee0788c28eef6a0989e01acda76b509d6cd98465be05e12fa8bd9262"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "54066d497c8c23892f3f35fa6d670cc2f568e119d6f3da90cc3c49096c647dcc"
+      "source_sha256": "d6acd7e4e41faa1ffa8fc74759b7b384abe9f15cf040b9f4f389115b718f9a92"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "d0dc747e85977a86daaa62316d23efe7fde4c79d8f470d09ceebc06cd21913a3"
+      "source_sha256": "9e9616d6dc55c945be542f0aacaba1da1d5193846cf08e5a60d6e9f714863923"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "90c3edc903a9bef61b869ce9cd11536a62ddb5a6439ddc543b79d40043e3e540"
+      "source_sha256": "d4c428ebdfb323b137145928ff2c9eeba266c17daea6ff27a75bbcfa61cf1676"
     }
   },
   "consumer_sha256": "8650b548dfbdf07b696d3023e59d6f3d08a7303fc346c6b8097c3d07f8667813",
   "policy_revision": "issue88-p1",
   "review": {
     "date": "2026-10-02",
-    "decision": "Independent ADR 0024 source approval for the bounded issue #99 spatial regression and missing-validation-operand correction. Reviewed all ten changed files and the full 394-file measured closure against the accepted 390-file base; independently verified all 33 atlas-derived input selections, all 16 base archetypes, all seven strict-pass raw/S-count disagreements, exact oracle soundness and extraction, preserved numerical applicability and raw class-union semantics. The only changed runtime consumer is spatial validation.py; no native/vendor, build, policy/schema, public signature, spatial proof adapter or mesh/collapse engine change exists. All six component source identities change. This approves source for fresh qualification only. UNQUALIFIED pure-Python probes and predecessor artifacts grant no changed-consumer/artifact authority. Final installed artifact/platform qualification, exact-head FULL CI and the separate independent user acceptance remain required. No merge, issue closure, Checkpoint B/#95 acceptance or Phase C authorization is implied.",
-    "previous_approval_sha256": "339c0bf623c4aad45b8507d2a33be02d85b28c9bfa1ca73b89936eacdce0da40",
+    "decision": "Independent ADR 0024 renewal for the full 394-file issue #99 source closure after an evidence-backed test-only diagnostic-control isolation correction. The sole delta from previously reconciled 599173 is tests/forward/common/test_r8_diagnostic_policy.py (14 insertions/6 deletions). Both controls use the existing NormalizedVertices view, preserving all original assertions, enabled checks and warning/error actions; no runtime validation is weakened. The exact predecessor failures were independently reproduced against the prior source artifact, the corrected 100-test module and unchanged 29-test full-topology mapping selection pass as pre-final development evidence. No runtime consumer, native/vendor, schema, policy, oracle, fixture or public API edit exists in the renewal. All six conservative component source identities change; consumer identity remains unchanged from the prior approved issue #99 source. This approves changed source for fresh qualification only and supersedes the previous approval for this changed closure without erasing any predecessor/failed evidence. Fresh final artifact qualification, installation/testing, exact-head FULL CI and separate independent spatial/implementation/artifact acceptance remain required. No merge, issue closure, Checkpoint-B/#95 acceptance or Phase C authority is implied.",
+    "integration_base": "47a3ebf25870e7ccd750fe6cc47d446816c05088",
+    "integration_base_tree": "95061d16eabca763b86003a968a146dd8c8a9ca6",
+    "previous_approval_sha256": "0e04bba2651492380fc6ca5179409b94112104d2fb4d16bc7dd21777ec0740bc",
     "reports": [
       {
         "name": "independent-source-review.md",
         "sha256": "c7f9ff5c798862dc7621caffaac7ea8d3bce7709b031003a3d6e7e4ff2d0a500"
+      },
+      {
+        "name": "r8-independent-source-review.md",
+        "sha256": "e9fa943fd6057fc63941f140c0982265d8867c4977133e72048a1fd3b81b2506"
       }
     ],
-    "reviewed_delta_base": "47a3ebf25870e7ccd750fe6cc47d446816c05088",
-    "reviewed_delta_base_tree": "95061d16eabca763b86003a968a146dd8c8a9ca6",
-    "reviewed_head": "4e4db48015dbed715d844821dd853bd6c0fda1cb",
-    "reviewed_tree": "ddd44a259d55156f1981443082897c985266adb1",
+    "reviewed_delta_base": "599173ed4b7f2650243950a3f302f205c9980325",
+    "reviewed_delta_base_tree": "65ee9170cf11004b3a2a042f1e5f67df92627837",
+    "reviewed_head": "dd78f25292db4ee300a910f1cfd26c46301d1280",
+    "reviewed_tree": "a3e6e689f0bed115618fc89a88e4818fb16c81f7",
     "reviewer": "independent source_review agent (/root/source_review)"
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "b1902d3c64be6e5949d75ad9774ce619bb04b5300d8b9176460df22db7b8a39f"
+  "source_sha256": "e5f64708a96269ae5be39648ad6732e4df283222aeb4407175df7f0b239b2aea"
 }
