@@ -6,6 +6,21 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+### Separator row policy and report v2 (WP10)
+
+- Mismatch, hard restrictions, and each scalar penalty accept keyword-only
+  `space=None|'fraction'|'position'`; omitted spaces inherit observation units.
+  Source targets, residuals, row IDs, and source diagnostics retain their meaning.
+- Hard endpoints/values/applicability and penalty endpoints/strengths accept
+  owned scalar or exact-length row values. Hard intervals permit equality.
+  Inapplicable hard rows and zero strengths are absent before numerical work.
+- Component solves and the experimental active engine project one bound policy
+  with observations, preserving original values on reentry and final refit.
+  Problem/result `resolved_policy` and explicit mismatch views expose the model.
+- Separator reports use schema v2 with complete uniform/row model policy and
+  mismatch records. Strict consumers must accept v2 explicitly. The preferred
+  inverse exports and scalar shape parameters retain their current scope.
+
 ### Fixed
 
 - Spatial normalized validation reports missing/corrupt consumed mappings,

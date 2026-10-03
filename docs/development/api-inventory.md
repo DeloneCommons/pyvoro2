@@ -487,7 +487,7 @@ reconstruction strip it. Public signatures, result fields, raw schemas and
 capability metadata are unchanged. This implementation does not accept
 Checkpoint B or change spatial/WP7/WP8 semantics.
 
-### Target separator measurement-space and row-policy model
+### Separator measurement-space and row-policy model (WP10)
 
 The following existing provisional model constructors gain keyword-only
 measurement-space selection; hard terms additionally gain keyword-only
@@ -540,7 +540,7 @@ scalar-common objective specification.
 
 Observation-facing `SeparatorFitResult.measurement`, `target`, `predicted`,
 `residuals`, `rms_residual`, and `max_residual` keep their
-observation-source meaning. The target adds these read-only effective
+observation-source meaning. WP10 adds these read-only effective
 model-space views:
 
 ```text
@@ -556,6 +556,12 @@ SeparatorFitResult.mismatch_predicted
 SeparatorFitResult.mismatch_residuals
 ```
 
+The problem, fixed result, and experimental active result expose
+`resolved_policy` with exactly `row_ids` (immutable tuple), `model_spaces`, and
+`model_policy`. The latter blocks use the grammar below; every nested mapping
+is read-only. Legacy manually constructed results without originating model
+policy fail explicitly on policy-dependent access.
+
 `hard_constraint_space` is `None` without a hard term; `penalty_spaces`
 follows penalty order. `PowerFitBounds` gains a `space` field identifying
 the effective hard-bound measurement space while retaining
@@ -566,7 +572,10 @@ for inapplicable rows are non-effective and must not be interpreted as bounds,
 converted/classified solely for output, or used for feasibility/conflict
 construction. Effective/applied-bound views represent absence explicitly, not
 as infinite bounds. `PowerFitPredictions.measurement` remains observation-space
-prediction.
+prediction. Bounds additionally expose read-only `applicable`. Configured finite
+measurement endpoints remain visible on inapplicable rows; their uncomputed
+difference endpoints are NaN. No hard configuration yields four `None` arrays,
+an all-false applicability mask, and `space=None`.
 
 Problem/result state must additionally expose a read-only resolved-policy view
 covering the complete objective-defining `FitModel`: mismatch
@@ -576,11 +585,11 @@ Observation-indexed policy is aligned with ordered observation rows and is
 projected with them; site-indexed regularization data retain site ordering and
 are not projected through observation masks. Configured zero-strength policy
 and inapplicable hard rows remain inspectable. The concrete provisional
-container name is finalized in the WP10 implementation issue; no second public
+container name is `resolved_policy`, as fixed by issue #107; no second public
 identity or policy-fingerprint system is required. Observation row
 identity/fingerprints do not change when model spaces or row policy change.
 
-### Target separator report schema v2
+### Separator report schema v2 (WP10)
 
 WP10 bumps `pyvoro2.inverse.separator.report` from schema version `1` to
 `2` rather than silently widening the exact-key contract. Existing fit-record
@@ -633,6 +642,14 @@ The grammar permits the same uniform/rows wrapper for the staged C fields even
 while their public constructors remain scalar in the first WP10 pass. A later
 accepted C extension therefore changes permitted values, not schema meaning or
 generation.
+
+Term entries contain exactly `family`, resolved `space`, and `parameters`;
+hard entries also contain `applicable`. The policy block has exactly `mismatch`,
+`hard_constraint` (null when unconfigured), ordered `penalties`, and
+`regularization`. L2 uses scalar strength and
+`reference={"kind":"implicit_zero"}` or
+`reference={"kind":"sites","values":[...]}`. All three report families
+declare schema v2; realization-only reports add no model blocks.
 
 ### Target supported realization-aware facade
 

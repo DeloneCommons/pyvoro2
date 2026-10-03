@@ -126,7 +126,10 @@ The activation boundary is:
 - separator model classes remain **Provisional** advanced API. Their v0.9
   keyword-only `space` arguments, bounded scalar-or-row A+B value/applicability
   inputs, resolved-policy views, and schema-v2 model-policy records share that
-  classification; observation/source identity remains Stable. The first WP10
+  classification. The concrete `resolved_policy` mapping is Provisional on
+  problems, fixed results, and the Experimental active result; it contains
+  `row_ids`, `model_spaces`, and `model_policy`. Observation/source identity
+  remains Stable. The first WP10
   pass keeps Huber/boundary shape parameters term-global, with a mandatory
   parameter-level disposition after WP10/WP11 and before Checkpoint C;
 - `fit_self_consistent_weights_from_separators` and the preferred-namespace

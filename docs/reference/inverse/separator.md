@@ -43,6 +43,52 @@ rtol=8*np.finfo(np.float64).eps, atol=0.0)` and are replaced by the recomputed
 binary64 values. This is constructor consistency tolerance, not source
 equivalence.
 
+## Independent spaces and bounded row values
+
+The following keyword-only options preserve existing positional constructors:
+
+```text
+SquaredLoss(*, space=None)
+HuberLoss(delta=1.0, *, space=None)
+Interval(lower, upper, *, applicable=True, space=None)
+FixedValue(value, *, applicable=True, space=None)
+SoftIntervalPenalty(lower, upper, strength, *, space=None)
+ExponentialBoundaryPenalty(lower=0., upper=1., margin=.02,
+                           strength=1., tau=.01, *, space=None)
+ReciprocalBoundaryPenalty(lower=0., upper=1., margin=.05,
+                          strength=1., epsilon=1e-6, *, space=None)
+```
+
+Each space is `fraction`, `position`, or `None` to inherit observation units.
+Hard endpoints/values/applicability and penalty endpoints/strengths accept
+scalar or exact-length one-dimensional row values. Applicability must contain
+actual Booleans. Numeric rows must be finite, strengths non-negative, and all
+configured values satisfy family rules even when absent. A one-element vector
+is a row vector, not a broadcasting scalar. Closed hard intervals allow equality;
+soft and boundary intervals retain positive-width requirements. The C shape
+fields `delta`, `margin`, `tau`, and `epsilon` remain public scalars.
+
+`build_power_fit_problem` owns a positional model binding. Component and active
+selections project that binding with the same ordered row selection. Site-indexed
+L2 references retain full site order. Candidate policy survives active removal
+and reentry. `.resolved_policy` is a recursively read-only mapping with exactly
+`row_ids`, `model_spaces`, and `model_policy`; row IDs are an immutable tuple.
+It is available on the problem, fixed result, and experimental active result.
+Copies, replacements, and same-version pickle preserve the association. Legacy
+manually constructed results without policy provenance fail explicitly when a
+policy-dependent view or report is requested.
+
+Problems and results expose `mismatch_space`, `hard_constraint_space`, and
+ordered `penalty_spaces`. Fixed results add `mismatch_target`,
+`mismatch_predicted`, and `mismatch_residuals`. Source prediction and algebraic
+diagnostics retain observation units; problem graph/normal coefficients use
+mismatch units. `PowerFitBounds.space` identifies declared hard units, and
+its read-only `applicable` mask determines effective rows. Configured measurement
+endpoints remain finite and row-aligned. Inapplicable difference endpoints are
+NaN because they were not computed; absence is never an infinite public bound.
+Without configured hard policy all four bound arrays are `None`, space is
+`None`, and applicability is an all-false mask.
+
 ## Observation and source identity
 
 Every valid observation set has deterministic source-independent row IDs and
@@ -274,7 +320,7 @@ Fit, realized-pair, and active-set reports retain the kinds
 {
   "schema": {
     "name": "pyvoro2.inverse.separator.report",
-    "version": 1
+    "version": 2
   },
   "producer": {
     "name": "pyvoro2",
@@ -312,6 +358,28 @@ JSON, including active no-weights failures. Active reports add an
 Unavailable weights-dependent sections and final realization/residual summary
 values are JSON null, while the nested final fit and outer path/termination
 metadata remain present.
+
+Fit and active reports additionally have exactly these model blocks:
+
+```text
+model_spaces = {mismatch, hard_constraint, penalties}
+model_policy = {mismatch, hard_constraint, penalties, regularization}
+```
+
+Each term has `family` (the public class name), resolved `space`, and
+`parameters`. Every parameter is `{"kind":"uniform","value":scalar}` or
+`{"kind":"rows","values":[...]}`; hard terms also have `applicable` in
+that grammar. Unconfigured hard policy is null. Penalty order and configured
+zero strengths are retained. L2 has `family="L2Regularization"`, scalar
+`strength`, and `reference={"kind":"implicit_zero"}` or
+`{"kind":"sites","values":[...]}` in full site order.
+
+Fit summaries add `mismatch_space`; fit and active candidate records add
+`mismatch_space`, `mismatch_target`, `mismatch_predicted`, and
+`mismatch_residual`. Active outer blocks describe all candidate rows; the nested
+fit describes the exact selected projection. Missing weights retain known policy
+and targets with null predictions/residuals. Realization-only reports do not add
+model blocks. Observation identity and observation-only records are unchanged.
 
 ::: pyvoro2.inverse.separator
 :::

@@ -64,6 +64,41 @@ z_r^{\mathrm{obs}}
 The data are local, but the same site weight appears in every observation that
 touches that site. Global consistency is therefore a graph problem.
 
+## Independent term coordinates
+
+Observation space describes source targets. Mismatch, hard feasibility, and
+each penalty select their own global coordinate. For a stored connector with
+distance \(d\), squared distance \(d^2\), and difference \(z=w_i-w_j\),
+
+\[
+f(z)=\tfrac12+\frac{z}{2d^2},\qquad
+p(z)=\frac d2+\frac{z}{2d}.
+\]
+
+Numerical compilation uses each stored distance separately; it does not replace
+one binary64 affine law with the rounded product \(p=d f\). If mismatch units
+are \(y=\alpha_m z+\beta_m\), a penalty coordinate is
+\(q=a y+b\), with exact effective coefficients formed from the stored affine
+operands. Soft bounds transform by \((L-b)/a,(U-b)/a\), with strength
+\(s a^2\). Exponential lengths, margin, and tau divide by \(a\), with unchanged
+strength. Reciprocal lengths, margin, and epsilon divide by \(a\), with strength
+\(s/a\). Rational effective parameters and breakpoint locations remain exact
+through authoritative derivative and terminal comparisons; floating approximations
+serve proposals. Matching complete objectives may share certified batches.
+
+Inapplicable hard rows are removed before conversion or hard tolerance evaluation.
+Tolerance remains in declared hard units; directed difference feasibility receives
+no additional cycle tolerance. Zero strengths are removed before dangerous
+penalty branches. Structural coupling is the rowwise union of positive confidence,
+applicable hard policy, and positive penalty strength, even at a zero penalty
+value. Observational identification still uses confidence alone.
+
+For \(d=2\), source fraction target \(1/4\), position squared mismatch, and
+fraction soft interval \([3/8,5/8]\) with strength \(8\), the lower branch is
+\(\tfrac12(p-1/2)^2+8(p/2-3/8)^2\). Its derivative is
+\(5p-7/2\), so \(p=7/10\), \(f=7/20\), \(z=-6/5\), and the objective
+is \(1/40\). Fraction hard bounds \([0,1]\) contain this minimizer.
+
 ## Compatibility on an observation graph
 
 The simplest nontrivial example has three sites. If observations prescribe the
