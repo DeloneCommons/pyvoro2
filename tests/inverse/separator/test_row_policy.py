@@ -112,3 +112,19 @@ def test_binding_projects_by_order_and_never_projects_site_reference():
         _bind_policy(observations, replace(model, feasible=Interval([0.], 1.)))
     with pytest.raises(ValueError):
         Interval([0., .1], [1., 1., 1.])
+
+
+def test_problem_replacement_preserves_exact_source_policy_association():
+    from pyvoro2.inverse.separator import build_power_fit_problem
+
+    original = resolve_separator_observations([[0., 0.], [2., 0.]], [(0, 1, .25)])
+    translated = resolve_separator_observations([[10., 0.], [12., 0.]], [(0, 1, .25)])
+    model = FitModel(feasible=Interval([0.], [1.], applicable=[False]))
+    problem = build_power_fit_problem(original, model=model)
+    # Row/source-independent IDs coincide, but bound source association does not.
+    assert original.to_records()[0]['row_id'] == translated.to_records()[0]['row_id']
+    with pytest.raises(ValueError, match='source'):
+        replace(problem, constraints=translated)
+    # Reusing an unbound input template is a fresh positional assignment.
+    fresh = build_power_fit_problem(translated, model=model)
+    assert fresh.resolved_policy == problem.resolved_policy

@@ -85,3 +85,34 @@ def test_unselected_candidate_hard_rows_are_not_compiled_for_prediction(monkeypa
     assert result.fit.status == 'optimal'
     assert result.resolved_policy['model_policy']['hard_constraint']['parameters'][
         'lower']['values'] == (0., 1e308)
+
+
+@pytest.mark.parametrize('dim', [2, 3])
+def test_native_periodic_active_policy_keeps_distinct_images(dim):
+    """Requires an admitted native build; mocks cannot qualify this contract."""
+    import pyvoro2 as spatial
+    import pyvoro2.planar as planar
+
+    domain = (planar.RectangularCell(((0., 1.),) * 2) if dim == 2 else
+              spatial.PeriodicCell(vectors=np.eye(3)))
+    points = np.full((2, dim), .5)
+    points[:, 0] = [.125, .875]
+    shifts = [(-1,) + (0,) * (dim-1), (1,) + (0,) * (dim-1)]
+    model = FitModel(
+        mismatch=SquaredLoss(space='position'),
+        feasible=Interval([0., .25], [1., .75], applicable=[True, False]),
+        penalties=(SoftIntervalPenalty(.4, .6, [1., 4.]),),
+    )
+    result = solve_self_consistent_power_weights(
+        points, [(0, 1, .5, shift) for shift in shifts], domain=domain,
+        image='given_only', model=model, fit_solver='admm',
+        options=ActiveSetOptions(drop_after=1, max_iter=5),
+    )
+    assert result.termination == 'self_consistent'
+    np.testing.assert_array_equal(result.active_mask, [True, False])
+    assert result.realized.realized_other_shift[1]
+    assert result.resolved_policy['model_policy']['penalties'][0]['parameters'][
+        'strength']['values'] == (1., 4.)
+    assert result.fit.resolved_policy['model_policy']['penalties'][0]['parameters'][
+        'strength']['values'] == (1.,)
+    assert result.fit.mismatch_space == 'position'

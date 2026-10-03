@@ -101,6 +101,81 @@ def test_all_false_hard_and_zero_penalty_allow_direct_and_retain_policy():
     assert result.resolved_policy['model_spaces']['hard_constraint'] == 'fraction'
 
 
+@pytest.mark.parametrize('mismatch_space', ['fraction', 'position'])
+@pytest.mark.parametrize('hard_space', ['fraction', 'position'])
+@pytest.mark.parametrize('distance', [np.sqrt(2.), 3., 7.])
+@pytest.mark.parametrize('target', [-.9, .9])
+def test_mixed_hard_boundary_converges_inside_declared_predicate(
+    mismatch_space, hard_space, distance, target,
+):
+    from pyvoro2.inverse.separator import FixedValue
+
+    result = fit_weights_from_separators(
+        [[0., 0.], [distance, 0.]], [(0, 1, target)],
+        model=FitModel(mismatch=SquaredLoss(space=mismatch_space),
+                       feasible=FixedValue(0., space=hard_space)),
+        solver='admm', admm_max_iter=500,
+        admm_abs_tol=1e-12, admm_rel_tol=1e-12,
+    )
+    assert result.status == 'optimal', result.status_detail
+    assert result.objective.hard_constraints_satisfied
+    assert (result.objective.hard_max_violation <=
+            result.objective.hard_max_tolerance)
+
+
+def test_empty_rows_have_no_effective_hard_mismatch_or_penalty_restrictions():
+    from pyvoro2.inverse.separator import HuberLoss
+
+    observations = resolve_separator_observations(
+        [[0., 0.], [2., 0.]], [], allow_empty=True,
+    )
+    model = FitModel(
+        mismatch=HuberLoss(.2, space='position'),
+        feasible=Interval(0., 1.),
+        penalties=(SoftIntervalPenalty(.2, .8, 1.),),
+        regularization=L2Regularization(1., [3., 5.]),
+    )
+    problem = build_power_fit_problem(observations, model=model)
+    assert problem.quadratic_operator is not None
+    result = fit_weights_from_separators(
+        [[0., 0.], [2., 0.]], observations, model=model, solver='direct',
+    )
+    assert result.status == 'optimal'
+    np.testing.assert_array_equal(result.weights, [3., 5.])
+    assert result.objective.total == 0.
+    assert result.resolved_policy == problem.resolved_policy
+
+
+def test_mixed_hard_wide_finite_source_domain_covers_finite_mismatch_lattice():
+    result = fit_weights_from_separators(
+        [[0., 0.], [2., 0.]], [(0, 1, .5)],
+        model=FitModel(mismatch=SquaredLoss(space='position'),
+                       feasible=Interval(0., 1e308, space='fraction')),
+        solver='admm',
+    )
+    assert result.status == 'optimal', result.status_detail
+    assert result.objective.hard_constraints_satisfied
+    assert result.mismatch_predicted[0] == 1.
+
+
+@pytest.mark.parametrize('distance,lower,upper',
+                         [(2., 1e308, 1e308), (1e-160, 0., 1.)])
+def test_unrepresentable_mixed_hard_domain_returns_policy_with_numerical_refusal(
+    distance, lower, upper,
+):
+    result = fit_weights_from_separators(
+        [[0., 0.], [distance, 0.]], [(0, 1, .5)],
+        model=FitModel(mismatch=SquaredLoss(space='position'),
+                       feasible=Interval(lower, upper, space='fraction')),
+        solver='admm',
+    )
+    assert result.status == 'numerical_failure'
+    assert 'representable' in result.status_detail
+    assert result.weights is None
+    assert result.mismatch_predicted is None
+    assert result.resolved_policy['model_spaces']['hard_constraint'] == 'fraction'
+
+
 def test_component_row_projection_preserves_strength_and_site_reference():
     model = FitModel(
         penalties=(SoftIntervalPenalty(.4, .6, [1., 4.]),),
@@ -203,3 +278,34 @@ def test_bound_policy_resists_mutation_of_the_original_term_owner():
     term.strength[:] = 99.
     assert problem.resolved_policy['model_policy']['penalties'][0]['parameters'][
         'strength']['values'] == (2.,)
+
+
+@pytest.mark.parametrize('family', ['soft', 'exponential', 'reciprocal'])
+@pytest.mark.parametrize('huber', [False, True])
+@pytest.mark.parametrize('backend', ['dense', 'sparse'])
+def test_positive_scalar_penalty_matches_uniform_vectors(family, huber, backend):
+    from pyvoro2.inverse.separator import (
+        ExponentialBoundaryPenalty, HuberLoss, ReciprocalBoundaryPenalty,
+    )
+    if backend == 'sparse':
+        pytest.importorskip('scipy')
+    types = {'soft': SoftIntervalPenalty, 'exponential': ExponentialBoundaryPenalty,
+             'reciprocal': ReciprocalBoundaryPenalty}
+    options = ({'margin': .1, 'tau': .2} if family == 'exponential' else
+               {'margin': .1, 'epsilon': .01} if family == 'reciprocal' else {})
+    points = [[0., 0.], [2., 0.], [0., 3.], [2., 3.]]
+    outputs = []
+    for vector in (False, True):
+        term = types[family](lower=[.3, .3] if vector else .3,
+                             upper=[.7, .7] if vector else .7,
+                             strength=[.01, .01] if vector else .01, **options)
+        model = FitModel(mismatch=HuberLoss(.1) if huber else SquaredLoss(),
+                         penalties=(term,))
+        outputs.append(fit_weights_from_separators(
+            points, [(0, 1, .2), (2, 3, .8)], model=model, solver='admm',
+            linear_backend=backend, admm_max_iter=5000,
+            admm_abs_tol=1e-9, admm_rel_tol=1e-9,
+        ))
+    assert outputs[0].status == outputs[1].status == 'optimal'
+    np.testing.assert_array_equal(outputs[0].weights, outputs[1].weights)
+    assert outputs[0].objective == outputs[1].objective

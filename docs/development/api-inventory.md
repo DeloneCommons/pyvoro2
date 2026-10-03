@@ -1356,7 +1356,7 @@ do not connect informative components or contribute to the observation
 Laplacian and right-hand side. `z_obs` remains diagnostic and is not required
 to reconstruct a finite normal RHS.
 
-The quadratic view is available only for `SquaredLoss` with no
+For nonempty observations the quadratic view requires `SquaredLoss` with no
 positive-strength scalar penalties. Zero-strength penalties are absent and do
 not hide the view. Optional L2 regularization is included exactly. Hard
 interval or equality restrictions may coexist but remain visible through
@@ -1366,6 +1366,10 @@ positive-strength scalar penalties retain the graph view but reject
 `quadratic_operator` rather than presenting a partial system as the full
 objective. Sparse conversion imports SciPy lazily; SciPy is neither a runtime
 dependency nor a solver backend in issue #14.
+
+With no observation rows, configured row terms are mathematically absent.
+The L2-only quadratic view and direct solver remain available even when the
+model configures Huber mismatch, hard restrictions or positive penalties.
 
 The canonical `component_alignment_policy` view value is the same stored string
 as compatibility-facing `ConnectivityDiagnostics.gauge_policy`; only the access

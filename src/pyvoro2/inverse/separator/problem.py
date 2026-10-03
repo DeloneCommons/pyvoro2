@@ -51,7 +51,9 @@ from ._numerics import (
     _stable_sum_scalar,
 )
 from .constraints import SeparatorObservations
-from ._identity import _bind_originating_observations
+from ._identity import (
+    _bind_originating_observations, _require_observation_association,
+)
 from ._policy import (
     _BoundPolicy, _PolicyBindingInit, _PolicyStorage, _bind_policy,
     _bind_result_policy, _expand, _row_model, _policy_getstate, _policy_setstate,
@@ -146,6 +148,11 @@ class SeparatorFitProblem(_PolicyStorage):
     _bound_policy_init: InitVar[_BoundPolicy | None] = _PolicyBindingInit()
 
     def __post_init__(self, _bound_policy_init) -> None:
+        if _bound_policy_init is not None:
+            _require_observation_association(
+                _bound_policy_init.observations, self.constraints,
+                context='problem resolved policy',
+            )
         policy = _bind_policy(self.constraints, self.model)
         if _bound_policy_init is not None and _bound_policy_init.view != policy.view:
             raise ValueError('problem resolved policy does not match its model')
@@ -272,18 +279,20 @@ class SeparatorFitProblem(_PolicyStorage):
     def quadratic_operator(self) -> SeparatorQuadraticOperatorView:
         """Return the exact fixed least-squares normal operator.
 
-        This view is intentionally limited to ``SquaredLoss`` models without
-        positive-strength scalar penalties.  Zero-strength penalties are
-        absent from the objective.  Hard restrictions may coexist, but they
+        For nonempty observations this view requires ``SquaredLoss`` without
+        positive-strength scalar penalties. Empty observations have only the
+        site regularizer. Zero-strength penalties are absent from the
+        objective. Hard restrictions may coexist, but they
         remain in ``bounds`` and are not folded into the unconstrained normal
         equation.
         """
 
-        if not isinstance(self.model.mismatch, SquaredLoss):
+        has_rows = self.constraints.n_constraints > 0
+        if has_rows and not isinstance(self.model.mismatch, SquaredLoss):
             raise ValueError(
                 'quadratic_operator is available only for SquaredLoss models'
             )
-        if _active_scalar_penalties(self.model.penalties):
+        if has_rows and _active_scalar_penalties(self.model.penalties):
             raise ValueError(
                 'quadratic_operator is unavailable when positive-strength '
                 'scalar penalties are present because one fixed normal system '
@@ -689,14 +698,47 @@ def _hard_prox_bounds(problem):
     if problem.hard_constraint_space == problem.mismatch_space:
         lower[applicable], upper[applicable] = accepted
     else:
-        lower[applicable] = _stable_affine_difference(
-            problem.beta[applicable], problem.alpha[applicable],
-            problem.bounds.difference_lower[applicable], 0.,
-        )
-        upper[applicable] = _stable_affine_difference(
-            problem.beta[applicable], problem.alpha[applicable],
-            problem.bounds.difference_upper[applicable], 0.,
-        )
+        hard = _measurement_geometry(problem.constraints,
+                                     problem.hard_constraint_space)
+        largest = Fraction.from_float(float(np.finfo(np.float64).max))
+        for local, row in enumerate(np.flatnonzero(applicable)):
+            operands = (problem.alpha[row], hard.alpha[row],
+                        problem.beta[row], hard.beta[row])
+            if (not np.all(np.isfinite(operands)) or
+                    problem.alpha[row] <= 0. or hard.alpha[row] <= 0.):
+                raise ValueError('mixed hard affine coefficients are not representable')
+            # Map the accepted original hard endpoints directly. The public
+            # difference arrays are rounded diagnostics, not affine operands.
+            scale = (Fraction.from_float(float(problem.alpha[row])) /
+                     Fraction.from_float(float(hard.alpha[row])))
+            offset = (Fraction.from_float(float(problem.beta[row])) -
+                      scale * Fraction.from_float(float(hard.beta[row])))
+            exact_lower = (
+                scale * Fraction.from_float(float(accepted[0][local])) + offset
+            )
+            exact_upper = (
+                scale * Fraction.from_float(float(accepted[1][local])) + offset
+            )
+            if exact_lower > largest or exact_upper < -largest:
+                raise ValueError(
+                    'mixed hard domain has no representable mismatch value')
+            # A domain extending past the finite lattice still admits every
+            # finite value on that side. Saturate private endpoints only;
+            # configured finite public bounds remain unchanged.
+            exact_lower = max(exact_lower, -largest)
+            exact_upper = min(exact_upper, largest)
+            mapped_lower = float(exact_lower)
+            mapped_upper = float(exact_upper)
+            # Nearest rounding can enlarge the domain beyond the authoritative
+            # hard predicate. Choose the adjacent inward endpoint instead.
+            if Fraction.from_float(mapped_lower) < exact_lower:
+                mapped_lower = np.nextafter(mapped_lower, np.inf)
+            if Fraction.from_float(mapped_upper) > exact_upper:
+                mapped_upper = np.nextafter(mapped_upper, -np.inf)
+            if mapped_lower > mapped_upper:
+                raise ValueError(
+                    'mixed hard domain has no representable mismatch value')
+            lower[row], upper[row] = mapped_lower, mapped_upper
     return lower, upper
 
 
@@ -1455,7 +1497,9 @@ def _check_hard_feasibility(
     return False, conflict
 
 
-def _requires_admm(model: FitModel) -> bool:
+def _requires_admm(model: FitModel, *, n_rows: int | None = None) -> bool:
+    if n_rows == 0:
+        return False
     if model.feasible is not None and np.any(model.feasible.applicable):
         return True
     if _active_scalar_penalties(model.penalties):

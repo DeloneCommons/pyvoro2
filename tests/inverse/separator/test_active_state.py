@@ -90,6 +90,7 @@ def test_post_loop_final_refit_state_matrix_is_atomic(
     from pyvoro2 import Box
     from pyvoro2.inverse.separator import (
         ActiveSetOptions,
+        FitModel, Interval, SoftIntervalPenalty, SquaredLoss,
         build_power_fit_problem,
         dumps_report_json,
     )
@@ -126,6 +127,11 @@ def test_post_loop_final_refit_state_matrix_is_atomic(
         points,
         [(0, 1, 0.5)],
         domain=domain,
+        model=FitModel(
+            mismatch=SquaredLoss(space='position'),
+            feasible=Interval([0.], [1.], applicable=[False]),
+            penalties=(SoftIntervalPenalty(.2, .8, [0.]),),
+        ),
         options=ActiveSetOptions(max_iter=3),
         return_history=True,
     )
@@ -168,6 +174,19 @@ def test_post_loop_final_refit_state_matrix_is_atomic(
     assert json.loads(dumps_report_json(report)) == report
     assert report['summary']['termination'] == 'self_consistent'
     assert report['fit']['summary']['status'] == final_status
+    assert report['model_policy'] == report['fit']['model_policy']
+    assert report['model_spaces']['mismatch'] == 'position'
+    assert report['model_policy']['penalties'][0]['parameters']['strength'] == {
+        'kind': 'rows', 'values': [0.],
+    }
+    from pyvoro2.inverse.separator._policy import _bind_policy
+    wrong_policy = _bind_policy(result.constraints, FitModel(
+        mismatch=SquaredLoss(space='position'),
+        feasible=Interval([0.], [1.], applicable=[False]),
+        penalties=(SoftIntervalPenalty(.2, .8, [2.]),),
+    ))
+    with pytest.raises(ValueError, match='policy'):
+        replace(result, fit=replace(result.fit, _bound_policy_init=wrong_policy))
     assert report['availability'] == {
         'weights': available,
         'realization': available,
@@ -175,6 +194,8 @@ def test_post_loop_final_refit_state_matrix_is_atomic(
         'reason': None if available else final_status,
     }
     if not available:
+        assert result.fit.mismatch_predicted is None
+        assert result.fit.mismatch_residuals is None
         assert report['realized'] is None
         assert report['diagnostics'] is None
         assert report['marginal_records'] is None

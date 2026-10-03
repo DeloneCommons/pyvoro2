@@ -466,9 +466,6 @@ def _fit_power_weights_resolved(
         _require_scipy_sparse()
 
     problem = build_power_fit_problem(constraints, model=model)
-    accepted_hard_bounds = _hard_prox_bounds(problem)
-    hard_geometry = (None if accepted_hard_bounds is None else
-                     _measurement_geometry(constraints, problem.hard_constraint_space))
     lam = float(problem.regularization_strength)
     reference = (
         None
@@ -476,7 +473,7 @@ def _fit_power_weights_resolved(
         else problem.regularization_reference
     )
 
-    nonquadratic = _requires_admm(model)
+    nonquadratic = _requires_admm(model, n_rows=m)
     if solver == 'direct' and nonquadratic:
         raise ValueError(
             "solver='direct' cannot be used with hard constraints, "
@@ -587,6 +584,11 @@ def _fit_power_weights_resolved(
     align_component_means = lam == 0.0 and len(comps) > 1
 
     try:
+        accepted_hard_bounds = _hard_prox_bounds(problem)
+        hard_geometry = (
+            None if accepted_hard_bounds is None else
+            _measurement_geometry(constraints, problem.hard_constraint_space)
+        )
         for nodes in comps:
             idx_nodes = np.asarray(nodes, dtype=np.int64)
             if idx_nodes.size <= 1:

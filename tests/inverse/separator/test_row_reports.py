@@ -63,6 +63,37 @@ def test_v2_complete_policy_wrappers_and_source_identity_are_exact():
             row['mismatch_residual']) == ('position', .5, 1., .5)
     assert report['summary']['mismatch_space'] == 'position'
     assert json.loads(dumps_report_json(report)) == report
+    # A test-side reader reconstructs only the literal public v2 grammar.
+    import pyvoro2.inverse.separator as public
+
+    def reconstruct(term):
+        if term is None:
+            return None
+        values = {name: field['value'] if field['kind'] == 'uniform' else
+                  field['values'] for name, field in term['parameters'].items()}
+        if 'applicable' in term:
+            mask = term['applicable']
+            values['applicable'] = (
+                mask['value'] if mask['kind'] == 'uniform' else mask['values']
+            )
+        return getattr(public, term['family'])(space=term['space'], **values)
+
+    regularization = policy['regularization']
+    reference = regularization['reference']
+    reconstructed = FitModel(
+        mismatch=reconstruct(policy['mismatch']),
+        feasible=reconstruct(policy['hard_constraint']),
+        penalties=tuple(reconstruct(term) for term in policy['penalties']),
+        regularization=L2Regularization(
+            regularization['strength'], None if reference['kind'] == 'implicit_zero'
+            else reference['values'],
+        ),
+    )
+    reconstructed_problem = build_power_fit_problem(observations, model=reconstructed)
+    assert reconstructed_problem.resolved_policy == problem.resolved_policy
+    # Both source residuals are +/-1/4, both position residuals +/-1/2.
+    # Original Huber units give 2 * .2 * (.5 - .2/2); every prior is absent/inactive.
+    assert result.objective.total == pytest.approx(2*.2*(.5-.2/2), abs=1e-16)
     changed = build_power_fit_problem(observations, model=FitModel())
     assert problem.resolved_policy['row_ids'] == changed.resolved_policy['row_ids']
 

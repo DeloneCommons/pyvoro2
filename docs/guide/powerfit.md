@@ -820,7 +820,7 @@ for large **static** geometries. It does not provide trajectory processing, MD
 frame reuse, prepared solvers across changing frames, parallel tessellation,
 GPU/distributed execution, or scalable all-pairs observation construction.
 
-The fixed normal system is available only for `SquaredLoss` with no
+For nonempty observations the fixed normal system requires `SquaredLoss` with no
 positive-strength scalar penalties. Zero-strength penalties are absent, so
 they do not hide this view. Huber mismatch and positive-strength
 scalar-penalty models still expose `problem.observation_graph`, but
@@ -830,6 +830,9 @@ coexist with the quadratic view; they remain separately visible through
 `problem.bounds`, and `operator.normal_equations_characterize_fit` is false
 because a constrained optimum need not solve the unconstrained normal
 equation.
+
+An empty observation set has only its site regularizer, so it exposes this
+operator and permits direct solving regardless of configured row terms.
 
 ## Step 4: check geometric realization
 
