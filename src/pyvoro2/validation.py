@@ -22,13 +22,19 @@ from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.native_runtime import checked_call, checked_tuple
 from ._internal.spatial.domain_utils import is_periodic_domain
 from ._internal.tessellation_diagnostics import diagnostics_ok
+from ._internal.normalization import (
+    require_global_vertex_ids, require_local_vertex_indices,
+)
 from ._internal.validation import (
     require_bool,
     require_nonnegative_index,
     require_string,
     require_string_choice,
 )
-from .normalize import NormalizedVertices, NormalizedTopology
+from .normalize import (
+    NormalizedVertices, NormalizedTopology, _prepare_topology_cells,
+    _canon_edge, _canon_face_pair,
+)
 
 
 Domain = Box | OrthorhombicCell | PeriodicCell
@@ -116,6 +122,114 @@ def _iter_face_vertex_indices(face: dict[str, Any]) -> list[int]:
     return [int(x) for x in idx]
 
 
+def _check_consumed_mappings(normalized, domain, *, check_euler,
+                             check_periodic_faces):
+    """Check numerical operands, without any ideal or proof-context consumer."""
+    periodic = is_periodic_domain(domain)
+    need_face_images = (isinstance(normalized, NormalizedTopology)
+                        or check_periodic_faces)
+    need_faces = need_face_images or check_euler
+    candidate = normalized
+    if not need_faces:
+        # No enabled/applicable consumer needs face metadata in this view.
+        candidate = NormalizedVertices(normalized.global_vertices,
+                                       [dict(c, faces=[]) for c in normalized.cells])
+    elif not need_face_images:
+        # Euler needs no face shifts; wall diagnostics still consume neighbor
+        # IDs. Project only unused shifts for preparation, leaving raw records.
+        if not isinstance(normalized.cells, list):
+            raise ValueError('normalized.cells must be a list of dicts')
+        cells = []
+        for position, cell in enumerate(normalized.cells):
+            if not isinstance(cell, dict):
+                raise ValueError(f'normalized.cells[{position}] must be a dict')
+            faces = cell.get('faces')
+            if faces is None:
+                raise ValueError('cells must include faces')
+            local_faces = []
+            for face in faces:
+                if not isinstance(face, dict):
+                    raise ValueError('normalized faces must be dicts')
+                local_faces.append(dict(face, adjacent_shift=(0, 0, 0)))
+            cells.append(dict(cell, faces=local_faces))
+        candidate = NormalizedVertices(normalized.global_vertices, cells)
+    _vertices, prepared = _prepare_topology_cells(candidate, periodic=periodic)
+    if isinstance(domain, PeriodicCell):
+        axes = (True,) * 3
+    elif isinstance(domain, OrthorhombicCell):
+        axes = checked_tuple(checked_call(getattr, domain, 'periodic'))
+    else:
+        axes = (False,) * 3
+    for item, cell in zip(prepared, normalized.cells):
+        if not bool(cell.get('empty', False)):
+            for index, (raw_face, face) in enumerate(
+                    zip(cell.get('faces') or (), item['faces'])):
+                if (check_euler or (check_periodic_faces and face['adjacent'] >= 0)):
+                    if raw_face.get('vertices') is None:
+                        raise ValueError(
+                            f"normalized.cells[{item['position']}].faces[{index}]"
+                            '.vertices is required by an enabled check')
+        shifts = item['vertex_shifts']
+        if any(value and not flag for shift in shifts
+               for value, flag in zip(shift, axes)):
+            raise ValueError('vertex_shift must be zero along nonperiodic axes')
+        if any(value and not flag for face in item['faces']
+               for value, flag in zip(face['shift'], axes)):
+            raise ValueError('adjacent_shift must be zero along nonperiodic axes')
+        if not isinstance(normalized, NormalizedTopology):
+            continue
+        edges = cell.get('edges')
+        if edges is None:
+            raise ValueError('normalized cells must include edges')
+        edge_ids = require_global_vertex_ids(
+            cell.get('edge_global_id'), name='edge_global_id',
+            n_vertices=len(edges), n_global_vertices=len(normalized.global_edges))
+        for edge, eid in zip(edges, edge_ids):
+            u, v = require_local_vertex_indices(
+                edge, name='edge.vertices', n_vertices=len(item['gids']))
+            _, rep = _canon_edge((item['gids'][u], shifts[u]),
+                                 (item['gids'][v], shifts[v]))
+            actual = normalized.global_edges[eid]
+            if (tuple(actual['vertices']) != (rep[0][0], rep[1][0])
+                    or tuple(map(tuple, actual['vertex_shifts']))
+                    != ((0, 0, 0), tuple(rep[1][1:]))):
+                raise ValueError('edge_global_id loses raw endpoints/images')
+        face_ids = require_global_vertex_ids(
+            cell.get('face_global_id'), name='face_global_id',
+            n_vertices=len(item['faces']),
+            n_global_vertices=len(normalized.global_faces))
+        for face, fid in zip(item['faces'], face_ids):
+            shift = (face['shift'] if periodic and face['adjacent'] >= 0
+                     else (0, 0, 0))
+            pair = _canon_face_pair(item['id'], face['adjacent'], shift)
+            actual = normalized.global_faces[fid]
+            if (tuple(actual['cells']) != (pair[0], pair[4])
+                    or tuple(map(tuple, actual['cell_shifts']))
+                    != ((0, 0, 0), tuple(pair[5:]))):
+                raise ValueError('face_global_id loses raw ownership/images')
+
+
+def _precondition_error(normalized, domain, level, code, message):
+    """Unavailable operands do not count as checked representation success."""
+    diag = NormalizationDiagnostics(
+        n_cells=len(normalized.cells),
+        n_global_vertices=len(normalized.global_vertices),
+        n_global_edges=(len(normalized.global_edges)
+                        if isinstance(normalized, NormalizedTopology) else None),
+        n_global_faces=(len(normalized.global_faces)
+                        if isinstance(normalized, NormalizedTopology) else None),
+        is_periodic_domain=is_periodic_domain(domain),
+        fully_periodic_domain=_fully_periodic(domain), has_wall_faces=False,
+        n_vertex_face_shift_mismatch=0, n_face_vertex_set_mismatch=0,
+        n_vertices_low_incidence=0, n_edges_low_incidence=0, n_cells_bad_euler=0,
+        issues=(NormalizationIssue(code, 'error', message),),
+        ok_vertex_face_shift=False, ok_face_vertex_sets=False,
+        ok_incidence=False, ok_euler=False, ok=False)
+    if level == 'strict':
+        raise NormalizationError(f'{code}: {message}', diag)
+    return diag
+
+
 def validate_normalized_topology(
     normalized: NormalizedVertices | NormalizedTopology,
     domain: Domain,
@@ -140,6 +254,11 @@ def validate_normalized_topology(
 
     Here t_i and t_j are the per-cell lattice-image shifts returned by
     :func:`pyvoro2.normalize_vertices`; one gid may have several local images.
+
+    Spatial normalized vertices, edges and faces organize raw representations
+    numerically. Strict success covers enabled/applicable representation checks,
+    not exact public-semantic S topology or an N-to-S vertex bijection. Exact
+    scientific contact incidence belongs to the separate WP5 audit.
 
     Args:
         normalized: Output of :func:`pyvoro2.normalize_vertices` or
@@ -184,6 +303,19 @@ def validate_normalized_topology(
         maximum=sys.maxsize,
     )
     example_probe_limit = max(max_examples, 1)
+
+    reject_ghost_records(normalized.cells)
+    try:
+        _check_consumed_mappings(
+            normalized, domain, check_euler=check_euler,
+            check_periodic_faces=(
+                is_periodic_domain(domain)
+                and (check_vertex_face_shift or check_face_vertex_sets)))
+    except (ValueError, TypeError, KeyError, IndexError) as exc:
+        code = ('FACE_MISSING_ADJACENT_SHIFT'
+                if 'Periodic domain face missing adjacent_shift' in str(exc)
+                else 'INVALID_NORMALIZED_MAPPING')
+        return _precondition_error(normalized, domain, level, code, str(exc))
 
     cells = list(normalized.cells)
     reject_ghost_records(cells)

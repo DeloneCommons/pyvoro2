@@ -868,10 +868,14 @@ def _spatial_periodic_topology() -> tuple[object, object]:
 
 def test_spatial_warning_only_euler_mismatch_remains_nonfatal() -> None:
     domain, topology = _spatial_periodic_topology()
-    topology.cells[0]['faces'].pop()
+    # Isolate the local Euler warning without invalidating an unused global
+    # face-class mapping when the synthetic control removes one cycle.
+    view = pyvoro2.NormalizedVertices(
+        topology.global_vertices.copy(), copy.deepcopy(topology.cells))
+    view.cells[0]['faces'].pop()
 
     diag = pyvoro2.validate_normalized_topology(
-        topology,
+        view,
         domain,
         level='strict',
         check_vertex_face_shift=False,
@@ -891,17 +895,21 @@ def test_spatial_warning_only_euler_mismatch_remains_nonfatal() -> None:
 
 def test_spatial_normalized_error_finding_remains_fatal() -> None:
     domain, topology = _spatial_periodic_topology()
+    # As in the planar control above, consume local periodic vertex mappings
+    # without a separate global edge pool masking the intended shift finding.
+    view = pyvoro2.NormalizedVertices(
+        topology.global_vertices.copy(), copy.deepcopy(topology.cells))
     shift_location = next(
         (cell_index, vertex_index)
-        for cell_index, cell in enumerate(topology.cells)
+        for cell_index, cell in enumerate(view.cells)
         for vertex_index, shift in enumerate(cell['vertex_shift'])
         if tuple(shift) != (0, 0, 0)
     )
     cell_index, vertex_index = shift_location
-    topology.cells[cell_index]['vertex_shift'][vertex_index] = (0, 0, 0)
+    view.cells[cell_index]['vertex_shift'][vertex_index] = (0, 0, 0)
 
     diag = pyvoro2.validate_normalized_topology(
-        topology,
+        view,
         domain,
         level='basic',
         check_face_vertex_sets=False,
@@ -918,7 +926,7 @@ def test_spatial_normalized_error_finding_remains_fatal() -> None:
     assert diag.ok is False
     with pytest.raises(pyvoro2.NormalizationError):
         pyvoro2.validate_normalized_topology(
-            topology,
+            view,
             domain,
             level='strict',
             check_face_vertex_sets=False,
