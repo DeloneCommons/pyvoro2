@@ -148,6 +148,46 @@ extension. Broad wall-domain work, persistent trajectories, automatic global
 scaling, and similar expensive changes remain demand-driven unless real
 chemvoro/downstream use promotes them.
 
+### Post-Phase-C review candidate: incidence-first global topology reconstruction
+
+Checkpoint B deliberately closed around a bounded normalization contract rather
+than expanding degeneracy remediation into a universal exact-semantic mesh.
+Keep a stronger incidence-first global topology layer visible as a candidate for
+the deliberate whole-code review that follows functional stabilization.
+
+The candidate direction is:
+
+1. preserve each native cell's local vertex/edge/face complex and source
+   provenance rather than treating coordinates as global identity authority;
+2. perform proof-backed local semantic dimensional reduction when a retained
+   native element is known to represent a lower-dimensional exact contact,
+   without deleting its native occurrence history;
+3. glue reciprocal generator/image boundary cells through certified owner/image
+   attaching relations;
+4. propagate proved correspondence through face-edge-vertex incidence and
+   periodic lifts instead of discovering topology primarily by coordinate
+   coincidence;
+5. materialize one global quotient complex with explicit vertex, edge, face and
+   cell incidence; and
+6. only after combinatorial identity is established, post-qualify coordinate
+   agreement/lattice lifts and choose numerical representatives for
+   presentation.
+
+This direction would make high-order degeneracy a property of the global cell
+complex rather than a special coordinate-pooling case. It must preserve the
+accepted identity/incidence distinction: for example, a 3D contact that reduces
+to a ridge retains two distinct ridge endpoints, whereas a separately proved
+point identity may supply a vertex-equivalence relation.
+
+This is a **review candidate, not a v0.9 commitment or public API promise**.
+Complete Phase C / WP10-WP13 first. Then use the planned complete-code maintainer
+reread and architecture reconciliation to compare this proposal with the actual
+finished implementation. The subsequent independent architectural/technical
+audit should decide whether any concrete change is worth promoting into
+pre-release remediation; otherwise the candidate remains later backlog work.
+Its object model, relationship to `normalize_topology`, proof requirements and
+migration strategy remain intentionally unfrozen until that review.
+
 ## 1.0 — Stable main release and JOSS-ready core
 
 Version 1.0 follows a successful released-v0.9.x soak and stabilizes the
