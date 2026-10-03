@@ -26,7 +26,8 @@ The current separator compiler, proximal machinery, connectivity logic, and
 active engine assume one common scalar model in several places. A+B therefore
 requires more than accepting NumPy arrays in model dataclasses:
 
-- reciprocal/exponential breakpoints and affine conversions become row-specific;
+- soft-interval and reciprocal breakpoints, exponential coefficient data, and
+  term-specific affine conversions become row-specific;
 - hard feasibility/coupling must account for row-local applicability;
 - component solves and active-set subsets must project model policy with rows;
 - removal/re-entry must recover candidate policy;
