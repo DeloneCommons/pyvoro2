@@ -100,7 +100,7 @@ adopts a backend-fork policy.
 | Weight-first `locate`; complete weight/radius `ghost_cells` families | Stable — implemented by WP1 | Same mathematical-weight versus backend-radius representation model as stable weight-first `compute`. |
 | New `PeriodicCell` user-coordinate/wrap helpers | Provisional — implemented by WP2 | Public convenience names may receive soak feedback; exact wrap-shift authority and reconstruction equations are fixed by ADR 0018. |
 | New periodic query/owner/ghost metadata and `boundary_reference` | Provisional | Implemented WP7/WP8 schema and failure protocols below; user-basis image meaning and kind/payload invariants are fixed. |
-| Separator objective/constraint/penalty `space` selectors and effective-space views | Provisional | Advanced model objects remain provisional; observation/source identity remains stable. |
+| Separator objective/constraint/penalty `space` selectors, bounded A+B row policy, and effective model-policy views | Provisional | Advanced model objects remain provisional; row policy does not change stable observation/source identity. |
 | `fit_self_consistent_weights_from_separators` and preferred-namespace `SelfConsistentPowerFitResult` | Provisional | Supported normal public workflow during v0.9.x soak; no Experimental import is required. |
 | Advanced active-set options/path/history and `solve_self_consistent_power_weights` | Experimental | Remain under `pyvoro2.inverse.separator`; not promoted by WP11. |
 | `ghost_radius` | Removed — implemented by WP1 | Immediate pre-1.0 removal; no deprecated alias period. |
@@ -487,16 +487,17 @@ reconstruction strip it. Public signatures, result fields, raw schemas and
 capability metadata are unchanged. This implementation does not accept
 Checkpoint B or change spatial/WP7/WP8 semantics.
 
-### Target separator measurement-space model
+### Target separator measurement-space and row-policy model
 
-The following existing provisional model constructors gain a keyword-only
-`space=None`; `None` inherits `SeparatorObservations.measurement`:
+The following existing provisional model constructors gain keyword-only
+measurement-space selection; hard terms additionally gain keyword-only
+applicability:
 
 ```text
 SquaredLoss(*, space=None)
 HuberLoss(delta=1.0, *, space=None)
-Interval(lower, upper, *, space=None)
-FixedValue(value, *, space=None)
+Interval(lower, upper, *, applicable=True, space=None)
+FixedValue(value, *, applicable=True, space=None)
 SoftIntervalPenalty(lower, upper, strength, *, space=None)
 ExponentialBoundaryPenalty(
     lower=0.0, upper=1.0, margin=0.02,
@@ -508,14 +509,39 @@ ReciprocalBoundaryPenalty(
 )
 ```
 
-Accepted explicit values are `fraction` and `position`. `L2Regularization` and
-`FitModel` do not gain a global separator-space selector. There is no per-row
-space/strength/robust-scale/anchor API and no point-centered convenience type
-in the v0.9 target.
+Accepted explicit spaces are `fraction` and `position`; `None` inherits
+`SeparatorObservations.measurement`. Space selection remains term-global.
+`L2Regularization` and `FitModel` do not gain a global separator-space
+selector.
+
+WP10 accepts scalar or one-dimensional length-`m` row values for:
+
+```text
+Interval.lower, Interval.upper, Interval.applicable
+FixedValue.value, FixedValue.applicable
+SoftIntervalPenalty.lower, .upper, .strength
+ExponentialBoundaryPenalty.lower, .upper, .strength
+ReciprocalBoundaryPenalty.lower, .upper, .strength
+```
+
+Scalars broadcast. Row arrays are defensively owned/read-only and are unbound
+positional policy until problem construction binds them to one ordered
+observation set. Component/active subsets project the bound policy with the same
+ordered selection. Hard applicability is true absence from feasibility,
+conflict, violation, and hard coupling. Closed hard intervals allow
+`lower == upper`; soft/boundary penalty width rules remain unchanged. Zero
+penalty strength remains exact absence.
+
+The first WP10 pass keeps `HuberLoss.delta`, exponential
+`margin`/`tau`, and reciprocal `margin`/`epsilon` scalar. Their
+parameter-by-parameter disposition is mandatory after WP10/WP11 and before
+Checkpoint C; this does not permit the internal compiler to depend on one
+scalar-common objective specification.
 
 Observation-facing `SeparatorFitResult.measurement`, `target`, `predicted`,
-`residuals`, `rms_residual`, and `max_residual` keep their observation-source
-meaning. The target adds these read-only effective model-space views:
+`residuals`, `rms_residual`, and `max_residual` keep their
+observation-source meaning. The target adds these read-only effective
+model-space views:
 
 ```text
 SeparatorFitProblem.mismatch_space
@@ -530,19 +556,36 @@ SeparatorFitResult.mismatch_predicted
 SeparatorFitResult.mismatch_residuals
 ```
 
-`hard_constraint_space` is `None` without a hard term; `penalty_spaces` follows
-penalty order. `PowerFitBounds` gains a `space` field identifying the effective
-hard-bound measurement space while retaining `measurement_lower`,
-`measurement_upper`, `difference_lower`, and `difference_upper`.
-`PowerFitPredictions.measurement` remains observation-space prediction.
-Observation row identity/fingerprints do not change when model spaces change.
+`hard_constraint_space` is `None` without a hard term; `penalty_spaces`
+follows penalty order. `PowerFitBounds` gains a `space` field identifying
+the effective hard-bound measurement space while retaining
+`measurement_lower`, `measurement_upper`, `difference_lower`, and
+`difference_upper`. Those arrays remain observation-row aligned. For partial
+hard applicability, the resolved applicability mask is authoritative: entries
+for inapplicable rows are non-effective and must not be interpreted as bounds,
+converted/classified solely for output, or used for feasibility/conflict
+construction. Effective/applied-bound views represent absence explicitly, not
+as infinite bounds. `PowerFitPredictions.measurement` remains observation-space
+prediction.
+
+Problem/result state must additionally expose a read-only resolved-policy view
+covering the complete objective-defining `FitModel`: mismatch
+family/parameters, bound/projected hard kind/applicability/values, ordered
+penalty families/parameters, and regularization strength/reference semantics.
+Observation-indexed policy is aligned with ordered observation rows and is
+projected with them; site-indexed regularization data retain site ordering and
+are not projected through observation masks. Configured zero-strength policy
+and inapplicable hard rows remain inspectable. The concrete provisional
+container name is finalized in the WP10 implementation issue; no second public
+identity or policy-fingerprint system is required. Observation row
+identity/fingerprints do not change when model spaces or row policy change.
 
 ### Target separator report schema v2
 
-WP10 bumps `pyvoro2.inverse.separator.report` from schema version `1` to `2`
-rather than silently widening the exact-key contract. Existing fit-record
-`measurement`, `target`, `predicted`, and `residual` remain observation-facing;
-fit records and active per-constraint records add exactly:
+WP10 bumps `pyvoro2.inverse.separator.report` from schema version `1` to
+`2` rather than silently widening the exact-key contract. Existing fit-record
+`measurement`, `target`, `predicted`, and `residual` remain
+observation-facing; fit records and active per-constraint records add:
 
 ```text
 mismatch_space
@@ -551,7 +594,7 @@ mismatch_predicted
 mismatch_residual
 ```
 
-Fit summaries retain `measurement` as the observation space and add
+Fit summaries retain `measurement` as observation space and add
 `mismatch_space`. Fit reports add the exact effective-space block:
 
 ```text
@@ -562,9 +605,34 @@ Fit summaries retain `measurement` as the observation space and add
 }
 ```
 
-The active/self-consistent report's nested fit information follows the same
-v2 model-space contract. Observation-only records and `observation_set`
-identity remain model-independent.
+v2 also adds a resolved `model_policy` block. Observation-indexed scientific
+fields are associated with `observation_set.row_ids` and use one of:
+
+```text
+{"kind": "uniform", "value": <scalar>}
+{"kind": "rows", "values": [<row values>]}
+```
+
+Boolean hard applicability uses the same uniform/rows grammar. `model_policy`
+preserves the complete objective-defining model: mismatch family/parameters,
+configured hard kind/applicability/values, ordered penalty kind/parameters, and
+regularization strength/reference semantics. The staged C fields are present in
+their initially uniform form. Site-indexed regularization references retain
+site ordering and do not use the observation-row wrapper. Configured zero
+strengths, including zero-strength regularization with an explicitly supplied
+reference, and inapplicable hard rows remain represented as policy rather than
+being erased or serialized as infinite effective bounds.
+
+The active/self-consistent outer report retains the complete candidate policy;
+its nested fit report retains the exact projected selected policy. Both are
+associated through their ordered row IDs. No policy copy is required in every
+history entry. Observation-only records and `observation_set` identity remain
+model-independent.
+
+The grammar permits the same uniform/rows wrapper for the staged C fields even
+while their public constructors remain scalar in the first WP10 pass. A later
+accepted C extension therefore changes permitted values, not schema meaning or
+generation.
 
 ### Target supported realization-aware facade
 

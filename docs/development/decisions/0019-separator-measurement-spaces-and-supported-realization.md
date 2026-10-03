@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-09-01
+- **Amended:** 2026-10-03 — Phase C entry gate [#104](https://github.com/DeloneCommons/pyvoro2/issues/104) accepts a bounded row-bound A+B policy; row-wise shape/robustness parameters are staged for a mandatory late-Phase-C decision before Checkpoint C.
 - **Related issue:** [#46 — Activate the v0.9.0 functional/API stabilization plan](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **Related plan:** [active v0.9.0 development plan](../plans/v0.9.md)
 - **Related decisions:** [ADR 0007](0007-separator-objective-contract.md),
@@ -36,18 +37,20 @@ of observation/source identity under ADR 0014. Changing model evaluation space
 does not change row IDs, the observation-set fingerprint, source binding, or the
 meaning of observation-facing target/prediction/residual views.
 
-### Mismatch, hard feasibility, and each scalar penalty select space independently
+### Measurement spaces remain term-global; selected term values may be row-wise
 
 The v0.9 model terms gain an optional keyword-only `space` with values
 `"fraction"`, `"position"`, or `None`. `None` means “inherit
-`SeparatorObservations.measurement` for this problem.” The target constructor
-shapes are:
+`SeparatorObservations.measurement` for this problem.” Measurement-space
+selection remains **term-global**: v0.9 does not add per-row spaces.
+
+The target constructor shapes are:
 
 ```text
 SquaredLoss(*, space=None)
 HuberLoss(delta=1.0, *, space=None)
-Interval(lower, upper, *, space=None)
-FixedValue(value, *, space=None)
+Interval(lower, upper, *, applicable=True, space=None)
+FixedValue(value, *, applicable=True, space=None)
 SoftIntervalPenalty(lower, upper, strength, *, space=None)
 ExponentialBoundaryPenalty(
     lower=0.0, upper=1.0, margin=0.02,
@@ -59,30 +62,83 @@ ReciprocalBoundaryPenalty(
 )
 ```
 
-Making `space` keyword-only preserves the meaning of every existing positional
-constructor. `L2Regularization` remains a weight regularizer and does not gain a
-separator space. `FitModel` remains the composition point; it does not gain a
-second global measurement selector.
+Making `space` and hard `applicable` keyword-only preserves the meaning of
+existing positional constructors. `L2Regularization` remains a weight
+regularizer and does not gain a separator space or observation-row strength.
+`FitModel` remains the composition point; it does not gain a global
+measurement selector.
 
-A mismatch term, the optional hard-feasibility term, and every scalar penalty
-resolve inheritance independently. Different penalties may therefore use
-different spaces without introducing arbitrary per-row policy.
+WP10 accepts either a scalar or one owned one-dimensional length-`m` row
+vector for this bounded whitelist:
 
-### Compilation is an affine coordinate conversion, not a new model family
+- `Interval.lower`, `Interval.upper`, and `Interval.applicable`;
+- `FixedValue.value` and `FixedValue.applicable`;
+- `SoftIntervalPenalty.lower`, `.upper`, and `.strength`;
+- `ExponentialBoundaryPenalty.lower`, `.upper`, and `.strength`;
+- `ReciprocalBoundaryPenalty.lower`, `.upper`, and `.strength`.
+
+Scalars broadcast. Row vectors are positional policy until problem
+construction, require exact length `m`, are defensively owned/read-only, and
+reject matrices, column vectors, non-finite scientific values, or invalid
+Boolean applicability values. A vector-valued model reused with another
+equal-length observation set is a new positional assignment, not proof of
+semantic identity.
+
+Hard applicability is independent of mismatch confidence and active-set
+membership. For an inapplicable hard row there is no feasibility restriction,
+hard-conflict edge, hard-violation classification, or hard-induced structural
+coupling. Hard closed intervals may use `lower == upper` to represent
+equality; this does not relax the existing positive-width requirements of soft
+or boundary penalties. `FixedValue` remains the convenience spelling for an
+equality restriction.
+
+Penalty strength zero remains the mathematical absence mechanism defined by
+ADR 0007 and is removed before numerically dangerous branch evaluation. A
+positive-strength penalty remains structural model coupling even if its value
+happens to vanish at the current iterate.
+
+The following shape/robustness fields remain term-global in the first WP10
+implementation: `HuberLoss.delta`, exponential `margin`/`tau`, and
+reciprocal `margin`/`epsilon`. Their row-wise disposition is a mandatory
+parameter-by-parameter late-Phase-C decision after WP10/WP11 and before
+Checkpoint C. This staging does not permit a temporary scalar-common compiler:
+the bound/compiler architecture must already support row-specific scalar
+objective specifications created by the accepted A+B fields.
+
+### Compilation binds row policy before numerical solving
 
 Each separator coordinate is compiled rowwise through the existing affine
-relation between separator coordinate and the fitted weight difference. Hard
-intervals become weight-difference feasibility bounds. Penalty limits, margins,
-robust-loss scales, and strengths remain expressed in the units of the term's
-declared space; any row-dependent coefficients created by conversion are
-internal mathematical consequences.
+relation between separator coordinate and fitted weight difference. Hard
+intervals become weight-difference feasibility bounds. Penalty parameters
+remain expressed in their term's declared measurement units.
 
-v0.9 does **not** add per-row measurement spaces, per-row robust scales or
-strengths, site anchors, generic observation blocks, prescribed cell measures,
-or separator-plus-measure composition. Public point-centered/symmetric-bound
-convenience is also not a release gate.
+A `FitModel` containing row vectors is an **unbound positional policy** until
+problem construction. Construction binds it to one ordered
+`SeparatorObservations` set and produces one resolved owned row policy. Every
+component solve, active subset, final refit, and later row re-entry must project
+observations and that bound policy through the same ordered selection. The
+candidate policy is retained so re-entering rows recover their original
+configuration.
 
-### Results keep observation views and add explicit effective model-space views
+Binding is model policy, not observation/source identity. Row IDs,
+observation-set fingerprints, and ADR 0014 source binding are unchanged. No
+public model-policy UUID or second identity system is introduced; exact
+association plus invariant checks are sufficient.
+
+The numerical implementation keeps the existing convex scalar objective
+family. A row-specific immutable scalar objective specification may reuse the
+existing scalar evaluator/proximal/certificate machinery. Identical complete
+specifications may share compilation or batching, but caches must include all
+policy that can affect the scalar objective. Rows may not exchange proximal
+solutions merely because targets/confidences/hard endpoints happen to match.
+
+Internal coefficients that become row-dependent solely because one term space
+is converted through a row-specific affine map remain implementation
+consequences rather than new public row parameters. A+B therefore adds
+heterogeneous coefficients inside the existing separable convex model, not a
+new inverse family.
+
+### Results keep observation views and expose resolved model policy
 
 Existing observation-facing fields retain their source-space meaning. In
 particular, `SeparatorFitResult.measurement`, `target`, `predicted`,
@@ -106,21 +162,42 @@ SeparatorFitResult.mismatch_residuals
 ```
 
 `hard_constraint_space` is `None` when no hard-feasibility term exists;
-`penalty_spaces` follows `FitModel.penalties` order. `PowerFitBounds` gains a
-`space` field identifying the effective hard-bound space while retaining its
-measurement-space and weight-difference bound arrays. The existing
+`penalty_spaces` follows `FitModel.penalties` order. `PowerFitBounds` gains
+a `space` field identifying the effective hard-bound space while retaining its
+measurement-space and weight-difference bound arrays. Row-oriented bound arrays
+remain aligned with the ordered observations. When hard policy is configured
+for only some rows, the resolved hard-applicability mask is authoritative:
+entries for inapplicable rows are not effective restrictions and must not be
+interpreted as bounds, converted/classified solely to populate output, or used
+for feasibility/conflict construction. Effective/applied-bound views represent
+absence explicitly rather than by infinite bounds. The existing
 `PowerFitPredictions.measurement` remains the observation-space prediction.
 
+Problems/results must also provide an inspectable read-only resolved-policy
+view sufficient to reconstruct all objective-defining `FitModel` policy:
+mismatch family/parameters, hard kind/applicability/values, the ordered penalty
+families/parameters, and regularization strength/reference semantics.
+Observation-indexed policy is associated with the ordered observation rows and
+is projected through observation subsets. Site-indexed regularization data,
+including an explicitly supplied L2 reference, retain site ordering and are
+not projected through observation masks. Configured policy remains inspectable
+even when mathematically absent, including zero-strength regularization or
+penalties and inapplicable hard rows. The concrete container name may remain
+provisional within WP10, but it must describe the **bound/projected** policy
+rather than only the unresolved input template.
+
 These additions are model/result views; they do not alter observation identity
-or introduce a new public result hierarchy.
+or introduce a second public identity hierarchy.
 
-### Report schema changes explicitly
+### Report schema v2 represents resolved row policy
 
-Because fit-record exact keys change, separator reports move from schema version
-`1` to version `2` when WP10 lands. The schema name remains
-`pyvoro2.inverse.separator.report`.
+Separator reports move from schema version `1` to version `2` when WP10
+lands. The schema name remains `pyvoro2.inverse.separator.report`. The v2
+grammar is intentionally able to represent both uniform and row-varying
+resolved policy so a later accepted C parameter does not require another schema
+generation.
 
-Fit records add exactly:
+Fit records add:
 
 ```text
 mismatch_space
@@ -129,10 +206,12 @@ mismatch_predicted
 mismatch_residual
 ```
 
-while the existing `measurement`, `target`, `predicted`, and `residual` keys
-remain observation-facing. Active per-constraint records add the same four
-keys. Fit report summaries retain `measurement` as observation space and add
-`mismatch_space`. Fit reports also add
+while existing `measurement`, `target`, `predicted`, and `residual`
+remain observation-facing. Active per-constraint records add the same mismatch
+fields. Fit summaries retain `measurement` as observation space and add
+`mismatch_space`.
+
+Fit reports retain an exact effective-space block:
 
 ```text
 model_spaces = {
@@ -142,10 +221,42 @@ model_spaces = {
 }
 ```
 
-using resolved effective spaces rather than unresolved `None` inheritance.
-Nested fit information in the realization-aware report follows the same
-contract. Observation-only row records and the `observation_set` identity block
-do not gain model-space identity.
+and add a resolved `model_policy` block. Observation-indexed scientific
+parameters are associated with `observation_set.row_ids` and are represented
+either as
+
+```json
+{"kind": "uniform", "value": 0.02}
+```
+
+or
+
+```json
+{"kind": "rows", "values": [0.02, 0.05, 0.03]}
+```
+
+with Boolean hard applicability using the same uniform/rows distinction.
+`model_policy` records the complete objective-defining model: mismatch
+family/parameters, configured hard kind/applicability/values, ordered penalty
+kind/parameters, and regularization strength/reference semantics. The staged C
+fields are present from v2's first implementation in their currently uniform
+form so a later accepted row-wise value changes permitted data, not field
+meaning. Site-indexed regularization references retain site ordering rather
+than using the observation-row wrapper. Configured zero-strength penalties or
+regularization and inapplicable hard rows remain recorded rather than being
+erased. Effective absence must not be serialized as infinite bounds.
+
+For the active/self-consistent report, the outer report retains the full
+candidate policy aligned with candidate row IDs. Its nested final fit retains
+the projected selected policy aligned with the nested fit's row IDs. Their
+association must therefore be reconstructible without treating physical pair
+identity or equal row count as a key. History does not repeat the full policy at
+every iteration.
+
+Observation-only records and the `observation_set` identity block remain
+model-independent. Reports with unavailable final weights still retain known
+policy and source/row association while weights-dependent sections remain null
+under ADR 0015.
 
 ### Realization-aware fitting gets one supported high-level facade
 
@@ -183,17 +294,26 @@ advanced `pyvoro2.inverse.separator` surface.
 
 - A model can optimize one separator coordinate while constraining or penalizing
   another without changing observation provenance.
+- Heterogeneous hard, unrestricted, equality-like, and soft-prior rows can be
+  represented in one joint fixed-separator problem without abusing confidence
+  or artificial wide bounds.
+- Scalar model inputs remain valid through broadcasting.
+- Row-bound policy follows component and active subsets atomically with
+  observation rows; removal/re-entry preserves candidate policy.
 - Existing same-space models keep their meaning through `space=None`
   inheritance.
 - Positional constructors do not acquire a silent new positional argument.
 - Result/report consumers can distinguish observation residuals from the values
-  actually used by mismatch evaluation.
-- Report readers receive an explicit schema-version boundary instead of a
-  silent exact-key change.
+  actually used by mismatch evaluation and can inspect resolved row policy.
+- Report readers receive one schema-v2 boundary designed to accommodate a later
+  accepted C parameter without changing record meaning.
+- The fixed problem remains in the existing affine/separable convex solver
+  family; A+B does not authorize generic mixed observation blocks or callbacks.
 - Ordinary realization-aware fitting no longer requires an Experimental import,
   while advanced algorithm controls remain free to evolve before 1.0.
-- ADR 0015 remains the authority for atomic final-state availability and is not
-  redesigned by this promotion.
+- ADR 0015 remains the authority for atomic final-state availability and gains
+  only the requirement that final selected policy be the exact projection of
+  candidate policy.
 
 ## Alternatives considered
 
@@ -210,8 +330,19 @@ form.
 
 ### Add per-row spaces or generic mixed observation blocks now
 
-Rejected. That is broader than the v0.9 separator-stabilization scope and would
-pre-empt the later mixed inverse architecture.
+Rejected. The accepted Phase-C amendment is deliberately narrower: selected
+existing **values/applicability** may vary by observation row, but measurement
+space remains term-global and the model remains one existing separator
+objective family. Per-row spaces or generic mixed blocks would pre-empt the
+later mixed inverse architecture.
+
+### Make every shape/robustness parameter row-wise in the first WP10 pass
+
+Rejected as an initial scope rule. A+B already requires the correct row-bound
+compiler architecture, while the scientific need for each of
+`HuberLoss.delta`, exponential `margin`/`tau`, and reciprocal
+`margin`/`epsilon` is not equally established. Their exact disposition is a
+mandatory late-Phase-C gate after WP10/WP11 and before Checkpoint C.
 
 ### Put realization awareness behind a mode flag on `fit_weights_from_separators`
 

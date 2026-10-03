@@ -123,9 +123,12 @@ The activation boundary is:
   shift meaning are fixed by ADR 0018;
 - ghost `boundary_reference` is **Provisional** public metadata during the soak,
   with its kind/payload invariants fixed by ADR 0018;
-- separator model classes remain **Provisional** advanced API. Their new
-  keyword-only `space` arguments and effective-space result/report views share
-  that classification; observation/source identity remains Stable;
+- separator model classes remain **Provisional** advanced API. Their v0.9
+  keyword-only `space` arguments, bounded scalar-or-row A+B value/applicability
+  inputs, resolved-policy views, and schema-v2 model-policy records share that
+  classification; observation/source identity remains Stable. The first WP10
+  pass keeps Huber/boundary shape parameters term-global, with a mandatory
+  parameter-level disposition after WP10/WP11 and before Checkpoint C;
 - `fit_self_consistent_weights_from_separators` and the preferred-namespace
   `SelfConsistentPowerFitResult` become **Provisional** API in the supported preferred namespace: ordinary
   callers may rely on them without entering an Experimental namespace, but the

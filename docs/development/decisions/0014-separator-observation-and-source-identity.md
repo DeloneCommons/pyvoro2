@@ -61,6 +61,16 @@ parallel rows remain distinct through their shifts. Reordering rows changes the
 set identity. Binding a source later changes neither row IDs nor the
 observation-set fingerprint.
 
+The Phase C row-bound model policy accepted by #104 is deliberately outside
+this identity payload. Hard applicability, hard values, penalty intervals,
+penalty strengths, mismatch policy, and later accepted model-shape parameters
+are model/problem policy, not observation/source identity. Binding such policy
+to an ordered observation set therefore changes neither row IDs nor the
+observation-set/source fingerprints. Subsetting preserves row IDs while the
+problem layer projects bound policy through the same ordered selection.
+Equal row count, equal physical pairs, or matching model values are not a
+replacement association rule for an already bound policy.
+
 Canonical payload fingerprints use one algorithm. Finite floats first
 normalize signed zero and then use `float.hex()`. Arrays become row-major nested
 lists and JSON primitives remain primitives. Serialization uses
