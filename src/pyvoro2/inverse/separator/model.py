@@ -8,7 +8,7 @@ used to fit power weights from those constraints.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from fractions import Fraction
 import numpy as np
 
@@ -17,7 +17,61 @@ from ..._internal.validation import (
     require_finite_real,
     require_nonnegative_finite_real,
     require_positive_finite_real,
+    require_bool,
+    require_bool_mask,
+    require_string_choice,
 )
+
+
+def _own_row_value(value, *, name, boolean=False, nonnegative=False):
+    """Own a scalar or strict 1-D template; length is checked at binding."""
+    if np.ndim(value) == 0:
+        return (require_bool(value, name=name) if boolean else
+                require_nonnegative_finite_real(value, name=name)
+                if nonnegative else require_finite_real(value, name=name))
+    if boolean:
+        original = np.asarray(value, dtype=object)
+        if original.ndim != 1:
+            raise ValueError(f'{name} must be a scalar or 1D vector')
+        return require_bool_mask(value, name=name, length=original.size)
+    array = coerce_finite_1d_array(value, name=name)
+    if nonnegative and np.any(array < 0.):
+        raise ValueError(f'{name} must be non-negative')
+    return owned_readonly_array(array, dtype=np.float64)
+
+
+def _validate_term(term, names, *, hard=False):
+    space = (None if term.space is None else require_string_choice(
+        term.space, name=f'{type(term).__name__}.space',
+        choices=('fraction', 'position'),
+    ))
+    object.__setattr__(term, 'space', space)
+    if hard:
+        names = (*names, 'applicable')
+    lengths = set()
+    for name in names:
+        value = _own_row_value(
+            getattr(term, name), name=f'{type(term).__name__}.{name}',
+            boolean=name == 'applicable', nonnegative=name == 'strength',
+        )
+        object.__setattr__(term, name, value)
+        if isinstance(value, np.ndarray):
+            lengths.add(value.size)
+    if len(lengths) > 1:
+        raise ValueError('row parameters must have compatible vector lengths')
+    if 'lower' in names:
+        lower, upper = np.broadcast_arrays(term.lower, term.upper)
+        if np.any(upper < lower if hard else upper <= lower):
+            relation = 'upper >= lower' if hard else 'upper > lower'
+            raise ValueError(f'{type(term).__name__} requires {relation}')
+
+
+def _validate_boundary_width(term):
+    lower, upper = np.broadcast_arrays(term.lower, term.upper)
+    margin = Fraction.from_float(term.margin)
+    if any(2 * margin > Fraction.from_float(float(u)) -
+           Fraction.from_float(float(l)) for l, u in zip(lower.flat, upper.flat)):
+        raise ValueError(f'{type(term).__name__} margin is too large')
 
 
 class ScalarMismatch:
@@ -27,6 +81,11 @@ class ScalarMismatch:
 @dataclass(frozen=True, slots=True)
 class SquaredLoss(ScalarMismatch):
     """Quadratic mismatch loss ``0.5 * (predicted - target)**2``."""
+
+    space: str | None = field(default=None, kw_only=True)
+
+    def __post_init__(self) -> None:
+        _validate_term(self, ())
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,8 +98,10 @@ class HuberLoss(ScalarMismatch):
     """
 
     delta: float = 1.0
+    space: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
+        _validate_term(self, ())
         delta = require_positive_finite_real(
             self.delta,
             name='HuberLoss.delta',
@@ -58,14 +119,11 @@ class Interval(HardConstraint):
 
     lower: float
     upper: float
+    applicable: bool | np.ndarray = field(default=True, kw_only=True)
+    space: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
-        lower = require_finite_real(self.lower, name='Interval.lower')
-        upper = require_finite_real(self.upper, name='Interval.upper')
-        if not upper > lower:
-            raise ValueError('Interval requires upper > lower')
-        object.__setattr__(self, 'lower', lower)
-        object.__setattr__(self, 'upper', upper)
+        _validate_term(self, ('lower', 'upper'), hard=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,10 +131,11 @@ class FixedValue(HardConstraint):
     """Hard equality restriction in the chosen measurement space."""
 
     value: float
+    applicable: bool | np.ndarray = field(default=True, kw_only=True)
+    space: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
-        value = require_finite_real(self.value, name='FixedValue.value')
-        object.__setattr__(self, 'value', value)
+        _validate_term(self, ('value',), hard=True)
 
 
 class ScalarPenalty:
@@ -94,25 +153,10 @@ class SoftIntervalPenalty(ScalarPenalty):
     lower: float
     upper: float
     strength: float
+    space: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
-        lower = require_finite_real(
-            self.lower,
-            name='SoftIntervalPenalty.lower',
-        )
-        upper = require_finite_real(
-            self.upper,
-            name='SoftIntervalPenalty.upper',
-        )
-        strength = require_nonnegative_finite_real(
-            self.strength,
-            name='SoftIntervalPenalty.strength',
-        )
-        if not upper > lower:
-            raise ValueError('SoftIntervalPenalty requires upper > lower')
-        object.__setattr__(self, 'lower', lower)
-        object.__setattr__(self, 'upper', upper)
-        object.__setattr__(self, 'strength', strength)
+        _validate_term(self, ('lower', 'upper', 'strength'))
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,40 +173,21 @@ class ExponentialBoundaryPenalty(ScalarPenalty):
     margin: float = 0.02
     strength: float = 1.0
     tau: float = 0.01
+    space: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
-        lower_value = require_finite_real(
-            self.lower,
-            name='ExponentialBoundaryPenalty.lower',
-        )
-        upper_value = require_finite_real(
-            self.upper,
-            name='ExponentialBoundaryPenalty.upper',
-        )
+        _validate_term(self, ('lower', 'upper', 'strength'))
         margin_value = require_nonnegative_finite_real(
             self.margin,
             name='ExponentialBoundaryPenalty.margin',
-        )
-        strength_value = require_nonnegative_finite_real(
-            self.strength,
-            name='ExponentialBoundaryPenalty.strength',
         )
         tau_value = require_positive_finite_real(
             self.tau,
             name='ExponentialBoundaryPenalty.tau',
         )
-        if not upper_value > lower_value:
-            raise ValueError('ExponentialBoundaryPenalty requires upper > lower')
-        lower = Fraction.from_float(lower_value)
-        upper = Fraction.from_float(upper_value)
-        margin = Fraction.from_float(margin_value)
-        if lower + margin > upper - margin:
-            raise ValueError('ExponentialBoundaryPenalty margin is too large')
-        object.__setattr__(self, 'lower', lower_value)
-        object.__setattr__(self, 'upper', upper_value)
         object.__setattr__(self, 'margin', margin_value)
-        object.__setattr__(self, 'strength', strength_value)
         object.__setattr__(self, 'tau', tau_value)
+        _validate_boundary_width(self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,43 +207,25 @@ class ReciprocalBoundaryPenalty(ScalarPenalty):
     margin: float = 0.05
     strength: float = 1.0
     epsilon: float = 1e-6
+    space: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
-        lower = require_finite_real(
-            self.lower,
-            name='ReciprocalBoundaryPenalty.lower',
-        )
-        upper = require_finite_real(
-            self.upper,
-            name='ReciprocalBoundaryPenalty.upper',
-        )
+        _validate_term(self, ('lower', 'upper', 'strength'))
         margin = require_positive_finite_real(
             self.margin,
             name='ReciprocalBoundaryPenalty.margin',
-        )
-        strength = require_nonnegative_finite_real(
-            self.strength,
-            name='ReciprocalBoundaryPenalty.strength',
         )
         epsilon = require_positive_finite_real(
             self.epsilon,
             name='ReciprocalBoundaryPenalty.epsilon',
         )
-        if not upper > lower:
-            raise ValueError('ReciprocalBoundaryPenalty requires upper > lower')
         if not 0.0 < epsilon < margin:
             raise ValueError(
                 'ReciprocalBoundaryPenalty requires 0 < epsilon < margin'
             )
-        if 2 * Fraction.from_float(margin) > (
-            Fraction.from_float(upper) - Fraction.from_float(lower)
-        ):
-            raise ValueError('ReciprocalBoundaryPenalty margin is too large')
-        object.__setattr__(self, 'lower', lower)
-        object.__setattr__(self, 'upper', upper)
         object.__setattr__(self, 'margin', margin)
-        object.__setattr__(self, 'strength', strength)
         object.__setattr__(self, 'epsilon', epsilon)
+        _validate_boundary_width(self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -288,3 +295,20 @@ class FitModel:
             raise ValueError(
                 'FitModel.regularization must be an L2Regularization instance'
             )
+
+
+def _term_getstate(term):
+    return [getattr(term, item.name) for item in fields(term)]
+
+
+def _term_setstate(term, state):
+    for item, value in zip(fields(term), state):
+        object.__setattr__(term, item.name, value)
+    term.__post_init__()
+
+
+for _term_type in (SquaredLoss, HuberLoss, Interval, FixedValue,
+                   SoftIntervalPenalty, ExponentialBoundaryPenalty,
+                   ReciprocalBoundaryPenalty, L2Regularization):
+    _term_type.__getstate__ = _term_getstate
+    _term_type.__setstate__ = _term_setstate
