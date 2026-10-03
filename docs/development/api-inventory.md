@@ -100,7 +100,7 @@ adopts a backend-fork policy.
 | Weight-first `locate`; complete weight/radius `ghost_cells` families | Stable — implemented by WP1 | Same mathematical-weight versus backend-radius representation model as stable weight-first `compute`. |
 | New `PeriodicCell` user-coordinate/wrap helpers | Provisional — implemented by WP2 | Public convenience names may receive soak feedback; exact wrap-shift authority and reconstruction equations are fixed by ADR 0018. |
 | New periodic query/owner/ghost metadata and `boundary_reference` | Provisional | Implemented WP7/WP8 schema and failure protocols below; user-basis image meaning and kind/payload invariants are fixed. |
-| Separator objective/constraint/penalty `space` selectors and effective-space views | Provisional | Advanced model objects remain provisional; observation/source identity remains stable. |
+| Separator objective/constraint/penalty `space` selectors, bounded A+B row policy, and effective model-policy views | Provisional | Advanced model objects remain provisional; row policy does not change stable observation/source identity. |
 | `fit_self_consistent_weights_from_separators` and preferred-namespace `SelfConsistentPowerFitResult` | Provisional | Supported normal public workflow during v0.9.x soak; no Experimental import is required. |
 | Advanced active-set options/path/history and `solve_self_consistent_power_weights` | Experimental | Remain under `pyvoro2.inverse.separator`; not promoted by WP11. |
 | `ghost_radius` | Removed — implemented by WP1 | Immediate pre-1.0 removal; no deprecated alias period. |
