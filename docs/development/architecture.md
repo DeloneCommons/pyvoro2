@@ -1108,6 +1108,63 @@ explicit image-qualified records and do not reconstruct provenance.
 Diagnostic/normalization tolerances, separator `image_search`, output selectors,
 native tuning and private proof limits retain their independent responsibilities.
 
+### Future candidate: incidence-first global topology reconstruction
+
+Checkpoint B now freezes the v0.9 normalization contract around preserved
+native occurrence history, exact E/S audit layers, conservative numerical
+normalization, and narrowly proof-assisted planar identities. That contract is
+deliberately bounded: the current normalizers remain post-processing views over
+native cell-local output rather than a universal exact semantic complex.
+
+A later redesign candidate should evaluate the opposite construction order:
+start from native local cell complexes and their certified reciprocal boundary
+ownership, then construct the global quotient from proved attaching relations.
+A candidate pipeline is:
+
+```text
+native local cell complexes + provenance
+        |
+        v
+proof-backed local semantic dimensional reduction
+        |
+        v
+reciprocal face/edge attaching relations
+        |
+        v
+incidence-propagated equivalence classes
+        |
+        v
+global quotient V/E/F/C complex
+        |
+        v
+coordinate/lift post-qualification and numerical representatives
+```
+
+The local reduction stage must remain dimension-aware. A retained native planar
+edge may be proved to represent a point, while in 3D a lower-dimensional face
+contact can represent a ridge with two distinct endpoints. Zero measure
+therefore never supplies a generic merge rule. Native occurrence history
+remains separately inspectable even when a proved semantic relation is used to
+construct the quotient.
+
+Reciprocal boundary ownership/image metadata should provide the primary
+attaching maps. Once a boundary correspondence is proved, incidence can
+establish or check corresponding lower-dimensional objects across neighboring
+cells. Coordinates then become a geometric consistency and presentation layer
+rather than the source of combinatorial identity. Numerical representative
+selection should occur only after the combinatorial class is established and
+should retain residual/consistency diagnostics.
+
+This candidate does **not** reopen the accepted Checkpoint-B contract and is not
+part of Phase C. Complete WP10-WP13 first. During the subsequent maintainer
+whole-code comprehension reread and architecture reconciliation, reassess the
+candidate against the actual complete implementation. The following independent
+technical audit can then decide whether any part deserves explicit pre-release
+remediation or should remain later backlog work. Only at that point should the
+project decide whether a stronger complex replaces `normalize_topology`,
+coexists as a certified topology object, or remains an internal construction
+layer. No current public API or release guarantee follows from this section.
+
 ### Remaining v0.9 stabilization
 
 The normal "points + separator observations -> fitted weighted tessellation"
