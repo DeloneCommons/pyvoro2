@@ -19,7 +19,6 @@ from ..._internal.weight_transforms import validate_weight_representation_option
 
 from ._objective import (
     _active_scalar_penalties,
-    _hard_accepted_measurement_bounds,
     _hard_row_status,
     _l2_value,
     _mismatch_values_from_affine,
@@ -62,9 +61,13 @@ from .constraints import (
 )
 from ._identity import _bind_fitting_source, _bind_originating_observations
 from .model import FitModel, HuberLoss, SquaredLoss
+from ._policy import _bind_result_policy, _row_model
 from .problem import (
     _compute_edge_diagnostics,
     _connected_components,
+    _hard_prox_bounds,
+    _measurement_geometry,
+    _penalty_affines,
     _NonFiniteOptimalObjectiveError,
     _requires_admm,
     _soft_objective_is_finite,
@@ -148,7 +151,8 @@ def _numerical_failure_result(
         ),
         objective_breakdown=None,
     )
-    return _bind_originating_observations(result, constraints)
+    _bind_originating_observations(result, constraints)
+    return _bind_result_policy(result, problem._bound_policy)
 
 
 def _certify_final_quadratic_weights(
@@ -237,7 +241,7 @@ def _certify_final_quadratic_weights(
                 jj,
                 problem.alpha[mask],
                 problem.beta[mask],
-                problem.measurement_target[mask],
+                problem.mismatch_target[mask],
                 constraints.confidence[mask],
                 problem.regularization_reference[idx_nodes],
                 problem.regularization_strength,
@@ -462,15 +466,9 @@ def _fit_power_weights_resolved(
         _require_scipy_sparse()
 
     problem = build_power_fit_problem(constraints, model=model)
-    accepted_hard_bounds = None
-    if (
-        problem.bounds.measurement_lower is not None
-        and problem.bounds.measurement_upper is not None
-    ):
-        accepted_hard_bounds = _hard_accepted_measurement_bounds(
-            problem.bounds.measurement_lower,
-            problem.bounds.measurement_upper,
-        )
+    accepted_hard_bounds = _hard_prox_bounds(problem)
+    hard_geometry = (None if accepted_hard_bounds is None else
+                     _measurement_geometry(constraints, problem.hard_constraint_space))
     lam = float(problem.regularization_strength)
     reference = (
         None
@@ -527,7 +525,8 @@ def _fit_power_weights_resolved(
             ),
             objective_breakdown=None,
         )
-        return _bind_originating_observations(result, constraints)
+        _bind_originating_observations(result, constraints)
+        return _bind_result_policy(result, problem._bound_policy)
 
     if m == 0:
         if lam > 0.0:
@@ -617,7 +616,7 @@ def _fit_power_weights_resolved(
             )
             alpha_c = problem.alpha[mask]
             beta_c = problem.beta[mask]
-            target_c = problem.measurement_target[mask]
+            target_c = problem.mismatch_target[mask]
             conf_c = constraints.confidence[mask]
             w0_c = problem.regularization_reference[idx_nodes]
             required_mean = None
@@ -646,6 +645,12 @@ def _fit_power_weights_resolved(
             else:
                 solver_ran = True
                 try:
+                    component_policy = problem._bound_policy.project(mask)
+                    prox_specs = (_compile_row_prox_specs(
+                        component_policy.model, int(np.count_nonzero(mask)),
+                        penalty_affines=_penalty_affines(component_policy),
+                    ) if _active_scalar_penalties(component_policy.model.penalties)
+                        else None)
                     w_c, iters, conv = _solve_component_admm(
                         ii,
                         jj,
@@ -654,7 +659,7 @@ def _fit_power_weights_resolved(
                         target_c,
                         conf_c,
                         w0_c,
-                        model=model,
+                        model=component_policy.model,
                         lambda_regularize=lam,
                         backend=linear_backend,
                         required_mean=required_mean,
@@ -664,12 +669,12 @@ def _fit_power_weights_resolved(
                         tol_rel=admm_rel_tol,
                         y_lo=(
                             None
-                            if problem.bounds.measurement_lower is None
+                            if accepted_hard_bounds is None
                             else problem.bounds.measurement_lower[mask]
                         ),
                         y_hi=(
                             None
-                            if problem.bounds.measurement_upper is None
+                            if accepted_hard_bounds is None
                             else problem.bounds.measurement_upper[mask]
                         ),
                         accepted_y_lo=(
@@ -683,6 +688,12 @@ def _fit_power_weights_resolved(
                             else accepted_hard_bounds[1][mask]
                         ),
                         row_indices=np.flatnonzero(mask),
+                        prox_specs=prox_specs,
+                        hard_mask=problem.bounds.applicable[mask],
+                        hard_alpha=(None if hard_geometry is None
+                                    else hard_geometry.alpha[mask]),
+                        hard_beta=(None if hard_geometry is None
+                                   else hard_geometry.beta[mask]),
                     )
                 except _IterativeNumericalFailure as exc:
                     n_iter_max = max(n_iter_max, exc.n_iter)
@@ -744,6 +755,7 @@ def _fit_power_weights_resolved(
         QuadraticNumericalError,
         _NumericalFailure,
         _NonFiniteOptimalObjectiveError,
+        ValueError,
     ) as exc:
         return _numerical_failure_result(
             problem,
@@ -951,6 +963,10 @@ def _solve_component_admm(
     accepted_y_lo: np.ndarray | None,
     accepted_y_hi: np.ndarray | None,
     row_indices: np.ndarray,
+    prox_specs: tuple[_ScalarProxSpec, ...] | None = None,
+    hard_mask: np.ndarray | None = None,
+    hard_alpha: np.ndarray | None = None,
+    hard_beta: np.ndarray | None = None,
 ) -> tuple[np.ndarray, int, bool]:
     n_c = int(np.max(np.maximum(I, J))) + 1
     m_c = I.shape[0]
@@ -1027,10 +1043,10 @@ def _solve_component_admm(
     converged = False
     iteration = 0
     completed_iterations = 0
-    prox_spec = None
-    if _active_scalar_penalties(model.penalties):
+    prox_spec = prox_specs
+    if prox_spec is None and _active_scalar_penalties(model.penalties):
         try:
-            prox_spec = _compile_scalar_prox_spec(model)
+            prox_spec = _compile_row_prox_specs(model, m_c)
         except (TypeError, ValueError) as exc:
             raise _NumericalFailure(
                 f'invalid compiled scalar proximal objective: {exc}'
@@ -1144,12 +1160,20 @@ def _solve_component_admm(
 
             hard_satisfied = True
             if hard_lower is not None and hard_upper is not None:
+                applicable = (np.ones(m_c, dtype=bool) if hard_mask is None
+                              else hard_mask)
+                hard_predicted = predicted_y[applicable]
+                if hard_alpha is not None:
+                    hard_predicted = _stable_affine_difference(
+                        hard_beta[applicable], hard_alpha[applicable],
+                        w[I[applicable]], w[J[applicable]],
+                    )
                 hard_satisfied = bool(
                     np.all(
                         _hard_row_status(
-                            hard_lower,
-                            predicted_y,
-                            hard_upper,
+                            hard_lower[applicable],
+                            hard_predicted,
+                            hard_upper[applicable],
                         )[0]
                     )
                 )
@@ -1252,6 +1276,33 @@ def _prox_measurement_mismatch_only(
     raise TypeError(f'unsupported mismatch: {type(mismatch)!r}')
 
 
+def _compile_row_prox_specs(model, count, *, penalty_affines=None):
+    from dataclasses import fields
+    terms = (model.feasible, *model.penalties)
+    has_rows = False
+    for term in terms:
+        if term is None:
+            continue
+        for item in fields(term):
+            value = getattr(term, item.name)
+            if isinstance(value, np.ndarray):
+                if value.shape != (count,):
+                    raise ValueError('scalar proximal policy row length mismatch')
+                has_rows = True
+    if not has_rows and penalty_affines is None:
+        return (_compile_scalar_prox_spec(model),) * count
+    compiled = {}
+    result = []
+    for index in range(count):
+        row = _row_model(model, index) if has_rows else model
+        affines = None if penalty_affines is None else penalty_affines[index]
+        key = (row.mismatch, row.penalties, affines)
+        if key not in compiled:
+            compiled[key] = _compile_scalar_prox_spec(row, penalty_affines=affines)
+        result.append(compiled[key])
+    return tuple(result)
+
+
 def _prox_measurement_objective(
     v: np.ndarray,
     target: np.ndarray,
@@ -1261,126 +1312,72 @@ def _prox_measurement_objective(
     rho: float,
     y_lo: np.ndarray | None,
     y_hi: np.ndarray | None,
-    spec: _ScalarProxSpec | None = None,
+    spec: _ScalarProxSpec | tuple[_ScalarProxSpec, ...] | None = None,
     row_indices: np.ndarray | None = None,
 ) -> np.ndarray:
-    y = _prox_measurement_mismatch_only(
-        v,
-        target,
-        confidence,
-        model.mismatch,
-        rho,
-    )
+    y = _prox_measurement_mismatch_only(v, target, confidence, model.mismatch, rho)
     if y_lo is not None:
         y = np.maximum(y, y_lo)
     if y_hi is not None:
         y = np.minimum(y, y_hi)
-    active_penalties = _active_scalar_penalties(model.penalties)
-    if not active_penalties:
+    if not _active_scalar_penalties(model.penalties):
         return y
     if spec is None:
         try:
-            spec = _compile_scalar_prox_spec(model)
+            specs = _compile_row_prox_specs(model, y.size)
         except (TypeError, ValueError) as exc:
             raise _NumericalFailure(
-                f'invalid compiled scalar proximal objective: {exc}'
-            ) from exc
-    original_rows = (
-        np.arange(y.shape[0], dtype=np.int64)
-        if row_indices is None
-        else np.asarray(row_indices, dtype=np.int64)
-    )
+                f'invalid compiled scalar proximal objective: {exc}') from exc
+    else:
+        specs = (spec,) * y.size if isinstance(spec, _ScalarProxSpec) else tuple(spec)
+    if len(specs) != y.size:
+        raise _NumericalFailure('scalar proximal policy row length mismatch')
+    original_rows = (np.arange(y.size, dtype=np.int64) if row_indices is None
+                     else np.asarray(row_indices, dtype=np.int64))
     if original_rows.shape != y.shape:
         raise _NumericalFailure('scalar proximal row metadata shape mismatch')
+    lower = np.full(y.shape, -np.inf) if y_lo is None else np.asarray(y_lo)
+    upper = np.full(y.shape, np.inf) if y_hi is None else np.asarray(y_hi)
 
+    def coordinate_key(index):
+        return (specs[index], float(rho), float(target[index]),
+                float(confidence[index]), float(v[index]),
+                float(lower[index]), float(upper[index]))
+
+    groups = {}
+    for index, row_spec in enumerate(specs):
+        if not _penalties_inactive_at(row_spec, float(y[index])):
+            groups.setdefault(row_spec, []).append(index)
     batch_certified = np.zeros(y.shape, dtype=bool)
-    needs_general = np.fromiter(
-        (
-            not _penalties_inactive_at(spec, float(candidate))
-            for candidate in y
-        ),
-        dtype=bool,
-        count=y.shape[0],
-    )
-    general_indices = np.flatnonzero(needs_general)
-    general_keys = {
-        (
-            float(target[index]),
-            float(confidence[index]),
-            float(v[index]),
-            float('-inf') if y_lo is None else float(y_lo[index]),
-            float('inf') if y_hi is None else float(y_hi[index]),
-        )
-        for index in general_indices
-    }
-    if len(general_keys) >= 8 and _batch_spec_supported(spec):
-        batch_lower = (
-            np.full(general_indices.size, -np.inf, dtype=np.float64)
-            if y_lo is None
-            else np.asarray(y_lo[general_indices], dtype=np.float64)
-        )
-        batch_upper = (
-            np.full(general_indices.size, np.inf, dtype=np.float64)
-            if y_hi is None
-            else np.asarray(y_hi[general_indices], dtype=np.float64)
-        )
-        batch_outcome = _solve_scalar_prox_batch_ordinary(
-            spec=spec,
-            initial=y[general_indices],
-            target=target[general_indices],
-            confidence=confidence[general_indices],
-            v=v[general_indices],
-            rho=float(rho),
-            lower=batch_lower,
-            upper=batch_upper,
-        )
-        for batch_index, result in enumerate(batch_outcome.results):
-            if result is None:
-                continue
-            local_index = int(general_indices[batch_index])
-            y[local_index] = result.value
-            batch_certified[local_index] = True
-
-    coordinate_cache: dict[
-        tuple[float, float, float, float, float],
-        float,
-    ] = {}
-    for local_index in range(y.shape[0]):
-        if batch_certified[local_index]:
+    for row_spec, members in groups.items():
+        indices = np.asarray(members, dtype=np.int64)
+        keys = {coordinate_key(index) for index in indices}
+        if len(keys) < 8 or not _batch_spec_supported(row_spec):
             continue
-        candidate = float(y[local_index])
-        if _penalties_inactive_at(spec, candidate):
+        outcome = _solve_scalar_prox_batch_ordinary(
+            spec=row_spec, initial=y[indices], target=target[indices],
+            confidence=confidence[indices], v=v[indices], rho=float(rho),
+            lower=lower[indices], upper=upper[indices],
+        )
+        for index, result in zip(indices, outcome.results):
+            if result is not None:
+                y[index] = result.value
+                batch_certified[index] = True
+    cache = {}
+    for local_index, row_spec in enumerate(specs):
+        if (batch_certified[local_index]
+                or _penalties_inactive_at(row_spec, float(y[local_index]))):
             continue
-        lower = (
-            float('-inf')
-            if y_lo is None
-            else float(y_lo[local_index])
-        )
-        upper = (
-            float('inf')
-            if y_hi is None
-            else float(y_hi[local_index])
-        )
-        cache_key = (
-            float(target[local_index]),
-            float(confidence[local_index]),
-            float(v[local_index]),
-            lower,
-            upper,
-        )
-        cached = coordinate_cache.get(cache_key)
-        if cached is not None:
-            y[local_index] = cached
+        key = coordinate_key(local_index)
+        if key in cache:
+            y[local_index] = cache[key]
             continue
         try:
             result = _solve_scalar_prox_coordinate(
-                spec=spec,
-                target=float(target[local_index]),
-                confidence=float(confidence[local_index]),
-                v=float(v[local_index]),
-                rho=float(rho),
-                lower=lower,
-                upper=upper,
+                spec=row_spec, target=float(target[local_index]),
+                confidence=float(confidence[local_index]), v=float(v[local_index]),
+                rho=float(rho), lower=float(lower[local_index]),
+                upper=float(upper[local_index]),
             )
         except _ScalarProxError as exc:
             failure = exc.failure
@@ -1388,18 +1385,17 @@ def _prox_measurement_objective(
                 'scalar proximal failure for observation row '
                 f'{int(original_rows[local_index])} '
                 f'(component-local row {local_index}): '
-                f'reason={failure.reason}; scalar_iterations='
-                f'{failure.scalar_iterations}; expansions='
-                f'{failure.expansion_count}; last_candidate='
-                f'{failure.last_candidate!r}; last_finite_bracket='
-                f'{failure.last_finite_bracket!r}; '
-                f'last_derivative_enclosure='
-                f'{failure.last_derivative_enclosure!r}; '
+                f'reason={failure.reason}; '
+                f'scalar_iterations={failure.scalar_iterations}; '
+                f'expansions={failure.expansion_count}; '
+                f'last_candidate={failure.last_candidate!r}; '
+                f'last_finite_bracket={failure.last_finite_bracket!r}; '
+                f'last_derivative_enclosure={failure.last_derivative_enclosure!r}; '
                 f'localization_bound={failure.localization_bound!r}; '
                 f'fallback_count={failure.fallback_count}'
             ) from exc
         y[local_index] = result.value
-        coordinate_cache[cache_key] = result.value
+        cache[key] = result.value
     return y
 
 

@@ -272,11 +272,15 @@ class _DerivativeEvaluation:
         )
 
 
-def _compile_scalar_prox_spec(model: FitModel) -> _ScalarProxSpec:
+def _compile_scalar_prox_spec(
+    model: FitModel, *, penalty_affines=None,
+) -> _ScalarProxSpec:
     """Compile one model for repeated coordinate solves."""
 
     return _ScalarProxSpec(
-        objective=_compile_scalar_objective(model.mismatch, model.penalties)
+        objective=_compile_scalar_objective(
+            model.mismatch, model.penalties, penalty_affines=penalty_affines,
+        )
     )
 
 
@@ -917,7 +921,8 @@ def _penalties_inactive_at(spec: _ScalarProxSpec, value: float) -> bool:
         if penalty.kind == 'exponential':
             return False
         if penalty.kind == 'soft':
-            if not penalty.lower_value <= y <= penalty.upper_value:
+            if not (y >= penalty.lower_location.above
+                    and y <= penalty.upper_location.below):
                 return False
             continue
         assert penalty.lower_margin is not None

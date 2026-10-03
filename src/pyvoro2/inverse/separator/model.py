@@ -69,8 +69,8 @@ def _validate_term(term, names, *, hard=False):
 def _validate_boundary_width(term):
     lower, upper = np.broadcast_arrays(term.lower, term.upper)
     margin = Fraction.from_float(term.margin)
-    if any(2 * margin > Fraction.from_float(float(u)) -
-           Fraction.from_float(float(l)) for l, u in zip(lower.flat, upper.flat)):
+    if any(2 * margin > Fraction.from_float(float(hi)) -
+           Fraction.from_float(float(lo)) for lo, hi in zip(lower.flat, upper.flat)):
         raise ValueError(f'{type(term).__name__} margin is too large')
 
 
@@ -117,8 +117,8 @@ class HardConstraint:
 class Interval(HardConstraint):
     """Hard interval restriction in the chosen measurement space."""
 
-    lower: float
-    upper: float
+    lower: float | np.ndarray
+    upper: float | np.ndarray
     applicable: bool | np.ndarray = field(default=True, kw_only=True)
     space: str | None = field(default=None, kw_only=True)
 
@@ -130,7 +130,7 @@ class Interval(HardConstraint):
 class FixedValue(HardConstraint):
     """Hard equality restriction in the chosen measurement space."""
 
-    value: float
+    value: float | np.ndarray
     applicable: bool | np.ndarray = field(default=True, kw_only=True)
     space: str | None = field(default=None, kw_only=True)
 
@@ -150,9 +150,9 @@ class SoftIntervalPenalty(ScalarPenalty):
     ``strength * (max(lower - y, 0)**2 + max(y - upper, 0)**2)``.
     """
 
-    lower: float
-    upper: float
-    strength: float
+    lower: float | np.ndarray
+    upper: float | np.ndarray
+    strength: float | np.ndarray
     space: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
@@ -168,10 +168,10 @@ class ExponentialBoundaryPenalty(ScalarPenalty):
     + exp((y - (upper - margin)) / tau)``.
     """
 
-    lower: float = 0.0
-    upper: float = 1.0
+    lower: float | np.ndarray = 0.0
+    upper: float | np.ndarray = 1.0
     margin: float = 0.02
-    strength: float = 1.0
+    strength: float | np.ndarray = 1.0
     tau: float = 0.01
     space: str | None = field(default=None, kw_only=True)
 
@@ -202,10 +202,10 @@ class ReciprocalBoundaryPenalty(ScalarPenalty):
     contribution is zero at and beyond ``margin``.
     """
 
-    lower: float = 0.0
-    upper: float = 1.0
+    lower: float | np.ndarray = 0.0
+    upper: float | np.ndarray = 1.0
     margin: float = 0.05
-    strength: float = 1.0
+    strength: float | np.ndarray = 1.0
     epsilon: float = 1e-6
     space: str | None = field(default=None, kw_only=True)
 

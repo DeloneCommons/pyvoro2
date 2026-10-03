@@ -98,7 +98,9 @@ def test_binding_projects_by_order_and_never_projects_site_reference():
     assert selected.view['model_policy']['hard_constraint']['parameters']['lower'] == {
         'kind': 'rows', 'values': (.2, 0.),
     }
-    assert policy.project([]).view['model_policy']['penalties'][0]['parameters']['strength'] == {
+    empty_term = policy.project([]).view['model_policy']['penalties'][0]
+    empty_parameters = empty_term['parameters']
+    assert empty_parameters['strength'] == {
         'kind': 'rows', 'values': (),
     }
     assert selected.view['row_ids'] == tuple(
@@ -110,4 +112,3 @@ def test_binding_projects_by_order_and_never_projects_site_reference():
         _bind_policy(observations, replace(model, feasible=Interval([0.], 1.)))
     with pytest.raises(ValueError):
         Interval([0., .1], [1., 1., 1.])
-

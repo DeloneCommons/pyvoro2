@@ -9,6 +9,7 @@ import numpy as np
 
 from ..._internal.validation import (
     require_bool,
+    require_bool_mask,
     require_optional_string,
     require_string,
     require_string_choice,
@@ -21,10 +22,12 @@ from .constraints import (
 )
 from ._identity import (
     _ObservationBindingInit,
-    _ObservationBoundResult,
     _originating_observations,
     _require_observation_association,
     _row_ids,
+)
+from ._policy import (
+    _BoundPolicy, _PolicyBindingInit, _PolicyResultStorage, _bind_result_policy,
 )
 
 
@@ -134,8 +137,22 @@ class PowerFitBounds:
     measurement_upper: np.ndarray | None
     difference_lower: np.ndarray | None
     difference_upper: np.ndarray | None
+    _: KW_ONLY
+    space: str | None = None
+    applicable: np.ndarray | None = None
 
     def __post_init__(self) -> None:
+        if self.space is not None:
+            object.__setattr__(self, 'space', require_string_choice(
+                self.space, name='bounds.space', choices=('fraction', 'position'),
+            ))
+        if self.applicable is not None:
+            count = (len(self.measurement_lower) if self.measurement_lower is not None
+                     else len(self.applicable))
+            object.__setattr__(self, 'applicable', require_bool_mask(
+                self.applicable, name='bounds.applicable',
+                length=count,
+            ))
         object.__setattr__(
             self,
             'measurement_lower',
@@ -156,6 +173,25 @@ class PowerFitBounds:
             'difference_upper',
             _readonly_array(self.difference_upper, dtype=np.float64),
         )
+
+
+def _bounds_getstate(bounds):
+    return [getattr(bounds, item.name) for item in fields(bounds)]
+
+
+def _bounds_setstate(bounds, state):
+    values = list(state)
+    if len(values) == 4:
+        values.extend((None, None))
+    if len(values) != len(fields(bounds)):
+        raise ValueError('invalid PowerFitBounds reconstruction state')
+    for item, value in zip(fields(bounds), values):
+        object.__setattr__(bounds, item.name, value)
+    bounds.__post_init__()
+
+
+PowerFitBounds.__getstate__ = _bounds_getstate
+PowerFitBounds.__setstate__ = _bounds_setstate
 
 
 @dataclass(frozen=True, slots=True)
@@ -437,7 +473,7 @@ class SeparatorSolverTerminationView:
 
 
 @dataclass(frozen=True, slots=True)
-class SeparatorFitResult(_ObservationBoundResult):
+class SeparatorFitResult(_PolicyResultStorage):
     """Result of fitting power weights from separator observations."""
 
     status: str
@@ -468,10 +504,12 @@ class SeparatorFitResult(_ObservationBoundResult):
     _originating_observations_init: InitVar[
         SeparatorObservations | None
     ] = _ObservationBindingInit()
+    _bound_policy_init: InitVar[_BoundPolicy | None] = _PolicyBindingInit()
 
     def __post_init__(
         self,
         _originating_observations_init: SeparatorObservations | None,
+        _bound_policy_init: _BoundPolicy | None,
     ) -> None:
         object.__setattr__(
             self,
@@ -516,6 +554,8 @@ class SeparatorFitResult(_ObservationBoundResult):
                 '_originating_observations',
                 _originating_observations_init,
             )
+        if _bound_policy_init is not None:
+            _bind_result_policy(self, _bound_policy_init)
 
     @property
     def is_optimal(self) -> bool:
@@ -693,6 +733,13 @@ class SeparatorFitResult(_ObservationBoundResult):
             context='fit result records',
         )
         self.observation_view(constraints)
+        policy = self._require_policy()
+        _require_observation_association(
+            originating, policy.observations, context='fit result model policy',
+        )
+        mismatch_target = self.mismatch_target
+        mismatch_predicted = self.mismatch_predicted
+        mismatch_residuals = self.mismatch_residuals
         left, right = constraints.pair_labels(use_ids=use_ids_value)
         from .problem import _edge_diagnostics_for_result
 
@@ -711,6 +758,16 @@ class SeparatorFitResult(_ObservationBoundResult):
                     'site_j': site_j,
                     'shift': tuple(int(v) for v in constraints.shifts[k]),
                     'measurement': self.measurement,
+                    'mismatch_space': self.mismatch_space,
+                    'mismatch_target': float(mismatch_target[k]),
+                    'mismatch_predicted': (
+                        None if mismatch_predicted is None else float(
+                            mismatch_predicted[k])
+                    ),
+                    'mismatch_residual': (
+                        None if mismatch_residuals is None else float(
+                            mismatch_residuals[k])
+                    ),
                     'target': float(self.target[k]),
                     'predicted': (
                         None if self.predicted is None else float(self.predicted[k])
@@ -763,6 +820,7 @@ def _separator_fit_result_getstate(
 
     values = [getattr(result, field.name) for field in fields(result)]
     values.append(getattr(result, '_originating_observations', None))
+    values.append(getattr(result, '_bound_policy', None))
     return values
 
 
@@ -774,7 +832,11 @@ def _separator_fit_result_setstate(
 
     result_fields = fields(result)
     values = list(state)
-    if len(values) == len(result_fields) + 1:
+    policy = None
+    if len(values) == len(result_fields) + 2:
+        policy = values.pop()
+        originating = values.pop()
+    elif len(values) == len(result_fields) + 1:
         originating = values.pop()
     elif len(values) == len(result_fields):
         originating = None
@@ -788,6 +850,8 @@ def _separator_fit_result_setstate(
             '_originating_observations',
             originating,
         )
+    if policy is not None:
+        _bind_result_policy(result, policy)
 
 
 # Python 3.10's frozen/slotted dataclass decorator replaces state hooks declared

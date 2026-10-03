@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from decimal import (
     Decimal,
     ROUND_CEILING,
@@ -120,6 +120,19 @@ class _CompiledScalarPenalty:
     lower_margin: _CompiledLocation | None = None
     upper_margin: _CompiledLocation | None = None
     upper_epsilon: _CompiledLocation | None = None
+    lower_location: _CompiledLocation = field(init=False)
+    upper_location: _CompiledLocation = field(init=False)
+    parameter_balls: tuple = field(init=False)
+    transformed: bool = False
+
+    def __post_init__(self):
+        object.__setattr__(self, 'lower_location', _compile_location(self.lower))
+        object.__setattr__(self, 'upper_location', _compile_location(self.upper))
+        object.__setattr__(self, 'parameter_balls', tuple(
+            None if getattr(self, name) is None else
+            _ball_from_fraction(getattr(self, name))
+            for name in ('lower', 'upper', 'strength', 'margin', 'epsilon', 'tau')
+        ))
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,6 +229,8 @@ def _compare_compiled_location(value: float, location: _CompiledLocation) -> int
 def _compile_scalar_objective(
     mismatch: SquaredLoss | HuberLoss,
     penalties: tuple[ScalarPenalty, ...],
+    *,
+    penalty_affines: tuple[tuple[Fraction, Fraction], ...] | None = None,
 ) -> _CompiledScalarObjective:
     """Compile exact branch data without retaining zero-strength terms."""
 
@@ -238,7 +253,9 @@ def _compile_scalar_objective(
         raise TypeError(f'unsupported mismatch: {type(mismatch)!r}')
 
     compiled: list[_CompiledScalarPenalty] = []
-    for penalty in penalties:
+    if penalty_affines is not None and len(penalty_affines) != len(penalties):
+        raise ValueError('one affine map is required per configured penalty')
+    for penalty_index, penalty in enumerate(penalties):
         strength_value = float(penalty.strength)
         if strength_value == 0.0:
             continue
@@ -338,7 +355,22 @@ def _compile_scalar_objective(
             )
         else:
             raise TypeError(f'unsupported penalty: {type(penalty)!r}')
+        if penalty_affines is not None:
+            scale, offset = penalty_affines[penalty_index]
+            if scale <= 0:
+                raise ValueError('penalty affine scale must be positive')
+            if scale != 1 or offset != 0:
+                row = _transform_compiled_penalty(row, scale, offset)
         compiled.append(row)
+
+    # Reconstruct from exact effective coordinates, including affine images.
+    breakpoints = set()
+    for row in compiled:
+        if row.kind == 'soft':
+            breakpoints.update((row.lower, row.upper))
+        elif row.kind == 'reciprocal':
+            breakpoints.update((row.lower_epsilon.exact, row.lower_margin.exact,
+                                row.upper_margin.exact, row.upper_epsilon.exact))
 
     return _CompiledScalarObjective(
         mismatch_kind=mismatch_kind,
@@ -347,6 +379,46 @@ def _compile_scalar_objective(
         breakpoints=tuple(sorted(breakpoints)),
         huber_delta_value=huber_delta_value,
     )
+
+
+def _transform_compiled_penalty(penalty, scale, offset):
+    """Exact family closure under q=scale*y+offset, before float proposals.
+
+    Soft strengths scale by a²; reciprocal strengths by 1/a; exponential
+    strengths are unchanged. All lengths scale by 1/a. Rational effective
+    operands and their outward balls remain authoritative in every kernel.
+    """
+    values = {
+        'lower': (penalty.lower-offset)/scale,
+        'upper': (penalty.upper-offset)/scale,
+        'strength': (penalty.strength * scale**2 if penalty.kind == 'soft' else
+                     penalty.strength / scale if penalty.kind == 'reciprocal' else
+                     penalty.strength),
+    }
+    for name in ('margin', 'epsilon', 'tau'):
+        if getattr(penalty, name) is not None:
+            values[name] = getattr(penalty, name)/scale
+    for name, value in tuple(values.items()):
+        values[name+'_value'] = _fraction_to_extended_float(value)
+    if penalty.kind == 'reciprocal':
+        for name, location in (
+            ('lower_epsilon', values['lower']+values['epsilon']),
+            ('lower_margin', values['lower']+values['margin']),
+            ('upper_margin', values['upper']-values['margin']),
+            ('upper_epsilon', values['upper']-values['epsilon']),
+        ):
+            values[name] = _compile_location(location)
+    return replace(penalty, **values, transformed=True)
+
+
+def _parameter_ball(penalty, name):
+    return penalty.parameter_balls[
+        ('lower', 'upper', 'strength', 'margin', 'epsilon', 'tau').index(name)
+    ]
+
+
+def _parameter_array(penalty, name, shape):
+    return _array_ball_constant(_parameter_ball(penalty, name), shape)
 
 
 def _huber_difference_branches(
@@ -643,18 +715,18 @@ def _compiled_exponential_arguments(
 ) -> tuple[_TwofoldBall, _TwofoldBall]:
     """Build both complete ADR 0007 exponential source numerators."""
 
-    assert penalty.margin_value is not None
-    assert penalty.tau_value is not None
-    tau = _TwofoldBall.point(penalty.tau_value)
+    assert _parameter_ball(penalty, 'margin') is not None
+    assert _parameter_ball(penalty, 'tau') is not None
+    tau = _parameter_ball(penalty, 'tau')
     lower_numerator = _source_sum_ball(
-        penalty.lower_value,
-        penalty.margin_value,
+        _parameter_ball(penalty, 'lower'),
+        _parameter_ball(penalty, 'margin'),
         -float(y),
     )
     upper_numerator = _source_sum_ball(
         float(y),
-        -penalty.upper_value,
-        penalty.margin_value,
+        _ball_negate(_parameter_ball(penalty, 'upper')),
+        _parameter_ball(penalty, 'margin'),
     )
     return (
         _ball_divide(lower_numerator, tau),
@@ -798,19 +870,19 @@ def _array_compiled_exponential_arguments(
     penalty: _CompiledScalarPenalty,
     y: np.ndarray,
 ) -> tuple[_ArrayBall, _ArrayBall]:
-    assert penalty.margin_value is not None
-    assert penalty.tau_value is not None
     shape = y.shape
-    tau = _ArrayBall.points(np.full(shape, penalty.tau_value))
+    assert penalty.margin is not None
+    assert penalty.tau is not None
+    tau = _parameter_array(penalty, 'tau', shape)
     lower_numerator = _array_source_sum(
-        penalty.lower_value,
-        penalty.margin_value,
+        _parameter_array(penalty, 'lower', shape),
+        _parameter_array(penalty, 'margin', shape),
         -y,
     )
     upper_numerator = _array_source_sum(
         y,
-        -penalty.upper_value,
-        penalty.margin_value,
+        _array_ball_negate(_parameter_array(penalty, 'upper', shape)),
+        _parameter_array(penalty, 'margin', shape),
     )
     return (
         _array_ball_divide(lower_numerator, tau),
@@ -826,7 +898,7 @@ def _active_scalar_penalties(
     return tuple(
         penalty
         for penalty in penalties
-        if float(penalty.strength) != 0.0
+        if np.any(np.asarray(penalty.strength) != 0.0)
     )
 
 
@@ -1375,38 +1447,41 @@ def _scalar_derivative_terms(
 
     for penalty in spec.penalties:
         if penalty.kind == 'soft':
-            if y < penalty.lower_value:
-                displacement = _source_sum_ball(y, -penalty.lower_value)
+            if _compare_compiled_location(y, penalty.lower_location) < 0:
+                displacement = _source_sum_ball(
+                    y, _ball_negate(_parameter_ball(penalty, 'lower')))
                 append_common(
                     _scaled_source_product(
                         2.0,
-                        penalty.strength_value,
+                        _parameter_ball(penalty, 'strength'),
                         displacement,
                     )
                 )
                 curvature.append(_scaled_source_product(
                     2.0,
-                    penalty.strength_value,
+                    _parameter_ball(penalty, 'strength'),
                 ))
-            elif y > penalty.upper_value:
-                displacement = _source_sum_ball(y, -penalty.upper_value)
+            elif _compare_compiled_location(y, penalty.upper_location) > 0:
+                displacement = _source_sum_ball(
+                    y, _ball_negate(_parameter_ball(penalty, 'upper')))
                 append_common(
                     _scaled_source_product(
                         2.0,
-                        penalty.strength_value,
+                        _parameter_ball(penalty, 'strength'),
                         displacement,
                     )
                 )
                 curvature.append(_scaled_source_product(
                     2.0,
-                    penalty.strength_value,
+                    _parameter_ball(penalty, 'strength'),
                 ))
-            if y == penalty.lower_value or y == penalty.upper_value:
+            if (_compare_compiled_location(y, penalty.lower_location) == 0
+                    or _compare_compiled_location(y, penalty.upper_location) == 0):
                 smooth = False
             continue
 
         if penalty.kind == 'exponential':
-            assert penalty.tau_value is not None
+            assert _parameter_ball(penalty, 'tau') is not None
             lower_argument, upper_argument = _compiled_exponential_arguments(
                 penalty,
                 y,
@@ -1419,17 +1494,17 @@ def _scalar_derivative_terms(
                 difference=_ball_divide(
                     _source_sum_ball(
                         _source_product_ball(2.0, y),
-                        -penalty.upper_value,
-                        -penalty.lower_value,
+                        _ball_negate(_parameter_ball(penalty, 'upper')),
+                        _ball_negate(_parameter_ball(penalty, 'lower')),
                     ),
-                    _TwofoldBall.point(penalty.tau_value),
+                    _parameter_ball(penalty, 'tau'),
                 ),
                 left_exponential=lower_exponential,
                 right_exponential=upper_exponential,
             )
             coefficient = _binary_scaled_divide(
-                scaled(_TwofoldBall.point(penalty.strength_value)),
-                scaled(_TwofoldBall.point(penalty.tau_value)),
+                scaled(_parameter_ball(penalty, 'strength')),
+                scaled(_parameter_ball(penalty, 'tau')),
             )
             append_common(_binary_scaled_multiply(
                 coefficient,
@@ -1441,7 +1516,7 @@ def _scalar_derivative_terms(
             ))
             curvature_coefficient = _binary_scaled_divide(
                 coefficient,
-                scaled(_TwofoldBall.point(penalty.tau_value)),
+                scaled(_parameter_ball(penalty, 'tau')),
             )
             curvature.append(_binary_scaled_multiply(
                 curvature_coefficient,
@@ -1453,8 +1528,8 @@ def _scalar_derivative_terms(
         assert penalty.lower_margin is not None
         assert penalty.upper_margin is not None
         assert penalty.upper_epsilon is not None
-        assert penalty.margin_value is not None
-        assert penalty.epsilon_value is not None
+        assert _parameter_ball(penalty, 'margin') is not None
+        assert _parameter_ball(penalty, 'epsilon') is not None
 
         def reciprocal_term(
             distance: _TwofoldBall,
@@ -1465,14 +1540,14 @@ def _scalar_derivative_terms(
             derivative = _scaled_source_ratio(
                 (
                     derivative_sign,
-                    penalty.strength_value,
+                    _parameter_ball(penalty, 'strength'),
                 ),
                 (distance, distance),
             )
             second = None
             if reciprocal_branch:
                 second = _scaled_source_ratio(
-                    (2.0, penalty.strength_value),
+                    (2.0, _parameter_ball(penalty, 'strength')),
                     (distance, distance, distance),
                 )
             return derivative, second
@@ -1483,7 +1558,7 @@ def _scalar_derivative_terms(
         )
         if lower_margin_cmp == 0:
             derivative, _ = reciprocal_term(
-                _TwofoldBall.point(penalty.margin_value),
+                _parameter_ball(penalty, 'margin'),
                 derivative_sign=-1.0,
                 reciprocal_branch=False,
             )
@@ -1495,9 +1570,11 @@ def _scalar_derivative_terms(
                 penalty.lower_epsilon,
             )
             distance = (
-                _TwofoldBall.point(penalty.epsilon_value)
+                _parameter_ball(penalty, 'epsilon')
                 if lower_epsilon_cmp <= 0
-                else _source_sum_ball(y, -penalty.lower_value)
+                else _source_sum_ball(
+                    y, _ball_negate(_parameter_ball(penalty, 'lower')),
+                )
             )
             derivative, second = reciprocal_term(
                 distance,
@@ -1517,7 +1594,7 @@ def _scalar_derivative_terms(
         )
         if upper_margin_cmp == 0:
             derivative, _ = reciprocal_term(
-                _TwofoldBall.point(penalty.margin_value),
+                _parameter_ball(penalty, 'margin'),
                 derivative_sign=1.0,
                 reciprocal_branch=False,
             )
@@ -1529,9 +1606,9 @@ def _scalar_derivative_terms(
                 penalty.upper_epsilon,
             )
             distance = (
-                _TwofoldBall.point(penalty.epsilon_value)
+                _parameter_ball(penalty, 'epsilon')
                 if upper_epsilon_cmp >= 0
-                else _source_sum_ball(penalty.upper_value, -y)
+                else _source_sum_ball(_parameter_ball(penalty, 'upper'), -y)
             )
             derivative, second = reciprocal_term(
                 distance,
@@ -1610,15 +1687,15 @@ def _array_scalar_derivative_terms(
     )
     for penalty in spec.penalties:
         if penalty.kind == 'soft':
-            lower_active = y < penalty.lower_value
-            upper_active = y > penalty.upper_value
+            lower_active = y < penalty.lower_location.above
+            upper_active = y > penalty.upper_location.below
             lower_displacement = _array_ball_subtract(
                 _ArrayBall.points(y),
-                _ArrayBall.points(np.full(shape, penalty.lower_value)),
+                _parameter_array(penalty, 'lower', shape),
             )
             upper_displacement = _array_ball_subtract(
                 _ArrayBall.points(y),
-                _ArrayBall.points(np.full(shape, penalty.upper_value)),
+                _parameter_array(penalty, 'upper', shape),
             )
             displacement = _ArrayBall(
                 np.where(
@@ -1642,7 +1719,7 @@ def _array_scalar_derivative_terms(
                 derivative,
                 _array_source_product(
                     2.0,
-                    penalty.strength_value,
+                    _parameter_array(penalty, 'strength', shape),
                     displacement,
                 ),
             )
@@ -1650,10 +1727,11 @@ def _array_scalar_derivative_terms(
                 curvature,
                 _array_source_product(
                     np.where(lower_active | upper_active, 2.0, 0.0),
-                    penalty.strength_value,
+                    _parameter_array(penalty, 'strength', shape),
                 ),
             )
-            smooth &= (y != penalty.lower_value) & (y != penalty.upper_value)
+            smooth &= (y != penalty.lower_location.below) & (
+                y != penalty.upper_location.above)
             continue
         if penalty.kind != 'exponential':
             unresolved = np.zeros(shape, dtype=bool)
@@ -1671,7 +1749,7 @@ def _array_scalar_derivative_terms(
             )
             smooth &= unresolved
             continue
-        assert penalty.tau_value is not None
+        assert _parameter_array(penalty, 'tau', shape) is not None
         lower_argument, upper_argument = _array_compiled_exponential_arguments(
             penalty,
             y,
@@ -1679,8 +1757,8 @@ def _array_scalar_derivative_terms(
         lower_exponential = _array_certified_exp(lower_argument)
         upper_exponential = _array_certified_exp(upper_argument)
         coefficient = _array_ball_divide(
-            _ArrayBall.points(np.full(shape, penalty.strength_value)),
-            _ArrayBall.points(np.full(shape, penalty.tau_value)),
+            _parameter_array(penalty, 'strength', shape),
+            _parameter_array(penalty, 'tau', shape),
         )
         derivative = _array_ball_add(
             derivative,
@@ -1694,7 +1772,7 @@ def _array_scalar_derivative_terms(
         )
         curvature_coefficient = _array_ball_divide(
             coefficient,
-            _ArrayBall.points(np.full(shape, penalty.tau_value)),
+            _parameter_array(penalty, 'tau', shape),
         )
         curvature = _array_ball_add(
             curvature,
@@ -2154,6 +2232,13 @@ def _compiled_penalty_scalar_value(
 ) -> float:
     """Evaluate one compiled term from complete binary64 source operands."""
 
+    if penalty.transformed:
+        point = _fraction(y)
+        if penalty.kind == 'soft':
+            return _compiled_soft_fraction_value(penalty, point)
+        if penalty.kind == 'reciprocal':
+            return _compiled_reciprocal_fraction_value(penalty, point)
+        return _compiled_exponential_fraction_value(penalty, point)
     if penalty.kind == 'soft':
         if y < penalty.lower_value:
             boundary = penalty.lower_value
@@ -2336,6 +2421,10 @@ def _compiled_exponential_value(
 ) -> float:
     """Evaluate an exponential pair from one complete measurement expansion."""
 
+    if penalty.transformed:
+        return _compiled_exponential_fraction_value(
+            penalty, _fraction(measurement.high)+_fraction(measurement.low),
+        )
     assert penalty.kind == 'exponential'
     assert penalty.margin_value is not None
     assert penalty.tau_value is not None
@@ -3005,7 +3094,8 @@ def _direct_factored_square_difference_ball(
     for scale in scales:
         value = _binary_scaled_multiply(
             value,
-            _binary_scaled_from_ball(_TwofoldBall.point(scale)),
+            _binary_scaled_from_ball(scale if isinstance(
+                scale, _TwofoldBall) else _TwofoldBall.point(scale)),
         )
     return value
 
@@ -3021,11 +3111,11 @@ def _direct_reciprocal_difference_terms(
     assert penalty.lower_margin is not None
     assert penalty.upper_margin is not None
     assert penalty.upper_epsilon is not None
-    assert penalty.epsilon_value is not None
+    assert _parameter_ball(penalty, 'epsilon') is not None
     terms: list[_BinaryScaledBall] = []
     lower_ball = _TwofoldBall.point(lower)
     upper_ball = _TwofoldBall.point(upper)
-    epsilon = _TwofoldBall.point(penalty.epsilon_value)
+    epsilon = _parameter_ball(penalty, 'epsilon')
 
     def reciprocal_segment(
         start: _TwofoldBall,
@@ -3034,20 +3124,22 @@ def _direct_reciprocal_difference_terms(
         lower_side: bool,
     ) -> None:
         if lower_side:
-            start_distance = _source_sum_ball(start, -penalty.lower_value)
-            end_distance = _source_sum_ball(end, -penalty.lower_value)
+            start_distance = _source_sum_ball(
+                start, _ball_negate(_parameter_ball(penalty, 'lower')))
+            end_distance = _source_sum_ball(
+                end, _ball_negate(_parameter_ball(penalty, 'lower')))
         else:
             start_distance = _source_sum_ball(
-                penalty.upper_value,
+                _parameter_ball(penalty, 'upper'),
                 _ball_negate(start),
             )
             end_distance = _source_sum_ball(
-                penalty.upper_value,
+                _parameter_ball(penalty, 'upper'),
                 _ball_negate(end),
             )
         terms.append(_scaled_source_ratio(
             (
-                penalty.strength_value,
+                _parameter_ball(penalty, 'strength'),
                 _ball_subtract(start_distance, end_distance),
             ),
             (start_distance, end_distance),
@@ -3069,7 +3161,7 @@ def _direct_reciprocal_difference_terms(
         )
         terms.append(_scaled_source_ratio(
             (
-                -penalty.strength_value,
+                _ball_negate(_parameter_ball(penalty, 'strength')),
                 _ball_subtract(end, lower_ball),
             ),
             (epsilon, epsilon),
@@ -3132,7 +3224,7 @@ def _direct_reciprocal_difference_terms(
         )
         terms.append(_scaled_source_ratio(
             (
-                penalty.strength_value,
+                _parameter_ball(penalty, 'strength'),
                 _ball_subtract(upper_ball, start),
             ),
             (epsilon, epsilon),
@@ -3229,21 +3321,24 @@ def _scalar_objective_difference(
 
     for penalty in spec.penalties:
         if penalty.kind == 'soft':
-            if lower < penalty.lower_value:
-                end = min(upper, penalty.lower_value)
+            if _compare_compiled_location(lower, penalty.lower_location) < 0:
+                end = (upper_ball
+                       if _compare_compiled_location(upper, penalty.lower_location) <= 0
+                       else _parameter_ball(penalty, 'lower'))
                 append(_direct_factored_square_difference_ball(
-                    lower_ball,
-                    _TwofoldBall.point(end),
-                    _TwofoldBall.point(penalty.lower_value),
-                    penalty.strength_value,
+                    lower_ball, end, _parameter_ball(penalty, 'lower'),
+                    _parameter_ball(penalty, 'strength'),
                 ))
-            if upper > penalty.upper_value:
-                start = max(lower, penalty.upper_value)
+            if _compare_compiled_location(upper, penalty.upper_location) > 0:
+                starts_before = _compare_compiled_location(
+                    lower, penalty.upper_location,
+                ) >= 0
+                start = (lower_ball
+                         if starts_before
+                         else _parameter_ball(penalty, 'upper'))
                 append(_direct_factored_square_difference_ball(
-                    _TwofoldBall.point(start),
-                    upper_ball,
-                    _TwofoldBall.point(penalty.upper_value),
-                    penalty.strength_value,
+                    start, upper_ball, _parameter_ball(penalty, 'upper'),
+                    _parameter_ball(penalty, 'strength'),
                 ))
             continue
         if penalty.kind == 'reciprocal':
@@ -3256,10 +3351,10 @@ def _scalar_objective_difference(
             continue
         lower_arguments = _compiled_exponential_arguments(penalty, lower)
         upper_arguments = _compiled_exponential_arguments(penalty, upper)
-        assert penalty.tau_value is not None
+        assert _parameter_ball(penalty, 'tau') is not None
         exponent_step = _ball_divide(
             _ball_subtract(upper_ball, lower_ball),
-            _TwofoldBall.point(penalty.tau_value),
+            _parameter_ball(penalty, 'tau'),
         )
         exponential_difference = _binary_scaled_sum((
             _certified_exp_difference(
@@ -3275,7 +3370,7 @@ def _scalar_objective_difference(
         ))
         append(_binary_scaled_multiply(
             _binary_scaled_from_ball(
-                _TwofoldBall.point(penalty.strength_value)
+                _parameter_ball(penalty, 'strength')
             ),
             exponential_difference,
         ))
@@ -3325,9 +3420,10 @@ def _array_factored_square_difference(
         ),
     )
     for scale in scales:
-        value = _array_ball_multiply(value, _ArrayBall.points(
+        scale_ball = (scale if isinstance(scale, _ArrayBall) else _ArrayBall.points(
             np.broadcast_to(np.asarray(scale, dtype=np.float64), value.high.shape)
         ))
+        value = _array_ball_multiply(value, scale_ball)
     return value
 
 
@@ -3406,23 +3502,25 @@ def _array_scalar_objective_difference(
     )
     for penalty in spec.penalties:
         if penalty.kind == 'soft':
-            lower_active = upper <= penalty.lower_value
-            upper_active = lower >= penalty.upper_value
-            inactive = (
-                (lower >= penalty.lower_value)
-                & (upper <= penalty.upper_value)
-            )
+            lower_active = upper <= penalty.lower_location.below
+            upper_active = lower >= penalty.upper_location.above
+            inactive = ((lower >= penalty.lower_location.above)
+                        & (upper <= penalty.upper_location.below))
             branch_resolved = lower_active | upper_active | inactive
-            active_center = np.where(
-                lower_active,
-                penalty.lower_value,
-                np.where(upper_active, penalty.upper_value, lower),
+            lo = _parameter_array(penalty, 'lower', shape)
+            hi = _parameter_array(penalty, 'upper', shape)
+            active_center = _ArrayBall(
+                np.where(lower_active, lo.high, np.where(upper_active, hi.high, lower)),
+                np.where(lower_active, lo.low, np.where(upper_active, hi.low, 0.)),
+                np.where(lower_active, lo.radius, np.where(
+                    upper_active, hi.radius, 0.)),
+                lo.resolved & hi.resolved,
             )
             contribution = _array_factored_square_difference(
                 lower_ball,
                 upper_ball,
-                _ArrayBall.points(active_center),
-                penalty.strength_value,
+                active_center,
+                _parameter_array(penalty, 'strength', shape),
             )
             contribution = _ArrayBall(
                 np.where(inactive, 0.0, contribution.high),
@@ -3439,12 +3537,12 @@ def _array_scalar_objective_difference(
                 total.radius,
                 np.zeros(shape, dtype=bool),
             )
-        assert penalty.tau_value is not None
+        assert _parameter_array(penalty, 'tau', shape) is not None
         lower_arguments = _array_compiled_exponential_arguments(penalty, lower)
         upper_arguments = _array_compiled_exponential_arguments(penalty, upper)
         exponent_step = _array_ball_divide(
             _array_ball_subtract(upper_ball, lower_ball),
-            _ArrayBall.points(np.full(shape, penalty.tau_value)),
+            _parameter_array(penalty, 'tau', shape),
         )
         exponential_step = _array_expm1_polynomial(exponent_step)
         lower_base = _array_certified_exp(upper_arguments[0])
@@ -3456,9 +3554,7 @@ def _array_scalar_objective_difference(
         total = _array_ball_add(
             total,
             _array_ball_multiply(
-                _ArrayBall.points(
-                    np.full(shape, penalty.strength_value)
-                ),
+                _parameter_array(penalty, 'strength', shape),
                 exponential_difference,
             ),
         )

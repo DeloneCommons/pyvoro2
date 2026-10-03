@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import InitVar, KW_ONLY, dataclass
+from fractions import Fraction
 from typing import Literal
 import sys
 
@@ -51,6 +52,10 @@ from ._numerics import (
 )
 from .constraints import SeparatorObservations
 from ._identity import _bind_originating_observations
+from ._policy import (
+    _BoundPolicy, _PolicyBindingInit, _PolicyStorage, _bind_policy,
+    _bind_result_policy, _expand, _row_model, _policy_getstate, _policy_setstate,
+)
 from .model import (
     ExponentialBoundaryPenalty,
     FitModel,
@@ -113,7 +118,7 @@ class _DifferenceEdge:
 
 
 @dataclass(frozen=True, slots=True)
-class SeparatorFitProblem:
+class SeparatorFitProblem(_PolicyStorage):
     """Resolved fixed-observation separator fit problem.
 
     ``offset_identifying_constraint_mask`` is the historical public name for
@@ -137,8 +142,15 @@ class SeparatorFitProblem:
     connectivity: ConnectivityDiagnostics
     hard_feasible: bool
     hard_conflict: HardConstraintConflict | None
+    _: KW_ONLY
+    _bound_policy_init: InitVar[_BoundPolicy | None] = _PolicyBindingInit()
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, _bound_policy_init) -> None:
+        policy = _bind_policy(self.constraints, self.model)
+        if _bound_policy_init is not None and _bound_policy_init.view != policy.view:
+            raise ValueError('problem resolved policy does not match its model')
+        object.__setattr__(self, '_bound_policy', policy)
+        object.__setattr__(self, 'model', policy.model)
         m = int(self.constraints.n_constraints)
         n = int(self.constraints.n_points)
         # R1/R2 deliberately support finite source data whose scaled derived
@@ -282,7 +294,7 @@ class SeparatorFitProblem:
         rows = _quadratic_row_data(
             self.alpha,
             self.beta,
-            self.measurement_target,
+            self.mismatch_target,
             self.confidence,
         )
         observation_rhs = _stable_incidence_accumulate(
@@ -313,7 +325,7 @@ class SeparatorFitProblem:
             regularization_strength=float(self.regularization_strength),
             regularization_reference=self.regularization_reference,
             bounds=self.bounds,
-            has_hard_constraints=self.model.feasible is not None,
+            has_hard_constraints=bool(np.any(self.bounds.applicable)),
         )
 
     def _model_coupling_components(self) -> list[list[int]]:
@@ -407,39 +419,52 @@ def build_power_fit_problem(
 ) -> SeparatorFitProblem:
     """Build a public separator-fit problem from resolved observations."""
 
+    return _build_power_fit_problem(constraints, model=model)
+
+
+def _build_power_fit_problem(constraints, *, model=None, compile_hard=True):
+    """Prepare full candidate predictions without enforcing unselected hard rows."""
+
     if model is None:
         model = FitModel()
-    geom = _measurement_geometry(constraints)
+    policy = _bind_policy(constraints, model)
+    model = policy.model
+    geom = _measurement_geometry(constraints, policy.mismatch_space)
     reg_ref = _regularization_reference(model.regularization, constraints.n_points)
     hard_measurement = _hard_constraint_measurement_bounds(
         model.feasible,
         constraints.n_constraints,
     )
-    hard_diff = (
-        None
-        if hard_measurement is None
-        else _hard_constraint_bounds(
-            hard_measurement[0],
-            hard_measurement[1],
-            geom.alpha,
-            geom.beta,
-        )
-    )
+    applicable = policy.applicable
+    hard_diff = None
+    if hard_measurement is not None:
+        hard_diff = (np.full(constraints.n_constraints, np.nan),
+                     np.full(constraints.n_constraints, np.nan))
+        if compile_hard and np.any(applicable):
+            hard_geom = _measurement_geometry(constraints, policy.hard_constraint_space)
+            converted = _hard_constraint_bounds(
+                hard_measurement[0][applicable], hard_measurement[1][applicable],
+                hard_geom.alpha[applicable], hard_geom.beta[applicable],
+            )
+            hard_diff[0][applicable], hard_diff[1][applicable] = converted
     bounds = PowerFitBounds(
         measurement_lower=None if hard_measurement is None else hard_measurement[0],
         measurement_upper=None if hard_measurement is None else hard_measurement[1],
         difference_lower=None if hard_diff is None else hard_diff[0],
         difference_upper=None if hard_diff is None else hard_diff[1],
+        space=policy.hard_constraint_space,
+        applicable=applicable,
     )
     hard_feasible = True
     conflict = None
-    if hard_diff is not None:
+    if hard_diff is not None and compile_hard and np.any(applicable):
         hard_feasible, conflict = _check_hard_feasibility(
             int(constraints.n_points),
-            constraints.i,
-            constraints.j,
-            hard_diff[0],
-            hard_diff[1],
+            constraints.i[applicable],
+            constraints.j[applicable],
+            hard_diff[0][applicable],
+            hard_diff[1][applicable],
+            row_indices=np.flatnonzero(applicable),
         )
     connectivity = _build_fit_connectivity_diagnostics(
         constraints,
@@ -474,9 +499,14 @@ def build_power_fit_problem(
             connectivity=connectivity,
             hard_feasible=bool(hard_feasible),
             hard_conflict=conflict,
+            _bound_policy_init=policy,
         )
     finally:
         _ALLOW_DERIVED_NONFINITE_PROBLEM_VALUES.reset(token)
+
+
+SeparatorFitProblem.__getstate__ = _policy_getstate
+SeparatorFitProblem.__setstate__ = _policy_setstate
 
 
 def build_power_fit_result(
@@ -582,7 +612,8 @@ def build_power_fit_result(
         edge_diagnostics=edge_diagnostics,
         objective_breakdown=objective_breakdown,
     )
-    return _bind_originating_observations(result, problem.constraints)
+    _bind_originating_observations(result, problem.constraints)
+    return _bind_result_policy(result, problem._bound_policy)
 
 
 def _validated_weight_vector(
@@ -596,10 +627,12 @@ def _validated_weight_vector(
     )
 
 
-def _measurement_geometry(constraints: SeparatorObservations) -> _MeasurementGeometry:
+def _measurement_geometry(
+    constraints: SeparatorObservations, space: str | None = None,
+) -> _MeasurementGeometry:
     d = constraints.distance
     d2 = constraints.distance2
-    if constraints.measurement == 'fraction':
+    if (space or constraints.measurement) == 'fraction':
         alpha = _stable_ratio_difference(0.5, 0.0, d2)
         beta = np.full_like(alpha, 0.5)
         target = constraints.target_fraction
@@ -614,6 +647,57 @@ def _measurement_geometry(constraints: SeparatorObservations) -> _MeasurementGeo
         target_fraction=np.asarray(constraints.target_fraction, dtype=np.float64),
         target_position=np.asarray(constraints.target_position, dtype=np.float64),
     )
+
+
+def _penalty_affines(policy):
+    """Exact term affine maps in the mismatch coordinate, in local row order."""
+    observations = policy.observations
+    mismatch = _measurement_geometry(observations, policy.mismatch_space)
+    result = [[] for _ in range(observations.n_constraints)]
+    for term, space in zip(policy.model.penalties, policy.penalty_spaces):
+        if space == policy.mismatch_space:
+            maps = [(Fraction(1), Fraction(0))] * observations.n_constraints
+        else:
+            geometry = _measurement_geometry(observations, space)
+            active = _expand(term.strength, observations.n_constraints) > 0.
+            maps = []
+            for index in range(observations.n_constraints):
+                if not active[index]:
+                    maps.append((Fraction(1), Fraction(0)))
+                    continue
+                scale = (Fraction.from_float(float(geometry.alpha[index])) /
+                         Fraction.from_float(float(mismatch.alpha[index])))
+                offset = (Fraction.from_float(float(geometry.beta[index])) -
+                          scale * Fraction.from_float(float(mismatch.beta[index])))
+                maps.append((scale, offset))
+        for row, affine in zip(result, maps):
+            row.append(affine)
+    return tuple(tuple(row) for row in result)
+
+
+def _hard_prox_bounds(problem):
+    """Private accepted hard domains in mismatch units; absence stays private."""
+    applicable = problem.bounds.applicable
+    if not np.any(applicable):
+        return None
+    lower = np.full(len(applicable), -np.inf)
+    upper = np.full(len(applicable), np.inf)
+    accepted = _hard_accepted_measurement_bounds(
+        problem.bounds.measurement_lower[applicable],
+        problem.bounds.measurement_upper[applicable],
+    )
+    if problem.hard_constraint_space == problem.mismatch_space:
+        lower[applicable], upper[applicable] = accepted
+    else:
+        lower[applicable] = _stable_affine_difference(
+            problem.beta[applicable], problem.alpha[applicable],
+            problem.bounds.difference_lower[applicable], 0.,
+        )
+        upper[applicable] = _stable_affine_difference(
+            problem.beta[applicable], problem.alpha[applicable],
+            problem.bounds.difference_upper[applicable], 0.,
+        )
+    return lower, upper
 
 
 def _predict_all(
@@ -662,9 +746,10 @@ def _measurement_residuals(
 ) -> np.ndarray:
     """Return direct affine residuals without materializing predictions."""
 
+    geom = _measurement_geometry(problem.constraints)
     return _stable_affine_residual(
-        problem.beta,
-        problem.alpha,
+        geom.beta,
+        geom.alpha,
         weights[problem.constraints.i],
         weights[problem.constraints.j],
         problem.measurement_target,
@@ -789,8 +874,14 @@ def _hard_constraint_status(
     upper = problem.bounds.measurement_upper
     if lower is None or upper is None:
         return True, 0.0, 0.0
-    y = np.asarray(predictions.measurement, dtype=np.float64)
-    satisfied, violation, tolerance = _hard_row_status(lower, y, upper)
+    applicable = problem.bounds.applicable
+    if not np.any(applicable):
+        return True, 0.0, 0.0
+    y = (predictions.fraction if problem.hard_constraint_space == 'fraction'
+         else predictions.position)
+    satisfied, violation, tolerance = _hard_row_status(
+        lower[applicable], y[applicable], upper[applicable],
+    )
     if violation.size == 0:
         return True, 0.0, 0.0
     max_violation = float(np.max(violation))
@@ -804,7 +895,6 @@ def _objective_breakdown(
     weights: np.ndarray,
 ) -> PowerFitObjectiveBreakdown:
     confidence = np.asarray(problem.constraints.confidence, dtype=np.float64)
-    measurement = np.asarray(predictions.measurement, dtype=np.float64)
     left = weights[problem.constraints.i]
     right = weights[problem.constraints.j]
     mismatch_values = _mismatch_values_from_affine(
@@ -812,24 +902,38 @@ def _objective_breakdown(
         problem.alpha,
         left,
         right,
-        problem.measurement_target,
+        problem.mismatch_target,
         confidence,
         problem.model.mismatch,
     )
     mismatch = _stable_sum_scalar(*mismatch_values.tolist())
     penalty_terms_list: list[tuple[str, float]] = []
     penalties_total = 0.0
-    for penalty in problem.model.penalties:
-        value = _stable_sum_scalar(
-            *_penalty_value_from_affine(
-                problem.beta,
-                problem.alpha,
-                left,
-                right,
-                measurement,
-                penalty,
-            ).tolist()
-        )
+    for term_index, penalty in enumerate(problem.model.penalties):
+        active = _expand(penalty.strength, problem.constraints.n_constraints) > 0.
+        value = 0.
+        if np.any(active):
+            space = problem.penalty_spaces[term_index]
+            geometry = _measurement_geometry(problem.constraints, space)
+            measurement = (predictions.fraction if space == 'fraction'
+                           else predictions.position)
+            # Row templates are scalarized at the owned policy seam. No absent
+            # lane reaches reciprocal or exponential arithmetic.
+            if any(isinstance(getattr(penalty, name), np.ndarray)
+                   for name in ('lower', 'upper', 'strength')):
+                values = [
+                    _penalty_value_from_affine(
+                        geometry.beta[k:k+1], geometry.alpha[k:k+1],
+                        left[k:k+1], right[k:k+1], measurement[k:k+1],
+                        _row_model(problem.model, k).penalties[term_index],
+                    )[0] for k in np.flatnonzero(active)
+                ]
+            else:
+                values = _penalty_value_from_affine(
+                    geometry.beta[active], geometry.alpha[active],
+                    left[active], right[active], measurement[active], penalty,
+                ).tolist()
+            value = _stable_sum_scalar(*values)
         penalty_terms_list.append((type(penalty).__name__, value))
         penalties_total = _stable_sum_scalar(penalties_total, value)
     reg = _l2_value(
@@ -890,11 +994,11 @@ def _model_coupling_constraint_mask(
     model: FitModel,
 ) -> np.ndarray:
     mask = _informative_observation_mask(constraints)
-    if (
-        model.feasible is not None
-        or _active_scalar_penalties(model.penalties)
-    ):
-        mask = np.ones(constraints.n_constraints, dtype=bool)
+    if model.feasible is not None:
+        mask = mask | _expand(model.feasible.applicable, constraints.n_constraints,
+                              dtype=bool)
+    for penalty in model.penalties:
+        mask = mask | (_expand(penalty.strength, constraints.n_constraints) > 0.)
     return mask
 
 
@@ -1201,11 +1305,11 @@ def _hard_constraint_measurement_bounds(
     if feasible is None:
         return None
     if isinstance(feasible, Interval):
-        lower = np.full(n_constraints, float(feasible.lower), dtype=np.float64)
-        upper = np.full(n_constraints, float(feasible.upper), dtype=np.float64)
+        lower = _expand(feasible.lower, n_constraints)
+        upper = _expand(feasible.upper, n_constraints)
         return lower, upper
     if isinstance(feasible, FixedValue):
-        lower = np.full(n_constraints, float(feasible.value), dtype=np.float64)
+        lower = _expand(feasible.value, n_constraints)
         return lower, lower.copy()
     raise TypeError(f'unsupported hard constraint: {type(feasible)!r}')
 
@@ -1233,8 +1337,12 @@ def _check_hard_feasibility(
     j_idx: np.ndarray,
     z_lo: np.ndarray,
     z_hi: np.ndarray,
+    *,
+    row_indices: np.ndarray | None = None,
 ) -> tuple[bool, HardConstraintConflict | None]:
     edges: list[_DifferenceEdge] = []
+    if row_indices is None:
+        row_indices = np.arange(len(i_idx))
     for k, (i, j, lo, hi) in enumerate(
         zip(i_idx.tolist(), j_idx.tolist(), z_lo.tolist(), z_hi.tolist())
     ):
@@ -1243,7 +1351,7 @@ def _check_hard_feasibility(
                 source=int(j),
                 target=int(i),
                 weight=float(hi),
-                constraint_index=int(k),
+                constraint_index=int(row_indices[k]),
                 site_i=int(i),
                 site_j=int(j),
                 relation='<=',
@@ -1255,7 +1363,7 @@ def _check_hard_feasibility(
                 source=int(i),
                 target=int(j),
                 weight=float(-lo),
-                constraint_index=int(k),
+                constraint_index=int(row_indices[k]),
                 site_i=int(i),
                 site_j=int(j),
                 relation='>=',
@@ -1348,7 +1456,7 @@ def _check_hard_feasibility(
 
 
 def _requires_admm(model: FitModel) -> bool:
-    if model.feasible is not None:
+    if model.feasible is not None and np.any(model.feasible.applicable):
         return True
     if _active_scalar_penalties(model.penalties):
         return True
