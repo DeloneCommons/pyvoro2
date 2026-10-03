@@ -96,6 +96,26 @@ caller rounding, precision, subnormal or trap-mask state. Geometry-only ghosts
 and ID-only locate do not acquire unused certificate requirements; zero-query
 calls issue no native certificate. There is no public correctness override.
 
+## Known diagnostic limitations
+
+The normalized validators are designed around normalizer-produced/replayable
+representations and the operands consumed by enabled checks. One narrow
+defensive-error-reporting limitation remains for manually corrupted weak 3D
+`NormalizedVertices` views: if all face-related checks are disabled, malformed
+unused face-neighbor metadata is outside those enabled validation obligations,
+while diagnostic wall bookkeeping may still inspect `adjacent_cell`. A value
+such as `None` can therefore surface as an underlying Python type error rather
+than a structured `NormalizationError`; other malformed values can also make
+the informational wall flag unreliable.
+
+This does not affect normalizer-produced views, full `NormalizedTopology`
+mapping checks, or enabled face/Euler consumers, all of which require and
+validate their applicable operands. It is a diagnostic-hardening limitation,
+not authority to accept malformed face metadata and not a change to the
+Checkpoint-B N/E/S or normalization contract. Reconsider broader defensive
+handling during the planned whole-code technical audit rather than widening the
+current validation contract implicitly.
+
 ## Backend and binary64 limits
 
 Voro++ and the current wrappers evaluate geometry with finite binary64
