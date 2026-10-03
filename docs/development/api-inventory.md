@@ -560,15 +560,25 @@ SeparatorFitResult.mismatch_residuals
 follows penalty order. `PowerFitBounds` gains a `space` field identifying
 the effective hard-bound measurement space while retaining
 `measurement_lower`, `measurement_upper`, `difference_lower`, and
-`difference_upper`. `PowerFitPredictions.measurement` remains
-observation-space prediction.
+`difference_upper`. Those arrays remain observation-row aligned. For partial
+hard applicability, the resolved applicability mask is authoritative: entries
+for inapplicable rows are non-effective and must not be interpreted as bounds,
+converted/classified solely for output, or used for feasibility/conflict
+construction. Effective/applied-bound views represent absence explicitly, not
+as infinite bounds. `PowerFitPredictions.measurement` remains observation-space
+prediction.
 
 Problem/result state must additionally expose a read-only resolved-policy view
-sufficient to inspect the bound/projected hard applicability/values and penalty
-values aligned with its observation rows. The concrete provisional container
-name is finalized in the WP10 implementation issue; no second public identity
-or policy-fingerprint system is required. Observation row identity/fingerprints
-do not change when model spaces or row policy change.
+covering the complete objective-defining `FitModel`: mismatch
+family/parameters, bound/projected hard kind/applicability/values, ordered
+penalty families/parameters, and regularization strength/reference semantics.
+Observation-indexed policy is aligned with ordered observation rows and is
+projected with them; site-indexed regularization data retain site ordering and
+are not projected through observation masks. Configured zero-strength policy
+and inapplicable hard rows remain inspectable. The concrete provisional
+container name is finalized in the WP10 implementation issue; no second public
+identity or policy-fingerprint system is required. Observation row
+identity/fingerprints do not change when model spaces or row policy change.
 
 ### Target separator report schema v2
 
@@ -595,19 +605,23 @@ Fit summaries retain `measurement` as observation space and add
 }
 ```
 
-v2 also adds a resolved `model_policy` block aligned with
-`observation_set.row_ids`. Scientific fields use one of:
+v2 also adds a resolved `model_policy` block. Observation-indexed scientific
+fields are associated with `observation_set.row_ids` and use one of:
 
 ```text
 {"kind": "uniform", "value": <scalar>}
 {"kind": "rows", "values": [<row values>]}
 ```
 
-Boolean hard applicability uses the same uniform/rows grammar.
-`model_policy` preserves configured term order, effective spaces, hard
-kind/applicability/values, and penalty kind/parameters, including configured
-zero strengths. Inapplicable hard rows are represented as policy, not as
-infinite effective bounds.
+Boolean hard applicability uses the same uniform/rows grammar. `model_policy`
+preserves the complete objective-defining model: mismatch family/parameters,
+configured hard kind/applicability/values, ordered penalty kind/parameters, and
+regularization strength/reference semantics. The staged C fields are present in
+their initially uniform form. Site-indexed regularization references retain
+site ordering and do not use the observation-row wrapper. Configured zero
+strengths, including zero-strength regularization with an explicitly supplied
+reference, and inapplicable hard rows remain represented as policy rather than
+being erased or serialized as infinite effective bounds.
 
 The active/self-consistent outer report retains the complete candidate policy;
 its nested fit report retains the exact projected selected policy. Both are
