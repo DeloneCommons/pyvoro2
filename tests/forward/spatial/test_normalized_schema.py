@@ -75,6 +75,159 @@ def test_nonperiodic_vertex_only_view_needs_no_unused_faces():
     np.testing.assert_array_equal(view.global_vertices, [[.25, .5, .75]])
 
 
+def _checks(consumer):
+    return dict(
+        check_vertex_face_shift=consumer in ('all', 'vertex_face_shift'),
+        check_face_vertex_sets=consumer in ('all', 'face_vertex_sets'),
+        check_incidence=consumer == 'all',
+        check_euler=consumer in ('all', 'euler'),
+    )
+
+
+@pytest.mark.parametrize('damage', ['missing', 'null'])
+@pytest.mark.parametrize('weak', [False, True], ids=['topology', 'vertices'])
+@pytest.mark.parametrize('consumer', [
+    'all', 'euler', 'vertex_face_shift', 'face_vertex_sets',
+])
+@pytest.mark.parametrize('level', ['basic', 'strict'])
+def test_consumed_face_cycles_cannot_disappear(damage, weak, consumer, level):
+    view, domain = _view()
+    if weak:
+        view = spatial.NormalizedVertices(view.global_vertices, view.cells)
+    checks = _checks(consumer)
+    assert spatial.validate_normalized_topology(
+        view, domain, level='strict', **checks).ok
+    for face in view.cells[0]['faces']:
+        if damage == 'missing':
+            del face['vertices']
+        else:
+            face['vertices'] = None
+    if level == 'strict':
+        with pytest.raises(spatial.NormalizationError) as raised:
+            spatial.validate_normalized_topology(view, domain, level=level, **checks)
+        diag = raised.value.diagnostics
+    else:
+        diag = spatial.validate_normalized_topology(view, domain, level=level, **checks)
+    assert not diag.ok
+    assert any(issue.code == 'INVALID_NORMALIZED_MAPPING'
+               and issue.severity == 'error' for issue in diag.issues)
+
+
+def test_euler_only_weak_view_needs_cycles_but_no_face_shifts():
+    view, domain = _view()
+    view = spatial.NormalizedVertices(view.global_vertices, view.cells)
+    for face in view.cells[0]['faces']:
+        del face['adjacent_shift']
+    diag = spatial.validate_normalized_topology(
+        view, domain, level='strict', **_checks('euler'))
+    assert diag.ok and diag.ok_euler
+    assert diag.n_cells_bad_euler == 0
+    assert diag.issues == ()
+    assert all('adjacent_shift' not in face for face in view.cells[0]['faces'])
+
+
+@pytest.mark.parametrize('damage', ['missing', 'null', 'fractional'])
+@pytest.mark.parametrize('level', ['basic', 'strict'])
+def test_euler_only_weak_view_keeps_consumed_neighbor_id_checks(damage, level):
+    view, domain = _view()
+    view = spatial.NormalizedVertices(view.global_vertices, view.cells)
+    face = view.cells[0]['faces'][0]
+    if damage == 'missing':
+        del face['adjacent_cell']
+    else:
+        face['adjacent_cell'] = None if damage == 'null' else .5
+    if level == 'strict':
+        with pytest.raises(spatial.NormalizationError) as raised:
+            spatial.validate_normalized_topology(
+                view, domain, level=level, **_checks('euler'))
+        diag = raised.value.diagnostics
+    else:
+        diag = spatial.validate_normalized_topology(
+            view, domain, level=level, **_checks('euler'))
+    assert not diag.ok
+    assert any(i.code == 'INVALID_NORMALIZED_MAPPING' and i.severity == 'error'
+               for i in diag.issues)
+
+
+@pytest.mark.parametrize('consumer', ['vertex_face_shift', 'face_vertex_sets'])
+@pytest.mark.parametrize('level', ['basic', 'strict'])
+@pytest.mark.parametrize('weak', [False, True], ids=['topology', 'vertices'])
+def test_enabled_periodic_consumers_still_require_face_shifts(consumer, level, weak):
+    view, domain = _view()
+    if weak:
+        view = spatial.NormalizedVertices(view.global_vertices, view.cells)
+    for face in view.cells[0]['faces']:
+        del face['adjacent_shift']
+    checks = _checks(consumer)
+    if level == 'strict':
+        with pytest.raises(spatial.NormalizationError) as raised:
+            spatial.validate_normalized_topology(view, domain, level=level, **checks)
+        diag = raised.value.diagnostics
+    else:
+        diag = spatial.validate_normalized_topology(view, domain, level=level, **checks)
+    assert not diag.ok
+    assert any(i.code == 'FACE_MISSING_ADJACENT_SHIFT' and i.severity == 'error'
+               for i in diag.issues)
+
+
+@pytest.mark.parametrize('damage', ['faces', 'missing_cycles', 'null_cycles'])
+def test_disabled_face_consumers_allow_unused_operands(damage):
+    view, domain = _view()
+    view = spatial.NormalizedVertices(view.global_vertices, view.cells)
+    if damage == 'faces':
+        del view.cells[0]['faces']
+    else:
+        for face in view.cells[0]['faces']:
+            if damage == 'missing_cycles':
+                del face['vertices']
+            else:
+                face['vertices'] = None
+            del face['adjacent_shift']
+    assert spatial.validate_normalized_topology(
+        view, domain, level='strict', **_checks('none')).ok
+
+
+def test_periodic_consumers_do_not_require_unused_wall_cycles():
+    view, domain = _view(partial=True)
+    view = spatial.NormalizedVertices(view.global_vertices, view.cells)
+    walls = [f for f in view.cells[0]['faces'] if f['adjacent_cell'] < 0]
+    assert len(walls) == 2
+    for face in walls:
+        del face['vertices']
+    assert spatial.validate_normalized_topology(
+        view, domain, level='strict', check_euler=False).ok
+
+
+@pytest.mark.parametrize('weak', [False, True], ids=['topology', 'vertices'])
+def test_available_empty_cycles_are_not_missing_operands(weak):
+    # Explicitly supplied schema control, not a new native producer claim.
+    view, domain = _view()
+    if weak:
+        view = spatial.NormalizedVertices(view.global_vertices, view.cells)
+    for face in view.cells[0]['faces']:
+        face['vertices'] = []
+    assert spatial.validate_normalized_topology(view, domain, level='strict').ok
+
+
+def test_euler_warning_without_unused_shifts_keeps_counts_and_severity():
+    view, domain = _view()
+    view = spatial.NormalizedVertices(view.global_vertices, view.cells)
+    view.cells[0]['faces'].pop()
+    for face in view.cells[0]['faces']:
+        del face['adjacent_shift']
+    for limit in (0, 1, 10):
+        for level in ('basic', 'strict'):
+            diag = spatial.validate_normalized_topology(
+                view, domain, level=level, max_examples=limit, **_checks('euler'))
+            assert diag.ok and not diag.ok_euler
+            assert diag.n_cells_bad_euler == 1
+            assert len(diag.issues) == 1
+            issue = diag.issues[0]
+            assert issue.code == 'EULER_CHARACTERISTIC_MISMATCH'
+            assert issue.severity == 'warning'
+            assert len(issue.examples) == min(limit, 1)
+
+
 def test_positive_fragment_reciprocity_uses_image_qualified_class_unions():
     # Synthetic/schema partition of an observed positive rectangle, not a
     # claimed retained lower-dimensional native N face. The reverse remains

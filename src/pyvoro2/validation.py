@@ -122,14 +122,37 @@ def _iter_face_vertex_indices(face: dict[str, Any]) -> list[int]:
     return [int(x) for x in idx]
 
 
-def _check_consumed_mappings(normalized, domain, *, need_faces):
+def _check_consumed_mappings(normalized, domain, *, check_euler,
+                             check_periodic_faces):
     """Check numerical operands, without any ideal or proof-context consumer."""
     periodic = is_periodic_domain(domain)
+    need_face_images = (isinstance(normalized, NormalizedTopology)
+                        or check_periodic_faces)
+    need_faces = need_face_images or check_euler
     candidate = normalized
     if not need_faces:
-        # Vertex-only nonperiodic validation does not consume face metadata.
+        # No enabled/applicable consumer needs face metadata in this view.
         candidate = NormalizedVertices(normalized.global_vertices,
                                        [dict(c, faces=[]) for c in normalized.cells])
+    elif not need_face_images:
+        # Euler needs no face shifts; wall diagnostics still consume neighbor
+        # IDs. Project only unused shifts for preparation, leaving raw records.
+        if not isinstance(normalized.cells, list):
+            raise ValueError('normalized.cells must be a list of dicts')
+        cells = []
+        for position, cell in enumerate(normalized.cells):
+            if not isinstance(cell, dict):
+                raise ValueError(f'normalized.cells[{position}] must be a dict')
+            faces = cell.get('faces')
+            if faces is None:
+                raise ValueError('cells must include faces')
+            local_faces = []
+            for face in faces:
+                if not isinstance(face, dict):
+                    raise ValueError('normalized faces must be dicts')
+                local_faces.append(dict(face, adjacent_shift=(0, 0, 0)))
+            cells.append(dict(cell, faces=local_faces))
+        candidate = NormalizedVertices(normalized.global_vertices, cells)
     _vertices, prepared = _prepare_topology_cells(candidate, periodic=periodic)
     if isinstance(domain, PeriodicCell):
         axes = (True,) * 3
@@ -138,6 +161,14 @@ def _check_consumed_mappings(normalized, domain, *, need_faces):
     else:
         axes = (False,) * 3
     for item, cell in zip(prepared, normalized.cells):
+        if not bool(cell.get('empty', False)):
+            for index, (raw_face, face) in enumerate(
+                    zip(cell.get('faces') or (), item['faces'])):
+                if (check_euler or (check_periodic_faces and face['adjacent'] >= 0)):
+                    if raw_face.get('vertices') is None:
+                        raise ValueError(
+                            f"normalized.cells[{item['position']}].faces[{index}]"
+                            '.vertices is required by an enabled check')
         shifts = item['vertex_shifts']
         if any(value and not flag for shift in shifts
                for value, flag in zip(shift, axes)):
@@ -275,11 +306,11 @@ def validate_normalized_topology(
 
     reject_ghost_records(normalized.cells)
     try:
-        need_faces = (isinstance(normalized, NormalizedTopology) or check_euler
-                      or (is_periodic_domain(domain)
-                          and (check_vertex_face_shift or check_face_vertex_sets)))
         _check_consumed_mappings(
-            normalized, domain, need_faces=need_faces)
+            normalized, domain, check_euler=check_euler,
+            check_periodic_faces=(
+                is_periodic_domain(domain)
+                and (check_vertex_face_shift or check_face_vertex_sets)))
     except (ValueError, TypeError, KeyError, IndexError) as exc:
         code = ('FACE_MISSING_ADJACENT_SHIFT'
                 if 'Periodic domain face missing adjacent_shift' in str(exc)

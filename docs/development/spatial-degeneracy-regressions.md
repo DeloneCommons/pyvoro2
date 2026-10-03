@@ -132,6 +132,15 @@ as schema tests. `test_normalized_schema.py` adds representation mutations and
 an explicitly synthetic positive rectangle partition to protect class-union
 reciprocity; it claims no new Voro++ producer behavior.
 
+An enabled applicable check requires its face-cycle operands to be present and
+non-null; an available empty cycle is distinct from missing input. Euler-only
+`NormalizedVertices` validation consumes local cycles without requiring unused
+neighbor/image shifts. Enabled periodic face consumers still require those
+shifts, and full topology views retain their stronger mapping obligations.
+Missing consumed operands use existing error diagnostics in basic mode and
+raise `NormalizationError` in strict mode. Euler warnings retain their severity
+and counts when examples are truncated.
+
 ## Bounded omissions
 
 No required base archetype or saved strict-pass disagreement is omitted. The
