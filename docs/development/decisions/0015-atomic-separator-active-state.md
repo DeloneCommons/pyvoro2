@@ -34,10 +34,14 @@ through one private accepted-state representation. Its private origin records:
 - whether the state was created by an outer failure or a post-loop final refit.
 
 The accepted state validates that the final fit originates from exactly
-`constraints.subset(active_mask)`. Candidate realization and diagnostics, when
-present, originate from the full candidate observations. Their active mask,
-row IDs, realization arrays, final weights, and optional tessellation
-diagnostics must agree before the public result is built. Active reports
+`constraints.subset(active_mask)`. When the v0.9 row-bound model policy is
+present, the final fit's resolved policy must likewise be exactly the projection
+of the retained full candidate policy through that same ordered active mask;
+row removal and later re-entry recover the original candidate policy.
+Candidate realization and diagnostics, when present, originate from the full
+candidate observations. Their active mask, row IDs, realization arrays, final
+weights, optional tessellation diagnostics, and applicable resolved-policy
+association must agree before the public result is built. Active reports
 reconstitute and validate the same private state from the public result before
 serialization.
 
