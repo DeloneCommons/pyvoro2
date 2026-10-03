@@ -164,14 +164,27 @@ SeparatorFitResult.mismatch_residuals
 `hard_constraint_space` is `None` when no hard-feasibility term exists;
 `penalty_spaces` follows `FitModel.penalties` order. `PowerFitBounds` gains
 a `space` field identifying the effective hard-bound space while retaining its
-measurement-space and weight-difference bound arrays. The existing
+measurement-space and weight-difference bound arrays. Row-oriented bound arrays
+remain aligned with the ordered observations. When hard policy is configured
+for only some rows, the resolved hard-applicability mask is authoritative:
+entries for inapplicable rows are not effective restrictions and must not be
+interpreted as bounds, converted/classified solely to populate output, or used
+for feasibility/conflict construction. Effective/applied-bound views represent
+absence explicitly rather than by infinite bounds. The existing
 `PowerFitPredictions.measurement` remains the observation-space prediction.
 
 Problems/results must also provide an inspectable read-only resolved-policy
-view sufficient to determine the selected hard applicability/values and
-penalty values associated with their ordered observation rows. The concrete
-container name may remain provisional within WP10, but it must describe the
-**bound/projected** policy rather than only the unresolved input template.
+view sufficient to reconstruct all objective-defining `FitModel` policy:
+mismatch family/parameters, hard kind/applicability/values, the ordered penalty
+families/parameters, and regularization strength/reference semantics.
+Observation-indexed policy is associated with the ordered observation rows and
+is projected through observation subsets. Site-indexed regularization data,
+including an explicitly supplied L2 reference, retain site ordering and are
+not projected through observation masks. Configured policy remains inspectable
+even when mathematically absent, including zero-strength regularization or
+penalties and inapplicable hard rows. The concrete container name may remain
+provisional within WP10, but it must describe the **bound/projected** policy
+rather than only the unresolved input template.
 
 These additions are model/result views; they do not alter observation identity
 or introduce a second public identity hierarchy.
@@ -208,8 +221,9 @@ model_spaces = {
 }
 ```
 
-and add a resolved `model_policy` block aligned with
-`observation_set.row_ids`. Each scientific parameter is represented either as
+and add a resolved `model_policy` block. Observation-indexed scientific
+parameters are associated with `observation_set.row_ids` and are represented
+either as
 
 ```json
 {"kind": "uniform", "value": 0.02}
@@ -222,10 +236,15 @@ or
 ```
 
 with Boolean hard applicability using the same uniform/rows distinction.
-`model_policy` records configured term order, effective term spaces, hard
-kind/applicability/values, and penalty kind/parameters. It records zero-strength
-penalties and inapplicable hard rows as configured policy rather than erasing
-them. Effective absence must not be serialized as infinite bounds.
+`model_policy` records the complete objective-defining model: mismatch
+family/parameters, configured hard kind/applicability/values, ordered penalty
+kind/parameters, and regularization strength/reference semantics. The staged C
+fields are present from v2's first implementation in their currently uniform
+form so a later accepted row-wise value changes permitted data, not field
+meaning. Site-indexed regularization references retain site ordering rather
+than using the observation-row wrapper. Configured zero-strength penalties or
+regularization and inapplicable hard rows remain recorded rather than being
+erased. Effective absence must not be serialized as infinite bounds.
 
 For the active/self-consistent report, the outer report retains the full
 candidate policy aligned with candidate row IDs. Its nested final fit retains
