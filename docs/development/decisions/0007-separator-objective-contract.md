@@ -336,6 +336,25 @@ other branch expressions. It does not force ADMM, hide the quadratic operator,
 couple observation components, or change the fitted solution. Reports may
 retain an exactly zero named component.
 
+### v0.9 row-bound strengths and hard applicability
+
+The Phase C entry gate #104 extends selected existing term **values**, not the
+objective family. In the v0.9 WP10 target, accepted penalty strengths may be
+scalar-broadcast or row-bound. A row with strength zero is absent under the same
+rule above and must be discarded before dangerous branch evaluation or
+structural coupling decisions.
+
+Hard terms independently gain scalar-or-row `applicable`. An inapplicable hard
+row contributes no accepted-set restriction, feasibility/conflict edge,
+violation classification, or hard-induced coupling. This absence is not
+equivalent to zero mismatch confidence or a very broad finite bound. Closed
+hard intervals may use equal endpoints for equality; the hard tolerance below
+continues to define the accepted binary64 measurement set.
+
+These changes require row-specific compiled scalar specifications and complete
+policy-aware cache identity, but preserve convexity, affine hard feasibility,
+scalar proximal separability, and the existing hard-tolerance predicate.
+
 ### Hard-bound tolerance and reporting
 
 Hard-bound classification uses one float64 absolute-plus-relative policy:
