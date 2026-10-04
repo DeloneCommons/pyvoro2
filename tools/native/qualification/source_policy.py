@@ -7,6 +7,7 @@ outputs, never inputs to their own source identities.
 from __future__ import annotations
 
 import argparse
+import errno
 import hashlib
 import importlib.util
 import json
@@ -60,6 +61,17 @@ def _raise_walk_error(error):
     raise error
 
 
+def _source_path_kind(path):
+    # Python 3.14's Path predicates suppress stat errors. Preserve ordinary
+    # missing-path behavior, but never omit an unreadable source input.
+    try:
+        return stat.S_IFMT(path.stat().st_mode)
+    except OSError as error:
+        if error.errno in (errno.ENOENT, errno.ENOTDIR, errno.EBADF, errno.ELOOP):
+            return 0
+        raise
+
+
 def measure_source(root: Path = ROOT) -> dict:
     """Read all relevant files, including unknown additions; never write."""
     root = Path(root).resolve()
@@ -67,14 +79,14 @@ def measure_source(root: Path = ROOT) -> dict:
     paths = set()
     for name in _FILES:
         path = root / name
-        if not path.is_file():
+        if _source_path_kind(path) != stat.S_IFREG:
             raise ValueError(f'missing source policy input: {name}')
         paths.add(path)
     for name in _TREES:
         tree = root / name
-        if name in _TREES[:4] and not tree.is_dir():
-            raise ValueError(f'missing source closure: {name}')
-        if not tree.exists():
+        if _source_path_kind(tree) != stat.S_IFDIR:
+            if name in _TREES[:4]:
+                raise ValueError(f'missing source closure: {name}')
             continue
         # rglob silently omits unreadable directories, which would publish an
         # incomplete identity. Keep the same file filters but fail traversal.
@@ -83,7 +95,8 @@ def measure_source(root: Path = ROOT) -> dict:
             subdirectories[:] = [name for name in subdirectories
                                  if name not in _SKIP_DIRS]
             paths.update(path for name in filenames
-                         if (path := Path(directory) / name).is_file())
+                         if _source_path_kind(path := Path(directory) / name)
+                         == stat.S_IFREG)
     files = {}
     for path in sorted(paths):
         relative = path.relative_to(root).as_posix()

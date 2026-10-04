@@ -1,9 +1,11 @@
 """Independent source identities and the explicit developer refresh command."""
 from __future__ import annotations
 
+import errno
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -333,6 +335,35 @@ def test_refresh_refuses_unreadable_directory_without_rewriting(source, monkeypa
 
     monkeypatch.setattr(policy.os, 'scandir', unreadable)
     with pytest.raises(PermissionError, match='unreadable source directory'):
+        policy.update_manifest(source)
+    assert (path.read_bytes(), path.stat().st_mtime_ns) == before
+    assert not list(path.parent.glob('.*.tmp'))
+
+
+@pytest.mark.parametrize('blocked', ['cpp/fixture.cpp', '.github/workflows'])
+def test_refresh_refuses_unreadable_metadata_with_python314_predicates(
+        source, monkeypatch, blocked):
+    (source / '.github/workflows/fixture.yml').write_bytes(b'covered workflow\n')
+    assert cli(source, '--update-manifest').returncode == 0
+    path = source / MANIFEST
+    before = path.read_bytes(), path.stat().st_mtime_ns
+    spec = importlib.util.spec_from_file_location('manifest_metadata', SCRIPT)
+    policy = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(policy)
+    original_stat = policy.os.stat
+
+    def unreadable(path, *args, **kwargs):
+        if Path(path) == source / blocked:
+            raise PermissionError(errno.EACCES, 'fixture unreadable metadata')
+        return original_stat(path, *args, **kwargs)
+
+    # CPython 3.14 delegates these predicates to os.path, which suppresses
+    # stat errors. Exercise that real behavior on every supported test host.
+    monkeypatch.setattr(Path, 'is_file', lambda path: os.path.isfile(path))
+    monkeypatch.setattr(Path, 'is_dir', lambda path: os.path.isdir(path))
+    monkeypatch.setattr(Path, 'exists', lambda path: os.path.exists(path))
+    monkeypatch.setattr(policy.os, 'stat', unreadable)
+    with pytest.raises(PermissionError, match='unreadable metadata'):
         policy.update_manifest(source)
     assert (path.read_bytes(), path.stat().st_mtime_ns) == before
     assert not list(path.parent.glob('.*.tmp'))
