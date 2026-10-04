@@ -168,6 +168,25 @@ pytest -m fuzz --fuzz-n 100
 pytest -m pyvoro --fuzz-n 100
 ```
 
+## Native source identity and qualification
+
+For measured native/build/consumer/tool/test/workflow changes, the implementer
+explicitly runs `python tools/native/qualification/source_policy.py
+--update-manifest`, then `--check-manifest`. Default/`--measure` is read-only.
+Only `src/pyvoro2/_internal/native_source_manifest.json` is committed source
+identity; the retired source-approval file is forbidden. The canonical manifest
+records mechanical identities, not review or qualification claims.
+
+Build, finalization and CI check this input and never refresh it. Run full
+controlled qualification on the exact candidate head; keep source-manifest,
+effective-build, record, native and wheel identities distinct. One independent
+final review assesses the complete PR and its final CI/artifact evidence before
+maintainer integration. No separate source approval is needed to execute CI.
+Read [ADR 0024](docs/development/decisions/0024-external-native-artifact-qualification.md)
+and the [qualification workflow](docs/development/native-qualification.md).
+Default editable installations remain unqualified; a current manifest alone
+does not satisfy effective-build, route, payload or current-thread FP evidence.
+
 ## Architectural invariants
 
 Preserve these unless an accepted decision record supersedes them:

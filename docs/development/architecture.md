@@ -253,7 +253,7 @@ ordering, resource policy, source-trace requirement, and R3-A scope.
 current-thread inspection before floating preparation and typed native casters,
 plus rechecks after each foreign conversion callback. Runtime state is never
 cached or normalized. The [qualification workflow](native-qualification.md)
-separately binds approved source/schema/consumers, actual effective build
+separately binds canonical measured source/schema/consumer identities, actual effective build
 evidence and all final installed native payloads, including `_fpguard`.
 
 ### Strict public values and pragmatic ownership
@@ -930,7 +930,7 @@ the independently accepted WP6 contract and merged implementation under
 | Component | Responsibility |
 |---|---|
 | `cpp/planar_witness.cpp` and private headers | Run the unchanged ordinary rectangular producer with compact outgoing-edge tokens, actual insertion/storage snapshots and internal collapse evidence. |
-| Shared qualification workflow and `_internal/planar/wp6_profile.py` | Bind separately approved source/schema/consumers and effective-build evidence to the installed planar artifact; retain packet consistency and runtime checks. |
+| Shared qualification workflow and `_internal/planar/wp6_profile.py` | Bind the mechanical source/schema/consumer manifest and effective-build evidence to the installed planar artifact; retain packet consistency and runtime checks. |
 | `_internal/planar/wp6_certificate.py` | Validate insertion and final source associations, transport native images into the original-source/user-basis chart, and combine exact audit findings with public output/actions. |
 | `_internal/planar/wp6_ideal.py` | Reconstruct complete exact planar cells and labeled contacts independently for E and S, with complete-family and exact-arithmetic guards. |
 | `_internal/planar/wp6_numerical.py` | After complete E/S auditing, compare reciprocal native segment unions for classes positive in both ideals, using exact native-local chart translation before a checked numerical view. |

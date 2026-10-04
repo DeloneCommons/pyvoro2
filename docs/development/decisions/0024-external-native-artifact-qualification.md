@@ -1,7 +1,8 @@
 # 0024 — External native artifact qualification
 
-- **Status:** Accepted contract; issue #88 implementation acceptance pending
+- **Status:** Accepted; #88 implemented and independently accepted through PR #90
 - **Date:** 2026-09-28
+- **Amendment:** 2026-10-04 — [#109](https://github.com/DeloneCommons/pyvoro2/issues/109), mechanical source identity and final review
 - **Related issue:** [#88 — native qualification hardening](https://github.com/DeloneCommons/pyvoro2/issues/88)
 - **Related plan:** [Phase B qualification hardening](../plans/v0.9.md#phase-b-qualification-hardening-generalize-native-certificate-profiles)
 - **Implementation and evidence:** [native qualification workflow](../native-qualification.md)
@@ -26,7 +27,7 @@ enter Phase C, or authorize functional vendored-source changes.
 
 ## Decision
 
-### Separate approval, measurement, issuance and admission
+### Separate source identity, qualification and final review
 
 Qualification uses externally attested artifacts (Model P), with route-specific
 components. The controlled build and finalization workflow issues a detached
@@ -34,18 +35,31 @@ record; the native module does not certify itself.
 
 | Responsibility | Authority |
 |---|---|
-| Source approval | Separately reviewed source, schema, consumer and policy identities. Automatic measurement cannot approve changed source. |
+| Source manifest | One canonical mechanical source/schema/consumer/component identity, explicitly refreshed by the implementer. Hashes establish identity and change detection. |
+| Independent review | One final pre-merge assessment of the complete PR and exact-head CI/artifact evidence; no separate source review is an issuance input. |
 | Source measurement | A conservative manifest covers vendor sources, binding/observer code, headers, build configuration, runtime consumers and qualification machinery. Unknown additions in the covered trees enter the measurement. |
 | Effective build | Reviewed platform adapters record the actual compiler/backend, assembler and linker execution, dependencies and outputs. |
-| Issuance | A controlled external finalizer verifies approved source, complete build evidence, component evidence and final installed payload before writing a record. |
+| Issuance | A controlled external finalizer verifies the current source manifest, complete build evidence, component evidence and final installed payload before writing a record. |
 | Admission | The private verifier binds that record to the trusted installation, current loaded native module, ABI, consumers and required components. |
 | Runtime environment | A binding-owned raw guard checks the current executing thread before potentially unsafe numeric work and after foreign callback boundaries. |
 
-The source approval document, generated installation anchor and detached record
-are not inputs to their own recursively defined source digest. The record binds
-the approval identity separately, together with the policy revision, component
-schemas and consumer identity. Native embedded identities are consistency
-checks against these independently established authorities.
+The sole committed source identity is `native_source_manifest.json`, with exactly
+`manifest_schema`, `policy_revision`, `source_sha256`, `consumer_sha256`,
+`schema_sha256` and all six `components`. Shared pure-Python validation requires
+canonical bytes and rejects duplicate/unknown/missing members, malformed digests
+and incompatible schemas. It contains no review, approval or qualification
+assertions. The implementer explicitly refreshes it; builds, finalizers and CI
+only check it. Independent source review is no longer a prerequisite for CI or
+an input to issuance.
+
+The manifest, generated installation anchor and detached record are not inputs
+to their own source digest. Qualification record v2 / policy `issue88-p2` binds
+`source_manifest_sha256` to the exact canonical bytes, separately from
+`effective_build.manifest_sha256`. Source and installed manifests must agree
+before evidence and remain unchanged afterward. Native embedded identities
+remain consistency checks. A manifest alone cannot qualify an artifact; the
+final independent review remains required before maintainer integration.
+The retired `native_approval.json` and record v1 have no compatibility reader.
 
 ### Effective commands are evidence, requested options are intent
 
@@ -57,8 +71,8 @@ unreviewed options and incomplete evidence. An earlier unsafe option may be
 overridden only when its final effective state is established. No favorable
 compiler label or CMake cache value compensates for missing evidence.
 
-Each primary translation unit must belong to the independently approved source
-closure. External C/C++ headers require an independently established compiler,
+Each primary translation unit must belong to the measured source
+closure bound by the current manifest. External C/C++ headers require an independently established compiler,
 SDK, Python or pybind11 provider root plus the actual consumed file identities.
 Capturing a header hash records what was read; it does not approve that header.
 A candidate `-I` or `-include` option cannot create a trusted provider. Likewise,
@@ -110,7 +124,7 @@ installation anchor containing its digest and installation identity. The anchor
 is delivered through the trusted package finalization/installation path.
 Placing arbitrary JSON beside a module does not grant qualification. The
 record names exact native module and relevant bundled dependency hashes,
-approved consumers, target/ABI, build-evidence identity and component-evidence
+measured consumers, target/ABI, build-evidence identity and component-evidence
 identities. A different conforming rebuild may receive a new valid record;
 historical native bytes are not a permanent allowlist.
 
@@ -218,7 +232,7 @@ atomic: no certified prefix, guessed provenance, or silently repaired result.
 
 ### Requalify changed inputs and final distributions
 
-Changes to the approved closure, schema/consumer interpretation, execution
+Changes to the measured closure, schema/consumer interpretation, execution
 properties, toolchain adapter, native payload or bundled dependency invalidate
 the affected qualification. Shared closures require affected ordinary and
 selected-route noninterference checks. Recomputing a hash is not requalification.
@@ -226,7 +240,7 @@ Repair, stripping, bundling and signing belong to explicit postprocessing
 lineage. Records and installed smoke tests must refer to the resulting native
 bytes, not a pre-repair donor.
 
-Keep source approval, optimized native qualification, Python compatibility,
+Keep source identity, final independent review, optimized native qualification, Python compatibility,
 positive route evidence, negative controls, hostile-runtime tests, sanitizers
 and distribution checks distinguishable. Expensive native evidence may be
 reused across Python minors only with an explicit proof-relevant equivalence
@@ -256,9 +270,11 @@ or ordinary unqualified builds can refuse certificate consumers even when their
 metadata resembles a qualified build. Rebuilds need controlled evidence and
 finalization; users receive no compiler selector or correctness override.
 
-Retaining exact compiler-version literals, approving automatic hash refreshes,
+Retaining exact compiler-version literals, treating hash refresh as acceptance,
 trusting requested flags or native self-metadata, accepting an adjacent unsigned
 claim as authority, normalizing caller controls, and treating a refusal-only
 wheel smoke as positive qualification are rejected. Each omits an independent
-obligation above. This ADR fixes the accepted contract; its status does not
-claim that issue #88's final evidence or independent review has completed.
+obligation above. Issue #88's implementation and evidence were independently accepted and
+squash-merged through PR #90 as `f2f9b3161c3b1fbd9ccfba3b563fbe4057cc13f1`.
+The #109 amendment changes source identity responsibilities; its implementation
+still needs complete final evidence and independent review before integration.

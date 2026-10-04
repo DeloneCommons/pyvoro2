@@ -11,10 +11,11 @@ diagnostics. The packet remains private; it does not expose unrequested public
 vertices, adjacency, or shift capabilities.
 
 [ADR 0024](decisions/0024-external-native-artifact-qualification.md) and the
-[qualification workflow](native-qualification.md) now own source approval,
+[qualification workflow](native-qualification.md) now own mechanical source identity,
 effective-build evidence, installed-artifact identity and safe runtime admission.
 The packet and induction below retain their WP5 meaning; packet metadata alone
-does not grant qualification. Issue #88's final artifact acceptance is pending.
+does not grant qualification. Issue #88 was independently accepted and merged through PR #90; changed
+artifacts still require fresh qualification and final review.
 
 ## Entry points and evidence
 
@@ -173,7 +174,7 @@ Verbose logs support review but do not establish effective-command completeness.
 The external workflow records actual tool execution and its source/object/link
 closure, then binds component evidence to the final installed payload. Packet
 hashes remain consistency fields rather than substitutes for that complete
-approved closure.
+measured closure bound by the current source manifest.
 
 ### Translation-unit coverage
 
