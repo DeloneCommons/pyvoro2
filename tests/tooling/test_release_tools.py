@@ -1832,3 +1832,38 @@ def test_archives_require_one_new_source_identity(tmp_path, kind, state):
         kwargs = ({'expected_version': WHEEL_MATRIX_VERSION}
                   if kind == 'matrix-sdist' else {})
         operation(path, **kwargs)
+
+
+@pytest.mark.parametrize('kind', ['sdist', 'matrix-sdist'])
+@pytest.mark.parametrize('link_type', [tarfile.SYMTYPE, tarfile.LNKTYPE])
+@pytest.mark.parametrize('state', ['link-only', 'duplicate-new', 'retired-link'])
+def test_sdist_identity_checks_include_link_members(tmp_path, kind, link_type, state):
+    if kind == 'sdist':
+        path = tmp_path / 'fixture.tar.gz'
+        _write_content_sdist(path)
+        root = 'pyvoro2-0.8.0.dev0'
+        checker = _load_tool_module('check_dist')
+        error = checker.DistCheckError
+        kwargs = {}
+    else:
+        path = _write_fake_sdist(tmp_path)
+        root = f'pyvoro2-{WHEEL_MATRIX_VERSION}'
+        checker = _load_tool_module('check_wheel_matrix')
+        error = checker.WheelMatrixError
+        kwargs = {'expected_version': WHEEL_MATRIX_VERSION}
+    new = f'{root}/src/pyvoro2/_internal/native_source_manifest.json'
+    old = f'{root}/src/pyvoro2/_internal/native_approval.json'
+    entries = _read_sdist_entries(path)
+    if state == 'link-only':
+        entries = [(name, data) for name, data in entries if name != new]
+    with tarfile.open(path, 'w:gz') as archive:
+        for name, data in entries:
+            member = tarfile.TarInfo(name)
+            member.size = len(data)
+            archive.addfile(member, io.BytesIO(data))
+        link = tarfile.TarInfo(old if state == 'retired-link' else new)
+        link.type = link_type
+        link.linkname = f'{root}/src/pyvoro2/_internal/native_qualification.py'
+        archive.addfile(link)
+    with pytest.raises(error):
+        checker.check_sdist(path, **kwargs)

@@ -311,3 +311,27 @@ def test_missing_required_directory_is_not_repaired(source):
     result = cli(source, '--update-manifest')
     assert result.returncode == 1
     assert not (source / 'src/pyvoro2/_internal').exists()
+
+
+def test_refresh_refuses_unreadable_directory_without_rewriting(source, monkeypatch):
+    restricted = source / 'cpp/restricted'
+    restricted.mkdir()
+    (restricted / 'hidden.cpp').write_bytes(b'measured input\n')
+    assert cli(source, '--update-manifest').returncode == 0
+    path = source / MANIFEST
+    before = path.read_bytes(), path.stat().st_mtime_ns
+    spec = importlib.util.spec_from_file_location('manifest_unreadable', SCRIPT)
+    policy = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(policy)
+    scandir = policy.os.scandir
+
+    def unreadable(directory):
+        if Path(directory) == restricted:
+            raise PermissionError('fixture unreadable source directory')
+        return scandir(directory)
+
+    monkeypatch.setattr(policy.os, 'scandir', unreadable)
+    with pytest.raises(PermissionError, match='unreadable source directory'):
+        policy.update_manifest(source)
+    assert (path.read_bytes(), path.stat().st_mtime_ns) == before
+    assert not list(path.parent.glob('.*.tmp'))

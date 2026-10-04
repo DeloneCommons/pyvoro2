@@ -455,6 +455,22 @@ def check_sdist(path: Path) -> None:
             [member.name for member in members],
             label=path.name,
         )
+        # Identity paths count even when a tar entry is a link or directory.
+        # Filtering to regular files first can hide retired/duplicate entries.
+        all_relative = [member.name.partition('/')[2] for member in members]
+        _assert_members_absent(
+            set(all_relative),
+            {'src/pyvoro2/_internal/native_approval.json'},
+            label=path.name,
+        )
+        identity = 'src/pyvoro2/_internal/native_source_manifest.json'
+        identity_members = [member for member in members
+                            if member.name.partition('/')[2] == identity]
+        if len(identity_members) != 1 or not identity_members[0].isfile():
+            raise DistCheckError(
+                f'{path.name} expected exactly one regular {identity}, '
+                f'found {len(identity_members)} entries'
+            )
         file_members = [member for member in members if member.isfile()]
         file_names = [member.name for member in file_members]
         _assert_unique_file_names(file_names, label=path.name)

@@ -56,6 +56,10 @@ def _included(path, relative):
             and path.suffix not in _OUTPUT_SUFFIXES)
 
 
+def _raise_walk_error(error):
+    raise error
+
+
 def measure_source(root: Path = ROOT) -> dict:
     """Read all relevant files, including unknown additions; never write."""
     root = Path(root).resolve()
@@ -70,7 +74,16 @@ def measure_source(root: Path = ROOT) -> dict:
         tree = root / name
         if name in _TREES[:4] and not tree.is_dir():
             raise ValueError(f'missing source closure: {name}')
-        paths.update(path for path in tree.rglob('*') if path.is_file())
+        if not tree.exists():
+            continue
+        # rglob silently omits unreadable directories, which would publish an
+        # incomplete identity. Keep the same file filters but fail traversal.
+        for directory, subdirectories, filenames in os.walk(
+                tree, onerror=_raise_walk_error):
+            subdirectories[:] = [name for name in subdirectories
+                                 if name not in _SKIP_DIRS]
+            paths.update(path for name in filenames
+                         if (path := Path(directory) / name).is_file())
     files = {}
     for path in sorted(paths):
         relative = path.relative_to(root).as_posix()

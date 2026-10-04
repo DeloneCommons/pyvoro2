@@ -453,8 +453,8 @@ def check_sdist(path: Path, *, expected_version: str) -> None:
 
     try:
         with tarfile.open(path, 'r:gz') as tf:
-            members = [member for member in tf.getmembers() if member.isfile()]
-            names = [member.name for member in members]
+            members = tf.getmembers()
+            names = [member.name for member in members if member.isfile()]
             pkg_info_member = _only_archive_member(
                 names,
                 suffix='/PKG-INFO',
@@ -477,12 +477,17 @@ def check_sdist(path: Path, *, expected_version: str) -> None:
         raise WheelMatrixError(
             f'{path.name} has inconsistent top-level directory naming'
         )
+    # Include links/directories when checking identity path presence and count.
+    all_names = [member.name for member in members]
     for member in sorted(REQUIRED_QUALIFICATION_FILES):
-        count = names.count(f'{expected_root}/src/{member}')
-        if count != 1:
+        qualified_members = [entry for entry in members
+                             if entry.name == f'{expected_root}/src/{member}']
+        count = len(qualified_members)
+        if count != 1 or not qualified_members[0].isfile():
             raise WheelMatrixError(
-                f'{path.name} expected exactly one src/{member}, found {count}')
-    if f'{expected_root}/src/pyvoro2/_internal/native_approval.json' in names:
+                f'{path.name} expected exactly one regular src/{member}, '
+                f'found {count}')
+    if f'{expected_root}/src/pyvoro2/_internal/native_approval.json' in all_names:
         raise WheelMatrixError(
             f'{path.name} contains forbidden retired source identity')
     _assert_project_identity(
