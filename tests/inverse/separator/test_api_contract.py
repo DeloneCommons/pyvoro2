@@ -478,19 +478,22 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
                 ('sort_keys', False),
             ),
         ),
-        (separator.SquaredLoss, ()),
-        (separator.HuberLoss, (('delta', 1.0),)),
+        (separator.SquaredLoss, (('space', None),)),
+        (separator.HuberLoss, (('delta', 1.0), ('space', None))),
         (
             separator.Interval,
-            (('lower', REQUIRED), ('upper', REQUIRED)),
+            (('lower', REQUIRED), ('upper', REQUIRED),
+             ('applicable', True), ('space', None)),
         ),
-        (separator.FixedValue, (('value', REQUIRED),)),
+        (separator.FixedValue, (('value', REQUIRED),
+                                ('applicable', True), ('space', None))),
         (
             separator.SoftIntervalPenalty,
             (
                 ('lower', REQUIRED),
                 ('upper', REQUIRED),
                 ('strength', REQUIRED),
+                ('space', None),
             ),
         ),
         (
@@ -501,6 +504,7 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
                 ('margin', 0.02),
                 ('strength', 1.0),
                 ('tau', 0.01),
+                ('space', None),
             ),
         ),
         (
@@ -511,6 +515,7 @@ def test_inverse_supporting_signatures_and_defaults_are_characterized() -> None:
                 ('margin', 0.05),
                 ('strength', 1.0),
                 ('epsilon', 1e-6),
+                ('space', None),
             ),
         ),
         (
@@ -939,6 +944,8 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
                 'measurement_upper',
                 'difference_lower',
                 'difference_upper',
+                'space',
+                'applicable',
             ),
         ),
         (
@@ -1056,6 +1063,17 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
         assert _field_names(dataclass_type) == expected
 
 
+@pytest.mark.parametrize('value_type, field_name, expected', [
+    (separator.PowerFitBounds, 'applicable', np.ndarray | None),
+    (separator.SeparatorFitProblem, 'regularization_strength', float),
+    (separator.SeparatorFitResult, 'weights', np.ndarray | None),
+    (separator.SelfConsistentPowerFitResult, 'realized',
+     separator.RealizedPairDiagnostics | None),
+])
+def test_wp10_value_object_type_hints_resolve(value_type, field_name, expected):
+    assert get_type_hints(value_type)[field_name] == expected
+
+
 def test_active_final_weight_dependent_types_are_optional() -> None:
     result_hints = get_type_hints(separator.SelfConsistentPowerFitResult)
     for name in (
@@ -1124,6 +1142,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
         'explicit_shift',
     }
     assert set(fit.to_records(constraints)[0]) == {
+        'mismatch_space', 'mismatch_target', 'mismatch_predicted', 'mismatch_residual',
         'constraint_index',
         'row_id',
         'site_i',
@@ -1157,6 +1176,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
         'boundary_measure',
     }
     assert set(active.to_records()[0]) == {
+        'mismatch_space', 'mismatch_target', 'mismatch_predicted', 'mismatch_residual',
         'constraint_index',
         'row_id',
         'site_i',
@@ -1186,6 +1206,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
 
     fit_report = fit.to_report(constraints)
     assert set(fit_report) == {
+        'model_spaces', 'model_policy',
         'schema',
         'producer',
         'source',
@@ -1205,6 +1226,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
         'connectivity',
     }
     assert set(fit_report['summary']) == {
+        'mismatch_space',
         'status',
         'is_optimal',
         'is_infeasible',
@@ -1247,6 +1269,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
 
     active_report = active.to_report()
     assert set(active_report) == {
+        'model_spaces', 'model_policy',
         'schema',
         'producer',
         'source',
@@ -1293,7 +1316,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
     ):
         assert report['schema'] == {
             'name': 'pyvoro2.inverse.separator.report',
-            'version': 1,
+            'version': 2,
         }
         assert report['producer'] == {
             'name': 'pyvoro2',

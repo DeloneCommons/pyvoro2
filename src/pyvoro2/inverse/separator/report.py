@@ -8,6 +8,7 @@ JSON-friendly dictionaries and row lists for downstream packages.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 import sys
 from typing import Any
@@ -33,7 +34,7 @@ from ._identity import (
 
 
 _REPORT_SCHEMA_NAME = 'pyvoro2.inverse.separator.report'
-_REPORT_SCHEMA_VERSION = 1
+_REPORT_SCHEMA_VERSION = 2
 
 
 def _report_envelope(
@@ -339,6 +340,8 @@ def build_fit_report(
     termination = result.solver_termination
     report = {
         **_report_envelope(originating),
+        'model_spaces': result.resolved_policy['model_spaces'],
+        'model_policy': result.resolved_policy['model_policy'],
         'kind': 'power_weight_fit',
         'summary': {
             'status': termination.status,
@@ -348,6 +351,7 @@ def build_fit_report(
             'solver': termination.solver,
             'linear_backend': termination.linear_backend,
             'measurement': result.measurement,
+            'mismatch_space': result.mismatch_space,
             'n_constraints': int(originating.n_constraints),
             'n_points': int(originating.n_points),
             'converged': bool(termination.converged),
@@ -553,6 +557,8 @@ def build_active_set_report(
     report = {
         **_report_envelope(originating),
         'kind': 'self_consistent_power_fit',
+        'model_spaces': result.resolved_policy['model_spaces'],
+        'model_policy': result.resolved_policy['model_policy'],
         'availability': {
             'weights': available,
             'realization': available,
@@ -629,7 +635,7 @@ def build_active_set_report(
 def _jsonable_report_value(value: Any) -> Any:
     """Convert nested payloads to finite JSON-native values or fail closed."""
 
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         return {
             str(key): _jsonable_report_value(item)
             for key, item in value.items()

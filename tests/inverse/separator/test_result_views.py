@@ -20,6 +20,8 @@ REPORT_ENVELOPE_KEYS = {
     'observation_set',
 }
 FIT_REPORT_KEYS = REPORT_ENVELOPE_KEYS | {
+    'model_spaces',
+    'model_policy',
     'kind',
     'summary',
     'constraints',
@@ -44,6 +46,8 @@ REALIZED_REPORT_KEYS = REPORT_ENVELOPE_KEYS | {
     'tessellation_diagnostics',
 }
 ACTIVE_REPORT_KEYS = REPORT_ENVELOPE_KEYS | {
+    'model_spaces',
+    'model_policy',
     'kind',
     'availability',
     'summary',

@@ -1,4 +1,29 @@
-# v0.9 periodic boundary and query migration
+# v0.9 periodic, query, and separator migration
+
+## Separate observation units from model units
+
+Existing separator models inherit `SeparatorObservations.measurement` through
+`space=None`. To optimize absolute position while restricting connector
+fraction, use `SquaredLoss(space='position')` with
+`Interval(0., 1., space='fraction')`. Observation-facing `target`, `predicted`,
+and `residuals` retain source units. Use `mismatch_target`,
+`mismatch_predicted`, and `mismatch_residuals` for optimization units.
+
+Hard `lower`/`upper`/`value`/`applicable` and penalty
+`lower`/`upper`/`strength` accept scalars or one-dimensional exact-length row
+vectors. Scalars broadcast; a length-one vector does not broadcast to more
+rows. Values are copied and strictly validated even on inactive or zero-strength
+rows. `applicable=False` removes a hard restriction independently of confidence.
+Hard `lower == upper` is valid. Shape parameters (`delta`, `margin`, `tau`,
+`epsilon`) remain scalar, and spaces remain term-global.
+
+Separator fit, realization, and active reports now declare schema version `2`.
+Update exact-key consumers for the fit/active `model_spaces` and `model_policy`
+blocks, fit summary `mismatch_space`, and four mismatch record fields. Realized
+reports carry the v2 envelope without inventing model policy. Scalar and vector
+configuration remain distinguishable as `uniform` and `rows`, including empty
+selections. Active outer policy is candidate-aligned; its nested fit policy is
+selected-row aligned. Unavailable predictions remain null.
 
 Ordinary `pyvoro2.planar.compute` now attributes edge owners and images from the
 native execution and audits exact geometry separately. The result class and

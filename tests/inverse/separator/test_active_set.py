@@ -373,6 +373,7 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
     forwarded: list[dict[str, object]] = []
 
     def fake_fit_weights_from_separators(points, constraints, **kwargs):
+        from pyvoro2.inverse.separator._policy import _bind_policy
         forwarded.append(kwargs)
         if constraints.n_constraints == 3:
             weights = np.array([10.0, 12.0, 30.0, 28.0], dtype=float)
@@ -400,6 +401,7 @@ def test_self_consistent_solver_preserves_active_component_offsets_on_final_refi
             converged=True,
             conflict=None,
             warnings=tuple(),
+            _bound_policy_init=_bind_policy(constraints, kwargs['model']),
         )
 
     def fake_match_realized_pairs(*args, **kwargs):

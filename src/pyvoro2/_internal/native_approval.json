@@ -4,61 +4,82 @@
   "components": {
     "wp5-spatial": {
       "schema_sha256": "91fce53f437d940e393ed1ff379bd07b5b4f696763711d9fbbf97b037748bc20",
-      "source_sha256": "be1c0d564c98a26ee2dd9a98537f22c657e432f8f6c81444d0606d862e64d0a3"
+      "source_sha256": "0dbc11c7909a41ae0d6a90be993b9feb294c8b989563ca2e7c0492275dba5b87"
     },
     "wp6-planar": {
       "schema_sha256": "ce6c7496bbff0bdfba31c638ce73e41738b9a8244b1606398bcea3506c81e704",
-      "source_sha256": "932f20653c309590dd66f737af48d280e90267746f9b5318b9c50676182a199a"
+      "source_sha256": "993d57620417a280009a069fba6904ff4b4655b4d5dbd53256719523a457f3da"
     },
     "wp7-planar": {
       "schema_sha256": "4defaa575ef65b76f1438a165850f6c74eb7ff918c1abd75133f231007719b0f",
-      "source_sha256": "4d482a5c8cfdd224a45e56f72ac7dafd495a23f217cf4c5c5c109ce2a11c5c83"
+      "source_sha256": "947de281e80a319780275ae66ca0de71278979020009f25c1fea2f59a424ab9f"
     },
     "wp7-spatial": {
       "schema_sha256": "fb3905422ae2a1ad161b268f66a0db2ff280476fa9a6ecc1c510b3d9bf434d7b",
-      "source_sha256": "b1ce2afbf7903093729dd5a6d42800af5f20f81484b494e0d253ec3f36f625e0"
+      "source_sha256": "37189fce110d04486c57ba6fd61dde3baea915a1edded8e98549ee15b9992aaf"
     },
     "wp8-planar": {
       "schema_sha256": "3c04570b8ddf351b480e7ebd0c6035f78d1fd99710bdbca7a5301ab180335f29",
-      "source_sha256": "e41f92a5df101931dda41d4d446a2976f4b620deef23645372d0077ae51034f8"
+      "source_sha256": "c9217791de6b5cfeb40de4dabbe767b55ad5222e93b25cc6bec8cf4e4be61dfe"
     },
     "wp8-spatial": {
       "schema_sha256": "b4bee9de263487096b167dd07532c67e5dd01500424a4556eb23147c5b18ef67",
-      "source_sha256": "bf6800d2fb122ee2ee5143003f10f91045c1d460495f06186410d53b0826318e"
+      "source_sha256": "18ffca7183c01ff8380c03a2b6b5eba20c7c922aed3a21f769fc45fa17da2c3e"
     }
   },
-  "consumer_sha256": "c51ff894b82b92e51f2992ac9cdf0fb52172f90cc2534c9affb6e6681af6a750",
+  "consumer_sha256": "5b46cbaed3a076e07126ac5907b545a6a1c16439ff245d611c0ce0267fb7367a",
   "policy_revision": "issue88-p1",
   "review": {
-    "date": "2026-10-03",
-    "decision": "Independent ADR 0024 source approval for the complete final 394-file issue #99 closure at c78f031d84a1532f8a9a704b545cca482ed18e90 after targeted F1/F2 and additional R1 diagnostic remediation. The complete cumulative base-to-source diff was reviewed, not only the four-path remediation. Missing/null consumed cycles now produce existing basic error diagnostics and strict NormalizationError; Euler-only weak preparation projects only unused face shifts while preserving neighbor IDs consumed by wall diagnostics. Full topology mappings, image-qualified class unions, raw occurrence preservation, warning severity, max_examples invariance, all frozen mathematical regressions and merged #98 proof boundaries remain intact. The independently discovered R1 regression on the initial 0b6 source was repaired and independently verified before approval; its negative evidence is preserved. Independent source-policy and Git-object measurements match all literal source/consumer/schema/policy/component identities; both unchanged prior reports and the final remediation report were read and hash-bound. No current supported-input source finding remains. This approves changed source for fresh artifact qualification only and supersedes the predecessor approval for this changed closure without rewriting prior approval, reviews, artifacts, failed CI or other negative evidence. All six conservatively affected component source identities require fresh qualification, with final installed-artifact bindings, required supported-platform positives and unsupported-route refusals, exact-final-head FULL CI, and separate independent final spatial/implementation/artifact acceptance. No native build, qualification record, CI or final distribution is approved by this source decision. No merge, issue closure, #95/Checkpoint-B acceptance or Phase C authority is implied.",
-    "integration_base": "47a3ebf25870e7ccd750fe6cc47d446816c05088",
-    "integration_base_tree": "95061d16eabca763b86003a968a146dd8c8a9ca6",
-    "previous_approval_sha256": "e96af1a5111731dee3887f1aa7efd64bfa890a31f129fcd8c7e051411fef45ef",
-    "reports": [
+    "date": "2026-10-04",
+    "decision": "The independent reviewer accepted the original WP10 candidate cbecf32cde9fc28d9bc1ae7ab5689495e712db48. The current source contains subsequent CI remediation: the installed-package report consumer requires the accepted report schema v2; WP10-modified dataclasses eagerly bind their dataclass-only KW_ONLY/InitVar annotations so Python 3.10 type-hint inspection succeeds while constructor arguments, defaults, descriptor binding and source association are preserved. Regression checks cover current/stale report contracts and all four affected value-object type hints. Source identities were refreshed by the implementer under explicit, temporary maintainer authorization for WP10/PR #108. No claim is made that the original reviewer independently reviewed this later source revision. All native qualification, mathematics, admission, certificate and refusal requirements remain intact. This refresh permits fresh qualification only; it does not accept artifacts, WP10 or Checkpoint C, authorize merge/closure, or change ADR 0024 or the approval schema.",
+    "independent_review": {
+      "date": "2026-10-04",
+      "decision": "SOURCE APPROVAL: ACCEPT. Independent review of the complete base-to-candidate WP10 diff found no blocking source finding. WP10 remains within issue #107 and ADR 0019; native/vendor mathematics, qualification policy, and mandatory certificate, admission and refusal paths remain intact. This approves source for fresh native qualification only. All six component source identities require fresh qualification. It does not qualify artifacts, accept WP10 or Checkpoint C, or authorize merge or issue closure.",
+      "evidence_source": "Complete independent reviewer response supplied by the maintainer. Report identity and archive name wp10-source-approval-cbecf32c.zip are reviewer-supplied metadata; the archive itself was not attached in this session. The implementer independently verified the exact live commit/tree and all measured source, consumer, schema and component identities before this publication.",
+      "integration_base": "6028d79427df8c841310664c21912283bbb89f97",
+      "integration_base_tree": "84d68a0b371a4ea6e71ff3b63ece15485bf33070",
+      "measured_files": 401,
+      "previous_approval_sha256": "55bcfd85f53288efc02863d63ffc3ab1cf9e1e5b6ee9cddf611554d1ab47b5c4",
+      "python_consumers": 80,
+      "reports": [
+        {
+          "name": "independent-source-review.txt",
+          "sha256": "56f0b6162b9b75df0179a4e508b2925e6077a6b29fd11e0675943eba1b217cd0"
+        }
+      ],
+      "reviewed_delta_base": "6028d79427df8c841310664c21912283bbb89f97",
+      "reviewed_delta_base_tree": "84d68a0b371a4ea6e71ff3b63ece15485bf33070",
+      "reviewed_head": "cbecf32cde9fc28d9bc1ae7ab5689495e712db48",
+      "reviewed_tree": "d26c2c7c8333f7701139fc0b661619b094e52ee3",
+      "reviewer": "ChatGPT /root; read-only supporting reviews /root/objective_review and /root/active_review"
+    },
+    "maintainer_authorization": "Maintainer-pasted instructions, 2026-10-04, Authority and one-time WP10 workflow decision and section 5: implementer may refresh all affected identities after in-scope WP10 remediation in PR #108 without another source-approval cycle.",
+    "previous_approval_sha256": "2c58db79b77b82d8b49b85d6af6a758e55a45ac31eb19bacee39cc62d220e985",
+    "remediation_base": "f4fb8624f9210f454fd091d0d90b566f9e55c9eb",
+    "remediation_history": [
       {
-        "name": "independent-source-review.md",
-        "sha256": "c7f9ff5c798862dc7621caffaac7ea8d3bce7709b031003a3d6e7e4ff2d0a500"
-      },
-      {
-        "name": "r8-independent-source-review.md",
-        "sha256": "e9fa943fd6057fc63941f140c0982265d8867c4977133e72048a1fd3b81b2506"
-      },
-      {
-        "name": "additional-diagnostic-finding-R1.md",
-        "sha256": "b931f7fdd8a5e00106c34b6074a75967167c6ccd0815d39e65eb0d0155eb0e49"
-      },
-      {
-        "name": "remediation-independent-source-review.md",
-        "sha256": "f3285104668d746b58c94892df9b62147b60e7beb9a822f79b750fc038ab4912"
+        "date": "2026-10-04",
+        "decision": "The independent reviewer accepted the original WP10 candidate cbecf32cde9fc28d9bc1ae7ab5689495e712db48. This current source contains subsequent CI remediation: the installed-package report smoke consumer now requires the accepted WP10 schema v2 instead of stale v1, with regression checks for valid current reports and rejection of stale/wrong schemas, wrong kind and non-finite JSON. Source identities were refreshed by the implementer under the maintainer's explicit, temporary WP10/PR #108 authorization. No claim is made that the original reviewer independently reviewed this later source revision. All native qualification, mathematics, admission, certificate and refusal requirements remain intact. This source identity refresh permits fresh qualification only; it does not accept artifacts, WP10 or Checkpoint C, authorize merge/closure, or change ADR 0024 or the approval schema.",
+        "maintainer_authorization": "Maintainer-pasted instructions, 2026-10-04, Authority and one-time WP10 workflow decision and section 5: implementer may refresh all affected identities after in-scope WP10 remediation in PR #108 without another source-approval cycle.",
+        "previous_approval_sha256": "955e60b3a122feb584e97c075a1df6ce198d50f0f0edf565b2299f4cad134972",
+        "remediation_base": "53fdbd73c31b5e3f80bf21660df74e96190e286c",
+        "remediation_paths": [
+          "tests/tooling/test_release_tools.py",
+          "tools/check_installed_package.py"
+        ],
+        "reviewer": "WP10 implementer (ChatGPT /root), under explicit maintainer authorization for PR #108",
+        "triggering_ci_run": 37168327706
       }
     ],
-    "reviewed_delta_base": "f67c5d88b5177a1feb162b1ad868ee5847313b97",
-    "reviewed_delta_base_tree": "d74614ac83ef3669a3b6b4459fb9e5aec05f6bd5",
-    "reviewed_head": "c78f031d84a1532f8a9a704b545cca482ed18e90",
-    "reviewed_tree": "1085afb5d8fc33d05e14a111476ec61ea4dbdd23",
-    "reviewer": "independent remediation_source_review agent (/root/remediation_source_review)"
+    "remediation_paths": [
+      "src/pyvoro2/inverse/separator/active.py",
+      "src/pyvoro2/inverse/separator/problem.py",
+      "src/pyvoro2/inverse/separator/types.py",
+      "tests/inverse/separator/test_api_contract.py"
+    ],
+    "reviewer": "WP10 implementer (ChatGPT /root), under explicit maintainer authorization for PR #108",
+    "triggering_ci_run": 37168754983
   },
   "schema_sha256": "e9b5ddbea1dc313d64043bae5fa0992dffe3f18f4570b9ada4ef4fe6f6ff9d0d",
-  "source_sha256": "f229917d9c3e4dba493cdb29c25cd1ecda319d41250c000eb5550eaa46abb56a"
+  "source_sha256": "0f2e48dc05f2a99678a601946c2b88d822568fdc3a4b7079e6c245ce7e72a743"
 }
