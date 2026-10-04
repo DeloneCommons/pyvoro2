@@ -1793,7 +1793,7 @@ def test_archives_require_one_new_source_identity(tmp_path, kind, state):
         _write_content_wheel(path)
         entries = _read_wheel_entries(path)
         checker = _load_tool_module('check_dist')
-        call = lambda: checker.check_wheel(path)
+        operation = checker.check_wheel
         write = _write_wheel_entries
     elif kind == 'sdist':
         path = tmp_path / 'fixture.tar.gz'
@@ -1802,13 +1802,13 @@ def test_archives_require_one_new_source_identity(tmp_path, kind, state):
         new = 'pyvoro2-0.8.0.dev0/src/' + new
         old = 'pyvoro2-0.8.0.dev0/src/' + old
         checker = _load_tool_module('check_dist')
-        call = lambda: checker.check_sdist(path)
+        operation = checker.check_sdist
         write = _write_sdist_entries
     elif kind == 'matrix-wheel':
         path = _write_fake_wheel(tmp_path, 'cp312', 'manylinux_2_34_x86_64')
         entries = _read_wheel_entries(path)
         checker = _load_tool_module('check_wheel_matrix')
-        call = lambda: checker.check_wheel(path)
+        operation = checker.check_wheel
         write = _write_wheel_entries
     else:
         path = _write_fake_sdist(tmp_path)
@@ -1816,7 +1816,7 @@ def test_archives_require_one_new_source_identity(tmp_path, kind, state):
         new = f'pyvoro2-{WHEEL_MATRIX_VERSION}/src/' + new
         old = f'pyvoro2-{WHEEL_MATRIX_VERSION}/src/' + old
         checker = _load_tool_module('check_wheel_matrix')
-        call = lambda: checker.check_sdist(path, expected_version=WHEEL_MATRIX_VERSION)
+        operation = checker.check_sdist
         write = _write_sdist_entries
     if state in ('old-only', 'missing-new'):
         entries = [(name, data) for name, data in entries if name != new]
@@ -1829,4 +1829,6 @@ def test_archives_require_one_new_source_identity(tmp_path, kind, state):
         write(path, entries)
     with pytest.raises((getattr(checker, 'DistCheckError', RuntimeError),
                         getattr(checker, 'WheelMatrixError', RuntimeError))):
-        call()
+        kwargs = ({'expected_version': WHEEL_MATRIX_VERSION}
+                  if kind == 'matrix-sdist' else {})
+        operation(path, **kwargs)

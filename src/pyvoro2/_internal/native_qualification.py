@@ -142,7 +142,8 @@ def validate_source_manifest(manifest) -> None:
             raise ValueError(f'source manifest component keys differ: {name}')
         for key in ('source_sha256', 'schema_sha256'):
             if not _is_digest(component[key]):
-                raise ValueError(f'invalid source manifest digest: components.{name}.{key}')
+                raise ValueError('invalid source manifest digest: '
+                                 f'components.{name}.{key}')
         if component['schema_sha256'] != canonical_sha256(schema):
             raise ValueError(f'source manifest component schema digest differs: {name}')
 
@@ -342,6 +343,7 @@ class _Verifier:
         if (data != canonical_json(record)
                 or record.get('record_schema') != RECORD_SCHEMA
                 or record.get('policy_revision') != POLICY_REVISION
+                or 'approval_sha256' in record
                 or record.get('installation_id') != self.installation_id):
             _refuse('untrusted_qualification',
                     'record schema, policy, or anchor differs')
@@ -397,6 +399,8 @@ class _Verifier:
         retired = self.internal / 'native_approval.json'
         if retired.exists() or retired.is_symlink():
             _refuse('source_schema_mismatch', 'forbidden retired source identity file')
+        if (self.internal / SOURCE_MANIFEST_FILENAME).is_symlink():
+            _refuse('source_schema_mismatch', 'source manifest must be a regular file')
 
     def _check_module(self, module, identity):
         record = self.record

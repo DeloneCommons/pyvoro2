@@ -436,7 +436,8 @@ def check_wheel(
                 f'{path.name} expected exactly one {member}, found {count}'
             )
     if 'pyvoro2/_internal/native_approval.json' in file_names:
-        raise WheelMatrixError(f'{path.name} contains forbidden retired source identity')
+        raise WheelMatrixError(
+            f'{path.name} contains forbidden retired source identity')
 
     return filename
 
@@ -482,7 +483,8 @@ def check_sdist(path: Path, *, expected_version: str) -> None:
             raise WheelMatrixError(
                 f'{path.name} expected exactly one src/{member}, found {count}')
     if f'{expected_root}/src/pyvoro2/_internal/native_approval.json' in names:
-        raise WheelMatrixError(f'{path.name} contains forbidden retired source identity')
+        raise WheelMatrixError(
+            f'{path.name} contains forbidden retired source identity')
     _assert_project_identity(
         metadata,
         expected_version=expected_version,

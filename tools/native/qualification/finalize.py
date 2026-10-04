@@ -531,7 +531,7 @@ def _check_source_inputs(build, measurement, source_root):
     for unit in units:
         path = Path(unit['source']).resolve()
         _require(path.is_relative_to(source_root),
-                 'primary translation unit is outside approved source: ' + str(path))
+                 'primary translation unit is outside measured source: ' + str(path))
         name = path.relative_to(source_root).as_posix()
         identity = dependencies.get(str(path))
         _require(identity is not None

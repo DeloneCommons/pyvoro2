@@ -191,7 +191,7 @@ def test_source_or_schema_mismatch_refuses(installation, field):
     _refuses(s, s.write(), 'source_schema_mismatch')
 
 
-def test_unapproved_measured_source_does_not_approve_itself(installation):
+def test_manifest_rejects_procedural_review_assertion(installation):
     s = installation
     s.manifest['approved'] = False
     _refuses(s, s.write(), 'source_schema_mismatch')
@@ -543,3 +543,49 @@ def test_measured_source_never_updates_manifest():
     with pytest.raises(ValueError, match='unknown or missing keys'):
         qualification = policy._contract(ROOT)
         qualification.validate_source_manifest(draft)
+
+
+@pytest.mark.parametrize('cached', [False, True])
+@pytest.mark.parametrize('mutation', ['bytes', 'noncanonical', 'missing', 'retired',
+                                      'symlink'])
+def test_installed_manifest_is_immutable_at_first_and_cached_use(
+        installation, cached, mutation):
+    s = installation
+    verifier = s.write()
+    if cached:
+        verifier.require_native(s.module, 'wp5-spatial')
+    path = s.internal / 'native_source_manifest.json'
+    if mutation == 'bytes':
+        path.write_bytes(b'{invalid')
+    elif mutation == 'noncanonical':
+        path.write_text(json.dumps(s.manifest, indent=2))
+    elif mutation == 'missing':
+        path.unlink()
+    elif mutation == 'retired':
+        (s.internal / 'native_approval.json').write_bytes(b'no legacy schema')
+    else:
+        target = s.root / 'copy.json'
+        target.write_bytes(path.read_bytes())
+        path.unlink()
+        path.symlink_to(target)
+    _refuses(s, verifier, 'source_schema_mismatch')
+
+
+@pytest.mark.parametrize('extra', ['approved', 'reviewer', 'qualified', 'files'])
+def test_trusted_record_cannot_make_procedural_manifest_fields_valid(
+        installation, extra):
+    s = installation
+    s.manifest[extra] = True
+    _refuses(s, s.write(), 'source_schema_mismatch')
+
+
+def test_legacy_record_v1_refuses_even_with_current_manifest(installation):
+    s = installation
+    s.record['record_schema'] = 'pyvoro2-native-qualification-v1'
+    _refuses(s, s.write(), 'untrusted_qualification')
+
+
+def test_v2_record_does_not_retain_legacy_identity_field(installation):
+    s = installation
+    s.record['approval_sha256'] = 'a' * 64
+    _refuses(s, s.write(), 'untrusted_qualification')

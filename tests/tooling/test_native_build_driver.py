@@ -105,13 +105,34 @@ def test_safety_wheel_preserves_unqualified_bytes_and_refuses_issued_input(
                            for name in archive.namelist())
 
 
-@pytest.mark.parametrize('change_wheel', [False, True])
+def _source_fixture(driver, source):
+    for name in ('vendor/voro++', 'cpp', 'cmake', 'src/pyvoro2/_internal'):
+        (source / name).mkdir(parents=True)
+    for name in ('CMakeLists.txt', 'pyproject.toml'):
+        (source / name).write_bytes(b'# fixture\n')
+    internal = source / 'src/pyvoro2/_internal'
+    for name in ('native_qualification.py', '_qualification_installation.py'):
+        shutil.copyfile(ROOT / 'src/pyvoro2/_internal' / name, internal / name)
+    q = driver._contract(source)
+    measured = driver.measure_source(source)
+    manifest = {'manifest_schema': q.SOURCE_MANIFEST_SCHEMA,
+                **{key: measured[key] for key in (
+                    'policy_revision', 'source_sha256', 'schema_sha256',
+                    'consumer_sha256', 'components')}}
+    (internal / q.SOURCE_MANIFEST_FILENAME).write_bytes(q.canonical_json(manifest))
+    return source
+
+
+@pytest.mark.parametrize('change', [
+    'none', 'wheel', 'manifest-noncanonical', 'manifest-hash',
+])
 def test_safety_distribution_binds_the_wheel_that_was_installed(
-        driver, tmp_path, monkeypatch, change_wheel):
+        driver, tmp_path, monkeypatch, change):
     # Native execution is exercised by the controlled suite integration. Here
     # emulate its external process boundaries while retaining real file hashes,
     # installation copies, anchor checks and distribution manifest generation.
     stage = tmp_path / 'stage'
+    source = _source_fixture(driver, tmp_path / 'source')
     internal = stage / 'pyvoro2/_internal'
     internal.mkdir(parents=True)
     shutil.copyfile(ROOT / 'src/pyvoro2/_internal/_qualification_installation.py',
@@ -137,22 +158,35 @@ def test_safety_distribution_binds_the_wheel_that_was_installed(
     def safety(**kwargs):
         kwargs['output'].mkdir()
         (kwargs['output'] / 'sanitizer-safety-evidence.json').write_text('{}')
-        if change_wheel:
+        if change == 'wheel':
             (tmp_path / 'sanitizer-wheel/input.whl').write_bytes(b'untested payload')
+        elif change.startswith('manifest-'):
+            path = source / 'src/pyvoro2/_internal/native_source_manifest.json'
+            value = json.loads(path.read_bytes())
+            if change == 'manifest-hash':
+                value['source_sha256'] = '0' * 64
+                path.write_bytes(driver._contract(source).canonical_json(value))
+            else:
+                path.write_text(json.dumps(value, indent=2))
 
     monkeypatch.setattr(driver, 'run_process', execute)
     monkeypatch.setattr(driver, 'inspect_installation', imports)
     monkeypatch.setattr(driver, 'exercise_sanitizer_safety', safety)
     arguments = dict(
-        source_root=ROOT, output=tmp_path, measurement=driver.measure_source(ROOT),
-        manifest_data=(ROOT / 'src/pyvoro2/_internal/native_source_manifest.json').read_bytes(),
-        contract=driver._contract(ROOT), required={'wp5-spatial'}, direct=wheel,
+        source_root=source, output=tmp_path, measurement=driver.measure_source(source),
+        manifest_data=(source / 'src/pyvoro2/_internal/'
+                       'native_source_manifest.json').read_bytes(),
+        contract=driver._contract(source), required={'wp5-spatial'}, direct=wheel,
         repaired=wheel, stage=stage, imports=imports(stage, None)[0],
         records=tmp_path / 'records', postprocess_path=tmp_path / 'postprocess.json',
         candidate_module=None, candidate_records=None, runtime_environment={},
         runtime_libraries=[], processes=[])
-    if change_wheel:
+    if change == 'wheel':
         with pytest.raises(driver.DriverError, match='wheel.*changed'):
+            driver._finish_sanitizer_build(**arguments)
+        assert not (tmp_path / 'distribution-evidence.json').exists()
+    elif change.startswith('manifest-'):
+        with pytest.raises(ValueError, match='manifest'):
             driver._finish_sanitizer_build(**arguments)
         assert not (tmp_path / 'distribution-evidence.json').exists()
     else:
@@ -161,6 +195,31 @@ def test_safety_distribution_binds_the_wheel_that_was_installed(
         assert 'qualification_record_sha256' not in manifest
         issued = Path(manifest['sanitizer_wheel']['path'])
         assert issued.read_bytes() == wheel.read_bytes()
+
+
+@pytest.mark.parametrize('sanitizers', [False, True])
+@pytest.mark.parametrize('state', ['missing', 'invalid', 'stale', 'retired'])
+def test_driver_checks_manifest_before_starting_processes(
+        driver, tmp_path, monkeypatch, sanitizers, state):
+    source = _source_fixture(driver, tmp_path / 'source')
+    path = source / 'src/pyvoro2/_internal/native_source_manifest.json'
+    if state == 'missing':
+        path.unlink()
+    elif state == 'invalid':
+        path.write_bytes(b'{}')
+    elif state == 'stale':
+        (source / 'cpp/unknown.cpp').write_bytes(b'unknown covered source')
+    else:
+        path.with_name('native_approval.json').write_bytes(b'forbidden legacy file')
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('manifest refusal must precede external process execution')
+
+    monkeypatch.setattr(driver, 'run_process', forbidden)
+    with pytest.raises(ValueError, match='manifest|forbidden'):
+        driver.build(source_root=source, output=tmp_path / 'output',
+                     sanitizers=sanitizers)
+    assert not (tmp_path / 'output').exists()
 
 
 def test_process_receipt_contains_actual_exit_and_output_identity(driver, tmp_path):

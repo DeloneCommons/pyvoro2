@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import shutil
@@ -106,7 +107,8 @@ def test_measure_is_readonly_and_does_not_need_a_manifest(source):
         assert default.returncode == explicit.returncode == 0
         assert default.stdout == explicit.stdout
         measurement = json.loads(default.stdout)
-        assert measurement['measurement_schema'] == 'pyvoro2-native-source-measurement-v1'
+        assert measurement['measurement_schema'] == (
+            'pyvoro2-native-source-measurement-v1')
         assert measurement['source_sha256'] == expected(source)['source_sha256']
         assert path.read_bytes() == data if data else not path.exists()
 
@@ -119,9 +121,9 @@ def test_missing_check_is_actionable_and_does_not_write(source):
 
 
 @pytest.mark.parametrize('args', [('--check-approval',),
-                                 ('--measure', '--update-manifest'),
-                                 ('--check-manifest', '--update-manifest'),
-                                 ('--output', 'arbitrary.json')])
+                                  ('--measure', '--update-manifest'),
+                                  ('--check-manifest', '--update-manifest'),
+                                  ('--output', 'arbitrary.json')])
 def test_cli_rejects_retired_or_ambiguous_actions(source, args):
     result = cli(source, *args)
     assert result.returncode == 2
@@ -172,7 +174,9 @@ def test_explicit_update_normalizes_only_the_manifest(source):
     result = cli(source, '--update-manifest')
     assert result.returncode == 0 and 'normalized' in result.stdout
     assert path.read_bytes() == canonical(value)
-    assert {p: p.read_bytes() for p in source.rglob('*') if p.is_file() and p != path} == before
+    after = {p: p.read_bytes() for p in source.rglob('*')
+             if p.is_file() and p != path}
+    assert after == before
 
 
 def test_retired_file_is_measured_and_forbidden_without_parsing(source):
@@ -180,7 +184,8 @@ def test_retired_file_is_measured_and_forbidden_without_parsing(source):
     retired.write_bytes(b'not old schema JSON')
     measured = cli(source, '--measure')
     assert measured.returncode == 0
-    assert retired.relative_to(source).as_posix() in json.loads(measured.stdout)['files']
+    files = json.loads(measured.stdout)['files']
+    assert retired.relative_to(source).as_posix() in files
     for action in ('--check-manifest', '--update-manifest'):
         result = cli(source, action)
         assert result.returncode == 1 and 'forbidden' in result.stderr
@@ -188,8 +193,8 @@ def test_retired_file_is_measured_and_forbidden_without_parsing(source):
 
 
 @pytest.mark.parametrize('unsafe', ['missing-root', 'input-symlink',
-                                   'destination-symlink', 'destination-directory',
-                                   'escaping-parent'])
+                                    'destination-symlink', 'destination-directory',
+                                    'escaping-parent'])
 def test_failed_update_keeps_existing_bytes(source, tmp_path, unsafe):
     path = source / MANIFEST
     path.write_bytes(b'previous bytes')
@@ -216,3 +221,93 @@ def test_failed_update_keeps_existing_bytes(source, tmp_path, unsafe):
     if path.is_file() and unsafe != 'destination-symlink':
         assert path.read_bytes() == b'previous bytes'
     assert not list(path.parent.glob('.*.tmp'))
+
+
+@pytest.mark.parametrize('field,value', [
+    ('source_sha256', 'A' * 64), ('source_sha256', 'a' * 63),
+    ('source_sha256', 5), ('consumer_sha256', True),
+    ('schema_sha256', '0' * 64), ('manifest_schema', 'obsolete'),
+    ('policy_revision', 'issue88-p1'), ('components', []),
+    ('components', {}), ('reviewer', 'not an identity'),
+])
+def test_strict_contract_rejects_invalid_values_and_reports_differences(
+        source, field, value):
+    manifest = expected(source)
+    manifest[field] = value
+    (source / MANIFEST).write_bytes(canonical(manifest))
+    result = cli(source, '--check-manifest')
+    assert result.returncode == 1 and 'invalid' in result.stderr
+    differences = [line for line in result.stderr.splitlines() if 'recorded=' in line]
+    assert differences == sorted(differences)
+    assert any(line.startswith((field + ':', field + '.')) for line in differences)
+
+
+@pytest.mark.parametrize('data', [
+    b'{"source_sha256":1.5}', b'{"source_sha256":NaN}',
+    b'{"source_sha256":Infinity}', b'{"source_sha256":-Infinity}',
+    b'{"components":{"wp5-spatial":{},"wp5-spatial":{}}}',
+])
+def test_strict_parser_refuses_floats_constants_and_nested_duplicates(source, data):
+    path = source / MANIFEST
+    path.write_bytes(data)
+    result = cli(source, '--check-manifest')
+    assert result.returncode == 1 and 'invalid' in result.stderr
+    assert path.read_bytes() == data
+
+
+@pytest.mark.parametrize('change', ['edit', 'add', 'delete'])
+def test_covered_changes_invalidate_each_owning_component(source, change):
+    before = expected(source)
+    (source / MANIFEST).write_bytes(canonical(before))
+    path = source / 'vendor/voro++/2d/fixture.cc'
+    if change == 'edit':
+        path.write_bytes(b'changed planar source')
+    elif change == 'add':
+        (path.parent / 'unknown.hh').write_bytes(b'new relevant file')
+    else:
+        path.unlink()
+    result = cli(source, '--check-manifest')
+    assert result.returncode == 1 and 'stale' in result.stderr
+    after = json.loads(cli(source, '--measure').stdout)
+    for name in SCHEMAS:
+        assert (after['components'][name] != before['components'][name]) == (
+            name.endswith('-planar'))
+
+
+def test_generated_outputs_do_not_enter_identities(source):
+    before = json.loads(cli(source, '--measure').stdout)
+    for name in ('src/pyvoro2/_internal/_qualification_installation.py',
+                 'src/pyvoro2/_internal/native_qualification_record.json',
+                 'cpp/fixture.o', 'src/pyvoro2/_core.fixture.so'):
+        (source / name).write_bytes(b'generated output')
+    after = json.loads(cli(source, '--measure').stdout)
+    assert before == after
+
+
+def test_refresh_preserves_mode_and_cleans_temporary_on_replace_failure(
+        source, monkeypatch):
+    spec = importlib.util.spec_from_file_location('manifest_policy_atomic', SCRIPT)
+    policy = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(policy)
+    path = source / MANIFEST
+    path.write_bytes(b'previous bytes')
+    path.chmod(0o600)
+
+    def refuse_replace(*args):
+        raise OSError('fixture atomic publication failure')
+
+    with monkeypatch.context() as context:
+        context.setattr(policy.os, 'replace', refuse_replace)
+        with pytest.raises(OSError, match='atomic publication'):
+            policy.update_manifest(source)
+    assert path.read_bytes() == b'previous bytes'
+    assert not list(path.parent.glob('.*.tmp'))
+    policy.update_manifest(source)
+    assert path.stat().st_mode & 0o777 == 0o600
+
+
+def test_missing_required_directory_is_not_repaired(source):
+    shutil.rmtree(source / 'src/pyvoro2/_internal')
+    result = cli(source, '--update-manifest')
+    assert result.returncode == 1
+    assert not (source / 'src/pyvoro2/_internal').exists()

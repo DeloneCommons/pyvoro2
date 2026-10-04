@@ -1,7 +1,7 @@
 """Validate externally collected, actual native-build evidence.
 
-This module does not establish source identity, issue artifact records, or infer compiler
-correctness from a probe. Its caller must own the controlled build and retain
+This module does not establish source identity, issue artifact records, or infer
+compiler correctness from a probe. Its caller must own the controlled build and retain
 the source manifest, route, discriminator, and final-payload evidence.
 """
 from __future__ import annotations

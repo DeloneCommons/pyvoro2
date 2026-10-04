@@ -125,7 +125,7 @@ def _destination(internal: Path, contract) -> Path:
     return path
 
 
-def read_manifest(internal: Path, contract) -> tuple[dict, bytes]:
+def read_manifest(internal: Path, contract, *, expected=None) -> tuple[dict, bytes]:
     """Read only the fixed canonical manifest; reject the retired path."""
     path = _destination(internal, contract)
     try:
@@ -135,7 +135,18 @@ def read_manifest(internal: Path, contract) -> tuple[dict, bytes]:
     try:
         manifest = contract.parse_source_manifest(data)
     except (ValueError, UnicodeError, TypeError) as exc:
-        raise ValueError(f'invalid source manifest: {exc}') from exc
+        differences = []
+        if expected is not None:
+            try:
+                old = json.loads(data, object_pairs_hook=contract._unique_object,
+                                 parse_float=contract._reject_number,
+                                 parse_constant=contract._reject_number)
+            except (ValueError, UnicodeError, TypeError):
+                pass
+            else:
+                differences = field_differences(old, expected)
+        detail = '\n' + '\n'.join(differences) if differences else ''
+        raise ValueError(f'invalid source manifest: {exc}{detail}') from exc
     return manifest, data
 
 
@@ -146,7 +157,8 @@ def field_differences(old, new, prefix='') -> list[str]:
         for key in sorted(old.keys() | new.keys()):
             name = f'{prefix}.{key}' if prefix else key
             if key not in old or key not in new:
-                result.append(f'{name}: recorded={old.get(key)!r} measured={new.get(key)!r}')
+                result.append(f'{name}: recorded={old.get(key)!r} '
+                              f'measured={new.get(key)!r}')
             else:
                 result.extend(field_differences(old[key], new[key], name))
         return result
@@ -157,16 +169,19 @@ def field_differences(old, new, prefix='') -> list[str]:
 def check_manifest(measurement: dict, root: Path = ROOT) -> tuple[dict, bytes]:
     root = Path(root).resolve()
     contract = _contract(root)
-    manifest, data = read_manifest(root / 'src/pyvoro2/_internal', contract)
-    differences = field_differences(manifest, source_manifest(measurement, contract))
+    expected = source_manifest(measurement, contract)
+    manifest, data = read_manifest(root / 'src/pyvoro2/_internal', contract,
+                                   expected=expected)
+    differences = field_differences(manifest, expected)
     if differences:
         raise ValueError('stale source manifest:\n' + '\n'.join(differences)
                          + '\nrun --update-manifest')
     return manifest, data
 
 
-def update_manifest(measurement: dict, root: Path = ROOT) -> tuple[str, bytes, list[str]]:
+def update_manifest(root: Path = ROOT) -> tuple[str, bytes, list[str], dict]:
     root = Path(root).resolve()
+    measurement = measure_source(root)
     contract = _contract(root)
     manifest = source_manifest(measurement, contract)
     data = contract.canonical_json(manifest)
@@ -181,7 +196,8 @@ def update_manifest(measurement: dict, root: Path = ROOT) -> tuple[str, bytes, l
             old = contract.parse_source_manifest(old_data, require_canonical=False)
         except (ValueError, UnicodeError, TypeError) as exc:
             state = 'replaced-invalid'
-            details.append(f'previous_raw_sha256={hashlib.sha256(old_data).hexdigest()}')
+            details.append('previous_raw_sha256='
+                           + hashlib.sha256(old_data).hexdigest())
             details.append(f'previous validation failure: {exc}')
             try:
                 old = json.loads(old_data, object_pairs_hook=contract._unique_object,
@@ -195,11 +211,11 @@ def update_manifest(measurement: dict, root: Path = ROOT) -> tuple[str, bytes, l
         if old is not None:
             details.extend(field_differences(old, manifest))
     if state == 'unchanged':
-        return state, data, details
+        return state, data, details, measurement
     temporary = None
     try:
         descriptor, name = tempfile.mkstemp(prefix='.' + path.name + '.',
-                                             suffix='.tmp', dir=internal)
+                                            suffix='.tmp', dir=internal)
         temporary = Path(name)
         with os.fdopen(descriptor, 'wb') as stream:
             stream.write(data)
@@ -211,7 +227,7 @@ def update_manifest(measurement: dict, root: Path = ROOT) -> tuple[str, bytes, l
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
-    return state, data, details
+    return state, data, details, measurement
 
 
 def _summary(state, data, measurement):
@@ -230,16 +246,17 @@ def main(argv=None):
     actions.add_argument('--update-manifest', action='store_true')
     args = parser.parse_args(argv)
     try:
-        measurement = measure_source(args.root)
-        if args.check_manifest:
-            _, data = check_manifest(measurement, args.root)
-            print(_summary('current', data, measurement))
-        elif args.update_manifest:
-            state, data, details = update_manifest(measurement, args.root)
+        if args.update_manifest:
+            state, data, details, measurement = update_manifest(args.root)
             print(_summary(state, data, measurement))
             if details:
                 print('\n'.join(details))
+        elif args.check_manifest:
+            measurement = measure_source(args.root)
+            _, data = check_manifest(measurement, args.root)
+            print(_summary('current', data, measurement))
         else:
+            measurement = measure_source(args.root)
             print(json.dumps(measurement, sort_keys=True, indent=2))
     except (ValueError, OSError, TypeError) as exc:
         parser.exit(1, f'source manifest operation failed: {exc}\n'
