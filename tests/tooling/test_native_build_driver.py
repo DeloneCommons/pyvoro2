@@ -216,9 +216,28 @@ def test_driver_checks_manifest_before_starting_processes(
         pytest.fail('manifest refusal must precede external process execution')
 
     monkeypatch.setattr(driver, 'run_process', forbidden)
+    if sanitizers:
+        # This fixture exercises the supported sanitizer entry path on every
+        # test host; real sanitizer builds remain Linux-only.
+        monkeypatch.setattr(driver.sys, 'platform', 'linux')
     with pytest.raises(ValueError, match='manifest|forbidden'):
         driver.build(source_root=source, output=tmp_path / 'output',
                      sanitizers=sanitizers)
+    assert not (tmp_path / 'output').exists()
+
+
+@pytest.mark.parametrize('platform_name', ['darwin', 'win32'])
+def test_sanitizer_driver_refuses_unsupported_platform_before_processes(
+        driver, tmp_path, monkeypatch, platform_name):
+    source = _source_fixture(driver, tmp_path / 'source')
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('unsupported sanitizer build must not start a process')
+
+    monkeypatch.setattr(driver, 'run_process', forbidden)
+    monkeypatch.setattr(driver.sys, 'platform', platform_name)
+    with pytest.raises(driver.DriverError, match='require Linux'):
+        driver.build(source_root=source, output=tmp_path / 'output', sanitizers=True)
     assert not (tmp_path / 'output').exists()
 
 
