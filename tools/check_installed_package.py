@@ -530,6 +530,27 @@ def _check_query_metadata() -> None:
     print('WP8 query/owner metadata: both dimensions, native seam, geometry-only ghost')
 
 
+def _check_separator_report(report: dict) -> None:
+    from pyvoro2.inverse.separator import dumps_report_json
+
+    payload = dumps_report_json(report, sort_keys=True)
+    if json.loads(payload) != report:
+        raise InstalledPackageCheckError(
+            'the installed fit report did not round-trip through strict JSON'
+        )
+    if report.get('schema') != {
+        'name': 'pyvoro2.inverse.separator.report',
+        'version': 2,
+    }:
+        raise InstalledPackageCheckError(
+            'the installed fit report has the wrong schema identity'
+        )
+    if report.get('kind') != 'power_weight_fit':
+        raise InstalledPackageCheckError(
+            'the installed fit report has the wrong retained kind'
+        )
+
+
 def _run_workflows(
     repository_root: Path,
     *,
@@ -540,7 +561,6 @@ def _run_workflows(
     import numpy as np
     import pyvoro2 as pv
     import pyvoro2.inverse as inverse
-    import pyvoro2.inverse.separator as separator
     import pyvoro2.planar as pv2
 
     modules = (
@@ -668,22 +688,7 @@ def _run_workflows(
             )
 
     report = fit.to_report(observations)
-    payload = separator.dumps_report_json(report, sort_keys=True)
-    if json.loads(payload) != report:
-        raise InstalledPackageCheckError(
-            'the installed fit report did not round-trip through strict JSON'
-        )
-    if report.get('schema') != {
-        'name': 'pyvoro2.inverse.separator.report',
-        'version': 1,
-    }:
-        raise InstalledPackageCheckError(
-            'the installed fit report has the wrong schema identity'
-        )
-    if report.get('kind') != 'power_weight_fit':
-        raise InstalledPackageCheckError(
-            'the installed fit report has the wrong retained kind'
-        )
+    _check_separator_report(report)
 
     if require_scipy:
         sparse_fit = inverse.fit_weights_from_separators(
@@ -705,7 +710,7 @@ def _run_workflows(
         print('periodic workflow: planar unit-cell coverage with image shifts')
     print('weight/radius transforms: public routes round-trip finite values')
     print('inverse workflow: optimal direct+dense fit with finite values')
-    print('report workflow: schema 1 power_weight_fit strict JSON round trip')
+    print('report workflow: schema 2 power_weight_fit strict JSON round trip')
     if require_scipy:
         print('sparse inverse workflow: optimal direct+SciPy fit')
 

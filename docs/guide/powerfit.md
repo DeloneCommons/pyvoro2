@@ -48,6 +48,38 @@ sparse observation graphs only.
 
 ## Canonical downstream integration
 
+### Independent model units and row policy
+
+Observation `measurement` records how targets were supplied. Each mismatch,
+hard term, and penalty independently selects `space='fraction'` or
+`space='position'`; `space=None` inherits observation units.
+
+```python
+model = separator.FitModel(
+    mismatch=separator.SquaredLoss(space='position'),
+    feasible=separator.Interval(
+        [0., .25, 0.], [1., .25, 1.],
+        applicable=[True, True, False], space='fraction',
+    ),
+    penalties=(separator.SoftIntervalPenalty(.375, .625, [8., 2., 0.],
+                                             space='fraction'),),
+)
+```
+
+For three rows this configures a bounded row, an equality row, and a row without
+hard restriction. Confidence controls mismatch information; applicability
+controls hard feasibility. Numeric endpoint/strength fields accept scalars or
+owned one-dimensional vectors of exactly the observation count. Scalar shape
+fields remain unchanged. Zero penalty strength removes that row's penalty before
+evaluation while retaining its configuration for inspection.
+
+`fit.target`, `fit.predicted`, and `fit.residuals` remain in source units.
+`fit.mismatch_target`, `fit.mismatch_predicted`, and `fit.mismatch_residuals`
+describe mismatch units. Inspect `problem.resolved_policy` or
+`fit.resolved_policy` for effective spaces and the complete model. The advanced
+active result retains full candidate policy; its inner fit retains selected
+policy. Component selection never slices an L2 site reference by a row mask.
+
 External IDs follow the same contract throughout separator resolution,
 fitting, active-set refinement, realization records, and reports: provide one
 unique non-negative integer per input site. Python integers and NumPy integer
@@ -788,7 +820,7 @@ for large **static** geometries. It does not provide trajectory processing, MD
 frame reuse, prepared solvers across changing frames, parallel tessellation,
 GPU/distributed execution, or scalable all-pairs observation construction.
 
-The fixed normal system is available only for `SquaredLoss` with no
+For nonempty observations the fixed normal system requires `SquaredLoss` with no
 positive-strength scalar penalties. Zero-strength penalties are absent, so
 they do not hide this view. Huber mismatch and positive-strength
 scalar-penalty models still expose `problem.observation_graph`, but
@@ -798,6 +830,9 @@ coexist with the quadratic view; they remain separately visible through
 `problem.bounds`, and `operator.normal_equations_characterize_fit` is false
 because a constrained optimum need not solve the unconstrained normal
 equation.
+
+An empty observation set has only its site regularizer, so it exposes this
+operator and permits direct solving regardless of configured row terms.
 
 ## Step 4: check geometric realization
 
@@ -1039,7 +1074,7 @@ retains its existing `kind` and adds the same versioned envelope:
 ```python
 assert fit_report['schema'] == {
     'name': 'pyvoro2.inverse.separator.report',
-    'version': 1,
+    'version': 2,
 }
 assert fit_report['producer'] == {
     'name': 'pyvoro2',
@@ -1200,7 +1235,9 @@ freeze an open-ended callback API for arbitrary user-defined objectives.
 
 ## Worked example notebooks
 
-Four focused notebooks complement the guide:
+Four focused notebooks complement the guide. The executable
+`examples/separator_row_policy.py` demonstrates bounded/equality/free rows and
+complete model policy without requiring a tessellation call.
 
 - [`04_powerfit`](../notebooks/04_powerfit.md) presents the canonical
   external-ID, weight-first periodic workflow and then introduces advanced

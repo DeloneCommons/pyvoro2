@@ -277,6 +277,48 @@ def test_check_installed_package_help() -> None:
     )
 
 
+@pytest.fixture
+def separator_smoke_report():
+    from pyvoro2.inverse.separator import (
+        fit_weights_from_separators, resolve_separator_observations,
+    )
+    points = [[0.25, 0.5], [0.75, 0.5]]
+    observations = resolve_separator_observations(points, [(0, 1, 0.25)])
+    fit = fit_weights_from_separators(
+        points, observations, solver='direct', linear_backend='dense',
+        connectivity_check='diagnose',
+    )
+    assert fit.status == 'optimal'
+    return fit.to_report(observations)
+
+
+def test_installed_checker_accepts_current_separator_report(separator_smoke_report):
+    installed_package_tool._check_separator_report(separator_smoke_report)
+
+
+@pytest.mark.parametrize('schema', [
+    {'name': 'pyvoro2.inverse.separator.report', 'version': 1},
+    {'name': 'another.report', 'version': 2},
+])
+def test_installed_checker_rejects_wrong_separator_schema(
+        separator_smoke_report, schema):
+    separator_smoke_report['schema'] = schema
+    with pytest.raises(InstalledPackageCheckError, match='schema identity'):
+        installed_package_tool._check_separator_report(separator_smoke_report)
+
+
+def test_installed_checker_rejects_wrong_separator_kind(separator_smoke_report):
+    separator_smoke_report['kind'] = 'active_power_fit'
+    with pytest.raises(InstalledPackageCheckError, match='retained kind'):
+        installed_package_tool._check_separator_report(separator_smoke_report)
+
+
+def test_installed_checker_keeps_strict_separator_json(separator_smoke_report):
+    separator_smoke_report['summary']['objective'] = float('nan')
+    with pytest.raises(ValueError):
+        installed_package_tool._check_separator_report(separator_smoke_report)
+
+
 def test_check_wheel_matrix_help() -> None:
     assert 'merged wheels and sdist' in _run_help('check_wheel_matrix.py')
 

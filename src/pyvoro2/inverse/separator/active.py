@@ -46,9 +46,14 @@ from .realize import (
 )
 from .problem import (
     _build_active_set_connectivity_diagnostics,
+    _build_power_fit_problem,
     _standalone_gauge_policy_description,
     build_power_fit_problem,
     build_power_fit_result,
+)
+from ._policy import (
+    _BoundPolicy, _PolicyBindingInit, _PolicyStorage, _bind_result_policy,
+    _policy_getstate, _policy_setstate, _readonly_policy_array,
 )
 from .solver import (
     ConnectivityDiagnostics,
@@ -412,8 +417,13 @@ class _ActiveStateOrigin:
     active_row_ids: tuple[str, ...]
     accepted_outer_iteration: int
     generation: _ActiveStateGeneration
+    candidate_policy: _BoundPolicy
 
     def __post_init__(self) -> None:
+        _require_observation_association(
+            self.candidate_observations, self.candidate_policy.observations,
+            context='accepted active-state candidate policy',
+        )
         active_mask = require_bool_mask(
             self.active_mask,
             name='accepted active-state mask',
@@ -528,6 +538,10 @@ class _AcceptedActiveSetState:
                 'mask'
             )
         self.fit.observation_view(self.origin.active_observations)
+        expected_policy = self.origin.candidate_policy.project(self.origin.active_mask)
+        if self.fit.resolved_policy != expected_policy.view:
+            raise ValueError(
+                'accepted active-state fit policy does not match selection')
 
         if self.accepted_weights is None:
             self._require_unavailable_mode()
@@ -796,11 +810,12 @@ class _AcceptedActiveSetState:
             path_summary=self.path_summary,
             warnings=self.warnings,
             connectivity=self.connectivity,
+            _bound_policy_init=self.origin.candidate_policy,
         )
 
 
 @dataclass(frozen=True, slots=True)
-class SelfConsistentPowerFitResult:
+class SelfConsistentPowerFitResult(_PolicyStorage):
     constraints: SeparatorObservations
     fit: SeparatorFitResult
     realized: RealizedPairDiagnostics | None
@@ -826,8 +841,15 @@ class SelfConsistentPowerFitResult:
     path_summary: ActiveSetPathSummary | None = None
     warnings: tuple[str, ...] = ()
     connectivity: ConnectivityDiagnostics | None = None
+    _: KW_ONLY
+    _bound_policy_init: InitVar[_BoundPolicy | None] = _PolicyBindingInit()
+    # Python 3.10 typing rejects postponed dataclass pseudo-types.
+    __annotations__['_'] = KW_ONLY
+    __annotations__['_bound_policy_init'] = InitVar[_BoundPolicy | None]
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, _bound_policy_init) -> None:
+        if _bound_policy_init is not None:
+            object.__setattr__(self, '_bound_policy', _bound_policy_init)
         object.__setattr__(
             self,
             'termination',
@@ -855,6 +877,32 @@ class SelfConsistentPowerFitResult:
         """Return the final fixed-observation inner fit."""
 
         return self.fit
+
+    @property
+    def mismatch_predicted(self):
+        self._require_policy()
+        if self.diagnostics is None:
+            return None
+        return _readonly_policy_array(
+            self.diagnostics.predicted_fraction if self.mismatch_space == 'fraction'
+            else self.diagnostics.predicted_position,
+        )
+
+    @property
+    def mismatch_residuals(self):
+        from .problem import _measurement_geometry
+        from ._numerics import _stable_affine_residual
+
+        policy = self._require_policy()
+        if self.fit.weights is None:
+            return None
+        geometry = _measurement_geometry(policy.observations, self.mismatch_space)
+        residuals = _stable_affine_residual(
+            geometry.beta, geometry.alpha, self.fit.weights[self.constraints.i],
+            self.fit.weights[self.constraints.j], geometry.target,
+        )
+        residuals.setflags(write=False)
+        return residuals
 
     @property
     def final_realization(self) -> RealizedPairDiagnostics | None:
@@ -920,7 +968,15 @@ class SelfConsistentPowerFitResult:
         if self.diagnostics is None:
             return None
         ids = self.constraints.ids if use_ids_value else None
-        return self.diagnostics.to_records(ids=ids)
+        records = self.diagnostics.to_records(ids=ids)
+        predicted = self.mismatch_predicted
+        residuals = self.mismatch_residuals
+        return tuple({
+            **record, 'mismatch_space': self.mismatch_space,
+            'mismatch_target': float(self.mismatch_target[index]),
+            'mismatch_predicted': float(predicted[index]),
+            'mismatch_residual': float(residuals[index]),
+        } for index, record in enumerate(records))
 
     def to_report(self, *, use_ids: bool = False) -> dict[str, object]:
         """Return a JSON-friendly report for this active-set solve."""
@@ -931,6 +987,10 @@ class SelfConsistentPowerFitResult:
         return build_active_set_report(self, use_ids=use_ids_value)
 
 
+SelfConsistentPowerFitResult.__getstate__ = _policy_getstate
+SelfConsistentPowerFitResult.__setstate__ = _policy_setstate
+
+
 def _active_state_origin(
     constraints: SeparatorObservations,
     active_constraints: SeparatorObservations,
@@ -938,6 +998,7 @@ def _active_state_origin(
     *,
     accepted_outer_iteration: int,
     generation: _ActiveStateGeneration,
+    candidate_policy: _BoundPolicy,
 ) -> _ActiveStateOrigin:
     candidate_row_ids = _row_ids(constraints)
     return _ActiveStateOrigin(
@@ -952,6 +1013,7 @@ def _active_state_origin(
         ),
         accepted_outer_iteration=accepted_outer_iteration,
         generation=generation,
+        candidate_policy=candidate_policy,
     )
 
 
@@ -972,6 +1034,7 @@ def _accepted_state_from_result(
         result.active_mask,
         accepted_outer_iteration=result.n_outer_iter,
         generation=generation,
+        candidate_policy=result._require_policy(),
     )
     return _AcceptedActiveSetState(
         origin=origin,
@@ -1105,6 +1168,7 @@ def _assemble_accepted_active_set_state(
     """Assemble the sole state from which an active public result is built."""
 
     fit = _normalize_fit_for_accepted_state(fit, active_constraints)
+    _bind_result_policy(fit, full_problem._bound_policy.project(active_mask))
     warnings = list(warnings_list)
     warnings.extend(fit.warnings)
     origin = _active_state_origin(
@@ -1113,6 +1177,7 @@ def _assemble_accepted_active_set_state(
         active_mask,
         accepted_outer_iteration=accepted_outer_iteration,
         generation=generation,
+        candidate_policy=full_problem._bound_policy,
     )
 
     realized: RealizedPairDiagnostics | None = None
@@ -1409,6 +1474,10 @@ def solve_self_consistent_power_weights(
 
     _bind_full_source(resolved, pts, domain)
 
+    full_problem = _build_power_fit_problem(resolved, model=model, compile_hard=False)
+    candidate_policy = full_problem._bound_policy
+    model = candidate_policy.model
+
     m = resolved.n_constraints
     if active0 is None:
         active = np.ones(m, dtype=bool)
@@ -1420,7 +1489,6 @@ def solve_self_consistent_power_weights(
         ).copy()
 
     warnings_list = list(resolved.warnings)
-    full_problem = build_power_fit_problem(resolved, model=model)
     add_streak = np.zeros(m, dtype=np.int64)
     drop_streak = np.zeros(m, dtype=np.int64)
     toggle_count = np.zeros(m, dtype=np.int64)
@@ -1439,11 +1507,12 @@ def solve_self_consistent_power_weights(
     converged = False
 
     for outer_iter in range(1, options.max_iter + 1):
-        active_constraints = resolved.subset(active)
+        active_policy = candidate_policy.project(active)
+        active_constraints = active_policy.observations
         fit = fit_weights_from_separators(
             pts,
             active_constraints,
-            model=model,
+            model=active_policy.model,
             r_min=r_min_value,
             weight_shift=weight_shift_value,
             solver=fit_solver,
@@ -1455,6 +1524,8 @@ def solve_self_consistent_power_weights(
             connectivity_check='diagnose',
         )
         _bind_originating_observations(fit, active_constraints)
+        if fit.resolved_policy != active_policy.view:
+            raise ValueError('active fit policy does not match the selected model')
         fit = _normalize_fit_for_accepted_state(fit, active_constraints)
         if fit.weights is None:
             termination = (
@@ -1502,7 +1573,7 @@ def solve_self_consistent_power_weights(
             weights_exact = _align_weights_to_reference(
                 weights_exact,
                 prev_weights_eval,
-                _active_alignment_components(active_constraints, model),
+                _active_alignment_components(active_constraints, active_policy.model),
             )
             weights_eval = (
                 (1.0 - float(options.relax)) * prev_weights_eval
@@ -1644,11 +1715,12 @@ def solve_self_consistent_power_weights(
     else:
         termination = 'max_outer_iter'
 
-    active_constraints = resolved.subset(active)
+    active_policy = candidate_policy.project(active)
+    active_constraints = active_policy.observations
     final_fit = fit_weights_from_separators(
         pts,
         active_constraints,
-        model=model,
+        model=active_policy.model,
         r_min=r_min_value,
         weight_shift=weight_shift_value,
         solver=fit_solver,
@@ -1660,6 +1732,8 @@ def solve_self_consistent_power_weights(
         connectivity_check='diagnose',
     )
     _bind_originating_observations(final_fit, active_constraints)
+    if final_fit.resolved_policy != active_policy.view:
+        raise ValueError('final refit policy does not match the selected model')
     final_fit = _normalize_fit_for_accepted_state(
         final_fit,
         active_constraints,
@@ -1671,13 +1745,13 @@ def solve_self_consistent_power_weights(
             final_weights = _align_weights_to_reference(
                 final_weights,
                 prev_weights_eval,
-                _active_alignment_components(active_constraints, model),
+                _active_alignment_components(active_constraints, active_policy.model),
             )
         final_fit = _rebuild_fit_with_weights(
             final_fit,
             active_constraints,
             final_weights,
-            model=model,
+            model=active_policy.model,
             r_min=r_min_value,
             weight_shift=weight_shift_value,
         )

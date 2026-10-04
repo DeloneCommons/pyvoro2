@@ -5,8 +5,9 @@ import numpy as np
 import pytest
 
 
-def _fit_result(constraints, *, status, weights, converged):
-    from pyvoro2.inverse.separator import weights_to_radii
+def _fit_result(constraints, *, status, weights, converged, model=None):
+    from pyvoro2.inverse.separator import FitModel, weights_to_radii
+    from pyvoro2.inverse.separator._policy import _bind_policy
     from pyvoro2.inverse.separator.types import SeparatorFitResult
 
     if weights is None:
@@ -44,6 +45,7 @@ def _fit_result(constraints, *, status, weights, converged):
         converged=converged,
         conflict=None,
         warnings=(f'synthetic {status}',),
+        _bound_policy_init=_bind_policy(constraints, model or FitModel()),
     )
 
 
@@ -88,6 +90,7 @@ def test_post_loop_final_refit_state_matrix_is_atomic(
     from pyvoro2 import Box
     from pyvoro2.inverse.separator import (
         ActiveSetOptions,
+        FitModel, Interval, SoftIntervalPenalty, SquaredLoss,
         build_power_fit_problem,
         dumps_report_json,
     )
@@ -101,13 +104,13 @@ def test_post_loop_final_refit_state_matrix_is_atomic(
         fit_calls['count'] += 1
         if fit_calls['count'] == 1:
             return _fit_result(
-                constraints,
+                constraints, model=kwargs['model'],
                 status='optimal',
                 weights=np.zeros(2),
                 converged=True,
             )
         return _fit_result(
-            constraints,
+            constraints, model=kwargs['model'],
             status=final_status,
             weights=final_weights,
             converged=final_converged,
@@ -124,6 +127,11 @@ def test_post_loop_final_refit_state_matrix_is_atomic(
         points,
         [(0, 1, 0.5)],
         domain=domain,
+        model=FitModel(
+            mismatch=SquaredLoss(space='position'),
+            feasible=Interval([0.], [1.], applicable=[False]),
+            penalties=(SoftIntervalPenalty(.2, .8, [0.]),),
+        ),
         options=ActiveSetOptions(max_iter=3),
         return_history=True,
     )
@@ -166,6 +174,19 @@ def test_post_loop_final_refit_state_matrix_is_atomic(
     assert json.loads(dumps_report_json(report)) == report
     assert report['summary']['termination'] == 'self_consistent'
     assert report['fit']['summary']['status'] == final_status
+    assert report['model_policy'] == report['fit']['model_policy']
+    assert report['model_spaces']['mismatch'] == 'position'
+    assert report['model_policy']['penalties'][0]['parameters']['strength'] == {
+        'kind': 'rows', 'values': [0.],
+    }
+    from pyvoro2.inverse.separator._policy import _bind_policy
+    wrong_policy = _bind_policy(result.constraints, FitModel(
+        mismatch=SquaredLoss(space='position'),
+        feasible=Interval([0.], [1.], applicable=[False]),
+        penalties=(SoftIntervalPenalty(.2, .8, [2.]),),
+    ))
+    with pytest.raises(ValueError, match='policy'):
+        replace(result, fit=replace(result.fit, _bound_policy_init=wrong_policy))
     assert report['availability'] == {
         'weights': available,
         'realization': available,
@@ -173,6 +194,8 @@ def test_post_loop_final_refit_state_matrix_is_atomic(
         'reason': None if available else final_status,
     }
     if not available:
+        assert result.fit.mismatch_predicted is None
+        assert result.fit.mismatch_residuals is None
         assert report['realized'] is None
         assert report['diagnostics'] is None
         assert report['marginal_records'] is None
@@ -215,13 +238,13 @@ def test_failed_final_refit_preserves_prior_outer_stop(
         fit_calls['count'] += 1
         if fit_calls['count'] <= len(outer_realizations):
             return _fit_result(
-                constraints,
+                constraints, model=kwargs['model'],
                 status='optimal',
                 weights=np.zeros(n_rows + 1),
                 converged=True,
             )
         return _fit_result(
-            constraints,
+            constraints, model=kwargs['model'],
             status='numerical_failure',
             weights=None,
             converged=False,
@@ -281,7 +304,7 @@ def test_first_inner_failure_has_explicitly_unavailable_final_layers(
 
     def fake_fit(points_arg, constraints, **kwargs):
         return _fit_result(
-            constraints,
+            constraints, model=kwargs['model'],
             status=fit_status,
             weights=None,
             converged=False,
@@ -333,7 +356,7 @@ def test_malformed_claimed_weighted_fit_normalizes_to_numerical_failure(
 
     def fake_fit(points_arg, constraints, **kwargs):
         fit = _fit_result(
-            constraints,
+            constraints, model=kwargs['model'],
             status='optimal',
             weights=(None if malformation == 'missing' else np.zeros(2)),
             converged=True,
@@ -467,7 +490,7 @@ def test_extreme_finite_max_iter_state_has_scale_safe_residual_summaries(
 
     def fake_fit(points_arg, constraints, **kwargs):
         return _fit_result(
-            constraints,
+            constraints, model=kwargs['model'],
             status='max_iter',
             weights=weights,
             converged=False,
@@ -534,13 +557,13 @@ def test_unavailable_final_refit_preserves_scale_safe_extreme_history(
         fit_calls['count'] += 1
         if fit_calls['count'] == 1:
             return _fit_result(
-                constraints,
+                constraints, model=kwargs['model'],
                 status='max_iter',
                 weights=weights,
                 converged=False,
             )
         return _fit_result(
-            constraints,
+            constraints, model=kwargs['model'],
             status='numerical_failure',
             weights=None,
             converged=False,
@@ -600,7 +623,7 @@ def test_extreme_finite_weight_step_norm_is_scale_safe(monkeypatch):
         fit_calls['count'] += 1
         weights = first_weights if fit_calls['count'] == 1 else stepped_weights
         return _fit_result(
-            constraints,
+            constraints, model=kwargs['model'],
             status='max_iter',
             weights=weights,
             converged=False,

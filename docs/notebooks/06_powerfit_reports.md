@@ -79,6 +79,20 @@ observations.to_records(use_ids=True)
   'explicit_shift': False})
 ```
 ## 2) Fit power weights and export low-level reports
+
+Report schema v2 keeps observation `measurement`, targets, predictions, and
+residuals in their source units. Each model term accepts a keyword-only `space`;
+`None` inherits observation units. Fit summaries and records now distinguish
+mismatch units, and `model_policy` retains every configured value, including
+zero strengths and inactive hard rows.
+
+Hard endpoints/values/applicability and penalty endpoints/strengths accept a
+scalar or an exact-length row vector. The vector follows ordered observations;
+site-indexed L2 references keep site order. Shape parameters remain scalar.
+See `examples/separator_row_policy.py` for an executable bounded/equality/free
+row example and complete v2 policy output. Stored numerical outputs below retain
+the last qualified notebook execution; refresh them in the current qualified
+native environment when validating the v2 release.
 ```python
 model = separator.FitModel(
     mismatch=separator.SquaredLoss(),
@@ -141,6 +155,11 @@ realized_report["summary"]
 ## Final-state vs optimization-path reports
 
 `solve_report["connectivity"]` and `solve_report["realized"]` describe the final returned solution. `solve_report["path_summary"]` and the optional `history` rows capture transient disconnectivity or candidate-absent realized pairs that occurred during the outer iterations.
+The outer `resolved_policy`/report `model_policy` remains candidate-aligned.
+The nested final fit contains the exact selected projection. Removed rows recover
+their original policy on reentry. A missing final weight vector retains known
+policy and targets, with mismatch predictions/residuals and geometric layers
+unavailable rather than copied from a previous iterate.
 ```python
 result = separator.solve_self_consistent_power_weights(
     points,

@@ -295,6 +295,7 @@ def test_active_set_propagates_numerical_failure(monkeypatch):
     domain = Box(((-5.0, 5.0), (-5.0, 5.0), (-5.0, 5.0)))
 
     def fake_fit_weights_from_separators(points, constraints, **kwargs):
+        from pyvoro2.inverse.separator._policy import _bind_policy
         return SeparatorFitResult(
             status='numerical_failure',
             hard_feasible=True,
@@ -315,6 +316,7 @@ def test_active_set_propagates_numerical_failure(monkeypatch):
             converged=False,
             conflict=None,
             warnings=('synthetic fit failure',),
+            _bound_policy_init=_bind_policy(constraints, kwargs['model']),
         )
 
     monkeypatch.setattr(
