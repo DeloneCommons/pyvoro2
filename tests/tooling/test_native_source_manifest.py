@@ -292,6 +292,7 @@ def test_refresh_preserves_mode_and_cleans_temporary_on_replace_failure(
     path = source / MANIFEST
     path.write_bytes(b'previous bytes')
     path.chmod(0o600)
+    original_mode = path.stat().st_mode & 0o777
 
     def refuse_replace(*args):
         raise OSError('fixture atomic publication failure')
@@ -303,7 +304,7 @@ def test_refresh_preserves_mode_and_cleans_temporary_on_replace_failure(
     assert path.read_bytes() == b'previous bytes'
     assert not list(path.parent.glob('.*.tmp'))
     policy.update_manifest(source)
-    assert path.stat().st_mode & 0o777 == 0o600
+    assert path.stat().st_mode & 0o777 == original_mode
 
 
 def test_missing_required_directory_is_not_repaired(source):
