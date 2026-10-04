@@ -1063,6 +1063,17 @@ def test_supporting_inverse_result_fields_are_characterized() -> None:
         assert _field_names(dataclass_type) == expected
 
 
+@pytest.mark.parametrize('value_type, field_name, expected', [
+    (separator.PowerFitBounds, 'applicable', np.ndarray | None),
+    (separator.SeparatorFitProblem, 'regularization_strength', float),
+    (separator.SeparatorFitResult, 'weights', np.ndarray | None),
+    (separator.SelfConsistentPowerFitResult, 'realized',
+     separator.RealizedPairDiagnostics | None),
+])
+def test_wp10_value_object_type_hints_resolve(value_type, field_name, expected):
+    assert get_type_hints(value_type)[field_name] == expected
+
+
 def test_active_final_weight_dependent_types_are_optional() -> None:
     result_hints = get_type_hints(separator.SelfConsistentPowerFitResult)
     for name in (

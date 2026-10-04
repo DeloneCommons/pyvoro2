@@ -140,6 +140,8 @@ class PowerFitBounds:
     _: KW_ONLY
     space: str | None = None
     applicable: np.ndarray | None = None
+    # Python 3.10 typing rejects postponed dataclass pseudo-types.
+    __annotations__['_'] = KW_ONLY
 
     def __post_init__(self) -> None:
         if self.space is not None:
@@ -505,6 +507,12 @@ class SeparatorFitResult(_PolicyResultStorage):
         SeparatorObservations | None
     ] = _ObservationBindingInit()
     _bound_policy_init: InitVar[_BoundPolicy | None] = _PolicyBindingInit()
+    # Keep descriptor defaults and keyword-only binding while resolving hints.
+    __annotations__['_'] = KW_ONLY
+    __annotations__['_originating_observations_init'] = InitVar[
+        SeparatorObservations | None
+    ]
+    __annotations__['_bound_policy_init'] = InitVar[_BoundPolicy | None]
 
     def __post_init__(
         self,

@@ -843,6 +843,9 @@ class SelfConsistentPowerFitResult(_PolicyStorage):
     connectivity: ConnectivityDiagnostics | None = None
     _: KW_ONLY
     _bound_policy_init: InitVar[_BoundPolicy | None] = _PolicyBindingInit()
+    # Python 3.10 typing rejects postponed dataclass pseudo-types.
+    __annotations__['_'] = KW_ONLY
+    __annotations__['_bound_policy_init'] = InitVar[_BoundPolicy | None]
 
     def __post_init__(self, _bound_policy_init) -> None:
         if _bound_policy_init is not None:
