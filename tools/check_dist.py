@@ -15,7 +15,7 @@ import zipfile
 try:
     from check_wheel_matrix import (
         NATIVE_MODULES, QUALIFICATION_RECORD, REQUIRED_QUALIFICATION_FILES,
-        native_module_members,
+        SOURCE_MANIFEST, native_module_members, ordinary_wheel_file,
     )
 except ModuleNotFoundError:  # Imported as ``tools.check_dist`` in tests.
     _matrix_path = Path(__file__).with_name('check_wheel_matrix.py')
@@ -31,6 +31,8 @@ except ModuleNotFoundError:  # Imported as ``tools.check_dist`` in tests.
     NATIVE_MODULES = _matrix_module.NATIVE_MODULES
     QUALIFICATION_RECORD = _matrix_module.QUALIFICATION_RECORD
     REQUIRED_QUALIFICATION_FILES = _matrix_module.REQUIRED_QUALIFICATION_FILES
+    SOURCE_MANIFEST = _matrix_module.SOURCE_MANIFEST
+    ordinary_wheel_file = _matrix_module.ordinary_wheel_file
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -389,6 +391,9 @@ def check_wheel(path: Path, *, require_qualification: bool = False) -> None:
         if require_qualification:
             _assert_members_present(files, {QUALIFICATION_RECORD}, label=path.name)
         _assert_members_absent(files, FORBIDDEN_WHEEL_MARKERS, label=path.name)
+        if not ordinary_wheel_file(entries_by_name[SOURCE_MANIFEST]):
+            raise DistCheckError(
+                f'{path.name} expected a regular {SOURCE_MANIFEST} entry')
 
         for module_name in NATIVE_MODULES:
             members = native_module_members(file_names, module_name)

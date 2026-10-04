@@ -9,6 +9,7 @@ from email.parser import BytesParser
 from email.policy import compat32
 from pathlib import Path, PurePosixPath
 import re
+import stat
 import sys
 import tarfile
 from typing import NamedTuple
@@ -40,6 +41,7 @@ REQUIRED_QUALIFICATION_FILES = frozenset({
     'pyvoro2/_internal/_qualification_installation.py',
 })
 QUALIFICATION_RECORD = 'pyvoro2/_internal/native_qualification_record.json'
+SOURCE_MANIFEST = 'pyvoro2/_internal/native_source_manifest.json'
 EXPECTED_RUNTIME_REQUIREMENTS = frozenset(
     {
         ('numpy', ('<2', '>=1.23'), 'python_version < "3.11"'),
@@ -322,6 +324,19 @@ def native_module_members(names: list[str], module_name: str) -> list[str]:
     return matches
 
 
+def ordinary_wheel_file(entry: zipfile.ZipInfo) -> bool:
+    """Allow regular or untyped file modes; reject explicit special types.
+
+    Wheel producers may store POSIX type/permission bits in the upper word,
+    permissions alone, or just DOS attributes. An absent POSIX type is ordinary
+    file metadata, but an encoded special type or DOS directory bit is not.
+    ZipInfo.is_dir() alone only checks the pathname's trailing slash.
+    """
+    kind = stat.S_IFMT(entry.external_attr >> 16)
+    return (not entry.is_dir() and not entry.external_attr & 0x10
+            and kind in (0, stat.S_IFREG))
+
+
 def _expanded_filename_tags(filename: WheelFilename) -> set[str]:
     return {
         f'{python_tag}-{abi_tag}-{platform_tag}'
@@ -438,6 +453,9 @@ def check_wheel(
     if 'pyvoro2/_internal/native_approval.json' in file_names:
         raise WheelMatrixError(
             f'{path.name} contains forbidden retired source identity')
+    if not ordinary_wheel_file(entries_by_name[SOURCE_MANIFEST]):
+        raise WheelMatrixError(
+            f'{path.name} expected a regular {SOURCE_MANIFEST} entry')
 
     return filename
 

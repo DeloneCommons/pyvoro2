@@ -286,6 +286,202 @@ def test_generated_outputs_do_not_enter_identities(source):
     assert before == after
 
 
+def test_regular_addition_is_measured_stale_and_refreshed_deterministically(source):
+    path = source / MANIFEST
+    path.write_bytes(canonical(expected(source)))
+    before = path.read_bytes(), path.stat().st_mtime_ns
+    initial = json.loads(cli(source, '--measure').stdout)
+    assert initial['files']['cpp/fixture.cpp'] == digest(b'# independent fixture\n')
+    addition = source / 'tools/new-helper.py'
+    addition.write_bytes(b'# unknown covered source\n')
+    measured = cli(source, '--measure')
+    assert measured.returncode == 0, measured.stderr
+    assert json.loads(measured.stdout)['files']['tools/new-helper.py'] == digest(
+        addition.read_bytes())
+    checked = cli(source, '--check-manifest')
+    assert checked.returncode == 1 and 'stale' in checked.stderr
+    assert (path.read_bytes(), path.stat().st_mtime_ns) == before
+    updated = cli(source, '--update-manifest')
+    assert updated.returncode == 0 and 'updated' in updated.stdout
+    assert path.read_bytes() == canonical(expected(source))
+    after = path.read_bytes(), path.stat().st_mtime_ns
+    unchanged = cli(source, '--update-manifest')
+    assert unchanged.returncode == 0 and 'unchanged' in unchanged.stdout
+    assert (path.read_bytes(), path.stat().st_mtime_ns) == after
+    assert cli(source, '--check-manifest').returncode == 0
+
+
+@pytest.mark.parametrize('action', [
+    '--measure', '--check-manifest', '--update-manifest',
+])
+@pytest.mark.parametrize('unsafe', [
+    'ordinary-symlink', 'dangling-symlink', 'self-symlink',
+    'new-dangling-symlink', 'directory-symlink', 'fifo',
+])
+def test_unsafe_covered_entries_refuse_without_rewriting(source, unsafe, action):
+    manifest = source / MANIFEST
+    manifest.write_bytes(canonical(expected(source)))
+    before = manifest.read_bytes(), manifest.stat().st_mtime_ns
+    path = source / 'cpp/fixture.cpp'
+    if unsafe == 'directory-symlink':
+        target = source.parent / (source.name + '-headers')
+        target.mkdir()
+        (target / 'hidden.hpp').write_bytes(b'unknown covered header\n')
+        path = source / 'cpp/new-headers'
+        path.symlink_to(target, target_is_directory=True)
+    elif unsafe == 'new-dangling-symlink':
+        path = source / 'tools/new-helper.py'
+        path.symlink_to('missing-target.py')
+    elif unsafe == 'fifo':
+        if not hasattr(os, 'mkfifo'):
+            pytest.skip('host does not support filesystem FIFOs')
+        path.unlink()
+        os.mkfifo(path)
+    else:
+        path.unlink()
+        target = (source / 'vendor/voro++/src/fixture.cc'
+                  if unsafe == 'ordinary-symlink' else
+                  path.name if unsafe == 'self-symlink' else 'missing-target.hpp')
+        path.symlink_to(target)
+    result = cli(source, action)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert path.relative_to(source).as_posix() in result.stderr
+    assert (manifest.read_bytes(), manifest.stat().st_mtime_ns) == before
+    assert not list(manifest.parent.glob('.*.tmp'))
+
+
+@pytest.mark.parametrize('tree', ['cpp', 'tools', 'src', 'vendor', '.github'])
+@pytest.mark.parametrize('action', [
+    '--measure', '--check-manifest', '--update-manifest',
+])
+def test_symlinked_covered_root_refuses(source, tree, action):
+    manifest = source / MANIFEST
+    manifest.write_bytes(canonical(expected(source)))
+    before = manifest.read_bytes(), manifest.stat().st_mtime_ns
+    path = source / tree
+    target = source.parent / (source.name + '-tree')
+    shutil.move(path, target)
+    path.symlink_to(target, target_is_directory=True)
+    result = cli(source, action)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert tree in result.stderr
+    assert (manifest.read_bytes(), manifest.stat().st_mtime_ns) == before
+
+
+@pytest.mark.parametrize('action', [
+    '--measure', '--check-manifest', '--update-manifest',
+])
+@pytest.mark.parametrize('failure', [
+    'metadata-missing', 'metadata-loop', 'metadata-bad-fd',
+    'metadata-not-directory', 'directory-metadata', 'traversal',
+])
+def test_enumeration_errors_fail_closed(source, monkeypatch, capsys, action, failure):
+    restricted = source / 'cpp/restricted'
+    restricted.mkdir()
+    (restricted / 'hidden.hpp').write_bytes(b'covered source\n')
+    manifest = source / MANIFEST
+    manifest.write_bytes(canonical(expected(source)))
+    before = manifest.read_bytes(), manifest.stat().st_mtime_ns
+    spec = importlib.util.spec_from_file_location('manifest_enumeration_errors', SCRIPT)
+    policy = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(policy)
+    if failure == 'traversal':
+        original = policy.os.scandir
+
+        def refuse(directory):
+            if Path(directory) == restricted:
+                raise PermissionError(errno.EACCES, 'incomplete source traversal')
+            return original(directory)
+
+        monkeypatch.setattr(policy.os, 'scandir', refuse)
+    else:
+        blocked = (restricted if failure == 'directory-metadata' else
+                   source / 'cpp/fixture.cpp')
+        code = {'metadata-missing': errno.ENOENT, 'metadata-loop': errno.ELOOP,
+                'metadata-bad-fd': errno.EBADF,
+                'metadata-not-directory': errno.ENOTDIR,
+                'directory-metadata': errno.EACCES}[failure]
+        original_stat, original_lstat = Path.stat, Path.lstat
+
+        def refuse_stat(path, *args, **kwargs):
+            if path == blocked:
+                raise OSError(code, 'incomplete source metadata', str(path))
+            return original_stat(path, *args, **kwargs)
+
+        def refuse_lstat(path, *args, **kwargs):
+            if path == blocked:
+                raise OSError(code, 'incomplete source metadata', str(path))
+            return original_lstat(path, *args, **kwargs)
+
+        # Inject at filesystem metadata calls, leaving enumeration, contract
+        # loading and CLI behavior real on Python 3.10 through 3.14.
+        monkeypatch.setattr(Path, 'stat', refuse_stat)
+        monkeypatch.setattr(Path, 'lstat', refuse_lstat)
+    with pytest.raises(SystemExit) as raised:
+        policy.main(['--root', str(source), action])
+    assert raised.value.code == 1
+    assert 'incomplete source' in capsys.readouterr().err
+    assert (manifest.read_bytes(), manifest.stat().st_mtime_ns) == before
+    assert not list(manifest.parent.glob('.*.tmp'))
+
+
+@pytest.mark.parametrize('action', [
+    '--measure', '--check-manifest', '--update-manifest',
+])
+def test_walk_directory_classification_error_cannot_hide_sources(
+        source, monkeypatch, capsys, action):
+    # Output suffixes exclude files, never an ordinary directory's source tree.
+    restricted = source / 'cpp/restricted.so'
+    restricted.mkdir()
+    (restricted / 'hidden.hpp').write_bytes(b'covered nested header\n')
+    manifest = source / MANIFEST
+    manifest.write_bytes(canonical(expected(source)))
+    before = manifest.read_bytes(), manifest.stat().st_mtime_ns
+    spec = importlib.util.spec_from_file_location(
+        'manifest_walk_classification', SCRIPT)
+    policy = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(policy)
+    original = policy.os.scandir
+
+    class UninspectableEntry:
+        def __init__(self, entry):
+            self.entry = entry
+
+        def __getattr__(self, name):
+            return getattr(self.entry, name)
+
+        def is_dir(self):
+            raise PermissionError(errno.EACCES, 'directory classification failed')
+
+    class ScandirEntries:
+        def __init__(self, directory):
+            self.entries = original(directory)
+
+        def __enter__(self):
+            self.entries.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self.entries.__exit__(*args)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            entry = next(self.entries)
+            return (UninspectableEntry(entry) if Path(entry.path) == restricted
+                    else entry)
+
+    monkeypatch.setattr(policy.os, 'scandir', ScandirEntries)
+    # os.walk itself suppresses DirEntry.is_dir errors and lists the directory
+    # among filenames. The policy must refuse that untraversed source entry.
+    with pytest.raises(SystemExit) as raised:
+        policy.main(['--root', str(source), action])
+    assert raised.value.code == 1
+    assert 'cpp/restricted.so' in capsys.readouterr().err
+    assert (manifest.read_bytes(), manifest.stat().st_mtime_ns) == before
+
+
 def test_refresh_preserves_mode_and_cleans_temporary_on_replace_failure(
         source, monkeypatch):
     spec = importlib.util.spec_from_file_location('manifest_policy_atomic', SCRIPT)

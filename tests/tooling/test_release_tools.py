@@ -4,6 +4,7 @@ from email.message import Message
 import importlib.util
 import io
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tarfile
@@ -1832,6 +1833,64 @@ def test_archives_require_one_new_source_identity(tmp_path, kind, state):
         kwargs = ({'expected_version': WHEEL_MATRIX_VERSION}
                   if kind == 'matrix-sdist' else {})
         operation(path, **kwargs)
+
+
+@pytest.mark.parametrize('kind', ['wheel', 'matrix-wheel'])
+@pytest.mark.parametrize('create_system, external_attr, regular', [
+    (3, (stat.S_IFREG | 0o644) << 16, True),
+    (3, 0o600 << 16, True),  # Generic permissions without POSIX type bits.
+    (0, 0x20, True),  # DOS archive bit, no POSIX mode.
+    (0, (stat.S_IFREG | 0o644) << 16, True),
+    (3, (stat.S_IFLNK | 0o777) << 16, False),
+    (3, (stat.S_IFDIR | 0o755) << 16, False),  # Name still has no slash.
+    (3, (stat.S_IFIFO | 0o600) << 16, False),
+    (3, (stat.S_IFCHR | 0o600) << 16, False),
+    (3, (stat.S_IFBLK | 0o600) << 16, False),
+    (3, (stat.S_IFSOCK | 0o600) << 16, False),
+    (0, 0x10, False),  # Explicit DOS directory metadata.
+])
+def test_wheel_manifest_type_metadata_without_payload_changes(
+        tmp_path, kind, create_system, external_attr, regular):
+    new = 'pyvoro2/_internal/native_source_manifest.json'
+    payload = (REPO_ROOT / 'src' / new).read_bytes()
+    if kind == 'wheel':
+        path = tmp_path / 'fixture.whl'
+        _write_content_wheel(path, extra_members=(TEST_QUALIFICATION_RECORD,),
+                             member_data={new: payload})
+        checker = _load_tool_module('check_dist')
+        error = checker.DistCheckError
+    else:
+        path = _write_fake_wheel(tmp_path, 'cp313', 'manylinux_2_34_x86_64',
+                                 include_qualification_record=True)
+        checker = _load_tool_module('check_wheel_matrix')
+        error = checker.WheelMatrixError
+    with zipfile.ZipFile(path) as archive:
+        entries = [(entry, archive.read(entry)) for entry in archive.infolist()]
+    # Give both controls the same canonical identity payload, then alter only
+    # the identity entry's type metadata. All other names/bytes stay fixed.
+    entries = [(entry, payload if entry.filename == new else data)
+               for entry, data in entries]
+    with zipfile.ZipFile(path, 'w') as archive:
+        for entry, data in entries:
+            archive.writestr(entry, data)
+    checker.check_wheel(path, require_qualification=True)
+    with zipfile.ZipFile(path, 'w') as archive:
+        for entry, data in entries:
+            if entry.filename == new:
+                entry.create_system = create_system
+                entry.external_attr = external_attr
+            archive.writestr(entry, data)
+    with zipfile.ZipFile(path) as archive:
+        assert archive.testzip() is None
+        assert [(entry.filename, archive.read(entry))
+                for entry in archive.infolist()] == [
+                    (entry.filename, data) for entry, data in entries]
+        assert archive.getinfo(new).external_attr == external_attr
+    if regular:
+        checker.check_wheel(path, require_qualification=True)
+    else:
+        with pytest.raises(error, match='regular.*native_source_manifest'):
+            checker.check_wheel(path, require_qualification=True)
 
 
 @pytest.mark.parametrize('kind', ['sdist', 'matrix-sdist'])

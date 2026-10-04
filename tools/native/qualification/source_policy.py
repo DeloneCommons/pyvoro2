@@ -7,7 +7,6 @@ outputs, never inputs to their own source identities.
 from __future__ import annotations
 
 import argparse
-import errno
 import hashlib
 import importlib.util
 import json
@@ -62,20 +61,14 @@ def _raise_walk_error(error):
 
 
 def _source_path_kind(path):
-    # Python 3.14's Path predicates suppress stat errors. Preserve ordinary
-    # missing-path behavior, but never omit an unreadable source input.
-    try:
-        return stat.S_IFMT(path.stat().st_mode)
-    except OSError as error:
-        if error.errno in (errno.ENOENT, errno.ENOTDIR, errno.EBADF, errno.ELOOP):
-            return 0
-        raise
+    # Inspect the entry itself: following stat can hide dangling/looping links.
+    # Unlike Path predicates (especially in 3.14), lstat propagates errors.
+    return stat.S_IFMT(path.lstat().st_mode)
 
 
 def measure_source(root: Path = ROOT) -> dict:
     """Read all relevant files, including unknown additions; never write."""
     root = Path(root).resolve()
-    contract = _contract(root)
     paths = set()
     for name in _FILES:
         path = root / name
@@ -84,27 +77,56 @@ def measure_source(root: Path = ROOT) -> dict:
         paths.add(path)
     for name in _TREES:
         tree = root / name
-        if _source_path_kind(tree) != stat.S_IFDIR:
+        try:
+            for parent in reversed(tree.relative_to(root).parents):
+                if parent == Path('.'):
+                    continue
+                if _source_path_kind(root / parent) != stat.S_IFDIR:
+                    raise ValueError(f'unsafe source directory: {parent.as_posix()}')
+            kind = _source_path_kind(tree)
+        except FileNotFoundError as error:
             if name in _TREES[:4]:
-                raise ValueError(f'missing source closure: {name}')
+                raise ValueError(f'missing source closure: {name}') from error
             continue
+        if kind != stat.S_IFDIR:
+            raise ValueError(f'source closure must be a regular directory: {name}')
         # rglob silently omits unreadable directories, which would publish an
         # incomplete identity. Keep the same file filters but fail traversal.
         for directory, subdirectories, filenames in os.walk(
                 tree, onerror=_raise_walk_error):
             subdirectories[:] = [name for name in subdirectories
                                  if name not in _SKIP_DIRS]
-            paths.update(path for name in filenames
-                         if _source_path_kind(path := Path(directory) / name)
-                         == stat.S_IFREG)
+            # os.walk does not descend into directory links by default. Check
+            # them before traversal can omit an entire covered subtree.
+            for name in subdirectories:
+                path = Path(directory) / name
+                if _source_path_kind(path) != stat.S_IFDIR:
+                    raise ValueError('unsafe source directory: '
+                                     + path.relative_to(root).as_posix())
+            for name in filenames:
+                path = Path(directory) / name
+                relative = path.relative_to(root).as_posix()
+                kind = _source_path_kind(path)
+                # os.walk can suppress DirEntry.is_dir errors and misclassify
+                # a directory as a filename. Never let file-output filters hide
+                # an untraversed directory's potentially relevant descendants.
+                if kind == stat.S_IFDIR:
+                    raise ValueError(f'untraversed source directory: {relative}')
+                if not _included(path, relative):
+                    continue
+                if kind != stat.S_IFREG:
+                    raise ValueError(f'nonregular source policy input: {relative}')
+                paths.add(path)
     files = {}
     for path in sorted(paths):
         relative = path.relative_to(root).as_posix()
         if not _included(path, relative):
             continue
-        if path.is_symlink() or not path.resolve().is_relative_to(root):
-            raise ValueError(f'symlink is not a source policy input: {relative}')
+        if (_source_path_kind(path) != stat.S_IFREG
+                or not path.resolve().is_relative_to(root)):
+            raise ValueError(f'nonregular source policy input: {relative}')
         files[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+    contract = _contract(root)
     consumers = {name.removeprefix('src/'): digest
                  for name, digest in files.items()
                  if name.startswith('src/pyvoro2/') and name.endswith('.py')}
