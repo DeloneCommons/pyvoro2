@@ -547,11 +547,17 @@ def test_refresh_refuses_unreadable_metadata_with_python314_predicates(
     policy = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(policy)
     original_stat = policy.os.stat
+    original_lstat = Path.lstat
 
     def unreadable(path, *args, **kwargs):
         if Path(path) == source / blocked:
             raise PermissionError(errno.EACCES, 'fixture unreadable metadata')
         return original_stat(path, *args, **kwargs)
+
+    def unreadable_lstat(path, *args, **kwargs):
+        if path == source / blocked:
+            raise PermissionError(errno.EACCES, 'fixture unreadable metadata')
+        return original_lstat(path, *args, **kwargs)
 
     # CPython 3.14 delegates these predicates to os.path, which suppresses
     # stat errors. Exercise that real behavior on every supported test host.
@@ -561,6 +567,8 @@ def test_refresh_refuses_unreadable_metadata_with_python314_predicates(
     monkeypatch.setattr(policy.os, 'stat', unreadable)
     # Python 3.10 caches os.stat in its Path accessor; inject there too.
     monkeypatch.setattr(Path, 'stat', unreadable)
+    # Windows Python 3.14 uses direct lstat rather than the stat accessor.
+    monkeypatch.setattr(Path, 'lstat', unreadable_lstat)
     with pytest.raises(PermissionError, match='unreadable metadata'):
         policy.update_manifest(source)
     assert (path.read_bytes(), path.stat().st_mtime_ns) == before
