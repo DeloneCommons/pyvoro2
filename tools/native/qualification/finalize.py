@@ -1,6 +1,6 @@
 """Issue a detached record only after the controlled installed-payload suite.
 
-This program consumes reviewed source approval, verified observed build records,
+This program consumes a current source manifest, verified observed build records,
 and receipts from the controlled repair/install workflow. It executes the fixed
 repository route runner itself; it does not import a caller's success report.
 The runner may exercise candidates in its isolated process before issuance.
@@ -31,7 +31,9 @@ if not __package__:
 from qualification.effective_build import (
     BuildEvidenceError, digest as build_digest, file_identity, verify_build,
 )
-from qualification.source_policy import _contract, check_approval, measure_source
+from qualification.source_policy import (
+    _contract, check_manifest, measure_source, read_manifest,
+)
 
 
 class FinalizationError(RuntimeError):
@@ -644,9 +646,7 @@ def _candidate_evidence(*, source_root, installation_root, records_dir,
     output = Path(output).resolve()
     contract = _contract(source_root)
     measurement = measure_source(source_root)
-    approval_path = source_root / 'src/pyvoro2/_internal/native_approval.json'
-    approval = json.loads(approval_path.read_text(encoding='utf8'))
-    check_approval(measurement, approval)
+    manifest, manifest_data = check_manifest(measurement, source_root)
     _require(not output.exists(), 'finalization evidence directory must be fresh')
     output.mkdir(parents=True)
     build = verify_build(Path(records_dir), source_root)
@@ -711,15 +711,15 @@ def _candidate_evidence(*, source_root, installation_root, records_dir,
                  if name != 'pyvoro2._fpguard'),
              'native modules do not bind their FP guard dependency')
     internal = installation_root / 'pyvoro2/_internal'
-    installed_approval = json.loads((internal / 'native_approval.json').read_text(
-        encoding='utf8'))
-    _require(installed_approval == approval, 'installed source approval differs')
+    _, installed_manifest_data = read_manifest(internal, contract)
+    _require(installed_manifest_data == manifest_data,
+             'installed source manifest differs')
     consumers = {path.relative_to(installation_root).as_posix():
                  file_identity(path)['sha256']
                  for path in (installation_root / 'pyvoro2').rglob('*.py')
                  if path != internal / '_qualification_installation.py'}
     _require(consumers == measurement['consumers'],
-             'installed consumer files differ from reviewed source')
+             'installed consumer files differ from measured source')
     report, execution = run_routes(
         source_root=source_root, installation_root=installation_root,
         corpus=Path(corpus).resolve(), output=output,
@@ -756,10 +756,9 @@ def _candidate_evidence(*, source_root, installation_root, records_dir,
     for name, digest in consumers.items():
         _require(file_identity(_relative(installation_root, name))['sha256'] == digest,
                  'installed consumer changed during route evidence')
-    _require(json.loads(approval_path.read_text(encoding='utf8')) == approval
-             and json.loads((internal / 'native_approval.json').read_text(
-                 encoding='utf8')) == approval,
-             'source approval changed during evidence')
+    _require(check_manifest(measurement, source_root)[1] == manifest_data
+             and read_manifest(internal, contract)[1] == manifest_data,
+             'source manifest changed during evidence')
     if safety_only:
         _require(_require_default_anchor(source_root, installation_root) == anchor,
                  'sanitizer safety anchor changed during evidence')
@@ -771,7 +770,8 @@ def _candidate_evidence(*, source_root, installation_root, records_dir,
         evidence['candidate_payload'] = candidate_identity
     return SimpleNamespace(
         evidence=evidence, contract=contract, measurement=measurement,
-        approval=approval, target=target, toolchain=toolchain, adapter=adapter,
+        source_manifest=manifest, source_manifest_data=manifest_data,
+        target=target, toolchain=toolchain, adapter=adapter,
         required=required, build_data=build_data, modules=modules,
         dependencies=dependencies, consumers=consumers, internal=internal,
         output=output)
@@ -809,7 +809,8 @@ def finalize(*, source_root, installation_root, records_dir, postprocess_path,
     record = {'record_schema': contract.RECORD_SCHEMA,
               'policy_revision': contract.POLICY_REVISION,
               'installation_id': secrets.token_hex(32),
-              'approval_sha256': contract.canonical_sha256(checked.approval),
+              'source_manifest_sha256': hashlib.sha256(
+                  checked.source_manifest_data).hexdigest(),
               **{name: checked.measurement[name] for name in (
                   'source_sha256', 'schema_sha256', 'consumer_sha256')},
               'target': checked.target, 'toolchain': checked.toolchain,

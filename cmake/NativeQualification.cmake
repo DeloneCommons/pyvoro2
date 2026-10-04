@@ -1,5 +1,5 @@
 # Measurement is consistency data. Only the external controlled finalizer can
-# issue a record against the separately reviewed approval policy.
+# issue a record against the current source manifest and complete build evidence.
 if(DEFINED ENV{PYVORO2_EVIDENCE_DIR} AND NOT CMAKE_GENERATOR STREQUAL "Ninja")
   # Visual Studio ignores the compiler/linker launcher properties. The closed
   # observation path requires one compiler process per translation unit.

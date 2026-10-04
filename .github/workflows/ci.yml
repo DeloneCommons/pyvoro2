@@ -1,5 +1,6 @@
-# Every qualification uses the reviewed head and retains the full evidence tree.
-# Source approval must already exist; these workflows cannot issue source approval.
+# Every qualification uses the exact candidate head and retains the evidence tree.
+# The implementer refreshes the source manifest; CI only checks it. Final
+# independent review assesses this complete PR and its exact-head evidence.
 name: CI
 'on':
   push:

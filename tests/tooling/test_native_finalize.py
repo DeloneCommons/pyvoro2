@@ -230,7 +230,7 @@ def test_route_tail_keeps_multiline_credentials_out_of_the_original_window(
     assert path.read_bytes() == raw_bytes
 
 
-def test_optimized_issuer_refuses_before_source_approval(finalizer, tmp_path):
+def test_optimized_issuer_refuses_before_source_manifest(finalizer, tmp_path):
     command = [sys.executable, '-O',
                str(ROOT / 'tools/native/qualification/finalize.py')]
     for name in ('source-root', 'installation-root', 'records-dir',
@@ -265,7 +265,7 @@ def test_unknown_external_header_is_not_approved_by_dependency_capture(
         finalizer._check_source_inputs(build, measurement, source)
 
 
-def test_primary_translation_unit_requires_source_approval(finalizer, tmp_path):
+def test_primary_translation_unit_requires_source_manifest(finalizer, tmp_path):
     source = tmp_path / 'source'
     source.mkdir()
     external = tmp_path / 'external.cpp'
@@ -350,7 +350,7 @@ def test_actual_toolchain_python_and_pybind_headers_have_independent_provenance(
         'compiler_builtin_header', 'python_header', 'pybind11_distribution'}
 
 
-def test_runtime_anchor_is_not_written_for_draft_approval(finalizer, tmp_path):
+def test_runtime_anchor_is_not_written_for_draft_manifest(finalizer, tmp_path):
     source = tmp_path / 'source'
     for name in ('vendor/voro++', 'cpp', 'cmake', 'src/pyvoro2/_internal'):
         (source / name).mkdir(parents=True)
@@ -359,10 +359,10 @@ def test_runtime_anchor_is_not_written_for_draft_approval(finalizer, tmp_path):
     internal = source / 'src/pyvoro2/_internal'
     shutil.copyfile(ROOT / 'src/pyvoro2/_internal/native_qualification.py',
                     internal / 'native_qualification.py')
-    (internal / 'native_approval.json').write_text('{"approved":false}',
+    (internal / 'native_source_manifest.json').write_text('{"approved":false}',
                                                    encoding='utf8')
     with pytest.raises((finalizer.FinalizationError, ValueError),
-                       match='approval'):
+                       match='manifest'):
         finalizer.finalize(
             source_root=source, installation_root=tmp_path,
             records_dir=tmp_path / 'commands',
@@ -403,11 +403,11 @@ def controlled_fixture(finalizer, tmp_path, monkeypatch):
         pytest.skip('no reviewed platform adapter in this fixture')
     required = supported[3]
     measured = finalizer.measure_source(source)
-    approval = {'approval_schema': q.APPROVAL_SCHEMA, 'approved': True,
+    manifest = {'manifest_schema': q.SOURCE_MANIFEST_SCHEMA,
                 **{field: measured[field] for field in (
                     'policy_revision', 'source_sha256', 'schema_sha256',
                     'consumer_sha256', 'components')}}
-    (internal / 'native_approval.json').write_bytes(q.canonical_json(approval))
+    (internal / 'native_source_manifest.json').write_bytes(q.canonical_json(manifest))
     install = tmp_path / 'installed'
     shutil.copytree(source / 'src/pyvoro2', install / 'pyvoro2')
     build = {'components': {}, 'dependencies': [],

@@ -2,7 +2,7 @@
 
 Candidate include/search flags never establish a provider. The controlled
 compiler and Python installation are trusted toolchain inputs; repository TUs
-and headers still require the separate source approval.
+and headers still require membership in the measured source closure.
 """
 from __future__ import annotations
 

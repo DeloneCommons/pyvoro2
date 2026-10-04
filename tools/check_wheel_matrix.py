@@ -36,7 +36,7 @@ REQUIRED_QUALIFICATION_FILES = frozenset({
     'pyvoro2/_internal/native_runtime.py',
     'pyvoro2/_internal/native_admission.py',
     'pyvoro2/_internal/locate_failure.py',
-    'pyvoro2/_internal/native_approval.json',
+    'pyvoro2/_internal/native_source_manifest.json',
     'pyvoro2/_internal/_qualification_installation.py',
 })
 QUALIFICATION_RECORD = 'pyvoro2/_internal/native_qualification_record.json'
@@ -435,6 +435,8 @@ def check_wheel(
             raise WheelMatrixError(
                 f'{path.name} expected exactly one {member}, found {count}'
             )
+    if 'pyvoro2/_internal/native_approval.json' in file_names:
+        raise WheelMatrixError(f'{path.name} contains forbidden retired source identity')
 
     return filename
 
@@ -474,6 +476,13 @@ def check_sdist(path: Path, *, expected_version: str) -> None:
         raise WheelMatrixError(
             f'{path.name} has inconsistent top-level directory naming'
         )
+    for member in sorted(REQUIRED_QUALIFICATION_FILES):
+        count = names.count(f'{expected_root}/src/{member}')
+        if count != 1:
+            raise WheelMatrixError(
+                f'{path.name} expected exactly one src/{member}, found {count}')
+    if f'{expected_root}/src/pyvoro2/_internal/native_approval.json' in names:
+        raise WheelMatrixError(f'{path.name} contains forbidden retired source identity')
     _assert_project_identity(
         metadata,
         expected_version=expected_version,

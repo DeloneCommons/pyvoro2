@@ -1,4 +1,4 @@
-"""Controlled distribution driver: explicit approval and exact wheel payloads."""
+"""Controlled distribution driver: explicit manifest and exact wheel payloads."""
 from __future__ import annotations
 
 import base64
@@ -145,6 +145,7 @@ def test_safety_distribution_binds_the_wheel_that_was_installed(
     monkeypatch.setattr(driver, 'exercise_sanitizer_safety', safety)
     arguments = dict(
         source_root=ROOT, output=tmp_path, measurement=driver.measure_source(ROOT),
+        manifest_data=(ROOT / 'src/pyvoro2/_internal/native_source_manifest.json').read_bytes(),
         contract=driver._contract(ROOT), required={'wp5-spatial'}, direct=wheel,
         repaired=wheel, stage=stage, imports=imports(stage, None)[0],
         records=tmp_path / 'records', postprocess_path=tmp_path / 'postprocess.json',
@@ -284,7 +285,7 @@ def test_inherited_python_and_pytest_controls_are_not_build_inputs(driver, monke
     assert environment['PYTHONDONTWRITEBYTECODE'] == '1'
 
 
-def test_optimized_driver_refuses_before_source_approval(driver, tmp_path):
+def test_optimized_driver_refuses_before_source_manifest(driver, tmp_path):
     process = subprocess.run(
         [sys.executable, '-O', str(ROOT / 'tools/native/qualification/build.py'),
          '--source-root', str(ROOT), '--output', str(tmp_path / 'build')],
@@ -297,7 +298,7 @@ def test_optimized_driver_refuses_before_source_approval(driver, tmp_path):
 def test_controlled_wheel_build_selects_ninja_and_preserves_compiler_environment(
         driver, tmp_path, monkeypatch):
     # An independently measured fixture reaches the first external process.
-    # No project source approval or native artifact is changed by this test.
+    # No project source manifest or native artifact is changed by this test.
     source = tmp_path / 'source'
     internal = source / 'src/pyvoro2/_internal'
     for name in ('vendor/voro++', 'cpp', 'cmake', 'src/pyvoro2/_internal'):
@@ -307,13 +308,12 @@ def test_controlled_wheel_build_selects_ninja_and_preserves_compiler_environment
     shutil.copyfile(ROOT / 'src/pyvoro2/_internal/native_qualification.py',
                     internal / 'native_qualification.py')
     measurement = driver.measure_source(source)
-    approval = {'approval_schema': driver._contract(source).APPROVAL_SCHEMA,
-                'approved': True,
+    manifest = {'manifest_schema': driver._contract(source).SOURCE_MANIFEST_SCHEMA,
                 **{key: measurement[key] for key in (
                     'policy_revision', 'source_sha256', 'schema_sha256',
                     'consumer_sha256', 'components')}}
-    (internal / 'native_approval.json').write_text(
-        json.dumps(approval), encoding='utf8')
+    (internal / 'native_source_manifest.json').write_bytes(
+        driver._contract(source).canonical_json(manifest))
     inherited = {'CMAKE_GENERATOR': 'Visual Studio 18 2026',
                  'CMAKE_GENERATOR_PLATFORM': 'x64',
                  'CMAKE_GENERATOR_TOOLSET': 'v145',

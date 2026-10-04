@@ -193,8 +193,8 @@ inline void bind_inspection(py::module_& module) {
   });
   inspection_def(module, "_qualification_identity", [] {
     py::dict result;
-    result["record_schema"] = "pyvoro2-native-qualification-v1";
-    result["policy_revision"] = "issue88-p1";
+    result["record_schema"] = "pyvoro2-native-qualification-v2";
+    result["policy_revision"] = "issue88-p2";
 #ifdef PYVORO2_QUALIFICATION_SOURCE_SHA256
     result["source_sha256"] = PYVORO2_QUALIFICATION_SOURCE_SHA256;
 #else

@@ -192,6 +192,7 @@ REQUIRED_SDIST_FILES = {
 }
 
 FORBIDDEN_WHEEL_MARKERS = (
+    'pyvoro2/_internal/native_approval.json',
     'pyvoro2/_internal/planar/edge_shifts.py',
     'pyvoro2/_internal/spatial/face_shifts.py',
     'pyvoro2/powerfit/',
@@ -208,6 +209,7 @@ FORBIDDEN_WHEEL_MARKERS = (
 )
 
 FORBIDDEN_SDIST_MARKERS = (
+    'src/pyvoro2/_internal/native_approval.json',
     'src/pyvoro2/_internal/planar/edge_shifts.py',
     'src/pyvoro2/_internal/spatial/face_shifts.py',
     'src/pyvoro2/powerfit/',
