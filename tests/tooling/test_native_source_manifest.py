@@ -363,6 +363,8 @@ def test_refresh_refuses_unreadable_metadata_with_python314_predicates(
     monkeypatch.setattr(Path, 'is_dir', lambda path: os.path.isdir(path))
     monkeypatch.setattr(Path, 'exists', lambda path: os.path.exists(path))
     monkeypatch.setattr(policy.os, 'stat', unreadable)
+    # Python 3.10 caches os.stat in its Path accessor; inject there too.
+    monkeypatch.setattr(Path, 'stat', unreadable)
     with pytest.raises(PermissionError, match='unreadable metadata'):
         policy.update_manifest(source)
     assert (path.read_bytes(), path.stat().st_mtime_ns) == before
