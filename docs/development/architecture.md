@@ -422,8 +422,14 @@ no module under `pyvoro2.inverse` imports the removed compatibility package.
 The neutral transform implementation remains in
 `pyvoro2._internal.weight_transforms`.
 
-`pyvoro2.inverse` exposes only the normal fixed-observation workflow and
-neutral transforms; advanced separator objects remain in
+`pyvoro2.inverse` exposes fixed-observation fitting, the Provisional
+realization-aware facade and shared result, and neutral transforms. The thin
+facade is owned by `inverse.separator._facade` and calls the concrete active
+engine, retaining its option validation, policy projection and atomic final
+reconstruction. It returns the existing result directly; native geometry and
+SciPy stay lazy. Final-state inspection is Provisional through either namespace,
+while engine configuration and path/counter data remain Experimental.
+Advanced separator objects remain in
 `pyvoro2.inverse.separator`. Issue #28 removed the v0.7-only facade, broad
 top-level separator exports, and five historical core aliases without changing
 the canonical implementation.
@@ -747,7 +753,7 @@ explicitly unsupported rather than filled with misleading placeholders.
 
 ADR 0014 fixes the two-layer observation model used by those results: every row
 and ordered observation set has stable source-independent identity, while exact
-points/domain/ID source binding is optional, monotonic provenance. Version 1 of
+points/domain/ID source binding is optional, monotonic provenance. Version 2 of
 the `pyvoro2.inverse.separator.report` schema preserves that provenance and the
 existing `power_weight_fit`, `realized_pair_diagnostics`, and
 `self_consistent_power_fit` kinds as strict JSON-native data.

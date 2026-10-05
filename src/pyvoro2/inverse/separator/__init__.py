@@ -1,8 +1,10 @@
 """Separator-specific inverse fitting, diagnostics, and advanced workflows.
 
 The fixed-observation solver is exact for its selected convex model. The
-realization-aware active-set workflow is a separate experimental outer
-algorithm and does not carry a universal convergence guarantee.
+realization-aware active engine and its path controls are Experimental and do
+not carry a universal convergence guarantee. The preferred facade lives in
+:mod:`pyvoro2.inverse`; the shared result's final-state inspection is Provisional
+through either import route.
 """
 
 from __future__ import annotations

@@ -26,6 +26,8 @@ HIGH_LEVEL_NAMES = (
     'resolve_separator_observations',
     'SeparatorFitResult',
     'fit_weights_from_separators',
+    'SelfConsistentPowerFitResult',
+    'fit_self_consistent_weights_from_separators',
     'weights_to_radii',
     'radii_to_weights',
 )
@@ -54,8 +56,15 @@ def test_exact_canonical_high_level_exports() -> None:
         'fit_weights_from_separators',
     )
     assert len(separator.__all__) == len(set(separator.__all__))
-    for name in inverse.__all__:
+    for name in (
+        'SeparatorObservations', 'resolve_separator_observations',
+        'SeparatorFitResult', 'fit_weights_from_separators',
+        'SelfConsistentPowerFitResult', 'weights_to_radii', 'radii_to_weights',
+    ):
         assert getattr(inverse, name) is getattr(separator, name)
+    assert len(separator.__all__) == 53
+    assert not hasattr(separator, 'fit_self_consistent_weights_from_separators')
+    assert not hasattr(pyvoro2, 'fit_self_consistent_weights_from_separators')
 
 
 def test_removed_aliases_are_absent_from_all_canonical_routes() -> None:

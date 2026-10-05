@@ -11,6 +11,7 @@ import pytest
 
 import pyvoro2 as pv
 import pyvoro2.planar as pv2
+import pyvoro2.inverse as inverse
 import pyvoro2.inverse.separator as separator
 import pyvoro2.inverse.separator.active as separator_active
 import pyvoro2.inverse.separator.constraints as separator_constraints
@@ -23,6 +24,13 @@ import pyvoro2.viz3d as viz3d
 
 
 REQUIRED = inspect.Parameter.empty
+
+INVERSE_ALL = (
+    'SeparatorObservations', 'resolve_separator_observations',
+    'SeparatorFitResult', 'fit_weights_from_separators',
+    'SelfConsistentPowerFitResult', 'fit_self_consistent_weights_from_separators',
+    'weights_to_radii', 'radii_to_weights',
+)
 
 
 TOP_LEVEL_ALL = (
@@ -199,6 +207,7 @@ def _assert_positional_parameters(callable_, expected: tuple[str, ...]) -> None:
 
 
 def test_public_all_exports_are_characterized_exactly() -> None:
+    assert tuple(inverse.__all__) == INVERSE_ALL
     assert len(pv.__all__) == len(TOP_LEVEL_ALL)
     assert set(pv.__all__) == set(TOP_LEVEL_ALL)
     assert len(pv2.__all__) == len(PLANAR_ALL)

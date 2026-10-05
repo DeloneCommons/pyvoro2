@@ -6,6 +6,17 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+### Supported realization-aware separator fitting (WP11)
+
+- Added the Provisional preferred
+  `inverse.fit_self_consistent_weights_from_separators` facade with required
+  domain, explicit inner solver/backend selection and `max_outer_iter=25`.
+  It reuses the current engine and identical `SelfConsistentPowerFitResult`.
+- Final-state inspection is Provisional through either namespace; outer
+  termination, final inner convergence and availability remain separate.
+  Advanced engine/path controls, counters and path-derived labels remain
+  Experimental. Fixed-observation fitting and report v2 retain their contracts.
+
 ### Separator row policy and report v2 (WP10)
 
 - Mismatch, hard restrictions, and each scalar penalty accept keyword-only

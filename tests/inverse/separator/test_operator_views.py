@@ -471,6 +471,8 @@ def test_operator_views_are_canonical_and_available_on_problems() -> None:
         'resolve_separator_observations',
         'SeparatorFitResult',
         'fit_weights_from_separators',
+        'SelfConsistentPowerFitResult',
+        'fit_self_consistent_weights_from_separators',
         'weights_to_radii',
         'radii_to_weights',
     )

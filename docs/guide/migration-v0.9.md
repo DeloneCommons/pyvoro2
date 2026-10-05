@@ -1,5 +1,25 @@
 # v0.9 periodic, query, and separator migration
 
+## Use the preferred realization-aware facade
+
+Ordinary realization-aware calls now use
+`pyvoro2.inverse.fit_self_consistent_weights_from_separators` with a required
+`domain` and `max_outer_iter=25`. Keep the separate fixed
+`fit_weights_from_separators` for fitting all supplied observations once.
+Use `fit_solver='admm'` explicitly for models requiring it.
+
+The preferred facade returns the identical `SelfConsistentPowerFitResult` class.
+Its final-state protocol is Provisional through either namespace: inspect
+`outer_termination`, `inner_fit.status`, `final_state_available` and
+`final_refit_converged` separately. Use direct `active_mask` and explicit final
+image flags. There is no `success` Boolean.
+
+The advanced engine retains `active0`, `ActiveSetOptions`, hysteresis,
+relaxation, cycle and history controls. Those controls and all path/counter,
+marginal and path-derived status data remain Experimental. The facade has
+`history=None`; report v2 still includes other path data. No schema or stored
+result field is removed or renamed.
+
 ## Separate observation units from model units
 
 Existing separator models inherit `SeparatorObservations.measurement` through

@@ -83,7 +83,10 @@ fixed-observation algebraic fit.
 The subset of candidate separator observations currently used by the
 realization-aware outer algorithm. The active-set workflow alternates fitting
 and geometric checks, then adds or removes rows according to hysteretic rules.
-It is experimental and is not part of the exact fixed-observation theory.
+The preferred realization-aware workflow and final-state inspection are
+Provisional under `pyvoro2.inverse`. Advanced path controls remain Experimental.
+The empirical outer algorithm is separate from the exact fixed-observation
+theory and has no universal convergence guarantee.
 
 ## Cell measure
 

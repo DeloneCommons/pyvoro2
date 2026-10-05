@@ -276,5 +276,9 @@ claim as authority, normalizing caller controls, and treating a refusal-only
 wheel smoke as positive qualification are rejected. Each omits an independent
 obligation above. Issue #88's implementation and evidence were independently accepted and
 squash-merged through PR #90 as `f2f9b3161c3b1fbd9ccfba3b563fbe4057cc13f1`.
-The #109 amendment changes source identity responsibilities; its implementation
-still needs complete final evidence and independent review before integration.
+The #109 amendment was implemented and independently accepted through PR #110,
+squash-merged as `dadbddb9fe3496d96a3606c6808c6084f8b7d687` (reviewed head
+`66e45c2680d85bffd5b718543b23b96ba7a45368`, identical root tree
+`ebbfd7509cd4d741f2bbbd525e1d6608433a6a7c`). Exact-head CI run `37245748098`,
+attempt 1, passed its required gates. This closes that prerequisite; changed
+consumers still require fresh candidate qualification and independent review.

@@ -176,8 +176,11 @@ fit = inverse.fit_weights_from_separators(
 ```
 
 The small `pyvoro2.inverse` surface is the normal fixed-observation route.
-Advanced models, realized-boundary checks, reports, and the experimental
-active-set workflow are available explicitly from
+Ordinary realization-aware fitting is available through the Provisional
+`pyvoro2.inverse.fit_self_consistent_weights_from_separators` facade and the
+shared `SelfConsistentPowerFitResult` final-state protocol. Advanced models,
+realized-boundary checks, reports and Experimental active-set/path controls
+are available explicitly from
 `pyvoro2.inverse.separator`.
 
 ## Numerical safety notes
