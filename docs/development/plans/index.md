@@ -15,10 +15,12 @@ maintainer-approved and linked to the
 [activation issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46), and
 [substantive execution tracker #47](https://github.com/DeloneCommons/pyvoro2/issues/47).
 It is the source-controlled implementation authority for WP1–WP13; focused
-child issues are prepared just-in-time from the current `dev` state. Those work
-packages are followed by the separately scoped complete-code comprehension
-reread, architectural/technical audit, remediation of findings explicitly
-accepted for pre-release work if any, and documentation overhaul. [Issue
+child issues are prepared just-in-time from the current `dev` state. After
+Checkpoint C and before WP12, the separately tracked recovery gate requires
+complete-code comprehension/reconciliation, separate audit, explicit finding
+disposition and accepted remediation if any. WP12 then WP13 precede a bounded
+recovery-baseline delta review (maintainer full-review escalation if warranted)
+and documentation overhaul. [Issue
 #48](https://github.com/DeloneCommons/pyvoro2/issues/48) then owns final
 frozen-source qualification and publication work.
 
@@ -27,7 +29,8 @@ contracts. The plan does not authorize unresolved scope expansion, and its D9
 backend-fork policy remains the explicit later decision gate described there.
 
 The roadmap reserves v0.9.0 for functional/API stabilization and the ordered
-post-functional pre-release stages, then released v0.9.x for downstream
+pre-release recovery/review/documentation stages, then released v0.9.x for
+downstream
 readiness, followed by the stable 1.0 core; prescribed cell measures move to
 v1.1 and mixed separator-plus-measure work to v1.2.
 

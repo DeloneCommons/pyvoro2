@@ -6,6 +6,16 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+### CI and contributor workflow (#113)
+
+- PR CI cancels superseded heads and fails fast within each matrix; independent
+  non-PR evidence retains complete execution. Aggregate validation rejects
+  failed classification and malformed/incomplete requirements.
+- Clarified candidate handoff, review and `dev`/`main` PR/reconciliation rules.
+  Whole-code comprehension/audit now precedes public-workflow qualification;
+  the final API audit and recovery delta review still precede documentation
+  overhaul and frozen-source release qualification.
+
 ### Supported realization-aware separator fitting (WP11)
 
 - Added the Provisional preferred

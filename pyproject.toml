@@ -47,9 +47,10 @@ Issues = 'https://github.com/DeloneCommons/pyvoro2/issues'
 
 [project.optional-dependencies]
 sparse = ['scipy>=1.8']
-test = ['pytest', 'scipy>=1.8']
+test = ['pytest', 'PyYAML>=6', 'scipy>=1.8']
 dev = [
   'pytest',
+  'PyYAML>=6',
   'scipy>=1.8',
   'flake8',
   'build',
@@ -78,6 +79,7 @@ viz = [
 
 all = [
   'pytest',
+  'PyYAML>=6',
   'flake8',
   'build',
   'twine',

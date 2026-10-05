@@ -8,17 +8,44 @@ The workflow is intentionally lightweight enough for a single-maintainer
 research package, while leaving a visible record of scope, design, validation,
 and release decisions.
 
+## Roles and acceptance
+
+| Role | Responsibility |
+|---|---|
+| Contributor | Proposes a change. |
+| Implementer | Performs concrete implementation and self-checks. |
+| Reviewer | Assesses the change and its evidence. |
+| Maintainer | Accepts policy/review outcomes and authorizes integration and closure. |
+
+Substantial release-scoped work normally has a linked issue and acceptance
+contract. An implementation handoff is not independent acceptance. Where the
+contract requires independent review, that review is distinct from the
+implementer's self-check. Maintainer integration follows accepted review and
+successful required CI on the exact final candidate head.
+
 ## Branch model
 
 | Branch | Role |
 |---|---|
-| `main` | Latest stable public release. |
-| `dev` | Integration branch for the active release plan. |
-| Feature branches | Optional issue-scoped branches for work that should be reviewed before integration into `dev`. |
+| `main` | Stable/release integration. |
+| `dev` | Official integration branch for work in the active release/milestone plan. |
+| Working branches | Issue-scoped implementation before review and integration; no mandatory naming or long-lived convention. |
 
-Direct changes to `main` should be limited to exceptional release or repository
-administration fixes. Normal development is integrated through `dev` and
-released from a reviewed state.
+Normal release-scoped PRs target `dev`. Normal release promotion starts with an
+exact maintainer-approved, named release candidate on `dev`, then a PR from
+`dev` to `main`. Identify and qualify the canonical `main` commit under the
+release contract current at that time before tag/publication through #48. The
+tag need not exist before the promotion PR; squash/rebase need not preserve the
+`dev` SHA.
+
+A critical stable correction that cannot safely wait for normal promotion may
+use an explicitly maintainer-approved emergency PR targeting `main`. It still
+requires applicable review/CI and obeys branch protection. After that merge,
+immediately create/apply a reconciliation PR into `dev`; never force-push or
+rewrite `dev` history. Once reconciliation lands, every still-open PR targeting
+`dev` must update/rebase onto the new `dev` baseline before final acceptance and
+merge. This is maintainer policy in addition to the current settings; it does
+not authorize a ruleset bypass.
 
 ## Pull-request CI routing
 
@@ -40,6 +67,19 @@ conservatively. `docs/index.md` generates package `README.md`, and notebook
 exports are distributed, so these select distribution validation. Every push
 to `dev` or `main` runs the full integration profile regardless of its diff.
 Release tags and manual dispatch continue to run the standalone Wheels workflow.
+
+Successive heads of the same PR share a workflow-specific concurrency group;
+a newer head cancels the older pending/in-progress PR run. Non-PR runs use
+unique run/attempt groups, so independent integration, qualification, tag and
+manual evidence is not displaced. All seven test/Wheels matrices fail fast
+only in PR caller context; non-PR execution retains complete matrices.
+Fail-fast remains local to each matrix. A superseded/cancelled run is historical
+diagnostics, never acceptance evidence. No global cancellation job is involved.
+
+The aggregate checker independently requires successful classification, a
+valid nonempty profile, and literal success from every required family.
+Malformed/missing data and required failure/cancellation/skip cannot qualify a
+candidate; nonrequired skipped/cancelled families remain valid.
 
 Issue #88's [native qualification workflow](native-qualification.md) separates
 implementer-owned source identity, actual optimized build evidence, current-thread runtime checks
@@ -156,7 +196,8 @@ plan into every issue.
 
 ### 5. Implement and validate
 
-Work issue by issue on `dev` or an issue-scoped branch.
+Work issue by issue on a working branch and propose release-scoped changes to
+`dev` by PR.
 
 Every implementation change should:
 
@@ -166,6 +207,13 @@ Every implementation change should:
 - update generated files with their sources;
 - record durable decisions in decision records;
 - report the validation commands that were run.
+
+Use focused tests during iteration and scope-appropriate broader local checks
+before publishing a candidate when the environment permits. Local coverage
+need not reproduce every supported Python/platform. Report unavailable native
+qualification or admission honestly and retain required exact-head CI.
+Contributors need not reproduce private agent orchestration; machine-facing
+operational rules in `AGENTS.md` complement these universal invariants.
 
 For notebook changes, keep execution, validation, and publication separate:
 refresh selected source notebooks with `python tools/execute_notebooks.py`, run
@@ -179,6 +227,10 @@ records before changing public behavior. Unresolved design gates require a
 maintainer decision rather than an invented implementation choice.
 
 ### 6. Accept a change into the release
+
+The maintainer decides integration and issue closure after the required
+exact-head CI and accepted review. Implementation self-checks and a handoff do
+not grant that acceptance.
 
 When a user-visible change is accepted into `dev`:
 

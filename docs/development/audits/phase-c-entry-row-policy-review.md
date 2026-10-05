@@ -7,6 +7,12 @@
 - **Reviewed dev:** `05ae1e33999a8976cceb383168faaa43b4f43e68`
 - **Accepted Checkpoint-B runtime authority:** `351f53e2e5fab8978d7c3f3d28dd7beb1b847357` / tree `7fc6a0e2ef8986981b6f2da382f94dbc28abf679`
 
+**Sequencing note — 2026-10-05:** This dated review retains the sequence accepted
+on 2026-10-03. The later #113 amendment to
+[ADR 0017](../decisions/0017-v0.9-functional-stabilization-before-1.0.md) moves
+whole-code recovery to after Checkpoint C and before WP12. Recovery still does
+not precede or replace the mandatory C parameter decision below.
+
 ## Outcome
 
 Accept a **bounded Phase-C amendment** before WP10.

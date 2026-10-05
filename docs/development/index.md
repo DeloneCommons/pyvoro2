@@ -37,9 +37,11 @@ gates. The v0.7 and v0.8 plans are **Completed** and archived. The
 implementation authority for the current functional/API stabilization phase.
 Activation is tracked by [#46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 and substantive WP1–WP13 execution by
-[#47](https://github.com/DeloneCommons/pyvoro2/issues/47). The post-WP13
-comprehension, audit, conditional remediation, and documentation stages remain
-outside #47; [#48](https://github.com/DeloneCommons/pyvoro2/issues/48) is the
+[#47](https://github.com/DeloneCommons/pyvoro2/issues/47). The separately tracked
+whole-code recovery gate now precedes WP12, after Checkpoint C; #47 gains its
+abstract pending entry once #113 is accepted/merged. WP12/WP13 then precede
+recovery-baseline delta/full review and documentation;
+[#48](https://github.com/DeloneCommons/pyvoro2/issues/48) is the
 final frozen-source qualification/publication gate. v0.8 R1–R9 and the
 post-R9 `COPYING` distribution correction are complete. After source
 finalization and independent review, issue #33 qualifies the exact frozen v0.8

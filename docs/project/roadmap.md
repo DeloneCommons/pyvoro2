@@ -93,11 +93,15 @@ already occurred.
 - Promote the normal realization-aware separator workflow from experimental to
   a **supported primary inverse contract**.
 - Perform a final broad API refinement pass before the stronger 1.0 promise.
-- After functional/API stabilization, perform an explicit maintainer reread of
-  the complete codebase for comprehension and architecture reconciliation.
+- After inverse stabilization/Checkpoint C and before public-workflow
+  qualification, reread the complete codebase for comprehension and
+  architecture reconciliation.
 - Follow that reread with a separate evidence-driven architectural and technical
   audit; remediate only findings explicitly accepted for pre-release work, if
-  any, before documentation.
+  any, with each repair individually verified before public-workflow
+  qualification. Keep the final API/lifecycle audit after that qualification,
+  then review changes since the recovery baseline (bounded by default, full
+  review when the maintainer escalates) before documentation.
 - Complete the pre-release documentation overhaul: verify and migrate the
   Markdown-first stack to Zensical with the notebook source/export workflow and
   required API-reference, MathJax, extension, and snippet capabilities intact;
@@ -180,7 +184,8 @@ to a ridge retains two distinct ridge endpoints, whereas a separately proved
 point identity may supply a vertex-equivalence relation.
 
 This is a **review candidate, not a v0.9 commitment or public API promise**.
-Complete Phase C / WP10-WP13 first. Then use the planned complete-code maintainer
+Complete Phase C and Checkpoint C first. Then use the pre-Phase-D complete-code
+maintainer
 reread and architecture reconciliation to compare this proposal with the actual
 finished implementation. The subsequent independent architectural/technical
 audit should decide whether any concrete change is worth promoting into
