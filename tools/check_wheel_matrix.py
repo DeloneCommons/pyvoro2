@@ -9,6 +9,7 @@ from email.parser import BytesParser
 from email.policy import compat32
 from pathlib import Path, PurePosixPath
 import re
+import stat
 import sys
 import tarfile
 from typing import NamedTuple
@@ -36,10 +37,11 @@ REQUIRED_QUALIFICATION_FILES = frozenset({
     'pyvoro2/_internal/native_runtime.py',
     'pyvoro2/_internal/native_admission.py',
     'pyvoro2/_internal/locate_failure.py',
-    'pyvoro2/_internal/native_approval.json',
+    'pyvoro2/_internal/native_source_manifest.json',
     'pyvoro2/_internal/_qualification_installation.py',
 })
 QUALIFICATION_RECORD = 'pyvoro2/_internal/native_qualification_record.json'
+SOURCE_MANIFEST = 'pyvoro2/_internal/native_source_manifest.json'
 EXPECTED_RUNTIME_REQUIREMENTS = frozenset(
     {
         ('numpy', ('<2', '>=1.23'), 'python_version < "3.11"'),
@@ -322,6 +324,19 @@ def native_module_members(names: list[str], module_name: str) -> list[str]:
     return matches
 
 
+def ordinary_wheel_file(entry: zipfile.ZipInfo) -> bool:
+    """Allow regular or untyped file modes; reject explicit special types.
+
+    Wheel producers may store POSIX type/permission bits in the upper word,
+    permissions alone, or just DOS attributes. An absent POSIX type is ordinary
+    file metadata, but an encoded special type or DOS directory bit is not.
+    ZipInfo.is_dir() alone only checks the pathname's trailing slash.
+    """
+    kind = stat.S_IFMT(entry.external_attr >> 16)
+    return (not entry.is_dir() and not entry.external_attr & 0x10
+            and kind in (0, stat.S_IFREG))
+
+
 def _expanded_filename_tags(filename: WheelFilename) -> set[str]:
     return {
         f'{python_tag}-{abi_tag}-{platform_tag}'
@@ -435,6 +450,12 @@ def check_wheel(
             raise WheelMatrixError(
                 f'{path.name} expected exactly one {member}, found {count}'
             )
+    if 'pyvoro2/_internal/native_approval.json' in file_names:
+        raise WheelMatrixError(
+            f'{path.name} contains forbidden retired source identity')
+    if not ordinary_wheel_file(entries_by_name[SOURCE_MANIFEST]):
+        raise WheelMatrixError(
+            f'{path.name} expected a regular {SOURCE_MANIFEST} entry')
 
     return filename
 
@@ -450,8 +471,8 @@ def check_sdist(path: Path, *, expected_version: str) -> None:
 
     try:
         with tarfile.open(path, 'r:gz') as tf:
-            members = [member for member in tf.getmembers() if member.isfile()]
-            names = [member.name for member in members]
+            members = tf.getmembers()
+            names = [member.name for member in members if member.isfile()]
             pkg_info_member = _only_archive_member(
                 names,
                 suffix='/PKG-INFO',
@@ -474,6 +495,19 @@ def check_sdist(path: Path, *, expected_version: str) -> None:
         raise WheelMatrixError(
             f'{path.name} has inconsistent top-level directory naming'
         )
+    # Include links/directories when checking identity path presence and count.
+    all_names = [member.name for member in members]
+    for member in sorted(REQUIRED_QUALIFICATION_FILES):
+        qualified_members = [entry for entry in members
+                             if entry.name == f'{expected_root}/src/{member}']
+        count = len(qualified_members)
+        if count != 1 or not qualified_members[0].isfile():
+            raise WheelMatrixError(
+                f'{path.name} expected exactly one regular src/{member}, '
+                f'found {count}')
+    if f'{expected_root}/src/pyvoro2/_internal/native_approval.json' in all_names:
+        raise WheelMatrixError(
+            f'{path.name} contains forbidden retired source identity')
     _assert_project_identity(
         metadata,
         expected_version=expected_version,

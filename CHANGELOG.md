@@ -100,12 +100,13 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
-- Native certificate admission now separates reviewed source/schema approval,
+- Native certificate admission now separates mechanical source/schema identity,
   externally recorded effective builds, final installed payload identity and
   route-specific qualification records. Unqualified or changed artifacts refuse
   explicitly; public APIs and WP5–WP8 mathematical semantics are unchanged.
-  Issue #88's final platform/artifact evidence and independent acceptance remain
-  pending.
+  Issue #88 was independently accepted and merged through PR #90. Source
+  identity now uses an explicitly refreshed implementer-owned canonical manifest
+  (#109); changed artifacts still require full qualification and final review.
 
 - Requested 2D ghost edges and 3D ghost faces expose source-attributed
   `boundary_reference` with user-basis shifts only for exact positive

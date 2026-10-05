@@ -28,9 +28,10 @@ import threading
 from types import ModuleType
 
 
-RECORD_SCHEMA = 'pyvoro2-native-qualification-v1'
-APPROVAL_SCHEMA = 'pyvoro2-native-source-approval-v1'
-POLICY_REVISION = 'issue88-p1'
+SOURCE_MANIFEST_FILENAME = 'native_source_manifest.json'
+SOURCE_MANIFEST_SCHEMA = 'pyvoro2-native-source-manifest-v1'
+RECORD_SCHEMA = 'pyvoro2-native-qualification-v2'
+POLICY_REVISION = 'issue88-p2'
 COMPONENT_SCHEMAS = {
     'wp5-spatial': {'producer': 'wp5-native-occurrences-v1',
                     'consumer': 'wp5-N-E-S-v1'},
@@ -80,7 +81,7 @@ def _refuse(reason, detail):
 
 
 def canonical_json(value) -> bytes:
-    """One serialization for source, record, evidence, and approval identities."""
+    """One serialization for source, record, evidence, and manifest identities."""
     return (json.dumps(value, sort_keys=True, separators=(',', ':'),
                        ensure_ascii=True, allow_nan=False) + '\n').encode('ascii')
 
@@ -115,6 +116,46 @@ def _unique_object(pairs):
             raise ValueError('duplicate qualification JSON member')
         result[key] = value
     return result
+
+
+def validate_source_manifest(manifest) -> None:
+    """Validate the sole mechanical source identity; no review assertions."""
+    keys = {'manifest_schema', 'policy_revision', 'source_sha256',
+            'consumer_sha256', 'schema_sha256', 'components'}
+    if type(manifest) is not dict or set(manifest) != keys:
+        raise ValueError('source manifest has unknown or missing keys')
+    if (manifest['manifest_schema'] != SOURCE_MANIFEST_SCHEMA
+            or manifest['policy_revision'] != POLICY_REVISION):
+        raise ValueError('source manifest schema or policy revision differs')
+    for key in ('source_sha256', 'consumer_sha256', 'schema_sha256'):
+        if not _is_digest(manifest[key]):
+            raise ValueError(f'invalid source manifest digest: {key}')
+    if manifest['schema_sha256'] != canonical_sha256(COMPONENT_SCHEMAS):
+        raise ValueError('source manifest aggregate schema digest differs')
+    components = manifest['components']
+    if type(components) is not dict or set(components) != set(COMPONENT_SCHEMAS):
+        raise ValueError('source manifest component set differs')
+    for name, schema in COMPONENT_SCHEMAS.items():
+        component = components[name]
+        if (type(component) is not dict
+                or set(component) != {'source_sha256', 'schema_sha256'}):
+            raise ValueError(f'source manifest component keys differ: {name}')
+        for key in ('source_sha256', 'schema_sha256'):
+            if not _is_digest(component[key]):
+                raise ValueError('invalid source manifest digest: '
+                                 f'components.{name}.{key}')
+        if component['schema_sha256'] != canonical_sha256(schema):
+            raise ValueError(f'source manifest component schema digest differs: {name}')
+
+
+def parse_source_manifest(data: bytes, *, require_canonical=True) -> dict:
+    """Shared pure-Python tooling/runtime validation of exact manifest bytes."""
+    manifest = json.loads(data, object_pairs_hook=_unique_object,
+                          parse_float=_reject_number, parse_constant=_reject_number)
+    validate_source_manifest(manifest)
+    if require_canonical and data != canonical_json(manifest):
+        raise ValueError('noncanonical source manifest bytes')
+    return manifest
 
 
 def _decode(data, reason):
@@ -302,23 +343,25 @@ class _Verifier:
         if (data != canonical_json(record)
                 or record.get('record_schema') != RECORD_SCHEMA
                 or record.get('policy_revision') != POLICY_REVISION
+                or 'approval_sha256' in record
                 or record.get('installation_id') != self.installation_id):
             _refuse('untrusted_qualification',
                     'record schema, policy, or anchor differs')
         self.files = [(identity, 'untrusted_qualification')]
-        data, identity = _read_file(self.internal / 'native_approval.json',
+        self._check_source_manifest_path()
+        data, identity = _read_file(self.internal / SOURCE_MANIFEST_FILENAME,
                                     'source_schema_mismatch')
-        approval = _decode(data, 'source_schema_mismatch')
-        if (approval.get('approval_schema') != APPROVAL_SCHEMA
-                or approval.get('policy_revision') != POLICY_REVISION
-                or approval.get('approved') is not True
-                or canonical_sha256(approval) != record.get('approval_sha256')):
-            _refuse('source_schema_mismatch', 'source approval is absent or differs')
+        try:
+            manifest = parse_source_manifest(data)
+        except (ValueError, UnicodeError, TypeError) as exc:
+            _refuse('source_schema_mismatch', str(exc))
+        if identity.sha256 != record.get('source_manifest_sha256'):
+            _refuse('source_schema_mismatch', 'source manifest identity differs')
         self.files.append((identity, 'source_schema_mismatch'))
         for field in ('source_sha256', 'schema_sha256', 'consumer_sha256'):
             if (not _is_digest(record.get(field))
-                    or record[field] != approval.get(field)):
-                _refuse('source_schema_mismatch', f'approved {field} differs')
+                    or record[field] != manifest[field]):
+                _refuse('source_schema_mismatch', f'manifest {field} differs')
         if record['schema_sha256'] != canonical_sha256(COMPONENT_SCHEMAS):
             _refuse('source_schema_mismatch', 'consumer schema revision differs')
         build = record.get('effective_build')
@@ -345,13 +388,19 @@ class _Verifier:
                     'target has no reviewed effective-build adapter')
         if (not isinstance(record.get('modules'), dict)
                 or not isinstance(record.get('dependencies'), dict)
-                or not isinstance(record.get('components'), dict)
-                or not isinstance(approval.get('components'), dict)):
+                or not isinstance(record.get('components'), dict)):
             _refuse('untrusted_qualification', 'incomplete artifact/component manifest')
-        self.approval = approval
+        self.source_manifest = manifest
         self.allowed_components = adapter[3]
         self._check_consumers(record)
         self.record = record
+
+    def _check_source_manifest_path(self):
+        retired = self.internal / 'native_approval.json'
+        if retired.exists() or retired.is_symlink():
+            _refuse('source_schema_mismatch', 'forbidden retired source identity file')
+        if (self.internal / SOURCE_MANIFEST_FILENAME).is_symlink():
+            _refuse('source_schema_mismatch', 'source manifest must be a regular file')
 
     def _check_module(self, module, identity):
         record = self.record
@@ -418,6 +467,7 @@ class _Verifier:
         _require_mapping(identity.path, identity)
         if self.record is None:
             self._load_record()
+        self._check_source_manifest_path()
         for file_identity, reason in self.files:
             file_identity.unchanged(reason)
         if self._consumer_inventory() != self.consumer_paths:
@@ -429,17 +479,16 @@ class _Verifier:
                 _refuse('missing_component',
                         f'reviewed adapter does not qualify {name}')
             claim = self.record['components'].get(name)
-            approved = self.approval['components'].get(name)
+            manifested = self.source_manifest['components'][name]
             if (not isinstance(claim, dict) or claim.get('qualified') is not True
                     or not _is_digest(claim.get('evidence_sha256'))):
                 _refuse('missing_component', f'completed evidence is absent for {name}')
-            if (not isinstance(approved, dict)
-                    or not _is_digest(claim.get('source_sha256'))
-                    or claim['source_sha256'] != approved.get('source_sha256')
-                    or claim.get('schema_sha256') != approved.get('schema_sha256')
+            if (not _is_digest(claim.get('source_sha256'))
+                    or claim['source_sha256'] != manifested['source_sha256']
+                    or claim.get('schema_sha256') != manifested['schema_sha256']
                     or claim.get('schema_sha256') != canonical_sha256(
                         COMPONENT_SCHEMAS[name])):
-                _refuse('source_schema_mismatch', f'approved component differs: {name}')
+                _refuse('source_schema_mismatch', f'manifest component differs: {name}')
 
 
 _VERIFIER = None

@@ -203,7 +203,7 @@ qualified installed artifacts and current-thread FP checks. Spatial selected
 ghost admission composes WP5 with its selected spatial component; planar
 selected ghost admission composes WP6 with its selected planar component.
 Unqualified components explicitly refuse; initialized geometry-only availability
-may be broader. Source approval, actual compile/link evidence, native module and
+may be broader. Mechanical source identity, actual compile/link evidence, native module and
 installed artifact identity must agree. A changed planar binding closure also
 requires renewed ordinary WP6 qualification and noninterference evidence, not
 merely a digest update. The mathematical and public-action contract above is

@@ -1,6 +1,17 @@
-# Issue #88 implementation and qualification status
+# Issue #88 historical implementation handoff
 
-Status: runtime/tooling corrections and independent source review are complete.
+**Current status:** #88 was implemented, independently accepted and squash-merged
+through [PR #90](https://github.com/DeloneCommons/pyvoro2/pull/90) as
+`f2f9b3161c3b1fbd9ccfba3b563fbe4057cc13f1`. Its original source-review procedure
+was superseded by [#109](https://github.com/DeloneCommons/pyvoro2/issues/109).
+Current policy and responsibilities live in
+[ADR 0024](decisions/0024-external-native-artifact-qualification.md) and the
+[native qualification workflow](native-qualification.md).
+
+The status, evidence identities and checklists below are the historical handoff,
+not current pending work or issuance authority. They are preserved as recorded.
+
+Historical handoff status: runtime/tooling corrections and independent source review are complete.
 The corrected source closure has separate reviewed approval. Native and platform
 qualification, exact-head CI, and the review PR/evidence handoff remain pending.
 No production artifact is qualified by source approval or by this note.

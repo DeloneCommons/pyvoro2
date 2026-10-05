@@ -1,7 +1,7 @@
 """Controlled build, repair, finalization, and fresh installed-wheel acceptance.
 
-Run outside the source tree. Source approval is an input; this driver cannot
-create or refresh it. Every build tree, observed command, process receipt, and
+Run outside the source tree. A current source manifest is an input; this driver
+cannot create or refresh it. Every build tree, observed command, process receipt, and
 pre/post-repair wheel is retained. A failed stage never produces successful
 distribution evidence.
 """
@@ -32,7 +32,7 @@ from qualification.finalize import (
     FinalizationError, SANITIZER_RUNTIME_KEYS, _require_default_anchor,
     controlled_environment, exercise_sanitizer_safety, finalize,
 )
-from qualification.source_policy import _contract, check_approval, measure_source
+from qualification.source_policy import _contract, check_manifest, measure_source
 
 
 class DriverError(RuntimeError):
@@ -394,7 +394,8 @@ print(json.dumps(refusals, sort_keys=True))
 '''
 
 
-def _finish_sanitizer_build(*, source_root, output, measurement, contract, required,
+def _finish_sanitizer_build(*, source_root, output, measurement, manifest_data,
+                            contract, required,
                             direct, repaired, stage, imports, records, postprocess_path,
                             candidate_module, candidate_records, runtime_environment,
                             runtime_libraries, processes):
@@ -447,6 +448,8 @@ def _finish_sanitizer_build(*, source_root, output, measurement, contract, requi
                      'installed native identity changed during sanitizer safety suite')
     _require(measure_source(source_root) == measurement,
              'source closure changed during sanitizer safety acceptance')
+    _require(check_manifest(measurement, source_root)[1] == manifest_data,
+             'source manifest changed during sanitizer safety acceptance')
     _require(all(file_identity(item['path']) == item
                  for item in wheel_identities.values()),
              'sanitizer wheel or recorded wheel lineage changed during safety evidence')
@@ -479,9 +482,7 @@ def build(*, source_root, output, repair='none', suite='full', sanitizers=False)
     _require(not sanitizers or (sys.platform == 'linux' and repair == 'none'),
              'isolated sanitizer safety builds require Linux and --repair none')
     measurement = measure_source(source_root)
-    approval = json.loads((source_root / 'src/pyvoro2/_internal/'
-                           'native_approval.json').read_text(encoding='utf8'))
-    check_approval(measurement, approval)
+    _, manifest_data = check_manifest(measurement, source_root)
     q = _contract(source_root)
     output.mkdir(parents=True)
     processes = []
@@ -572,7 +573,8 @@ def build(*, source_root, output, repair='none', suite='full', sanitizers=False)
         candidate_module = Path(candidate['components']['_core2d']['output']['path'])
     if sanitizers:
         return _finish_sanitizer_build(
-            source_root=source_root, output=output, measurement=measurement, contract=q,
+            source_root=source_root, output=output, measurement=measurement,
+            manifest_data=manifest_data, contract=q,
             required=required, direct=direct, repaired=repaired, stage=stage,
             imports=imports, records=records, postprocess_path=postprocess_path,
             candidate_module=candidate_module, candidate_records=candidate_records,
@@ -624,6 +626,8 @@ def build(*, source_root, output, repair='none', suite='full', sanitizers=False)
         environment=installed_environment))
     _require(measure_source(source_root) == measurement,
              'source closure changed during distribution acceptance')
+    _require(check_manifest(measurement, source_root)[1] == manifest_data,
+             'source manifest changed during distribution acceptance')
     _require(all(file_identity(item['path']) == item for item in runtime_libraries),
              'sanitizer runtime libraries changed during safety evidence')
     manifest = {'schema': 'pyvoro2-native-distribution-evidence-v1',

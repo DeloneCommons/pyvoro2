@@ -51,6 +51,7 @@ PACKAGING = DOCS | {'build-dist', 'wheels'}
     (['docs/development/plans/v0.9.md', 'cpp/bindings.cpp'], FULL),
     (['unclassified/data.bin'], FULL),
     (['src/pyvoro2/_internal/planar/wp6_certificate.py'], FULL),
+    (['src/pyvoro2/_internal/native_source_manifest.json'], FULL),
     (['tests/forward/planar/test_wp6_native.py'], FULL),
     (['README.md'], DIST_ONLY),
     (['docs/index.md'], DIST_ONLY),

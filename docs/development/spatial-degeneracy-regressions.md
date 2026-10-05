@@ -158,6 +158,6 @@ reason; this page groups them by mechanism to keep the contract readable.
 The implementation adds no spatial certificate-aware adapter, dimension-blind
 zero merge, ridge/face collapse engine, generic exact complex, proof callback,
 native/schema extension or public API. WP7 ghost-collapse policy remains owned
-by its separate route. Changed measured closures require independent source
-approval and fresh artifact qualification under ADR 0024; this document itself
-grants neither.
+by its separate route. Changed measured closures require explicit mechanical
+manifest refresh and fresh technical artifact qualification under ADR 0024.
+Independent final review follows validation of the complete candidate.

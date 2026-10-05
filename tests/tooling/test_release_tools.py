@@ -4,6 +4,7 @@ from email.message import Message
 import importlib.util
 import io
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tarfile
@@ -31,7 +32,7 @@ TEST_QUALIFICATION_FILES = (
     'pyvoro2/_internal/native_runtime.py',
     'pyvoro2/_internal/native_admission.py',
     'pyvoro2/_internal/locate_failure.py',
-    'pyvoro2/_internal/native_approval.json',
+    'pyvoro2/_internal/native_source_manifest.json',
     'pyvoro2/_internal/_qualification_installation.py',
 )
 TEST_QUALIFICATION_RECORD = (
@@ -1435,6 +1436,11 @@ def _write_fake_sdist(
     member.size = len(pkg_info)
     with tarfile.open(path, 'w:gz') as tf:
         tf.addfile(member, io.BytesIO(pkg_info))
+        for relative in TEST_QUALIFICATION_FILES:
+            required = tarfile.TarInfo(
+                f'pyvoro2-{WHEEL_MATRIX_VERSION}/src/{relative}')
+            required.size = 0
+            tf.addfile(required, io.BytesIO(b''))
     return path
 
 
@@ -1776,3 +1782,147 @@ def test_wheel_matrix_rejects_inconsistent_sdist_runtime_metadata(
 
     with pytest.raises(WheelMatrixError, match='runtime Requires-Dist'):
         validate_wheel_matrix(tmp_path)
+
+
+@pytest.mark.parametrize('kind', ['wheel', 'sdist', 'matrix-wheel', 'matrix-sdist'])
+@pytest.mark.parametrize('state', ['old-only', 'both', 'missing-new', 'duplicate-new'])
+def test_archives_require_one_new_source_identity(tmp_path, kind, state):
+    new = 'pyvoro2/_internal/native_source_manifest.json'
+    old = 'pyvoro2/_internal/native_approval.json'
+    if kind == 'wheel':
+        path = tmp_path / 'fixture.whl'
+        _write_content_wheel(path)
+        entries = _read_wheel_entries(path)
+        checker = _load_tool_module('check_dist')
+        operation = checker.check_wheel
+        write = _write_wheel_entries
+    elif kind == 'sdist':
+        path = tmp_path / 'fixture.tar.gz'
+        _write_content_sdist(path)
+        entries = _read_sdist_entries(path)
+        new = 'pyvoro2-0.8.0.dev0/src/' + new
+        old = 'pyvoro2-0.8.0.dev0/src/' + old
+        checker = _load_tool_module('check_dist')
+        operation = checker.check_sdist
+        write = _write_sdist_entries
+    elif kind == 'matrix-wheel':
+        path = _write_fake_wheel(tmp_path, 'cp312', 'manylinux_2_34_x86_64')
+        entries = _read_wheel_entries(path)
+        checker = _load_tool_module('check_wheel_matrix')
+        operation = checker.check_wheel
+        write = _write_wheel_entries
+    else:
+        path = _write_fake_sdist(tmp_path)
+        entries = _read_sdist_entries(path)
+        new = f'pyvoro2-{WHEEL_MATRIX_VERSION}/src/' + new
+        old = f'pyvoro2-{WHEEL_MATRIX_VERSION}/src/' + old
+        checker = _load_tool_module('check_wheel_matrix')
+        operation = checker.check_sdist
+        write = _write_sdist_entries
+    if state in ('old-only', 'missing-new'):
+        entries = [(name, data) for name, data in entries if name != new]
+    if state in ('old-only', 'both'):
+        entries.append((old, b'not a legacy schema'))
+    if state == 'duplicate-new':
+        entries.extend([(new, b'first'), (new, b'second')])
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', UserWarning)
+        write(path, entries)
+    with pytest.raises((getattr(checker, 'DistCheckError', RuntimeError),
+                        getattr(checker, 'WheelMatrixError', RuntimeError))):
+        kwargs = ({'expected_version': WHEEL_MATRIX_VERSION}
+                  if kind == 'matrix-sdist' else {})
+        operation(path, **kwargs)
+
+
+@pytest.mark.parametrize('kind', ['wheel', 'matrix-wheel'])
+@pytest.mark.parametrize('create_system, external_attr, regular', [
+    (3, (stat.S_IFREG | 0o644) << 16, True),
+    (3, 0o600 << 16, True),  # Generic permissions without POSIX type bits.
+    (0, 0x20, True),  # DOS archive bit, no POSIX mode.
+    (0, (stat.S_IFREG | 0o644) << 16, True),
+    (3, (stat.S_IFLNK | 0o777) << 16, False),
+    (3, (stat.S_IFDIR | 0o755) << 16, False),  # Name still has no slash.
+    (3, (stat.S_IFIFO | 0o600) << 16, False),
+    (3, (stat.S_IFCHR | 0o600) << 16, False),
+    (3, (stat.S_IFBLK | 0o600) << 16, False),
+    (3, (stat.S_IFSOCK | 0o600) << 16, False),
+    (0, 0x10, False),  # Explicit DOS directory metadata.
+])
+def test_wheel_manifest_type_metadata_without_payload_changes(
+        tmp_path, kind, create_system, external_attr, regular):
+    new = 'pyvoro2/_internal/native_source_manifest.json'
+    payload = (REPO_ROOT / 'src' / new).read_bytes()
+    if kind == 'wheel':
+        path = tmp_path / 'fixture.whl'
+        _write_content_wheel(path, extra_members=(TEST_QUALIFICATION_RECORD,),
+                             member_data={new: payload})
+        checker = _load_tool_module('check_dist')
+        error = checker.DistCheckError
+    else:
+        path = _write_fake_wheel(tmp_path, 'cp313', 'manylinux_2_34_x86_64',
+                                 include_qualification_record=True)
+        checker = _load_tool_module('check_wheel_matrix')
+        error = checker.WheelMatrixError
+    with zipfile.ZipFile(path) as archive:
+        entries = [(entry, archive.read(entry)) for entry in archive.infolist()]
+    # Give both controls the same canonical identity payload, then alter only
+    # the identity entry's type metadata. All other names/bytes stay fixed.
+    entries = [(entry, payload if entry.filename == new else data)
+               for entry, data in entries]
+    with zipfile.ZipFile(path, 'w') as archive:
+        for entry, data in entries:
+            archive.writestr(entry, data)
+    checker.check_wheel(path, require_qualification=True)
+    with zipfile.ZipFile(path, 'w') as archive:
+        for entry, data in entries:
+            if entry.filename == new:
+                entry.create_system = create_system
+                entry.external_attr = external_attr
+            archive.writestr(entry, data)
+    with zipfile.ZipFile(path) as archive:
+        assert archive.testzip() is None
+        assert [(entry.filename, archive.read(entry))
+                for entry in archive.infolist()] == [
+                    (entry.filename, data) for entry, data in entries]
+        assert archive.getinfo(new).external_attr == external_attr
+    if regular:
+        checker.check_wheel(path, require_qualification=True)
+    else:
+        with pytest.raises(error, match='regular.*native_source_manifest'):
+            checker.check_wheel(path, require_qualification=True)
+
+
+@pytest.mark.parametrize('kind', ['sdist', 'matrix-sdist'])
+@pytest.mark.parametrize('link_type', [tarfile.SYMTYPE, tarfile.LNKTYPE])
+@pytest.mark.parametrize('state', ['link-only', 'duplicate-new', 'retired-link'])
+def test_sdist_identity_checks_include_link_members(tmp_path, kind, link_type, state):
+    if kind == 'sdist':
+        path = tmp_path / 'fixture.tar.gz'
+        _write_content_sdist(path)
+        root = 'pyvoro2-0.8.0.dev0'
+        checker = _load_tool_module('check_dist')
+        error = checker.DistCheckError
+        kwargs = {}
+    else:
+        path = _write_fake_sdist(tmp_path)
+        root = f'pyvoro2-{WHEEL_MATRIX_VERSION}'
+        checker = _load_tool_module('check_wheel_matrix')
+        error = checker.WheelMatrixError
+        kwargs = {'expected_version': WHEEL_MATRIX_VERSION}
+    new = f'{root}/src/pyvoro2/_internal/native_source_manifest.json'
+    old = f'{root}/src/pyvoro2/_internal/native_approval.json'
+    entries = _read_sdist_entries(path)
+    if state == 'link-only':
+        entries = [(name, data) for name, data in entries if name != new]
+    with tarfile.open(path, 'w:gz') as archive:
+        for name, data in entries:
+            member = tarfile.TarInfo(name)
+            member.size = len(data)
+            archive.addfile(member, io.BytesIO(data))
+        link = tarfile.TarInfo(old if state == 'retired-link' else new)
+        link.type = link_type
+        link.linkname = f'{root}/src/pyvoro2/_internal/native_qualification.py'
+        archive.addfile(link)
+    with pytest.raises(error):
+        checker.check_sdist(path, **kwargs)

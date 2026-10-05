@@ -42,10 +42,9 @@ def installation(tmp_path, monkeypatch, qualification):
     internal.mkdir(parents=True)
     consumers = {'pyvoro2/__init__.py': _digest(b'# reviewed consumer\n')}
     (tmp_path / 'pyvoro2/__init__.py').write_bytes(b'# reviewed consumer\n')
-    approval = {
-        'approval_schema': q.APPROVAL_SCHEMA,
+    manifest = {
+        'manifest_schema': q.SOURCE_MANIFEST_SCHEMA,
         'policy_revision': q.POLICY_REVISION,
-        'approved': True,
         'source_sha256': _digest(b'reviewed source'),
         'consumer_sha256': q.canonical_sha256(consumers),
         'schema_sha256': q.canonical_sha256(q.COMPONENT_SCHEMAS),
@@ -70,9 +69,9 @@ def installation(tmp_path, monkeypatch, qualification):
     identity = {
         'record_schema': q.RECORD_SCHEMA,
         'policy_revision': q.POLICY_REVISION,
-        'source_sha256': approval['source_sha256'],
-        'schema_sha256': approval['schema_sha256'],
-        'consumer_sha256': approval['consumer_sha256'],
+        'source_sha256': manifest['source_sha256'],
+        'schema_sha256': manifest['schema_sha256'],
+        'consumer_sha256': manifest['consumer_sha256'],
     }
     module._qualification_identity = lambda: identity.copy()
     monkeypatch.setitem(sys.modules, module.__name__, module)
@@ -93,10 +92,10 @@ def installation(tmp_path, monkeypatch, qualification):
         'record_schema': q.RECORD_SCHEMA,
         'policy_revision': q.POLICY_REVISION,
         'installation_id': _digest(b'controlled installation'),
-        'approval_sha256': q.canonical_sha256(approval),
-        'source_sha256': approval['source_sha256'],
-        'schema_sha256': approval['schema_sha256'],
-        'consumer_sha256': approval['consumer_sha256'],
+        'source_manifest_sha256': q.canonical_sha256(manifest),
+        'source_sha256': manifest['source_sha256'],
+        'schema_sha256': manifest['schema_sha256'],
+        'consumer_sha256': manifest['consumer_sha256'],
         'target': q.current_target(),
         'toolchain': {'family': 'GNU', 'version': '14.2.1',
                       'compiler_sha256': _digest(b'compiler'),
@@ -121,15 +120,15 @@ def installation(tmp_path, monkeypatch, qualification):
         'components': {
             name: {**component, 'qualified': True,
                    'evidence_sha256': _digest((name + ' evidence').encode())}
-            for name, component in approval['components'].items()
+            for name, component in manifest['components'].items()
         },
         'consumers': consumers,
     }
 
     def write(*, trust=True, register=True):
-        (internal / 'native_approval.json').write_bytes(
-            q.canonical_json(approval))
-        record['approval_sha256'] = q.canonical_sha256(approval)
+        (internal / 'native_source_manifest.json').write_bytes(
+            q.canonical_json(manifest))
+        record['source_manifest_sha256'] = q.canonical_sha256(manifest)
         data = q.canonical_json(record)
         (internal / 'native_qualification_record.json').write_bytes(data)
         anchor = SimpleNamespace(
@@ -144,7 +143,7 @@ def installation(tmp_path, monkeypatch, qualification):
         return verifier
 
     return SimpleNamespace(q=q, root=tmp_path, internal=internal,
-                           approval=approval, record=record, module=module,
+                           manifest=manifest, record=record, module=module,
                            module_path=module_path, dependency=dependency,
                            identity=identity, write=write)
 
@@ -192,9 +191,9 @@ def test_source_or_schema_mismatch_refuses(installation, field):
     _refuses(s, s.write(), 'source_schema_mismatch')
 
 
-def test_unapproved_measured_source_does_not_approve_itself(installation):
+def test_manifest_rejects_procedural_review_assertion(installation):
     s = installation
-    s.approval['approved'] = False
+    s.manifest['approved'] = False
     _refuses(s, s.write(), 'source_schema_mismatch')
 
 
@@ -324,14 +323,14 @@ def test_planar_selected_requires_planar_ordinary_component(
     verifier.require_native(s.module, 'wp8-planar')
 
 
-@pytest.mark.parametrize('which', ['native_approval.json',
+@pytest.mark.parametrize('which', ['native_source_manifest.json',
                                    'native_qualification_record.json'])
 def test_authority_change_after_cached_verification_refuses(installation, which):
     s = installation
     verifier = s.write()
     verifier.require_native(s.module, 'wp5-spatial')
     (s.internal / which).write_bytes(b'{}\n')
-    reason = ('source_schema_mismatch' if which == 'native_approval.json'
+    reason = ('source_schema_mismatch' if which == 'native_source_manifest.json'
               else 'untrusted_qualification')
     _refuses(s, verifier, reason)
 
@@ -502,7 +501,7 @@ def test_source_measurement_covers_vendor_build_consumers_and_excludes_anchors(
                  'cmake/NativeFP.cmake', 'CMakeLists.txt', 'pyproject.toml',
                  'src/pyvoro2/__init__.py',
                  'src/pyvoro2/_internal/native_qualification.py',
-                 'src/pyvoro2/_internal/native_approval.json',
+                 'src/pyvoro2/_internal/native_source_manifest.json',
                  'src/pyvoro2/_internal/_qualification_installation.py',
                  'tools/native/qualification/source_policy.py'):
         destination = tmp_path / name
@@ -516,11 +515,11 @@ def test_source_measurement_covers_vendor_build_consumers_and_excludes_anchors(
     assert 'cpp/bindings.cpp' in measured['files']
     assert 'cmake/NativeFP.cmake' in measured['files']
     assert 'src/pyvoro2/__init__.py' in measured['files']
-    assert all('native_approval.json' not in p for p in measured['files'])
+    assert all('native_source_manifest.json' not in p for p in measured['files'])
     assert all('_qualification_installation.py' not in p
                for p in measured['files'])
-    anchor = tmp_path / 'src/pyvoro2/_internal/native_approval.json'
-    anchor.write_text('arbitrary new approval text', encoding='utf8')
+    anchor = tmp_path / 'src/pyvoro2/_internal/native_source_manifest.json'
+    anchor.write_text('arbitrary new manifest text', encoding='utf8')
     assert policy.measure_source(tmp_path)['source_sha256'] == measured['source_sha256']
     added = tmp_path / 'vendor/voro++/src/new_dependency.hh'
     added.write_text('unknown relevant dependency', encoding='utf8')
@@ -530,14 +529,63 @@ def test_source_measurement_covers_vendor_build_consumers_and_excludes_anchors(
         measured['components']['wp5-spatial']['source_sha256'])
 
 
-def test_measured_source_never_updates_approval():
+def test_measured_source_never_updates_manifest():
     policy = _load('isolated_source_policy_check',
                    ROOT / 'tools/native/qualification/source_policy.py')
-    path = INTERNAL / 'native_approval.json'
+    path = INTERNAL / 'native_source_manifest.json'
     before = path.read_bytes()
     measured = policy.measure_source(ROOT)
     assert path.read_bytes() == before
-    draft = {**measured, 'approval_schema': 'pyvoro2-native-source-approval-v1',
-             'approved': False}
-    with pytest.raises(ValueError, match='no independent approval'):
-        policy.check_approval(measured, draft)
+    draft = {'manifest_schema': 'pyvoro2-native-source-manifest-v1',
+             **{field: measured[field] for field in (
+                 'policy_revision', 'source_sha256', 'schema_sha256',
+                 'consumer_sha256', 'components')}, 'approved': True}
+    with pytest.raises(ValueError, match='unknown or missing keys'):
+        qualification = policy._contract(ROOT)
+        qualification.validate_source_manifest(draft)
+
+
+@pytest.mark.parametrize('cached', [False, True])
+@pytest.mark.parametrize('mutation', ['bytes', 'noncanonical', 'missing', 'retired',
+                                      'symlink'])
+def test_installed_manifest_is_immutable_at_first_and_cached_use(
+        installation, cached, mutation):
+    s = installation
+    verifier = s.write()
+    if cached:
+        verifier.require_native(s.module, 'wp5-spatial')
+    path = s.internal / 'native_source_manifest.json'
+    if mutation == 'bytes':
+        path.write_bytes(b'{invalid')
+    elif mutation == 'noncanonical':
+        path.write_text(json.dumps(s.manifest, indent=2))
+    elif mutation == 'missing':
+        path.unlink()
+    elif mutation == 'retired':
+        (s.internal / 'native_approval.json').write_bytes(b'no legacy schema')
+    else:
+        target = s.root / 'copy.json'
+        target.write_bytes(path.read_bytes())
+        path.unlink()
+        path.symlink_to(target)
+    _refuses(s, verifier, 'source_schema_mismatch')
+
+
+@pytest.mark.parametrize('extra', ['approved', 'reviewer', 'qualified', 'files'])
+def test_trusted_record_cannot_make_procedural_manifest_fields_valid(
+        installation, extra):
+    s = installation
+    s.manifest[extra] = True
+    _refuses(s, s.write(), 'source_schema_mismatch')
+
+
+def test_legacy_record_v1_refuses_even_with_current_manifest(installation):
+    s = installation
+    s.record['record_schema'] = 'pyvoro2-native-qualification-v1'
+    _refuses(s, s.write(), 'untrusted_qualification')
+
+
+def test_v2_record_does_not_retain_legacy_identity_field(installation):
+    s = installation
+    s.record['approval_sha256'] = 'a' * 64
+    _refuses(s, s.write(), 'untrusted_qualification')

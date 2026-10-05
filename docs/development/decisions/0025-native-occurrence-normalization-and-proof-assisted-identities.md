@@ -355,15 +355,19 @@ callback or correctness override is required. Functions, selectors and public
 raw boundary schemas retain their contracts. WP5/WP6 mathematics, WP7/WP8
 semantics and Phase C scope are unchanged.
 
-Separate mathematical contract acceptance, implementation source approval,
+The historical #97 procedure separated mathematical contract acceptance,
+implementation source approval,
 installed artifact qualification and integrated Checkpoint-B acceptance.
 Under ADR 0024, measure the final changed-path closure rather than assuming
 documentation is excluded. Pure documentation outside the measured closure
 preserves qualification inputs only when global source, schema, consumer,
 policy and all six component identities match. An unexpected measured change
 in #97 stops for reconciliation rather than issuing a new record. Later
-consumer/test changes require the affected independent source approval and
-artifact qualification; unchanged native implementation alone is insufficient.
+consumer/test changes under #109 require explicit implementer-owned source
+manifest refresh and affected artifact qualification, followed by one independent
+final review of the complete PR and exact-head evidence; unchanged native
+implementation alone is insufficient. Independent source review is no longer
+an issuance input.
 
 ## Alternatives rejected and deferred work
 

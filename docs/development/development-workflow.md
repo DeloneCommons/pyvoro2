@@ -42,12 +42,14 @@ to `dev` or `main` runs the full integration profile regardless of its diff.
 Release tags and manual dispatch continue to run the standalone Wheels workflow.
 
 Issue #88's [native qualification workflow](native-qualification.md) separates
-source approval, actual optimized build evidence, current-thread runtime checks
+implementer-owned source identity, actual optimized build evidence, current-thread runtime checks
 and final installed artifact acceptance. Keep these distinct from Python-minor
 compatibility and sanitizer jobs. A compiler label, requested flags or a
 refusal-only wheel smoke cannot establish a required positive. Record exact PR
 head and final payload identities; changed source or repaired bytes require
-affected checks again.
+affected checks again. Refresh the mechanical manifest explicitly after measured
+changes, run full candidate CI, then obtain one independent final review of the
+complete PR and exact-head evidence. Build and CI never refresh the manifest.
 
 ## Planning levels
 

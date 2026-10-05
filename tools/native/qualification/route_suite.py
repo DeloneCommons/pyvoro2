@@ -3,7 +3,7 @@
 This external test process temporarily replaces admission with a gate over
 the measured source and allowlisted candidate bytes. It cannot issue a record.
 No bypass is compiled into production or installed in the package. The issuer
-first verifies source approval and actual effective build evidence, invokes
+first checks the current source manifest and actual effective build evidence, invokes
 this fixed suite itself, then independently binds its results. Distribution
 tests subsequently run the issued installation without these replacements.
 """

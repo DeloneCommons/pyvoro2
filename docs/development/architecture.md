@@ -253,7 +253,7 @@ ordering, resource policy, source-trace requirement, and R3-A scope.
 current-thread inspection before floating preparation and typed native casters,
 plus rechecks after each foreign conversion callback. Runtime state is never
 cached or normalized. The [qualification workflow](native-qualification.md)
-separately binds approved source/schema/consumers, actual effective build
+separately binds canonical measured source/schema/consumer identities, actual effective build
 evidence and all final installed native payloads, including `_fpguard`.
 
 ### Strict public values and pragmatic ownership
@@ -930,7 +930,7 @@ the independently accepted WP6 contract and merged implementation under
 | Component | Responsibility |
 |---|---|
 | `cpp/planar_witness.cpp` and private headers | Run the unchanged ordinary rectangular producer with compact outgoing-edge tokens, actual insertion/storage snapshots and internal collapse evidence. |
-| Shared qualification workflow and `_internal/planar/wp6_profile.py` | Bind separately approved source/schema/consumers and effective-build evidence to the installed planar artifact; retain packet consistency and runtime checks. |
+| Shared qualification workflow and `_internal/planar/wp6_profile.py` | Bind the mechanical source/schema/consumer manifest and effective-build evidence to the installed planar artifact; retain packet consistency and runtime checks. |
 | `_internal/planar/wp6_certificate.py` | Validate insertion and final source associations, transport native images into the original-source/user-basis chart, and combine exact audit findings with public output/actions. |
 | `_internal/planar/wp6_ideal.py` | Reconstruct complete exact planar cells and labeled contacts independently for E and S, with complete-family and exact-arithmetic guards. |
 | `_internal/planar/wp6_numerical.py` | After complete E/S auditing, compare reciprocal native segment unions for classes positive in both ideals, using exact native-local chart translation before a checked numerical view. |
@@ -983,8 +983,9 @@ in WP6; WP7 removes their planar `ghost_cells` counterparts. No new public
 result hierarchy, inverse algorithm or mandatory dependency is introduced.
 
 The occurrence schema is private `pyvoro2.planar.occurrences.v1`. Under
-ADR 0024, separately reviewed source/schema/consumer approval, actual effective
-compiler/link evidence and final installed identity govern artifact admission.
+ADR 0024, the mechanical source manifest binds source/schema/consumer identity;
+actual effective compiler/link evidence and final installed identity govern
+technical qualification. Independent final review follows candidate validation.
 Packet hashes and compiler metadata remain consistency checks. The accepted
 evaluation contract retains binary64 `FLT_EVAL_METHOD == 0`, 32-bit native
 integers and strict ordered operations. Raw current-thread guards separately
@@ -995,8 +996,8 @@ compiler-version or no-AVX/FMA allowlist. Issue #88 requires final repaired
 GNU 14.2.1 manylinux positives and a strict AVX/FMA-capable positive, with
 unsafe contraction discriminated independently. Other package platforms do not
 inherit planar occurrence qualification from ordinary package support or
-refusal-only tests. The [qualification workflow](native-qualification.md) records
-the still-pending exact-head artifact/platform acceptance gates, retained
+refusal-only tests. Issue #88's artifact/platform gate was accepted and merged;
+the [qualification workflow](native-qualification.md) records the retained
 CPython 3.10–3.14 coverage and required Apple/MSVC WP5/WP8 preservation.
 
 Current private refusal ceilings remain separate:

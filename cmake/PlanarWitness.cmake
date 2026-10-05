@@ -7,8 +7,9 @@ function(pyvoro2_planar_witness target_name)
   endif()
 
   # This conservative closure includes all linked 2D routes as well as the
-  # ordinary adapter and its effective build controls.  The approved digest is
-  # a separately reviewed literal, not the just-computed digest itself.
+  # ordinary adapter and its effective build controls. These diagnostic digests
+  # do not issue qualification; the finalizer binds the source manifest and
+  # actual effective build evidence to the installed artifact.
   file(GLOB _sources CONFIGURE_DEPENDS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "vendor/voro++/2d/src/*")
   list(APPEND _sources cpp/bindings2d.cpp cpp/native_preconditions.hpp cpp/locate_source.hpp

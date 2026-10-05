@@ -3,14 +3,16 @@
 [ADR 0024](decisions/0024-external-native-artifact-qualification.md) owns the
 qualification policy. This page maps the implementation and evidence needed to
 review a build. Issue [#88](https://github.com/DeloneCommons/pyvoro2/issues/88)
-acceptance remains pending; this page does not qualify a platform or artifact.
+was independently accepted and merged through PR #90. The source-identity
+amendment [#109](https://github.com/DeloneCommons/pyvoro2/issues/109) removes the
+procedural source-review input; this page does not qualify an artifact.
 
 ## Implementation map
 
 | Component | Responsibility |
 |---|---|
-| `tools/native/qualification/source_policy.py` | Measure the conservative source/consumer closure and compare separately reviewed approval. |
-| `src/pyvoro2/_internal/native_approval.json` | Reviewed source, schema, consumer and component identities; measurement never updates approval. |
+| `tools/native/qualification/source_policy.py` | Measure the conservative source/consumer closure and check or explicitly refresh the mechanical manifest. |
+| `src/pyvoro2/_internal/native_source_manifest.json` | Sole canonical mechanical source, schema, consumer and all six component identities; explicit implementer-owned refresh. |
 | `tools/native/qualification/record_command.py`, `adapters.py`, `effective_build.py` | Record actual tool execution and verify effective operations, dependencies, objects and link lineage. |
 | `tools/native/qualification/finalize.py` | Verify controlled evidence, execute the repository route suite, bind final installed payload and issue the detached record and installation anchor. |
 | `src/pyvoro2/_internal/native_qualification.py` | Verify trusted record, source/schema/consumer compatibility, ABI, immutable loaded payload and route composition. |
@@ -44,20 +46,43 @@ is outside the protected operation boundary. Runtime tests import the package
 before installing hostile controls, then exercise the first forward call as
 well as subsequent calls. No path normalizes caller controls.
 
-## Source approval and fresh builds
+## Mechanical source identity and fresh builds
 
-Measure before review and check the separate approval before qualification:
+The implementer owns refresh after every measured source change, including
+native strings, tools, tests and workflows:
 
 ```bash
 python tools/native/qualification/source_policy.py --root . --measure
-python tools/native/qualification/source_policy.py --root . --check-approval
+python tools/native/qualification/source_policy.py --root . --update-manifest
+python tools/native/qualification/source_policy.py --root . --check-manifest
 ```
 
-The first command reports identities only. The second must fail while approval
-is absent or stale. Review the entire changed closure and its proof impact
-before updating approval; do not automate approval from the newly measured
-hash. A source, consumer, schema or shared binding change can invalidate several
-route components. Keep unchanged historical evidence intact.
+No action defaults to read-only measurement. Check never writes; missing,
+invalid, noncanonical or stale identities refuse with actionable diagnostics.
+Explicit update measures current source itself and atomically creates, replaces
+or normalizes only the fixed manifest, preserving permissions and leaving an
+identical file untouched. Invalid measurement or unsafe destinations refuse
+without repairs. Use full measurement snapshots and Git diff to identify changed
+files; the minimal manifest carries identities, not inventories or counts.
+
+The manifest has exactly `manifest_schema`, `policy_revision`, `source_sha256`,
+`consumer_sha256`, `schema_sha256` and `components`; all six components have
+exactly their source and schema digests. Shared validation requires canonical
+JSON bytes and rejects duplicate/unknown/missing keys, wrong types, malformed
+digests and inconsistent schemas. It has no reviewer, approval or qualification
+claims. The retired file is forbidden. Record v2 / policy `issue88-p2` binds
+`source_manifest_sha256` to these exact bytes; the effective-build manifest digest
+retains its separate meaning. Old development artifacts require rebuild and
+requalification, without a legacy reader.
+
+Build, finalization and CI only check the manifest. The driver and finalizer
+also check its unchanged identity after evidence, separately from measured
+source. Source and installed canonical bytes must agree before and after route
+evidence. Complete build, route, payload and FP obligations remain mandatory.
+A mechanically current manifest enables full candidate qualification CI without
+source approval. One independent final review assesses the complete PR and
+exact-head evidence before the maintainer decides integration. Keep unchanged
+historical evidence intact.
 
 Rebuild native modules after every relevant C++/CMake change and record their
 actual import paths. Tests against a previously installed extension do not
@@ -128,11 +153,11 @@ This preserves the existing manifest instead of suppressing it to avoid recordin
 its production. GNU completion receipts become readable by the host evidence
 uploader before their fsync and atomic publication.
 
-Input identity and approval have different roles:
+Repository source identity and external-provider provenance have different roles:
 
 | Actual build input | Required authority |
 |---|---|
-| Primary C/C++ translation unit | Membership in the independently approved source closure. |
+| Primary C/C++ translation unit | Membership in the measured source closure bound by the current manifest. |
 | External header | Compiler/SDK, Python or pybind11 provider root established independently by the controlled adapter, plus the consumed file's identity. Candidate include flags cannot establish that provider. |
 | Linker object, including a response-only input | Observed translation-unit output or reviewed toolchain CRT provenance. |
 | Archive | Reviewed provenance; unknown archives refuse qualification. |
@@ -226,7 +251,7 @@ before issuing a record. Nonempty symbol lists alone cannot establish coverage.
 | GNU control | GNU 13.3 strict positive. |
 | GNU manylinux | Actual GNU 14.2.1 final repaired, installed production wheel with positive certificate routes. An extracted compiler or pre-repair donor is insufficient. |
 | Arithmetic | Strict AVX/FMA-capable positive plus unsafe contraction and power-order discriminators with independent expected bits. |
-| Existing platforms | AppleClang/macOS and MSVC/Windows WP5/WP8 positive artifacts through reviewed adapters. These positives remain pending until their actual jobs pass. |
+| Existing platforms | AppleClang/macOS and MSVC/Windows WP5/WP8 positive artifacts through reviewed adapters. Each changed candidate must retain these positives in its actual jobs. |
 | Planar occurrence evidence | Current WP6 48/1718, original archived WP6 92/2298 and selected planar WP7 30/287 cases/occurrences. |
 | Other routes | Accepted ordinary/selected spatial noninterference and distinct WP8 source/enclosure regressions. |
 | Runtime | Split x87/SSE rounding, all rounding directions, FTZ/DAZ, PC24/PC53/PC64, trap masks, masked sticky flags, worker threads, after-import changes and callback boundaries. |
@@ -267,11 +292,13 @@ surviving harnesses restore exact saved state. The guard never changes it.
   [WP7](wp7-implementation.md) and [WP8](wp8-implementation.md) retain their
   accepted route-specific source and mathematical evidence.
 - The final review handoff must identify PR number, exact head/root tree and
-  expected `dev` base, source/approval/schema manifests, commands, toolchains,
+  expected `dev` base, canonical source manifest/schema identities, commands, toolchains,
   effective records, component results, native/dependency/wheel hashes, imported
   paths, CI run IDs, reproduction commands and complete evidence checksums.
 
 Keep historical predecessor characterization separate from tests actually rerun
 on the final implementation head. Do not sum overlapping test selections or
 claim a changed repaired payload from its donor's evidence. Until every required
-gate and independent review is recorded, #88 and Checkpoint B remain unaccepted.
+gate and independent review is recorded, the current implementation candidate
+remains unaccepted. Historical #88/Checkpoint-B acceptance does not qualify a
+changed artifact.

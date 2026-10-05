@@ -48,11 +48,12 @@ WP6; Checkpoint B acceptance remains pending.
 
 **Qualification amendment, 2026-09-28:**
 [ADR 0024](0024-external-native-artifact-qualification.md) replaces historical
-compiler-cohort admission with separately approved source/schema/consumer
-identity, external effective-build/artifact evidence and raw current-thread FP
+compiler-cohort admission with mechanical source/schema/consumer
+identity (amended by #109), external effective-build/artifact evidence and raw current-thread FP
 checks. WP6 remains an independent occurrence component. This does not change
 the accepted source association, insertion, N/E/S or collapse contract, and
-does not claim issue #88 acceptance.
+retains artifact-specific qualification. Issue #88 was independently accepted
+and merged through PR #90.
 
 ## Decision
 
