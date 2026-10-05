@@ -2395,7 +2395,9 @@ builder signatures. In particular, finite extreme-scale source inputs retain
 R1/R2's stabilized handling of derived scaled-row infinities inside the
 canonical problem builder; direct problem construction itself is finite-strict.
 
-The active-set outer workflow and its path/result types remain **experimental**.
+The advanced active-set engine, configuration and path members remain
+**experimental**. The shared result's final-state inspection protocol is
+**provisional**, independent of its import namespace.
 The explicit SciPy sparse linear backend is **provisional**. It supports direct
 quadratic solving and ADMM weight systems, including active-set forwarding,
 without changing the solver method.
