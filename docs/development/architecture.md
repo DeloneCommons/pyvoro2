@@ -1163,7 +1163,8 @@ selection should occur only after the combinatorial class is established and
 should retain residual/consistency diagnostics.
 
 This candidate does **not** reopen the accepted Checkpoint-B contract and is not
-part of Phase C. Complete WP10-WP13 first. During the subsequent maintainer
+part of Phase C. Complete the Phase-C refinement gate and Checkpoint C first.
+During the pre-Phase-D maintainer
 whole-code comprehension reread and architecture reconciliation, reassess the
 candidate against the actual complete implementation. The following independent
 technical audit can then decide whether any part deserves explicit pre-release
@@ -1181,11 +1182,17 @@ realization-aware outer refinement. Stable status means stable input, result,
 provenance, and structured termination semantics; it does not promise that the
 outer algorithm converges on every input.
 
-After WP1-WP13, the maintainer performs a complete-code comprehension reread and
+After Checkpoint C and before Phase D/WP12, the maintainer performs a
+complete-code comprehension reread and
 architecture reconciliation, followed by a distinct evidence-driven
 architectural and technical audit. Findings explicitly accepted for pre-release
-remediation are resolved if any; otherwise the project progresses directly to
-the documentation phase. The pre-release documentation overhaul then migrates
+remediation receive their own tests/qualification and are resolved if any;
+otherwise recovery records “none required”. WP12 qualifies public workflows
+after that recovery; WP13 follows WP12. Review changes since the accepted
+recovery baseline after WP13, normally through a bounded delta review. The
+maintainer may escalate to a renewed full reread/audit when cross-cutting
+changes, later remediation or new findings make bounded review insufficient.
+The pre-release documentation overhaul follows that review decision and migrates
 the Markdown-first stack to Zensical after compatibility verification,
 preserves the notebook source/export workflow, and proceeds from low-redesign
 migration to content/information-architecture and

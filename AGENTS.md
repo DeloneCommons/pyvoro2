@@ -24,10 +24,11 @@ tessellations:
 - v0.8 is a feature-free cleanup and compatibility-removal release;
 - development through v0.9.0 is functional/API stabilization, and released
   v0.9.x is the downstream-readiness/soak phase;
-- after WP1-WP13, v0.9.0 includes a complete-code maintainer comprehension
-  reread, a separate architectural/technical audit, remediation of findings
-  explicitly accepted for pre-release work if any, and a pre-release
-  documentation overhaul before final frozen-source qualification under #48;
+- after Checkpoint C and before WP12, v0.9.0 requires complete-code
+  comprehension, architecture reconciliation, a separate architectural/technical
+  audit and accepted remediation if any; WP12/WP13 then precede a bounded
+  recovery-baseline delta review (full review if the maintainer escalates),
+  documentation overhaul and final frozen-source qualification under #48;
 - one repository/distribution is retained through 1.0;
 - 1.0 stabilizes the existing forward and separator-inverse core after the soak,
   before new inverse observation families;
@@ -49,8 +50,9 @@ archived. The v0.8.0 source is finalized before exact-commit qualification
 under issue #33; any tracked correction changes that candidate. The
 [active v0.9 plan](docs/development/plans/v0.9.md) now governs functional/API
 stabilization work; #46 records activation and #47 tracks substantive WP1–WP13
-execution. The later post-functional pre-release stages remain outside #47, and
-#48 remains the final frozen-source qualification/publication gate.
+execution and the abstract pre-Phase-D recovery gate. Recovery execution uses
+its own just-in-time umbrella; #48 remains the final frozen-source
+qualification/publication gate.
 
 ## Authoritative sources
 
@@ -130,15 +132,28 @@ Install the full local stack:
 python -m pip install -e ".[all]"
 ```
 
-Fast checks for ordinary Python/documentation changes:
+Use focused tests during iteration. Before first candidate publication and
+every remediation publication, run a representative broad local preflight
+appropriate to scope when the environment permits:
 
 ```bash
-flake8 src tests tools benchmarks examples
+pytest -q tests/tooling/test_ci_classify_changes.py  # CI/process changes
+pytest -q tests/tooling
 pytest -q
+flake8 src tests tools benchmarks examples
 python tools/export_notebooks.py --check
 python tools/gen_readme.py --check
-mkdocs build --strict
+mkdocs build --strict                              # authority/docs changes
 ```
+
+Classify the actual complete base/head diff where practical. After every
+measured edit batch, explicitly measure/update/check the source manifest as
+below. Local preflight need not reproduce every supported Python/platform;
+editable/native work does not substitute for controlled qualification.
+If a compiler/loader/provenance/admission condition refuses broad/native
+checks, do not bypass admission or change filters to claim a pass. Report the
+exact command/reason and useful partial coverage, do not claim native/full
+coverage, and retain required exact-head GitHub qualification.
 
 Notebook changes additionally require:
 
@@ -171,8 +186,15 @@ pytest -m pyvoro --fuzz-n 100
 ## Native source identity and qualification
 
 For measured native/build/consumer/tool/test/workflow changes, the implementer
-explicitly runs `python tools/native/qualification/source_policy.py
---update-manifest`, then `--check-manifest`. Default/`--measure` is read-only.
+explicitly runs, after every measured edit batch and later measured fix:
+
+```bash
+python tools/native/qualification/source_policy.py --measure
+python tools/native/qualification/source_policy.py --update-manifest
+python tools/native/qualification/source_policy.py --check-manifest
+```
+
+Default/`--measure` is read-only.
 Only `src/pyvoro2/_internal/native_source_manifest.json` is committed source
 identity; the retired source-approval file is forbidden. The canonical manifest
 records mechanical identities, not review or qualification claims.
@@ -264,6 +286,25 @@ validation commands run, and any deviation or follow-up. Do not create extra
 process artifacts when the issue, tests, docs, and changelog already record the
 work adequately.
 
+Normal release-scoped PRs target `dev`; promotion and emergency stable PRs
+obey the branch/reconciliation rules in the development workflow. Handoff is
+not independent acceptance or permission to merge/close the issue.
+
+If a definitive blocking failure has already been observed, the current PR
+head is known to require a source change/new head, and an authorized safe
+cancellation action is available, promptly cancel that obsolete PR workflow
+run while preparing remediation. Record run ID/reason where useful. Do not
+cancel on suspicion or cancel integration, tag, manual or standalone evidence
+under this rule. If cancellation is unavailable, proceed without it.
+Cancellation is neither remediation nor acceptance; replacement-head CI is
+still required.
+
+After local work and candidate publication, default to
+**implementation handoff — CI pending**, reporting exact head/run/status when
+discoverable. Do not spend substantial runtime passively polling unless the
+task explicitly requires synchronous monitoring or monitor-and-fix. Never
+claim acceptance before required exact-head CI and independent review.
+
 ## Public API changes
 
 Before adding or changing a public name, signature, default, return schema, or
@@ -325,10 +366,9 @@ In brief:
 - release plans define scope and gates; issues track progress;
 - the roadmap uses version-level outcomes, not private “Stage 0/1” labels;
 - v0.8 is cleanup-only, v0.9.0 is functional/API stabilization, released
-  v0.9.x is the downstream soak, and the explicit post-WP13 pre-release order is
-  complete-code comprehension reread, architectural/technical audit,
-  remediation of findings explicitly accepted for pre-release work if any,
-  documentation overhaul, then #48 frozen-source qualification; 1.0 is the
+  v0.9.x is the downstream soak; Checkpoint C precedes whole-code
+  comprehension/audit and accepted remediation, then WP12/WP13, the recovery
+  delta/full-review decision, documentation overhaul and #48; 1.0 is the
   stable main release, v1.1 is prescribed measures, and v1.2 is mixed
   separator-plus-measure fitting;
 - the changelog records completed user-visible changes;
@@ -358,5 +398,6 @@ A change is complete when:
 - current/target wording in the docs is accurate;
 - compatibility behavior is explicit;
 - the changelog is updated when user-visible behavior changed;
-- the narrowest relevant validation commands pass;
+- scope-appropriate local verification and required exact-head CI pass, with
+  unavailable local coverage reported honestly;
 - no unresolved design decision is hidden in the implementation.

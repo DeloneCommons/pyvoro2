@@ -9,9 +9,10 @@ The feature-free v0.8 maintenance and compatibility-removal plans are complete
 and archived. The [v0.9.0 development plan](docs/development/plans/v0.9.md) is
 Active; substantial v0.9 work must follow that plan and a linked issue under
 execution tracker [#47](https://github.com/DeloneCommons/pyvoro2/issues/47).
-After WP13, v0.9.0 also includes the separately scoped complete-code reread,
-architectural/technical audit, remediation of findings explicitly accepted for
-pre-release work if any, and documentation overhaul before final qualification under
+After Checkpoint C and before WP12, v0.9.0 includes the separately scoped
+complete-code reread, architectural/technical audit, and accepted remediation
+if any. WP12/WP13 then precede a review of changes since that recovery baseline
+and the documentation overhaul before final qualification under
 [#48](https://github.com/DeloneCommons/pyvoro2/issues/48). Released v0.9.x then
 supplies downstream-readiness evidence; 1.0 stabilizes the existing core,
 prescribed cell measures begin in v1.1, and mixed-observation fitting begins in
@@ -43,13 +44,16 @@ Read these documents before architectural or release-scoped work:
 
 The normal branch model is:
 
-- `main`: latest stable public release;
-- `dev`: integration branch for the active release plan;
+- `main`: stable/release integration;
+- `dev`: official integration branch for the active release/milestone plan;
 - feature branches: optional issue-scoped work before integration into `dev`.
 
 Substantial changes should follow the active release plan and a linked GitHub
 issue. A draft plan records work under discussion; it does not authorize a
 contributor or implementer to resolve open API decisions independently.
+Normal release-scoped PRs target `dev`. Promotion and explicitly approved
+emergency stable fixes follow the PR, exact-head CI, review and reconciliation
+rules in the development workflow; neither is a direct-push escape hatch.
 
 The project uses the following traceable flow:
 

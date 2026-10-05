@@ -27,6 +27,12 @@ FULL = DOCS | {
     'test-linux-qualified', 'test-other-platforms',
     'build-dist', 'wheels',
 }
+SELECTABLE = FULL | RUNTIME
+# Exactly the profiles obtainable by unioning the current changed-path routes.
+VALID_PROFILES = frozenset({
+    DOCS, DIST_ONLY, PACKAGING, RUNTIME, FULL,
+    PACKAGING | RUNTIME, FULL | RUNTIME,
+})
 
 PACKAGING_TOOLS = frozenset({
     'build_wheel_from_sdist.py', 'build_wheels_wsl.sh', 'check_dist.py',
@@ -119,12 +125,55 @@ def changed_paths(base: str, head: str, *, cwd: Path | None = None) -> list[str]
 
 
 def gate_failures(requirements, results: dict[str, str]) -> list[str]:
-    """Fail closed for missing classification or skipped/failed required jobs."""
+    """Check conclusions for a validated profile; only literal success passes."""
     if requirements is None:
         return ['classification: missing or failed']
     return [f'{job}: {results.get(job, "missing")}'
             for job in sorted(requirements)
             if results.get(job) != 'success']
+
+
+def _unique_object(pairs):
+    result = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError(f'duplicate JSON key: {name}')
+        result[name] = value
+    return result
+
+
+def check_gate(needs) -> list[str]:
+    """Validate classifier authority and its profile before checking job results."""
+    if not isinstance(needs, dict):
+        return ['needs: expected a job object']
+    classifier = needs.get('classify')
+    if not isinstance(classifier, dict) or classifier.get('result') != 'success':
+        return ['classification: missing or failed']
+    outputs = classifier.get('outputs')
+    if not isinstance(outputs, dict) or not isinstance(
+            outputs.get('requirements'), str):
+        return ['classification: missing or malformed requirements output']
+    try:
+        requirements = json.loads(outputs['requirements'])
+    except ValueError:
+        return ['classification: invalid requirements JSON']
+    if not isinstance(requirements, list) or not requirements:
+        return ['classification: requirements must be a nonempty list']
+    if any(not isinstance(job, str) for job in requirements):
+        return ['classification: requirement names must be strings']
+    required = frozenset(requirements)
+    if len(required) != len(requirements):
+        return ['classification: duplicate requirements']
+    if not required <= SELECTABLE:
+        return ['classification: unknown or nonselectable requirements']
+    if not DOCS <= required or required not in VALID_PROFILES:
+        return ['classification: incomplete or invalid profile']
+    results = {}
+    for job in required:
+        record = needs.get(job)
+        results[job] = (record.get('result', 'missing')
+                        if isinstance(record, dict) else 'missing')
+    return gate_failures(required, results)
 
 
 def main(argv=None) -> int:
@@ -139,12 +188,13 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     if args.check_gate:
-        needs = json.loads(os.environ['NEEDS_JSON'])
-        classifier = needs.get('classify', {})
-        raw = classifier.get('outputs', {}).get('requirements')
-        requirements = json.loads(raw) if raw else None
-        results = {name: info['result'] for name, info in needs.items()}
-        failures = gate_failures(requirements, results)
+        raw = os.environ.get('NEEDS_JSON')
+        try:
+            needs = json.loads(raw, object_pairs_hook=_unique_object) if raw else None
+        except ValueError as error:
+            failures = [f'NEEDS_JSON: {error}']
+        else:
+            failures = check_gate(needs)
         if failures:
             print('CI gate failed: ' + ', '.join(failures), file=sys.stderr)
             return 1

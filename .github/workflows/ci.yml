@@ -12,6 +12,11 @@ name: CI
     branches:
       - dev
       - main
+# Only heads of the same PR supersede each other. Run/attempt identity keeps
+# independent non-PR evidence out of both active and pending displacement.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}-{1}', github.run_id, github.run_attempt) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: '2'
 jobs:
@@ -101,7 +106,7 @@ jobs:
       - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest "PyYAML>=6" scipy numpy
         if: needs.test-linux-qualified.result == 'skipped' && needs.test-linux-runtime.result == 'skipped'
       - name: Qualify final installed production artifact
         run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
@@ -157,7 +162,7 @@ jobs:
       - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest "PyYAML>=6" scipy numpy
       - name: Run controlled native safety checks under ASan and UBSan
         run: >-
           python tools/native/qualification/build.py --output "${{ runner.temp }}/sanitizer-safety"
@@ -200,7 +205,7 @@ jobs:
       - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest "PyYAML>=6" scipy numpy
       - name: Qualify final installed production artifact
         run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
           full
@@ -223,7 +228,7 @@ jobs:
     env:
       CXX: g++-13
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.event_name == 'pull_request' }}
       matrix:
         python-version:
           - '3.10'
@@ -242,7 +247,7 @@ jobs:
       - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'"
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest "PyYAML>=6" scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'"
       - name: Qualify final installed production artifact
         run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
           full
@@ -277,7 +282,7 @@ jobs:
       - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest "PyYAML>=6" scipy numpy
       - name: Qualify final installed production artifact
         run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
           full
@@ -302,7 +307,7 @@ jobs:
     env:
       CXX: g++-13
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.event_name == 'pull_request' }}
       matrix:
         python-version:
           - '3.10'
@@ -320,7 +325,7 @@ jobs:
       - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'"
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest "PyYAML>=6" scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'"
       - name: Qualify final installed production artifact
         run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
           adapter
@@ -343,7 +348,7 @@ jobs:
     needs: classify
     if: contains(fromJSON(needs.classify.outputs.requirements), 'test-other-platforms')
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.event_name == 'pull_request' }}
       matrix:
         os:
           - macos-15
@@ -372,7 +377,7 @@ jobs:
       - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'"
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest "PyYAML>=6" scipy "numpy<2; python_version<'3.11'" "numpy<3; python_version>='3.11'" "tomli; python_version<'3.11'"
       - name: Qualify final installed production artifact
         run: python tools/native/qualification/build.py --output "${{ runner.temp }}/qualification" --repair none --suite
           adapter
@@ -416,7 +421,7 @@ jobs:
       - name: Install controlled build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest scipy numpy twine
+          python -m pip install build cmake ninja "scikit-build-core>=0.11.4" "pybind11>=3,<4" pytest "PyYAML>=6" scipy numpy twine
       - name: Build sdist
         run: python -m build --sdist --outdir "${{ runner.temp }}/sdist-dist"
       - name: Qualify wheel from the actual extracted sdist
