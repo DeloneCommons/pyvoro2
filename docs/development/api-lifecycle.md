@@ -127,13 +127,14 @@ The activation boundary is:
   keyword-only `space` arguments, bounded scalar-or-row A+B value/applicability
   inputs, resolved-policy views, and schema-v2 model-policy records share that
   classification. The concrete `resolved_policy` mapping is Provisional on
-  problems, fixed results, and the Experimental active result; it contains
+  problems, fixed results, and the shared active result; it contains
   `row_ids`, `model_spaces`, and `model_policy`. Observation/source identity
   remains Stable. The first WP10
   pass keeps Huber/boundary shape parameters term-global, with a mandatory
   parameter-level disposition after WP10/WP11 and before Checkpoint C;
-- `fit_self_consistent_weights_from_separators` and the preferred-namespace
-  `SelfConsistentPowerFitResult` become **Provisional** API in the supported preferred namespace: ordinary
+- `fit_self_consistent_weights_from_separators` and the identical shared
+  `SelfConsistentPowerFitResult` final-state inspection are **Provisional**.
+  This member-level classification is independent of import route: ordinary
   callers may rely on them without entering an Experimental namespace, but the
   released v0.9.x soak and the final pre-1.0 audit still precede the
   stronger 1.0 commitment;
@@ -141,6 +142,17 @@ The activation boundary is:
   iteration/path objects, hysteresis/relaxation/cycle-window/weight-step
   controls, and research history remain **Experimental** under
   `pyvoro2.inverse.separator`;
+- Provisional shared-result inspection includes final `inner_fit`/`fit`,
+  `final_realization`/`realized`, final candidate data/diagnostics, candidate
+  observations, direct final `active_mask`, source/policy/mismatch views,
+  outer status/iteration/cycle/warning metadata, final residual/geometry/
+  connectivity diagnostics, availability/reason and `final_refit_converged`.
+  Raw aliases retain their meanings; helper constructors gain no preferred
+  export or new construction/immutability guarantee. `history`, `path`,
+  `path_summary`, `marginal_constraints`, iteration objects, toggle/first/last
+  counters, marginal classifications and path-derived status labels remain
+  **Experimental**, also inside candidate diagnostics, records and report v2.
+  The facade returns `history=None` without deleting other research data;
 - `ghost_radius` is **Removed** by WP1. The face/edge reconstruction search,
   validation, repair, and matching-tolerance keywords named in the inventory
   are **Removed** by WP6, WP7 and WP9.

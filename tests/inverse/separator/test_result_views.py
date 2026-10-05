@@ -714,6 +714,8 @@ def test_view_exports_are_canonical_only_and_high_level_surface_stays_small() ->
         'resolve_separator_observations',
         'SeparatorFitResult',
         'fit_weights_from_separators',
+        'SelfConsistentPowerFitResult',
+        'fit_self_consistent_weights_from_separators',
         'weights_to_radii',
         'radii_to_weights',
     )

@@ -55,7 +55,7 @@ representation used by Voro++.
 
 ### Normal high-level path
 
-Use `pyvoro2.inverse` for fixed-observation separator fitting:
+Use `pyvoro2.inverse` for fixed-observation and realization-aware separator fitting:
 
 ```python
 import pyvoro2.inverse as inverse
@@ -71,15 +71,37 @@ fit = inverse.fit_weights_from_separators(
 )
 ```
 
-This stable surface intentionally contains only:
+The exact preferred surface contains:
 
 - `SeparatorObservations`;
 - `resolve_separator_observations`;
 - `SeparatorFitResult`;
 - `fit_weights_from_separators`;
+- `SelfConsistentPowerFitResult`;
+- `fit_self_consistent_weights_from_separators`;
 - `weights_to_radii` and `radii_to_weights`.
 
 It is the preferred path for applications and downstream packages.
+
+The original six exports remain Stable. Realization-aware fitting and the
+shared result's final-state inspection are Provisional during v0.9.x soak:
+
+```python
+result = inverse.fit_self_consistent_weights_from_separators(
+    points, observations, domain=domain, max_outer_iter=25,
+)
+outer_status = result.outer_termination.status
+inner_status = result.inner_fit.status
+available = result.final_state_available
+if available:
+    active = result.active_mask
+    requested_images = result.final_realization.realized_same_shift
+```
+
+Outer self-consistency, final inner convergence and availability are independent.
+Models needing ADMM require `fit_solver='admm'` explicitly. Output switches do
+not disable required geometry or certification. The facade starts all candidates
+active, retains engine defaults and returns the shared result directly.
 
 ### Advanced separator research path
 
@@ -101,8 +123,11 @@ fit = separator.fit_weights_from_separators(
 )
 ```
 
-Most of this larger surface is provisional. The active-set workflow is
-experimental and has no universal convergence guarantee.
+Most of this larger surface is Provisional. The active engine and path controls
+are Experimental and have no universal convergence guarantee. The shared
+result's final-state protocol is Provisional through either import route.
+History/path views, counters, marginal classifications and path-derived status
+labels remain Experimental, also in reports. The facade has `history=None`.
 
 ### Removed v0.7 compatibility path
 
@@ -125,7 +150,8 @@ replacements.
 | `pyvoro2.inverse` high-level separator workflow | Stable | Normal inverse API |
 | Advanced objective, problem, operator, realization, and report objects in `pyvoro2.inverse.separator` | Provisional | Research and specialized downstream use |
 | Explicit SciPy sparse quadratic separator backend | Provisional | Large static sparse quadratic observation graphs |
-| Realization-aware active-set refinement | Experimental | Opt-in diagnostic outer algorithm |
+| Preferred realization-aware fitting and final-state inspection | Provisional | Empirical algorithm with explicit outer, inner and availability states |
+| Advanced active engine and path controls | Experimental | Hysteresis, relaxation, history and research inspection |
 | v0.7-only inverse and planar compatibility routes | Removed in v0.8 | Follow the migration guide |
 | v0.8 cleanup and compatibility removal | Implemented maintenance scope | No new numerical features |
 | v0.9 functional/API stabilization | Planned before 1.0 | Refines existing forward, periodic, and separator workflows |
@@ -183,7 +209,8 @@ active-set path and outer termination
 
 A small algebraic residual does not prove that the requested pair is a realized
 face. The realized geometry is not part of the exact fixed-observation solve,
-and active-set refinement is a separate experimental outer algorithm.
+and realization-aware refinement is a separate empirical outer algorithm.
+Its preferred workflow is Provisional; its research/path controls are Experimental.
 
 The [separator-fitting guide](powerfit.md) explains the layers in detail. The
 [glossary](glossary.md) defines the recurring terms.

@@ -6,9 +6,9 @@ desired locations along the connector lines between sites. A normalized
 connector fraction may be any finite real value; restricting it to the segment
 between the two sites is a separate model constraint.
 
-New code should begin with the concise fixed-observation surface in
-`pyvoro2.inverse`. Advanced objective models, realization checks, reports, and
-the experimental active-set outer loop live in
+New code should begin with fixed-observation or Provisional realization-aware
+fitting in `pyvoro2.inverse`. Advanced objective models, realization checks,
+reports and Experimental active-set/path controls live in
 `pyvoro2.inverse.separator`.
 
 The API is geometry-first and domain-agnostic. The same high-level functions
@@ -42,7 +42,9 @@ migrating from v0.6.3 should also read the
 The high-level resolver, observation container, fit result, fit entry
 point, and neutral transforms are **stable**. Advanced models, problem and
 operator views, report/realization helpers, and layered convenience views are
-**provisional**. Active-set refinement is **experimental**. The optional
+**provisional**. The preferred realization-aware facade and shared result's
+final-state inspection are **Provisional**; advanced engine/path controls remain
+**Experimental**. The optional
 explicit sparse quadratic backend is **provisional** and supports large static
 sparse observation graphs only.
 
@@ -581,7 +583,8 @@ The complete mapping is:
 | Algebraic diagnostics | `fit.algebraic` | `edge_diagnostics`, `connectivity` |
 | Fixed-solver termination | `fit.solver_termination` | `status`, `status_detail`, `solver`, `linear_backend`, `n_iter`, `converged`, `hard_feasible`, `conflict`, `warnings` |
 | Requested-image matching and realized geometry | `realized.requested_image_matching`, `realized.geometry` | all `RealizedPairDiagnostics` fields |
-| Experimental outer-loop termination and path | `result.outer_termination`, `result.path` | active-set termination fields, `active_mask`, `marginal_constraints`, `history`, `path_summary` |
+| Provisional outer termination and final selection | `result.outer_termination`, direct `result.active_mask` | outer status, iteration/cycle/warning metadata, final active mask |
+| Experimental path inspection | `result.path`, `result.history`, `result.path_summary` | iteration objects, marginal indices and path history |
 
 The observation accessor applies one exact association rule before presenting
 observation-owned arrays beside fit predictions:
@@ -696,7 +699,7 @@ representative without guaranteeing a unique optimum. None of those values is
 information identified by disconnected separator observations. Inspect
 realization results when cross-component competition matters.
 
-The experimental active-set wrapper carries offsets from one iterate to the
+The realization-aware engine carries offsets from one iterate to the
 next only for true zero-L2 gauge components. Its final post-refit alignment is
 kept only when exact binary64-input checks prove that all within-component
 weight differences are unchanged. Positive L2 removes this gauge, so the final
@@ -903,7 +906,59 @@ active-state contracts are unchanged.
 
 The fit result never computes or owns a tessellation automatically.
 
-## Optional: refine the active set
+## Supported realization-aware fitting
+
+Use the preferred Provisional facade for ordinary realization-aware fitting:
+
+```python
+import pyvoro2.inverse as inverse
+
+result = inverse.fit_self_consistent_weights_from_separators(
+    points, observations, domain=box, model=model, fit_solver='admm',
+    max_outer_iter=25, return_boundary_measure=True,
+)
+outer_status = result.outer_termination.status
+inner_status = result.inner_fit.status
+available = result.final_state_available
+inner_converged = result.final_refit_converged
+if available:
+    weights = result.inner_fit.weights
+    final_active = result.active_mask
+    same_images = result.final_realization.realized_same_shift
+else:
+    reason = result.final_state_unavailable_reason
+```
+
+All candidates start active. The facade retains engine defaults `add_after=1`,
+`drop_after=2`, `relax=1.0`, `cycle_window=8` and `weight_step_tol=1e-8`, exposing
+only `max_outer_iter` for outer lifecycle control. That limit uses existing
+positive exact non-Boolean index validation. Inner solver/backend choices and
+ADMM settings remain explicit. `fit_weights_from_separators` remains the
+separate fixed-observation solve.
+
+Raw or resolved observations follow the same engine validation and exact
+source binding. Resolved measurement/IDs/confidence/shifts are authoritative;
+unconditional argument checks remain. A source-bound no-domain observation set
+cannot be silently rebound, and lattice equivalence is not exact source equality.
+Configuration, binding, sparse dependency, configured diagnostic-raise and
+native/semantic/resource failures propagate as exceptions.
+
+Requested cells, measures and diagnostics are optional final layers. Internal
+tessellation and required certification run even with all outputs disabled or
+`tessellation_check='none'`. Missing-row measures can be NaN in arrays and null
+in records/JSON. Wrong-image rows may carry another image's measure; inspect
+explicit `realized_same_shift`/`realized_other_shift` flags. Complete
+image-qualified final cell boundaries are topology authority; pair-level
+`unaccounted_pairs` does not inventory all unexpected/self images.
+
+The identical result class has Provisional final fit/realization, final candidate
+data, candidate observations, direct `active_mask`, source/policy/mismatch,
+outer metadata, availability and final diagnostics through either namespace.
+The facade has `history=None` but can populate other path data. Path/history,
+iterations, toggle/first/last counters, marginal classifications and path-derived
+status labels remain Experimental wherever they occur, including reports.
+
+## Advanced: refine the active set
 
 For sparse or noisy candidate sets, the useful high-level workflow is often:
 
@@ -949,8 +1004,9 @@ The solver is generic:
 
 ## Reading the final diagnostics
 
-`solve_self_consistent_power_weights(...)` returns both a final low-level fit and
-rich per-constraint diagnostics.
+Both realization-aware entry points return the same final fit and candidate
+diagnostics. Final-state inspection is Provisional; the advanced path fields
+below remain Experimental.
 
 Useful fields include:
 
@@ -991,9 +1047,10 @@ path = result.path
 ```
 
 `path.active_mask`, `path.marginal_constraint_indices`, `path.history`, and
-`path.summary` share the existing active-set result data. The outer termination
-is experimental and does not change the exact fixed-observation meaning of
-`final_inner_fit`. In particular, outer and inner convergence are distinct:
+`path.summary` are Experimental views of existing result data. Use direct
+`result.active_mask` for Provisional final selection. Provisional outer
+termination does not change the exact fixed-observation meaning of
+`final_inner_fit`. Outer and inner convergence are distinct:
 
 ```python
 assert result.converged == (result.termination == 'self_consistent')
@@ -1017,7 +1074,7 @@ still control warnings or exceptions, while `result.path_summary` and
 `result.history` expose optimization-path events without turning every transient
 component split into a default warning.
 
-Status labels are intentionally generic, for example:
+Experimental path-derived status labels are intentionally generic, for example:
 
 - `stable_active`
 - `stable_inactive`

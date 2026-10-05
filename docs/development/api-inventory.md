@@ -8,8 +8,9 @@
 - **Active target:** v0.9.0 — WP0 contract activated 2026-09-01; WP1 query-input
   parity, WP2 user/backend lattice separation, WP4 exact proof geometry and
   WP5/WP6 boundary certification and WP7/WP8 ghost/query metadata are
-  independently accepted and merged. WP9 removals are implemented in this tree
-  pending independent acceptance; later feature work remains target-only
+  independently accepted and merged, as are WP9, Checkpoint B, Phase C entry,
+  WP10 and #109. WP11 is implemented under #111 with acceptance pending;
+  later feature work remains target-only
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
 - **v0.9 activation:** [issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **v0.9 execution tracker:** [issue #47](https://github.com/DeloneCommons/pyvoro2/issues/47)
@@ -73,8 +74,9 @@ fact.
 
 This section is the implementation/target ledger activated by issue
 [#46](https://github.com/DeloneCommons/pyvoro2/issues/46). It freezes the public
-contract choices needed by WP1–WP11 and records WP1–WP8 as independently
-accepted. WP9 removals are implemented pending independent acceptance.
+contract choices needed by WP1–WP11 and records WP1–WP10 and the prerequisite
+gates through #109 as independently accepted. WP11 implementation under #111
+is present with independent acceptance pending.
 Entries for later public work packages remain
 target-only; the
 [current implemented contract](#current-implemented-contract) remains factual
@@ -405,7 +407,8 @@ ghost boundary identity and output policy are fixed separately by ADR 0023.
 The [#74](https://github.com/DeloneCommons/pyvoro2/issues/74) G1–G4 prerequisite
 gates are closed. The independently accepted implementation of
 [ADR 0022](decisions/0022-wp6-source-certified-planar-edge-provenance.md) is
-merged on `dev`; Checkpoint B remains pending. Existing public operation/result
+merged on `dev`; Checkpoint B is independently accepted as recorded in #47.
+Existing public operation/result
 names retain their lifecycle status; no new public certificate class or
 boundary schema is added.
 
@@ -556,7 +559,7 @@ SeparatorFitResult.mismatch_predicted
 SeparatorFitResult.mismatch_residuals
 ```
 
-The problem, fixed result, and experimental active result expose
+The problem, fixed result, and shared active result expose
 `resolved_policy` with exactly `row_ids` (immutable tuple), `model_spaces`, and
 `model_policy`. The latter blocks use the grammar below; every nested mapping
 is read-only. Legacy manually constructed results without originating model
@@ -651,16 +654,18 @@ hard entries also contain `applicable`. The policy block has exactly `mismatch`,
 `reference={"kind":"sites","values":[...]}`. All three report families
 declare schema v2; realization-only reports add no model blocks.
 
-### Target supported realization-aware facade
+### Implemented supported realization-aware facade (WP11; acceptance pending)
 
-WP11 adds these two preferred-namespace exports to `pyvoro2.inverse`:
+[#111](https://github.com/DeloneCommons/pyvoro2/issues/111) implements these two
+preferred-namespace exports in `pyvoro2.inverse`; independent acceptance remains
+pending:
 
 ```text
 SelfConsistentPowerFitResult
 fit_self_consistent_weights_from_separators
 ```
 
-The target preferred `pyvoro2.inverse.__all__` therefore contains eight names:
+The implemented preferred `pyvoro2.inverse.__all__` contains exactly eight names:
 
 ```text
 SeparatorObservations
@@ -674,7 +679,7 @@ radii_to_weights
 ```
 
 `SelfConsistentPowerFitResult` is the same class object as the advanced result,
-not a wrapper. The supported facade target signature is:
+not a wrapper. The supported facade signature is:
 
 ```text
 fit_self_consistent_weights_from_separators(
@@ -703,6 +708,25 @@ outer termination, and final-layer availability separate. Cycle and iteration
 limit outcomes may still contain a coherent final state; unavailable layers
 remain `None`. The fixed `fit_weights_from_separators` function remains a
 separate algorithm and accepts the same v0.9 mixed-space model terms.
+
+The facade and identical shared class's final-state inspection are Provisional
+through either import route. This includes `inner_fit`/`fit`,
+`final_realization`/`realized`, final candidate data, observations, direct final
+`active_mask`, source/policy/mismatch views, outer status/iteration/cycle/warning
+metadata, residual/geometry/connectivity diagnostics, availability/reason and
+`final_refit_converged`. The helper types gain no preferred exports or constructor
+guarantees. Research `history`, `path`, `path_summary`, `marginal_constraints`,
+iteration objects, toggle/first/last counters, marginal classifications and
+path-derived status labels remain Experimental, including their record/report
+representations. The facade has `history=None`; other path data remains present.
+
+Only `max_outer_iter` is translated to `ActiveSetOptions(max_iter=...)` using
+existing strict positive-index validation. The facade forwards every other
+same-named argument unchanged, sets `active0=None` and `return_history=False`,
+retains `add_after=1`, `drop_after=2`, `relax=1.0`, `cycle_window=8` and
+`weight_step_tol=1e-8`, and returns the engine result directly. No automatic
+ADMM/sparse selection, observation pre-resolution or exception translation is
+added. Exact-source checks and mandatory planar/periodic certification remain.
 
 ### Target removal/migration ledger
 
@@ -1613,8 +1637,8 @@ counts:
 |---|---:|---|
 | `pyvoro2` | 29 | Stable forward/result surface plus package metadata |
 | `pyvoro2.planar` | 25 | Stable explicit 2D surface plus provisional plotting |
-| `pyvoro2.inverse` | 6 | Stable normal fixed-observation separator workflow |
-| `pyvoro2.inverse.separator` | 53 | Stable core names, provisional advanced objects, experimental active-set objects |
+| `pyvoro2.inverse` | 8 | Stable fixed-observation fitting and transforms; Provisional realization-aware fitting and final-state inspection |
+| `pyvoro2.inverse.separator` | 53 | Stable core, Provisional advanced/final-state inspection, Experimental engine/path controls |
 | `pyvoro2.viz3d` | 9 | Provisional optional visualization |
 
 There is no current `pyvoro2.powerfit`, top-level separator export set,
@@ -1872,7 +1896,25 @@ weights_to_radii(weights, *, r_min=0.0, weight_shift=None)
 radii_to_weights(radii)
 ```
 
-The principal advanced calls are:
+The additional preferred Provisional call has this exact signature:
+
+```text
+fit_self_consistent_weights_from_separators(
+    points, constraints, *, measurement='fraction', domain, ids=None,
+    index_mode='index', image='nearest', image_search=1, confidence=None,
+    model=None, r_min=0.0, weight_shift=None,
+    fit_solver='direct', fit_linear_backend='dense',
+    fit_admm_max_iter=2000, fit_admm_rho=1.0,
+    fit_admm_abs_tol=1e-6, fit_admm_rel_tol=1e-5,
+    max_outer_iter=25,
+    return_cells=False, return_boundary_measure=False,
+    return_tessellation_diagnostics=False,
+    tessellation_check='diagnose', connectivity_check='warn',
+    unaccounted_pair_check='warn',
+)
+```
+
+The principal advanced calls remain:
 
 ```text
 build_power_fit_problem(constraints, *, model=None)
@@ -1946,7 +1988,7 @@ not evidence that the removed `pyvoro2.powerfit` package survives, and R9 does
 not cosmetically rename them.
 
 Separator reports use the frozen schema name
-`pyvoro2.inverse.separator.report`, schema version `1`, and these retained
+`pyvoro2.inverse.separator.report`, schema version `2`, and these retained
 report kinds:
 
 ```text
@@ -2179,18 +2221,22 @@ SeparatorObservations
 resolve_separator_observations
 SeparatorFitResult
 fit_weights_from_separators
+SelfConsistentPowerFitResult
+fit_self_consistent_weights_from_separators
 weights_to_radii
 radii_to_weights
 ```
 
 The preferred names have these final lifecycle assignments:
 
-| Name | v0.8 status | Meaning |
+| Name | Current status | Meaning |
 |---|---|---|
 | `SeparatorObservations` | Stable | Canonical pairwise separator rows with periodic image labels, confidence, source-independent identity, and optional exact source binding. |
 | `resolve_separator_observations` | Stable | Validate and resolve raw separator observations against sites and domain. |
 | `SeparatorFitResult` | Stable | Existing flat fit contract plus layered state, observation, identification, objective, algebraic, and fixed-solver access. |
 | `fit_weights_from_separators` | Stable | Preferred fixed-observation fit entry point. |
+| `SelfConsistentPowerFitResult` | Provisional final-state inspection | Identical advanced class; path/counter protocol remains Experimental through either import route. |
+| `fit_self_consistent_weights_from_separators` | Provisional | Preferred realization-aware facade; separate from the fixed solver. |
 | `weights_to_radii`, `radii_to_weights` | Stable re-export where useful | Same neutral transforms as top-level pyvoro2. |
 
 ### Advanced separator API
@@ -2257,9 +2303,11 @@ weights_to_radii
 The canonical core and neutral transforms have the statuses assigned above.
 The objective model, problem construction/evaluation, fixed-fit and realization
 view types, realization, reporting, and diagnostic objects are initially
-**provisional**. The active-set outer workflow and its options, termination/path
-views, iteration, path, diagnostic, and result objects are **experimental** and
-separator-specific.
+**provisional**. The active engine/configuration and research/path views,
+iterations, counters, marginal classifications and path-derived status labels
+are **Experimental**. The identical shared result's final-state protocol,
+including outer termination and direct final `active_mask`, is **Provisional**
+through either namespace. The advanced export list remains unchanged.
 
 The historical v0.7 identity map, removed in v0.8, was:
 

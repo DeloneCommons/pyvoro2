@@ -9,8 +9,12 @@ refinement. The active-set API is experimental and separator-specific; it is a
 practical outer algorithm without a universal convergence guarantee.
 
 Most advanced model, problem, operator, report, realization, and layered-view
-objects on this page are **provisional**. Active-set refinement is
-**experimental**. The optional explicit sparse quadratic backend is
+objects on this page are **Provisional**. The active engine and its controls are
+**Experimental**. The identical shared result's final-state inspection is
+**Provisional**, also when imported here; its path/counter members remain
+**Experimental**. Ordinary callers use the
+[preferred facade](index.md#realization-aware-workflow), which is not an advanced
+export. The optional explicit sparse quadratic backend is
 **provisional** and is limited to the static squared-loss branch documented
 below.
 
@@ -73,7 +77,7 @@ selections project that binding with the same ordered row selection. Site-indexe
 L2 references retain full site order. Candidate policy survives active removal
 and reentry. `.resolved_policy` is a recursively read-only mapping with exactly
 `row_ids`, `model_spaces`, and `model_policy`; row IDs are an immutable tuple.
-It is available on the problem, fixed result, and experimental active result.
+It is available on the problem, fixed result, and shared active result.
 Copies, replacements, and same-version pickle preserve the association. Legacy
 manually constructed results without policy provenance fail explicitly when a
 policy-dependent view or report is requested.
@@ -151,9 +155,17 @@ fields to the established result dataclasses or copying their arrays.
 | `RealizedPairDiagnostics` | `.requested_image_matching` | `RequestedImageMatchView` |
 | `RealizedPairDiagnostics` | `.geometry` | `RealizedGeometryView` |
 | `SelfConsistentPowerFitResult` | `.inner_fit`, `.final_realization`, `.candidate_diagnostics` | final fit and optional weights-dependent final objects |
-| `SelfConsistentPowerFitResult` | `.outer_termination`, `.path` | `ActiveSetTerminationView`, `ActiveSetPathView` |
+| `SelfConsistentPowerFitResult` | `.outer_termination`, direct `.active_mask`, availability and final convergence | Provisional final-state inspection |
+| `SelfConsistentPowerFitResult` | `.path`, `.history`, `.path_summary`, `.marginal_constraints` | Experimental path access |
 
-The experimental active result keeps its existing stored field names.
+The shared active result keeps its existing stored field names and private
+reconstruction/ownership behavior; no new public constructor guarantee is made.
+Candidate observations and source/policy/mismatch views, final fit, realization,
+residuals, image/empty flags, connectivity and optional final geometry are
+Provisional inspection. Toggle/first/last-realized counters, iteration objects,
+marginal classifications and path-derived status labels remain Experimental,
+including inside candidate diagnostics, records and reports. The preferred
+facade returns `history=None` without filtering other research data or report v2.
 `realized`, `diagnostics`, `rms_residual_all`, and `max_residual_all` are
 optional and are simultaneously unavailable when the final fit has no usable
 weights. In that state `final_realization`, `candidate_diagnostics`, and

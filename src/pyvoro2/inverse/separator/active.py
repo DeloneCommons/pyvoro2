@@ -115,6 +115,8 @@ def _require_self_consistent_supported_dim(
 
 @dataclass(frozen=True, slots=True)
 class ActiveSetOptions:
+    """Experimental active engine configuration; absent from the preferred API."""
+
     add_after: int = 1
     drop_after: int = 2
     relax: float = 1.0
@@ -214,6 +216,13 @@ class _ActiveSetPathAccumulator:
 
 @dataclass(frozen=True, slots=True)
 class PairConstraintDiagnostics(_ObservationBoundResult):
+    """Final candidate data with Experimental path-derived fields.
+
+    Final active/image/empty flags, predictions, residuals and optional measures
+    are Provisional inspection. Toggle/first/last-realized counters, marginal
+    classifications and path-derived ``status`` labels remain Experimental,
+    including their record/report representations.
+    """
     site_i: np.ndarray
     site_j: np.ndarray
     shift: np.ndarray
@@ -365,7 +374,7 @@ PairConstraintDiagnostics.__signature__ = _pair_diagnostics_signature.replace(
 
 @dataclass(frozen=True, slots=True)
 class ActiveSetTerminationView:
-    """Termination state of the experimental active-set outer loop."""
+    """Provisional outer termination inspection; construction is advanced."""
 
     status: str
     converged: bool
@@ -398,7 +407,7 @@ class ActiveSetTerminationView:
 
 @dataclass(frozen=True, slots=True)
 class ActiveSetPathView:
-    """Final active state and optional outer-loop path diagnostics."""
+    """Experimental path view; direct result ``active_mask`` is Provisional."""
 
     active_mask: np.ndarray
     marginal_constraint_indices: tuple[int, ...]
@@ -816,6 +825,19 @@ class _AcceptedActiveSetState:
 
 @dataclass(frozen=True, slots=True)
 class SelfConsistentPowerFitResult(_PolicyStorage):
+    """Shared result with Provisional final-state and Experimental path access.
+
+    ``inner_fit``, ``final_realization``, final candidate diagnostics, candidate
+    ``constraints``, direct final ``active_mask``, source/policy/mismatch views,
+    ``outer_termination`` and final availability/convergence are Provisional
+    through both namespaces. Raw aliases retain their existing meanings.
+
+    ``history``, ``path``, ``path_summary``, ``marginal_constraints``, iteration
+    objects, candidate toggle/first/last counters, marginal classifications and
+    path-derived status labels remain Experimental, also in records and reports.
+    The preferred facade omits history but preserves other existing path data.
+    No new public constructor or deep-immutability guarantee is made.
+    """
     constraints: SeparatorObservations
     fit: SeparatorFitResult
     realized: RealizedPairDiagnostics | None
@@ -912,13 +934,13 @@ class SelfConsistentPowerFitResult(_PolicyStorage):
 
     @property
     def candidate_diagnostics(self) -> PairConstraintDiagnostics | None:
-        """Return final candidate diagnostics when weights are available."""
+        """Return final data, retaining Experimental counters and path labels."""
 
         return self.diagnostics
 
     @property
     def outer_termination(self) -> ActiveSetTerminationView:
-        """Return termination metadata for the experimental outer loop."""
+        """Return Provisional termination metadata for the empirical outer loop."""
 
         return ActiveSetTerminationView(
             status=self.termination,
@@ -930,7 +952,7 @@ class SelfConsistentPowerFitResult(_PolicyStorage):
 
     @property
     def path(self) -> ActiveSetPathView:
-        """Return the final active state and optional path history."""
+        """Return Experimental path access; use direct ``active_mask`` normally."""
 
         return ActiveSetPathView(
             active_mask=self.active_mask,
