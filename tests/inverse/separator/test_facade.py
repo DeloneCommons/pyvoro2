@@ -320,8 +320,9 @@ def test_native_mixed_space_independent_quadratic_oracle(dim):
             == pytest.approx(-6/5, abs=1e-8))
     assert result.fit.objective.total == pytest.approx(1/40, abs=1e-10)
     record = result.to_records()[0]
-    assert (record['measurement'], record['mismatch_space']) == ('fraction', 'position')
-    _strict_report(result)
+    assert record['mismatch_space'] == 'position'
+    report = _strict_report(result)
+    assert report['observation_set']['measurement'] == 'fraction'
     with pytest.raises(ValueError, match='admm'):
         _fit(points, [(0, 1, 1/4)], domain=domain, model=model)
 
