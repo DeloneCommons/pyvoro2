@@ -54,9 +54,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - Component solves and the experimental active engine project one bound policy
   with observations, preserving original values on reentry and final refit.
   Problem/result `resolved_policy` and explicit mismatch views expose the model.
-- Separator reports use schema v2 with complete uniform/row model policy and
-  mismatch records. Strict consumers must accept v2 explicitly. The preferred
-  inverse exports and scalar shape parameters retain their current scope.
+- WP10 introduced schema v2 with complete uniform/row model policy and mismatch
+  records at that stage. The current report contract is superseded by schema v3
+  under #116 / ADR 0026; current writers provide no v2 compatibility output.
+  The preferred inverse exports and scalar shape parameters retain their scope.
 
 ### Fixed
 

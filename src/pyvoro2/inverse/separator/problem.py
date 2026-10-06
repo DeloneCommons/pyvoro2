@@ -856,19 +856,25 @@ def _algebraic_reduction(geom, left, right, z_obs, z_fit, rows, *, mean_abs):
     values[normal] = _stable_scaled_difference(
         z_obs.value[normal], z_fit.value[normal], scale,
     )
-    recover = ~normal & np.isfinite(geom.alpha) & (geom.alpha >= 1.)
+    recover = ~normal & np.isfinite(geom.alpha) & (geom.alpha != 0.)
     available = normal | recover
     if np.any(recover):
+        # Keep the reciprocal as normal factors, including subnormal alpha.
+        # Materializing 1/alpha can overflow; scale/alpha can underflow before
+        # the complete affine products restore a representable aggregate row.
+        part, exponent = np.frexp(geom.alpha[recover])
+        half_exponent = exponent // 2
         values[recover] = _affine_diagnostic(
             geom.beta[recover], geom.alpha[recover], left[recover],
             right[recover], geom.target[recover],
-            -_stable_ratio_difference(1., 0., geom.alpha[recover]), scale,
+            -1./part, np.ldexp(1., -half_exponent),
+            np.ldexp(1., half_exponent - exponent), scale,
         ).value
     scaled = _derived(values, operands_available=available)
     if _has_dependency(scaled):
         return _derived(np.nan, operands_available=False)
     if mean_abs:
-        return _derived(_stable_sum_scalar(np.abs(scaled.value)))
+        return _derived(_stable_sum_scalar(*np.abs(scaled.value)))
     return _norm_diagnostic(scaled)
 
 
