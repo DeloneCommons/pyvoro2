@@ -9,8 +9,9 @@
   parity, WP2 user/backend lattice separation, WP4 exact proof geometry and
   WP5/WP6 boundary certification and WP7/WP8 ghost/query metadata are
   independently accepted and merged, as are WP9, Checkpoint B, Phase C entry,
-  WP10, #109 and WP11 (#111 / PR #112). Phase-C row-wise refinement is next
-  after #113 CI/process hardening; Checkpoint C / WP12 / WP13 remain pending
+  WP10, #109, WP11 (#111 / PR #112), and #113 / PR #114. The mandatory
+  Phase-C parameter gate is complete with no optional implementation required;
+  Checkpoint C is next and remains pending, as do WP12 / WP13
 - **v0.8 audit:** [issue #32](https://github.com/DeloneCommons/pyvoro2/issues/32)
 - **v0.9 activation:** [issue #46](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **v0.9 execution tracker:** [issue #47](https://github.com/DeloneCommons/pyvoro2/issues/47)
@@ -534,11 +535,15 @@ conflict, violation, and hard coupling. Closed hard intervals allow
 `lower == upper`; soft/boundary penalty width rules remain unchanged. Zero
 penalty strength remains exact absence.
 
-The first WP10 pass keeps `HuberLoss.delta`, exponential
-`margin`/`tau`, and reciprocal `margin`/`epsilon` scalar. Their
-parameter-by-parameter disposition is mandatory after WP10/WP11 and before
-Checkpoint C; this does not permit the internal compiler to depend on one
-scalar-common objective specification.
+`HuberLoss.delta`, exponential `margin`/`tau`, and reciprocal
+`margin`/`epsilon` remain scalar/term-global; none accepts row arrays.
+The completed [C parameter gate](audits/phase-c-row-wise-shape-refinement-review.md)
+defers Huber `delta`, reciprocal `margin`, and exponential `tau`, retaining
+exponential `margin` and reciprocal `epsilon` term-global. No optional C
+implementation is required before Checkpoint C. The three deferred fields
+remain an evidence-driven post-Checkpoint-C watchlist, not planned or
+authorized implementation. The internal compiler still supports the accepted
+A+B row-specific objective specifications.
 
 Observation-facing `SeparatorFitResult.measurement`, `target`, `predicted`,
 `residuals`, `rms_residual`, and `max_residual` keep their
@@ -640,10 +645,11 @@ associated through their ordered row IDs. No policy copy is required in every
 history entry. Observation-only records and `observation_set` identity remain
 model-independent.
 
-The grammar permits the same uniform/rows wrapper for the staged C fields even
-while their public constructors remain scalar in the first WP10 pass. A later
-accepted C extension therefore changes permitted values, not schema meaning or
-generation.
+The grammar permits the same uniform/rows wrapper for the five C fields even
+while their public constructors remain scalar after the completed C gate.
+This representational capacity does not authorize row-wise inputs; a future
+explicitly accepted C extension would change permitted values, not schema
+meaning or generation.
 
 Term entries contain exactly `family`, resolved `space`, and `parameters`;
 hard entries also contain `applicable`. The policy block has exactly `mismatch`,
@@ -661,7 +667,8 @@ accepted at reviewed head `194500338b5a782420fb438a967c0fe9a7f721d4`, exact-head
 CI run `37310641186`, and squash-merged as
 `6eb56a02d422e33d17fb84c57145b208e5d1bab7`. This acceptance does not change the
 Provisional final-state / Experimental path-member lifecycle boundary. The
-Phase-C row-wise gate is next after #113; Checkpoint C / WP12 / WP13 are pending.
+Phase-C row-wise gate is complete without optional implementation after
+accepted #113; Checkpoint C is next and remains pending, as do WP12 / WP13.
 The two exports are:
 
 ```text

@@ -13,6 +13,12 @@ on 2026-10-03. The later #113 amendment to
 whole-code recovery to after Checkpoint C and before WP12. Recovery still does
 not precede or replace the mandatory C parameter decision below.
 
+**Gate closure note — 2026-10-06:** The staged C decision in this dated entry
+review is now complete. The [final parameter-level record](phase-c-row-wise-shape-refinement-review.md)
+requires no optional C implementation before Checkpoint C and preserves three
+deferred candidates for possible evidence-driven reconsideration. Checkpoint C
+remains unaccepted; the original entry-review reasoning below is historical.
+
 ## Outcome
 
 Accept a **bounded Phase-C amendment** before WP10.

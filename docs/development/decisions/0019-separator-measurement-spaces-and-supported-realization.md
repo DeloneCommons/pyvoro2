@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-09-01
 - **Amended:** 2026-10-03 — Phase C entry gate [#104](https://github.com/DeloneCommons/pyvoro2/issues/104) accepts a bounded row-bound A+B policy; row-wise shape/robustness parameters are staged for a mandatory late-Phase-C decision before Checkpoint C.
+- **Amended:** 2026-10-06 — the mandatory late-Phase-C parameter gate is complete; no optional C refinement is required before Checkpoint C. Three meaningful row-wise candidates remain deferred.
 - **Related issue:** [#46 — Activate the v0.9.0 functional/API stabilization plan](https://github.com/DeloneCommons/pyvoro2/issues/46)
 - **Related plan:** [active v0.9.0 development plan](../plans/v0.9.md)
 - **Related decisions:** [ADR 0007](0007-separator-objective-contract.md),
@@ -97,13 +98,55 @@ ADR 0007 and is removed before numerically dangerous branch evaluation. A
 positive-strength penalty remains structural model coupling even if its value
 happens to vanish at the current iterate.
 
-The following shape/robustness fields remain term-global in the first WP10
-implementation: `HuberLoss.delta`, exponential `margin`/`tau`, and
-reciprocal `margin`/`epsilon`. Their row-wise disposition is a mandatory
-parameter-by-parameter late-Phase-C decision after WP10/WP11 and before
-Checkpoint C. This staging does not permit a temporary scalar-common compiler:
+The following shape/robustness fields remain scalar/term-global:
+`HuberLoss.delta`, exponential `margin`/`tau`, and reciprocal
+`margin`/`epsilon`. Their mandatory parameter-by-parameter late-Phase-C
+decision is complete, with the dispositions recorded below. This does not
+permit a scalar-common compiler:
 the bound/compiler architecture must already support row-specific scalar
 objective specifications created by the accepted A+B fields.
+
+### Completed late-Phase-C shape/robustness gate
+
+The [final parameter-level audit](../audits/phase-c-row-wise-shape-refinement-review.md)
+records the accepted maintainer decision against merged WP10/WP11 and the
+accepted infrastructure/process gate:
+
+| Parameter | Final disposition |
+|---|---|
+| `HuberLoss.delta` | **DEFER** |
+| `ExponentialBoundaryPenalty.margin` | **RETAIN TERM-GLOBAL** |
+| `ExponentialBoundaryPenalty.tau` | **DEFER** |
+| `ReciprocalBoundaryPenalty.margin` | **DEFER** |
+| `ReciprocalBoundaryPenalty.epsilon` | **RETAIN TERM-GLOBAL** |
+
+**Recommended Phase-C C-refinement implementation: NONE.** No optional C
+refinement is required before Checkpoint C; the checkpoint itself remains
+unaccepted.
+
+WP10/WP11 already supply row-wise targets, confidence, hard
+lower/upper/applicable, soft/boundary lower/upper/strength, multiple penalty
+instances with row masks, independent term-global measurement spaces, and
+supported realization-aware fitting. This meets the established initial
+ChemVoro/v0.9 need. Further pair-type/environment-dependent C freedom lacks
+sufficient downstream evidence to justify implementation before Checkpoint C.
+
+`DEFER` preserves meaningful possible row-wise behavior: Huber `delta`
+changes robustness beyond confidence, reciprocal `margin` changes activation
+and boundary-layer width, and exponential `tau` changes decay/shape scale.
+The **primary deferred candidates** are `HuberLoss.delta`,
+`ReciprocalBoundaryPenalty.margin`, and `ExponentialBoundaryPenalty.tau`.
+Reconsider them during the post-Checkpoint-C
+whole-code comprehension / architecture reconciliation only if reconstructed
+understanding or concrete downstream evidence establishes a genuine need.
+The watchlist is neither planned implementation, authorization to create an
+implementation issue, nor a commitment to promotion.
+
+`RETAIN TERM-GLOBAL` is the stronger current conclusion: exponential
+`margin` substantially duplicates strength/amplitude with fixed `tau`, while
+reciprocal `epsilon` remains common continuation/regularization policy within a
+term. No disposition declares row-wise behavior permanently unnecessary. All
+five public parameters remain scalar; measurement spaces remain term-global.
 
 ### Compilation binds row policy before numerical solving
 
@@ -238,7 +281,7 @@ or
 with Boolean hard applicability using the same uniform/rows distinction.
 `model_policy` records the complete objective-defining model: mismatch
 family/parameters, configured hard kind/applicability/values, ordered penalty
-kind/parameters, and regularization strength/reference semantics. The staged C
+kind/parameters, and regularization strength/reference semantics. The five scalar C
 fields are present from v2's first implementation in their currently uniform
 form so a later accepted row-wise value changes permitted data, not field
 meaning. Site-indexed regularization references retain site ordering rather
@@ -341,8 +384,9 @@ later mixed inverse architecture.
 Rejected as an initial scope rule. A+B already requires the correct row-bound
 compiler architecture, while the scientific need for each of
 `HuberLoss.delta`, exponential `margin`/`tau`, and reciprocal
-`margin`/`epsilon` is not equally established. Their exact disposition is a
-mandatory late-Phase-C gate after WP10/WP11 and before Checkpoint C.
+`margin`/`epsilon` is not equally established. Their exact disposition was
+settled by the completed late-Phase-C gate after WP10/WP11. It retains all five
+scalar parameters and explicitly defers the three meaningful candidates above.
 
 ### Put realization awareness behind a mode flag on `fit_weights_from_separators`
 

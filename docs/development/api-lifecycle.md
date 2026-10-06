@@ -129,9 +129,12 @@ The activation boundary is:
   classification. The concrete `resolved_policy` mapping is Provisional on
   problems, fixed results, and the shared active result; it contains
   `row_ids`, `model_spaces`, and `model_policy`. Observation/source identity
-  remains Stable. The first WP10
-  pass keeps Huber/boundary shape parameters term-global, with a mandatory
-  parameter-level disposition after WP10/WP11 and before Checkpoint C;
+  remains Stable. The completed
+  [C parameter gate](audits/phase-c-row-wise-shape-refinement-review.md)
+  keeps all five Huber/boundary shape parameters scalar/term-global, with no
+  optional refinement required before Checkpoint C. Three deferred candidates
+  remain a future evidence-driven watchlist; lifecycle classifications are
+  unchanged;
 - `fit_self_consistent_weights_from_separators` and the identical shared
   `SelfConsistentPowerFitResult` final-state inspection are **Provisional**.
   This member-level classification is independent of import route: ordinary

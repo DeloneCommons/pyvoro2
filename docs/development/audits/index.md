@@ -7,6 +7,10 @@ connect those layers.
 
 ## Active evidence notes
 
+- [Final Phase C row-wise shape-refinement decision](phase-c-row-wise-shape-refinement-review.md) —
+  accepted five-parameter disposition with no optional implementation required
+  before Checkpoint C and three explicitly deferred future candidates. The
+  checkpoint remains unaccepted.
 - [Pre-Checkpoint-B Phase C downstream-requirements review](phase-c-downstream-requirements-pre-b.md) —
   source-controlled ChemVoro-focused evidence for the mandatory post-Checkpoint-B
   Phase C revalidation. It records the early row-wise separator findings,

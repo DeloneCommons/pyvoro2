@@ -1163,7 +1163,9 @@ selection should occur only after the combinatorial class is established and
 should retain residual/consistency diagnostics.
 
 This candidate does **not** reopen the accepted Checkpoint-B contract and is not
-part of Phase C. Complete the Phase-C refinement gate and Checkpoint C first.
+part of Phase C. The [C parameter gate](audits/phase-c-row-wise-shape-refinement-review.md)
+is complete without optional implementation; Checkpoint C remains pending and
+must be accepted before recovery starts.
 During the pre-Phase-D maintainer
 whole-code comprehension reread and architecture reconciliation, reassess the
 candidate against the actual complete implementation. The following independent
