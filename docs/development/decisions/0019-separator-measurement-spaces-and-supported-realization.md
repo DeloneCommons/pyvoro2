@@ -232,13 +232,31 @@ rather than only the unresolved input template.
 These additions are model/result views; they do not alter observation identity
 or introduce a second public identity hierarchy.
 
-### Report schema v2 represents resolved row policy
+### Resolved row policy and the report availability amendment
 
-Separator reports move from schema version `1` to version `2` when WP10
-lands. The schema name remains `pyvoro2.inverse.separator.report`. The v2
+WP10 introduced schema version `2` after version `1`. Issue #116 and
+[ADR 0026](0026-separator-final-state-and-diagnostic-availability.md) advance
+current writers to version `3` for bounded numerical diagnostic availability.
+The schema name remains `pyvoro2.inverse.separator.report`. The v2 policy
 grammar is intentionally able to represent both uniform and row-varying
 resolved policy so a later accepted C parameter does not require another schema
 generation.
+
+The policy grammar and all scientific owners are retained in v3. Problem/graph
+coefficients and quadratic operators belong to mismatch space; the complete
+RHS is `c*alpha_model*(target_model-beta_model)`, not `rho*z_obs`.
+`AlgebraicEdgeDiagnostics` remains source-derived, with descriptive
+`c*alpha_source**2`, source weighted norms and difference-space residual
+`z_obs_source-z_fit`. This metric is not mixed-model curvature or a converted
+likelihood. Complete source residuals and explicit mismatch residuals are
+independently evaluated from their accepted binary64 operands.
+
+Every v3 report root and fixed/candidate/enriched active record carries
+`unavailable_diagnostics`; ordinary maps are empty. Producer-proven diagnostic
+nulls use only `out_of_binary64_range` or `unavailable_dependency`, under ADR
+0026's closed whitelist. Targets, confidence, model policy, objective, geometry
+and identity remain strict. This amendment does not reopen the completed
+C-parameter gate or introduce per-row spaces or a public weight-state object.
 
 Fit records add:
 
@@ -348,8 +366,9 @@ advanced `pyvoro2.inverse.separator` surface.
 - Positional constructors do not acquire a silent new positional argument.
 - Result/report consumers can distinguish observation residuals from the values
   actually used by mismatch evaluation and can inspect resolved row policy.
-- Report readers receive one schema-v2 boundary designed to accommodate a later
-  accepted C parameter without changing record meaning.
+- The WP10 policy grammar remains capable of representing a later accepted C
+  parameter without changing record meaning; the independent #116 availability
+  amendment requires readers to accept current schema v3 explicitly.
 - The fixed problem remains in the existing affine/separable convex solver
   family; A+B does not authorize generic mixed observation blocks or callbacks.
 - Ordinary realization-aware fitting no longer requires an Experimental import,

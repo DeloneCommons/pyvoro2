@@ -717,6 +717,12 @@ def _fit_power_weights_resolved(
                 backend=linear_backend,
                 components_already_certified=(solver == 'direct'),
             )
+        else:
+            # The same standalone representative policy applies to ADMM,
+            # max-iteration candidates and singleton no-work components. The
+            # quadratic success branch already selects and certifies this
+            # representative; never change it after that certificate.
+            weights = problem.canonicalize_gauge(weights)
         result = build_power_fit_result(
             problem,
             weights,

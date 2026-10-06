@@ -1151,6 +1151,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
         'explicit_shift',
     }
     assert set(fit.to_records(constraints)[0]) == {
+        'unavailable_diagnostics',
         'mismatch_space', 'mismatch_target', 'mismatch_predicted', 'mismatch_residual',
         'constraint_index',
         'row_id',
@@ -1185,6 +1186,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
         'boundary_measure',
     }
     assert set(active.to_records()[0]) == {
+        'unavailable_diagnostics',
         'mismatch_space', 'mismatch_target', 'mismatch_predicted', 'mismatch_residual',
         'constraint_index',
         'row_id',
@@ -1215,6 +1217,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
 
     fit_report = fit.to_report(constraints)
     assert set(fit_report) == {
+        'unavailable_diagnostics',
         'model_spaces', 'model_policy',
         'schema',
         'producer',
@@ -1255,6 +1258,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
 
     realized_report = realized.to_report(constraints)
     assert set(realized_report) == {
+        'unavailable_diagnostics',
         'schema',
         'producer',
         'source',
@@ -1278,6 +1282,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
 
     active_report = active.to_report()
     assert set(active_report) == {
+        'unavailable_diagnostics',
         'model_spaces', 'model_policy',
         'schema',
         'producer',
@@ -1325,7 +1330,7 @@ def test_inverse_record_and_report_schemas_are_characterized() -> None:
     ):
         assert report['schema'] == {
             'name': 'pyvoro2.inverse.separator.report',
-            'version': 2,
+            'version': 3,
         }
         assert report['producer'] == {
             'name': 'pyvoro2',

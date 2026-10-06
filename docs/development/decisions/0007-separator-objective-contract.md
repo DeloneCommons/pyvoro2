@@ -403,21 +403,36 @@ configurable as before.
 ### Finite results and warm starts
 
 No solver-produced result may claim `status='optimal'` or
-`converged=True` with a non-finite reported soft-objective component or total.
-Solver paths convert such outcomes to the existing structured
+`converged=True` with a non-finite reported soft-objective component or total,
+or with an applicable hard row failing its own authoritative predicate on the
+exact final returned representative. Representative selection and existing
+recovery precede the final certificate; no later shift may alter that vector.
+Solver paths convert failed final success claims to the existing structured
 `numerical_failure` result. The public result builder rejects requests to
-package a falsely optimal or converged non-finite soft objective. Direct
+package either false claim, including with `canonicalize_gauge=False`. An
+external failure candidate must explicitly use `converged=False`; a genuine
+finite hard-violating `max_iter` candidate remains inspectable. Direct
 objective evaluation may still return positive infinity for hard
 infeasibility or a genuine extended-real objective.
 
 For a hard-constrained native solve, primal/dual convergence is necessary but
 not sufficient for success. Final predicted measurements must also satisfy the
 authoritative hard-row predicate. Otherwise iteration continues, and
-exhaustion of `max_iter` returns the existing non-success status.
+exhaustion of `max_iter` returns the existing non-success status. If final
+representative selection destroys previously accepted feasibility, the final
+success guard refuses it rather than relabeling it as iteration exhaustion or
+precheck infeasibility. Actual solver/backend and completed iterations remain;
+weights-dependent layers are removed, while source-only diagnostics and the
+original precheck meaning of `hard_feasible` remain.
 
 Residual and ADMM convergence summaries use scale-safe Euclidean norm,
 sum-of-squares, RMS, and mean-absolute reductions so a finite statistic is not
 reported as infinity merely because an intermediate square overflowed.
+Source reductions and weighted diagnostics use complete affine operands; a
+stored unscaled overflow does not prove that its RMS or weighted norm is
+outside range. Proven diagnostic unavailability is distinct from objective or
+hard-feasibility failure and follows
+[ADR 0026](0026-separator-final-state-and-diagnostic-availability.md).
 Mean-absolute reduction only forms normalized ratios whose exponents can
 affect the rounded result; irrelevant ratios below the normal range are
 omitted without executing an underflowing division.

@@ -51,7 +51,7 @@ def _sites(dim, count=3):
 def _strict_report(result):
     report = result.to_report()
     assert report['schema'] == {
-        'name': 'pyvoro2.inverse.separator.report', 'version': 2,
+        'name': 'pyvoro2.inverse.separator.report', 'version': 3,
     }
     assert json.loads(json.dumps(report, allow_nan=False)) == report
     assert json.loads(advanced.dumps_report_json(report)) == report

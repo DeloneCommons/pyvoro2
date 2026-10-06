@@ -39,6 +39,7 @@ Each record has a status:
 23. [WP7 source-certified ghost boundaries](0023-wp7-certified-ghost-boundaries.md)
 24. [External native artifact qualification](0024-external-native-artifact-qualification.md)
 25. [Native occurrence normalization, proof-assisted identities, and exact contact scope](0025-native-occurrence-normalization-and-proof-assisted-identities.md)
+26. [Separator final-state certification and diagnostic availability](0026-separator-final-state-and-diagnostic-availability.md)
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the

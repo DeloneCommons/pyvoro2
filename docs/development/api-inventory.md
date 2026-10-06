@@ -596,10 +596,11 @@ container name is `resolved_policy`, as fixed by issue #107; no second public
 identity or policy-fingerprint system is required. Observation row
 identity/fingerprints do not change when model spaces or row policy change.
 
-### Separator report schema v2 (WP10)
+### Separator report schema v3 (#116; retains WP10 policy)
 
-WP10 bumps `pyvoro2.inverse.separator.report` from schema version `1` to
-`2` rather than silently widening the exact-key contract. Existing fit-record
+WP10 introduced version `2` of `pyvoro2.inverse.separator.report` after version
+`1`; issue #116 advances all report kinds, including nested reports, to version
+`3` with bounded numerical diagnostic availability. Existing fit-record
 `measurement`, `target`, `predicted`, and `residual` remain
 observation-facing; fit records and active per-constraint records add:
 
@@ -621,7 +622,7 @@ Fit summaries retain `measurement` as observation space and add
 }
 ```
 
-v2 also adds a resolved `model_policy` block. Observation-indexed scientific
+WP10 also added a resolved `model_policy` block, retained in v3. Observation-indexed scientific
 fields are associated with `observation_set.row_ids` and use one of:
 
 ```text
@@ -657,7 +658,30 @@ hard entries also contain `applicable`. The policy block has exactly `mismatch`,
 `regularization`. L2 uses scalar strength and
 `reference={"kind":"implicit_zero"}` or
 `reference={"kind":"sites","values":[...]}`. All three report families
-declare schema v2; realization-only reports add no model blocks.
+declare schema v3; realization-only reports add no model blocks.
+
+Every report root and fixed/candidate/enriched active record requires
+`unavailable_diagnostics`, empty `{}` in ordinary output. Only the closed
+diagnostic whitelist in [ADR 0026](decisions/0026-separator-final-state-and-diagnostic-availability.md)
+may contain null with `out_of_binary64_range` or `unavailable_dependency`.
+Pointers are local JSON Pointers with ordinary escaping and zero-based indices;
+report maps exhaust nested reports, history and marginal-record copies while
+preserving their local maps. Structural nulls have no reason entry.
+Observation-only and realized-only rows remain unchanged; history rows have no
+separate map. General JSON normalization, inputs, model policy, target
+representations, successful weights/radii, objectives and geometry remain
+finite-strict. No v2 compatibility writer is added. This is a Provisional
+schema migration, not a new public field/default/name or lifecycle promotion.
+
+The same amendment requires successful native fits to certify the exact final
+representative against each applicable hard row and a finite soft objective.
+False success in `build_power_fit_result` raises even with gauge canonicalization
+disabled; explicitly nonconverged external candidates remain inspectable.
+Standalone zero-L2 component references now cover no-work and singleton paths.
+Problem/graph coefficients and RHS remain mismatch-owned, while algebraic edge
+diagnostics and weighted source residual summaries retain source units. Private
+typed diagnostic bindings preserve supported copies, replacements and pickle
+without adding public dataclass fields or mandatory constructor parameters.
 
 ### Implemented supported realization-aware facade (WP11; accepted and merged)
 
@@ -1502,6 +1526,10 @@ identification.
 
 ### Inverse report schemas retained in v0.8
 
+This section records the historical v0.8/schema-v1 baseline. The current v0.9
+contract is [schema v3](#separator-report-schema-v3-116-retains-wp10-policy),
+including retained WP10 model/mismatch fields and #116 availability maps.
+
 All three report families add the exact common top-level keys `schema`,
 `producer`, `source`, and `observation_set` while retaining their existing kind
 and family-specific keys. `schema` is exactly
@@ -1999,7 +2027,7 @@ not evidence that the removed `pyvoro2.powerfit` package survives, and R9 does
 not cosmetically rename them.
 
 Separator reports use the frozen schema name
-`pyvoro2.inverse.separator.report`, schema version `2`, and these retained
+`pyvoro2.inverse.separator.report`, schema version `3`, and these retained
 report kinds:
 
 ```text
@@ -2015,7 +2043,9 @@ stable row IDs and explicit bound/unbound provenance. Active results expose
 final inner fit. Their report `availability` block has exactly `weights`,
 `realization`, `records`, and `reason`. Unavailable final realization and
 diagnostic layers serialize as JSON `null`; they are never stale objects from a
-different iterate. ADR 0014 and ADR 0015 record these contracts.
+different iterate. Present coherent containers may retain proven unavailable
+diagnostic cells through the required `unavailable_diagnostics` map. ADR 0014,
+ADR 0015 and the bounded amendment in ADR 0026 record these contracts.
 
 ## Accepted v0.8 contract decisions
 

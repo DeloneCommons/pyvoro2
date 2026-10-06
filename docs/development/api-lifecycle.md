@@ -125,7 +125,7 @@ The activation boundary is:
   with its kind/payload invariants fixed by ADR 0018;
 - separator model classes remain **Provisional** advanced API. Their v0.9
   keyword-only `space` arguments, bounded scalar-or-row A+B value/applicability
-  inputs, resolved-policy views, and schema-v2 model-policy records share that
+  inputs, resolved-policy views, and schema-v3 model-policy records share that
   classification. The concrete `resolved_policy` mapping is Provisional on
   problems, fixed results, and the shared active result; it contains
   `row_ids`, `model_spaces`, and `model_policy`. Observation/source identity
@@ -154,13 +154,23 @@ The activation boundary is:
   export or new construction/immutability guarantee. `history`, `path`,
   `path_summary`, `marginal_constraints`, iteration objects, toggle/first/last
   counters, marginal classifications and path-derived status labels remain
-  **Experimental**, also inside candidate diagnostics, records and report v2.
+  **Experimental**, also inside candidate diagnostics, records and report v3.
   The facade returns `history=None` without deleting other research data;
 - `ghost_radius` is **Removed** by WP1. The face/edge reconstruction search,
   validation, repair, and matching-tolerance keywords named in the inventory
   are **Removed** by WP6, WP7 and WP9.
   The active plan explicitly chooses immediate pre-1.0 removal rather than a
   deprecated alias period for these surfaces.
+
+Issue #116 and [ADR 0026](decisions/0026-separator-final-state-and-diagnostic-availability.md)
+advance the Provisional separator report contract to v3. Required availability
+maps and the closed nullable diagnostic whitelist change exact keys and numeric
+leaf types; source/row identity versions and retained report kinds do not change.
+Final success requires per-row hard feasibility and a finite soft objective at
+the returned representative. Coherent active final containers can retain proven
+unavailable diagnostic cells. Private reconstruction bindings add no public
+dataclass field or mandatory constructor argument. This amendment does not
+promote lifecycle classifications or reopen the completed C parameter gate.
 
 WP9 removes `face_shift_search`, `validate_face_shifts`, `repair_face_shifts`
 and `face_shift_tol` from spatial `compute` and its defining `api.compute`.

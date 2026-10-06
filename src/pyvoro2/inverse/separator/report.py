@@ -18,6 +18,7 @@ import numpy as np
 from ...__about__ import __version__
 from ..._internal.validation import require_bool, require_index
 from .constraints import SeparatorObservations
+from ._diagnostics import _history_values, _rebase_diagnostic_maps
 from .realize import RealizedPairDiagnostics
 from .types import (
     ConnectivityDiagnostics,
@@ -34,7 +35,7 @@ from ._identity import (
 
 
 _REPORT_SCHEMA_NAME = 'pyvoro2.inverse.separator.report'
-_REPORT_SCHEMA_VERSION = 2
+_REPORT_SCHEMA_VERSION = 3
 
 
 def _report_envelope(
@@ -51,6 +52,7 @@ def _report_envelope(
         },
         'source': _source_report(observations),
         'observation_set': _observation_set_report(observations),
+        'unavailable_diagnostics': {},
     }
 
 
@@ -282,37 +284,16 @@ def _objective_breakdown_record(
 def _edge_diagnostics_record(
     result: SeparatorFitResult,
     constraints: SeparatorObservations,
+    *,
+    evaluation: dict,
+    unavailable: dict,
 ) -> dict[str, object]:
-    diagnostics = result.algebraic.edge_diagnostics
-    if diagnostics is None:
-        from .problem import _edge_diagnostics_for_result
-
-        diagnostics = _edge_diagnostics_for_result(result, constraints)
     return {
-        'alpha': diagnostics.alpha.tolist(),
-        'beta': diagnostics.beta.tolist(),
-        'z_obs': diagnostics.z_obs.tolist(),
-        'z_fit': (
-            None if diagnostics.z_fit is None else diagnostics.z_fit.tolist()
-        ),
-        'residual': (
-            None
-            if diagnostics.residual is None
-            else diagnostics.residual.tolist()
-        ),
-        'edge_weight': diagnostics.edge_weight.tolist(),
-        'weighted_l2': (
-            None
-            if diagnostics.weighted_l2 is None
-            else float(diagnostics.weighted_l2)
-        ),
-        'weighted_rmse': (
-            None
-            if diagnostics.weighted_rmse is None
-            else float(diagnostics.weighted_rmse)
-        ),
-        'rmse': None if diagnostics.rmse is None else float(diagnostics.rmse),
-        'mae': None if diagnostics.mae is None else float(diagnostics.mae),
+        name: evaluation[name].json_value(
+            '/edge_diagnostics/' + name, unavailable,
+        )
+        for name in ('alpha', 'beta', 'z_obs', 'z_fit', 'residual', 'edge_weight',
+                     'weighted_l2', 'weighted_rmse', 'rmse', 'mae')
     }
 
 
@@ -338,8 +319,13 @@ def build_fit_report(
     state = result.state
     identification = result.identification
     termination = result.solver_termination
+    from .problem import _fit_diagnostic_values
+
+    evaluation = _fit_diagnostic_values(result, originating)
+    unavailable = {}
     report = {
         **_report_envelope(originating),
+        'unavailable_diagnostics': unavailable,
         'model_spaces': result.resolved_policy['model_spaces'],
         'model_policy': result.resolved_policy['model_policy'],
         'kind': 'power_weight_fit',
@@ -357,11 +343,11 @@ def build_fit_report(
             'converged': bool(termination.converged),
             'status_detail': termination.status_detail,
             'n_iter': int(termination.n_iter),
-            'rms_residual': (
-                None if result.rms_residual is None else float(result.rms_residual)
+            'rms_residual': evaluation['summary']['rms_residual'].json_value(
+                '/summary/rms_residual', unavailable,
             ),
-            'max_residual': (
-                None if result.max_residual is None else float(result.max_residual)
+            'max_residual': evaluation['summary']['max_residual'].json_value(
+                '/summary/max_residual', unavailable,
             ),
             'conflicting_constraint_indices': list(
                 result.conflicting_constraint_indices
@@ -371,7 +357,10 @@ def build_fit_report(
         'fit_records': list(
             result.to_records(originating, use_ids=use_ids_value)
         ),
-        'edge_diagnostics': _edge_diagnostics_record(result, originating),
+        'edge_diagnostics': _edge_diagnostics_record(
+            result, originating, evaluation=evaluation['edge'],
+            unavailable=unavailable,
+        ),
         'objective_breakdown': _objective_breakdown_record(
             result.objective
         ),
@@ -398,7 +387,7 @@ def build_fit_report(
             ids=ids,
         ),
     }
-    return _jsonable_report_value(report)
+    return _jsonable_report_value(_rebase_diagnostic_maps(report))
 
 
 def build_realized_report(
@@ -449,7 +438,7 @@ def build_realized_report(
             geometry.tessellation_diagnostics
         ),
     }
-    return _jsonable_report_value(report)
+    return _jsonable_report_value(_rebase_diagnostic_maps(report))
 
 
 def build_active_set_report(
@@ -629,7 +618,23 @@ def build_active_set_report(
             ids=(result.constraints.ids if use_ids_value else None),
         ),
     }
-    return _jsonable_report_value(report)
+    if available:
+        from .problem import _source_diagnostic_values
+
+        source = _source_diagnostic_values(originating, inner_fit.weights)
+        for name, source_name in (
+            ('rms_residual_all', 'rms_residual'),
+            ('max_residual_all', 'max_residual'),
+        ):
+            report['summary'][name] = source[source_name].json_value(
+                '/summary/' + name, report['unavailable_diagnostics'],
+            )
+    for index, row in enumerate(path.history or ()):
+        for name, expected in _history_values(row, originating).items():
+            report['history'][index][name] = expected.json_value(
+                f'/history/{index}/{name}', report['unavailable_diagnostics'],
+            )
+    return _jsonable_report_value(_rebase_diagnostic_maps(report))
 
 
 def _jsonable_report_value(value: Any) -> Any:

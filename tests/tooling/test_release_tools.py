@@ -297,8 +297,15 @@ def test_installed_checker_accepts_current_separator_report(separator_smoke_repo
     installed_package_tool._check_separator_report(separator_smoke_report)
 
 
+def test_installed_checker_requires_diagnostic_availability_map(separator_smoke_report):
+    separator_smoke_report.pop('unavailable_diagnostics')
+    with pytest.raises(InstalledPackageCheckError, match='availability map'):
+        installed_package_tool._check_separator_report(separator_smoke_report)
+
+
 @pytest.mark.parametrize('schema', [
     {'name': 'pyvoro2.inverse.separator.report', 'version': 1},
+    {'name': 'pyvoro2.inverse.separator.report', 'version': 2},
     {'name': 'another.report', 'version': 2},
 ])
 def test_installed_checker_rejects_wrong_separator_schema(

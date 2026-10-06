@@ -442,6 +442,14 @@ When ADMM has completed iterations but final quadratic certification fails,
 `n_iter` retains the completed iteration count in the structured numerical
 failure result.
 
+The same standalone reference policy applies to ADMM and no-work components.
+At zero L2, multiple model-coupling components use explicit reference means or
+implicit zero means; singletons return the exact reference entry. A connected
+multi-site fit retains its solver anchor. Positive L2 permits no gauge shift.
+The final returned successful vector must satisfy every applicable hard row
+with that row's existing tolerance; failed final success is `numerical_failure`
+with absent weights-dependent layers and preserved solver/backend/iterations.
+
 ADMM scalar updates are themselves certified. Mismatch-only squared and Huber
 rows keep their vectorized proximal path. A row that needs a positive-strength
 scalar penalty uses a private bracketed solver with exact branch breakpoints,
@@ -656,6 +664,17 @@ The exported `weighted_rmse` is defined explicitly as
 
 not as `sqrt(sum(w r^2) / sum(w))`. That distinction matters when you compare
 results to other code that uses a normalized weighted RMSE convention.
+
+These edge coefficients and weights belong to source observation units, even
+when the mismatch model uses another space. They are descriptive source
+diagnostics, not mixed-model curvature or converted likelihood weights.
+`weighted_l2` and `weighted_rmse` evaluate complete source residuals with
+`sqrt(confidence)` applied before a possibly overflowing residual is
+materialized; RMSE uses the number of rows, including zero-confidence rows.
+Problem/graph coefficients and normal RHS instead belong to mismatch space.
+Source residuals are evaluated as one complete affine expression, so a small
+nonzero residual can coexist with a separately rounded prediction equal to
+its target. Source and mismatch summaries are not interchangeable.
 
 For radii output, the API makes the **global representation shift** explicit:
 
@@ -1062,7 +1081,10 @@ final_inner_converged = result.final_refit_converged
 A final `optimal` or `max_iter` fit with complete finite weights has an
 available state; all final geometry, predictions, residuals, and candidate
 records are recomputed from those exact weights. A weighted `max_iter` result
-remains non-converged at the inner layer. If a final fit has no usable weights,
+remains non-converged at the inner layer. Producer-proven unavailable diagnostic
+cells retain their container and use the numerical/export policy below; they
+do not remove otherwise coherent weights, radii or genuine geometry.
+If a final fit has no usable weights,
 `final_realization`, `candidate_diagnostics`, the candidate residual summaries,
 and optional tessellation diagnostics are `None`. Historical path data,
 connectivity, warnings, cycle metadata, and path-derived marginal indices
@@ -1131,7 +1153,7 @@ retains its existing `kind` and adds the same versioned envelope:
 ```python
 assert fit_report['schema'] == {
     'name': 'pyvoro2.inverse.separator.report',
-    'version': 2,
+    'version': 3,
 }
 assert fit_report['producer'] == {
     'name': 'pyvoro2',
@@ -1140,6 +1162,7 @@ assert fit_report['producer'] == {
 
 source = fit_report['source']
 observation_set = fit_report['observation_set']
+unavailable = fit_report['unavailable_diagnostics']
 ```
 
 `observation_set` has exactly `fingerprint`, `measurement`, `n_rows`, and
@@ -1201,6 +1224,23 @@ is the final fit status, and weights-dependent report sections and summary
 values are JSON null. The nested fit still reports its own status and
 convergence while the active summary retains the outer stop reason.
 
+Every schema-v3 report root and fixed/candidate/enriched active record has
+`unavailable_diagnostics`, empty `{}` for ordinary output. Only approved derived
+diagnostics can become null: `out_of_binary64_range` records a finite
+mathematical value outside finite binary64 magnitude; `unavailable_dependency`
+records a proven unavailable accepted operand. Map pointers are local to each
+record/report, and report maps exhaust their subtree, including nested reports,
+history and marginal copies. Structural absence has no entry. A row outside
+range need not make its scale-safe RMS or weighted norm unavailable.
+
+Raw producer arrays may retain signed infinity or dependency NaN; the typed
+report builder converts eligible leaves before strict JSON serialization.
+Supplying nonfinite values or a reason map manually does not establish their
+validity. Inputs, targets, policy, objective, weights/radii and geometry remain
+strict. The [reference whitelist](../reference/inverse/separator.md#numerical-diagnostic-availability)
+and [migration guide](migration-v0.9.md#separate-observation-units-from-model-units)
+describe the exact keys and nullable leaves; there is no v2 writer.
+
 ## Native Huber fit on sparse outliers
 
 A short robust-fitting example looks like this:
@@ -1238,6 +1278,7 @@ result = separator.build_power_fit_result(
     solver='external',
     status='external_failure',
     status_detail='candidate iterate only',
+    converged=False,
 )
 ```
 
@@ -1246,8 +1287,11 @@ code a public export of the mathematics, prediction formulas, objective
 evaluation, and result packaging.
 
 The result builder rejects `status='optimal'` or `converged=True` when any
-reported soft-objective component or total is NaN or infinite. Native solver
-paths turn such outcomes into `status='numerical_failure'`. Direct
+reported soft-objective component or total is NaN or infinite, or any applicable
+hard row fails its authoritative predicate on the final representative. This
+also applies with `canonicalize_gauge=False`. Native solver paths turn failed
+final success claims into `status='numerical_failure'`; genuine nonconverged
+finite candidates remain inspectable. Direct
 `problem.evaluate_objective(...)` may still return positive infinity for hard
 infeasibility or a genuine extended-real objective. Failure of the optional
 direct ADMM warm start falls back to the reference or zero initialization and
@@ -1309,6 +1353,10 @@ complete model policy without requiring a tessellation call.
 - [`08_powerfit_active_path`](../notebooks/08_powerfit_active_path.md)
   shows how to inspect transient active-set path diagnostics separately from
   the final-state report objects.
+
+Committed notebook output snapshots retain their last qualified execution.
+Their historical schema/policy examples do not supersede the current v3
+contract documented above and in the API reference.
 
 These examples are aimed at downstream packages that want to keep the solver
 API numerical while still producing human-readable logs, cached payloads, or UI

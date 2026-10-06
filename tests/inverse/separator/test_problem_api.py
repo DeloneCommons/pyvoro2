@@ -122,6 +122,7 @@ def test_build_power_fit_result_can_package_imperfect_external_weights():
         solver='external',
         status='external_failure',
         status_detail='line search failed',
+        converged=False,
     )
 
     assert result.objective_breakdown is not None

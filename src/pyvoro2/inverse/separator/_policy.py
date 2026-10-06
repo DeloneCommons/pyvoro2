@@ -241,17 +241,11 @@ class _PolicyResultStorage(_ObservationBoundResult, _PolicyAccess):
         policy = self._require_policy()
         if self.weights is None:
             return None
-        from .problem import _measurement_geometry
-        from ._numerics import _stable_affine_residual
+        from .problem import _residual_diagnostic
 
-        geometry = _measurement_geometry(policy.observations, self.mismatch_space)
-        residuals = _stable_affine_residual(
-            geometry.beta, geometry.alpha,
-            self.weights[policy.observations.i], self.weights[policy.observations.j],
-            geometry.target,
-        )
-        residuals.setflags(write=False)
-        return residuals
+        return _residual_diagnostic(
+            policy.observations, self.weights, space=self.mismatch_space,
+        ).value
 
 
 class _PolicyBindingInit:

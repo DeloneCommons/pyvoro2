@@ -5,6 +5,7 @@
 - **Related issue:** [#43 — Make the separator active-set final state atomic and self-consistent](https://github.com/DeloneCommons/pyvoro2/issues/43)
 - **Related plan:** [v0.8 remediation execution plan](../plans/archive/v0.8-remediation.md)
 - **Depends on:** [ADR 0014](0014-separator-observation-and-source-identity.md)
+- **Numerical-availability amendment:** [ADR 0026](0026-separator-final-state-and-diagnostic-availability.md), issue #116
 
 ## Context
 
@@ -69,6 +70,22 @@ realization, diagnostics, summaries, marginal state, and requested
 tessellation diagnostics are recomputed from that exact final vector. A
 weighted `max_iter` fit remains non-converged at the inner layer.
 
+Issue #116 amends the former finite-only source-diagnostic gate. An otherwise
+coherent state with finite weights/radii, selected fit, genuine realization and
+source association retains its diagnostic container when individual derived
+source values are producer-proven outside binary64 or have an unavailable
+dependency. These raw cells may be signed infinity or proven dependency NaN;
+they are not placeholders for missing geometry. Arbitrary nonfinite values,
+stale producer snapshots and matching-but-wrong outer/nested residuals remain
+invalid. Final validation recomputes complete affine rows from exact final
+weights and checks the nested fit residuals independently.
+
+Each historical source summary describes its own aligned/relaxed
+`weights_eval`. Immutable private iteration/source/value/reason records survive
+supported copying and reconstruction, without retaining historical weight
+vectors or reconstructing history from the final fit. Ordinary finite manual
+history remains supported; unexplained nonfinite history is rejected.
+
 When the final fit has no usable weights, the fit and active subset remain, but
 these weights-dependent result fields are `None`:
 
@@ -98,8 +115,10 @@ a misleading active result.
 
 ### Active report availability
 
-The ADR 0014 report envelope, schema name/version, source provenance, row IDs,
-and `kind="self_consistent_power_fit"` remain unchanged. Active reports add:
+The ADR 0014 source provenance, row IDs, schema name and
+`kind="self_consistent_power_fit"` remain unchanged. ADR 0026 advances all
+report envelopes to schema v3 and adds the bounded diagnostic availability map.
+Active reports retain:
 
 ```json
 "availability": {
@@ -118,7 +137,12 @@ the outer stop while the nested fit retains the final inner status and
 convergence.
 
 Every active report, including a no-weights failure, round-trips exactly
-through strict JSON with no NaN or infinity.
+through strict JSON with no NaN or infinity. Present but numerically unavailable
+eligible diagnostic cells become null with local/exhaustive
+`unavailable_diagnostics` reasons. Structural nulls receive no reason. Nested
+fit/realized reports and marginal copies retain their own maps; history uses
+the containing report map. The closed whitelist and pointer grammar are fixed
+by ADR 0026, not extended to geometry, objectives or stopping quantities.
 
 ### Algorithm boundary
 

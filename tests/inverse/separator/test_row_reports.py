@@ -29,7 +29,7 @@ def test_v2_complete_policy_wrappers_and_source_identity_are_exact():
     result = build_power_fit_result(problem, [0., 0.])
     report = result.to_report(observations)
     assert report['schema'] == {
-        'name': 'pyvoro2.inverse.separator.report', 'version': 2}
+        'name': 'pyvoro2.inverse.separator.report', 'version': 3}
     assert report['model_spaces'] == {
         'mismatch': 'position', 'hard_constraint': 'fraction',
         'penalties': ['fraction', 'position', 'fraction'],
