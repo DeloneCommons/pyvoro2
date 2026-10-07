@@ -15,6 +15,11 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   back to finite binary64 MAX. Each aggregate retains its own range decision,
   including representable RMS values with unavailable individual rows; fixed,
   active, history and schema-v3 reports share these private producers.
+- Source edge targets, fitted differences, algebraic residuals and descriptive
+  curvature classify their complete original expressions independently. A
+  representable algebraic residual survives unavailable edge leaves.
+- Exceptional diagnostic rows dispatch before unsafe intermediate arithmetic,
+  preserving coherent finite final states under strict NumPy error policy.
 
 ### Separator final-state and report v3 remediation (#116)
 

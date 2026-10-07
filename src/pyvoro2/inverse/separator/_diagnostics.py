@@ -17,7 +17,8 @@ from ._identity import (
 )
 from ._numerics import (
     _stable_affine_residual, _stable_norm, _stable_rms,
-    _stable_scaled_affine_residual,
+    _stable_product, _stable_ratio_difference, _stable_scaled_affine_residual,
+    _stable_scaled_difference,
 )
 
 _RANGE = 'out_of_binary64_range'
@@ -117,6 +118,29 @@ def _affine_terms_bounded(operands, absent, limit):
     return bounded
 
 
+def _affine_product_prefixes_bounded(operands):
+    """Prove the evaluator's ordered product prefixes cannot overflow.
+
+    A small final term can follow a large scale*alpha prefix. This proof
+    authorizes only the vectorized VALUE path, not diagnostic availability.
+    Signs of -1 in the evaluator do not change these absolute bounds.
+    """
+    bounded = np.ones(operands[0].shape, dtype=bool)
+    exponents = [np.frexp(v)[1] for v in operands]
+    for indices in ((0,), (1, 2), (1, 3), (4,)):
+        exponent = np.zeros(bounded.shape, dtype=np.int64)
+        nonzero = np.ones(bounded.shape, dtype=bool)
+        order = (*range(5, len(operands)), *indices)
+        for position, index in enumerate(order):
+            exponent += exponents[index]
+            nonzero &= operands[index] != 0.
+            # The first finite factor is already binary64. Later nonzero
+            # prefixes strictly below 2**1023 have ample rounding headroom.
+            if position:
+                bounded &= ~nonzero | (exponent <= 1023)
+    return bounded
+
+
 def _exact_affine_row(values):
     if any(v == 0. for v in values[5:]):
         return Fraction()
@@ -125,6 +149,78 @@ def _exact_affine_row(values):
     for factor in factors:
         residual *= factor
     return residual
+
+
+def _exact_range_value(exact):
+    """Classify the original expression before finite-value rounding."""
+    if abs(exact) > _MAX_EXACT:
+        return -np.inf if exact < 0 else np.inf
+    return float(exact)
+
+
+def _difference_diagnostic(left, right):
+    left, right = np.broadcast_arrays(
+        np.asarray(left, dtype=float), np.asarray(right, dtype=float),
+    )
+    available = np.isfinite(left) & np.isfinite(right)
+    # Two terms below 2**1022 have a difference below 2**1023 < MAX.
+    ordinary = available & (np.frexp(left)[1] <= 1022) & (np.frexp(right)[1] <= 1022)
+    value = np.zeros(left.shape, dtype=float)
+    if np.any(ordinary):
+        value[ordinary] = _stable_scaled_difference(left[ordinary], right[ordinary], 1.)
+    for index in np.flatnonzero(available & ~ordinary):
+        exact = Fraction(float(left.flat[index])) - Fraction(float(right.flat[index]))
+        value.flat[index] = _exact_range_value(exact)
+    return _derived(value, operands_available=available)
+
+
+def _ratio_affine_diagnostic(alpha, beta, target, left=0., right=0.):
+    """Source (target-beta)/alpha - left + right, without a rounded reciprocal.
+
+    Each leaf is independent: rounded or unavailable z_obs/z_fit are never
+    operands for the exceptional complete residual's range decision.
+    """
+    operands = np.broadcast_arrays(*[
+        np.asarray(v, dtype=float) for v in (alpha, beta, target, left, right)
+    ])
+    a, b, t, l, r = operands
+    available = np.logical_and.reduce([np.isfinite(v) for v in operands]) & (a != 0.)
+    # |v/a| < 2**(exponent(v)-exponent(a)+1). Four terms below
+    # 2**1021 bound the complete expression by 2**1023, before division.
+    alpha_exponent = np.frexp(a)[1]
+    ordinary = available.copy()
+    for v in (t, b):
+        ordinary &= (v == 0.) | (np.frexp(v)[1] - alpha_exponent <= 1020)
+    for v in (l, r):
+        ordinary &= np.frexp(v)[1] <= 1021
+    value = np.zeros(a.shape, dtype=float)
+    if np.any(ordinary):
+        observed = _stable_ratio_difference(t[ordinary], b[ordinary], a[ordinary])
+        fitted = _stable_scaled_difference(l[ordinary], r[ordinary], 1.)
+        value[ordinary] = _stable_scaled_difference(observed, fitted, 1.)
+    for index in np.flatnonzero(available & ~ordinary):
+        qa, qb, qt, ql, qr = (Fraction(float(v.flat[index])) for v in operands)
+        value.flat[index] = _exact_range_value((qt - qb) / qa - ql + qr)
+    return _derived(value, operands_available=available)
+
+
+def _source_edge_weight_diagnostic(confidence, alpha, beta):
+    c, a, b = np.broadcast_arrays(*[
+        np.asarray(v, dtype=float) for v in (confidence, alpha, beta)
+    ])
+    absent = c == 0.
+    available = np.isfinite(c) & np.isfinite(a) & np.isfinite(b)
+    work = available & ~absent
+    # Original c*a*a < 2**1023 < MAX. For accepted c>=0 and a>0,
+    # each prefix is bounded by MAX too (a<=1 shrinks, a>1 grows).
+    ordinary = work & (np.frexp(c)[1] + 2 * np.frexp(a)[1] <= 1023)
+    value = np.zeros(c.shape, dtype=float)
+    if np.any(ordinary):
+        value[ordinary] = _stable_product(c[ordinary], a[ordinary], a[ordinary])
+    for index in np.flatnonzero(work & ~ordinary):
+        exact = Fraction(float(c.flat[index])) * Fraction(float(a.flat[index]))**2
+        value.flat[index] = _exact_range_value(exact)
+    return _derived(value, operands_available=available | absent)
 
 
 def _affine_diagnostic(beta, alpha, left, right, target, *scales):
@@ -137,17 +233,15 @@ def _affine_diagnostic(beta, alpha, left, right, target, *scales):
     # an exact MAX + tiny can round to finite MAX even in a stable evaluator.
     ordinary = _affine_terms_bounded(operands, absent, 1021)
     if scales:
+        ordinary &= _affine_product_prefixes_bounded(operands)
         value = _stable_scaled_affine_residual(
-            *operands[:5], *operands[5:], active=work,
+            *operands[:5], *operands[5:], active=work & ordinary,
         )
     else:
-        value = _stable_affine_residual(*operands[:5], active=work)
+        value = _stable_affine_residual(*operands[:5], active=work & ordinary)
     for index in np.flatnonzero(work & ~ordinary):
         exact = _exact_affine_row([v.flat[index] for v in operands])
-        value.flat[index] = (
-            (-np.inf if exact < 0 else np.inf)
-            if abs(exact) > _MAX_EXACT else float(exact)
-        )
+        value.flat[index] = _exact_range_value(exact)
     return _derived(value, operands_available=available | absent)
 
 
@@ -174,11 +268,13 @@ def _weighted_affine_norms(beta, alpha, left, right, target, confidence):
     count_exponent = (count - 1).bit_length()
     limit = (2042 - np.frexp(confidence)[1] - count_exponent) // 2
     if np.all(_affine_terms_bounded(operands[:5], absent, limit)):
-        weighted = _stable_scaled_affine_residual(
-            *operands[:5], np.sqrt(confidence), active=~absent,
-        )
-        if np.all(np.isfinite(weighted)):
-            return _derived(_stable_norm(weighted)), _derived(_stable_rms(weighted))
+        value_operands = (*operands[:5], np.sqrt(confidence))
+        if np.all(_affine_product_prefixes_bounded(value_operands)):
+            weighted = _stable_scaled_affine_residual(
+                *value_operands, active=~absent,
+            )
+            if np.all(np.isfinite(weighted)):
+                return _derived(_stable_norm(weighted)), _derived(_stable_rms(weighted))
 
     # All required dependencies were checked before any early range exit.
     # Zero-confidence rows contribute zero but still count in the RMSE.

@@ -484,6 +484,16 @@ binary64 predictions independently of diagnostic range flags.
 Unavailable dependencies propagate without dropping rows. Source algebraic
 RMSE/MAE retain difference-space residuals.
 
+Source edge leaves also classify range from original accepted operands:
+`z_fit=w_i-w_j`, `z_obs=(target-beta)/alpha_source`,
+`algebraic_residual=(target-beta)/alpha_source-w_i+w_j`, and
+`edge_weight=confidence*alpha_source**2`. Each leaf is independent: unavailable
+`z_obs` or `z_fit` can coexist with an available complete algebraic residual.
+Zero confidence removes source-curvature work before evaluation. Diagnostic
+evaluation routes exceptional rows before unsafe intermediate multiplication,
+so a finite complete diagnostic remains available under strict NumPy error
+policy without avoidable overflow warnings.
+
 Inputs, target representations, confidence, model policy, successful weights,
 radii/shift, objective components, hard metrics, geometry and identity remain
 strict. History `weight_step_norm` is also excluded because it affects stopping.

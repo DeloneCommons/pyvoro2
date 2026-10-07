@@ -41,18 +41,17 @@ from ._numerics import (
     _stable_affine_residual,
     _stable_incidence_accumulate,
     _stable_mean_abs,
-    _stable_product,
     _stable_ratio_difference,
     _stable_rms,
-    _stable_scaled_difference,
     _stable_sum_products,
     _stable_sum_scalar,
 )
 from .constraints import SeparatorObservations
 from ._diagnostics import (
     _affine_diagnostic, _affine_rms,
-    _derived, _exact_mean_diagnostic, _has_dependency,
-    _max_diagnostic, _weighted_affine_norms,
+    _derived, _difference_diagnostic, _exact_mean_diagnostic, _has_dependency,
+    _max_diagnostic, _ratio_affine_diagnostic, _source_edge_weight_diagnostic,
+    _weighted_affine_norms,
 )
 from ._identity import (
     _bind_originating_observations, _require_observation_association,
@@ -786,7 +785,7 @@ def _source_diagnostic_values(constraints, weights):
         geom.beta, geom.alpha, left, right, geom.target,
     )
     return {
-        'difference': _derived(_stable_scaled_difference(left, right, 1.)),
+        'difference': _difference_diagnostic(left, right),
         'predicted_fraction': fraction,
         'predicted_position': position,
         'predicted': (fraction if constraints.measurement == 'fraction'
@@ -812,36 +811,8 @@ def _measurement_residuals(
     ).value
 
 
-def _algebraic_residual_diagnostic(geom, left, right, z_obs, z_fit):
-    normal = np.isfinite(z_obs.value) & np.isfinite(z_fit.value)
-    values = np.zeros(normal.shape, dtype=float)
-    values[normal] = _stable_scaled_difference(
-        z_obs.value[normal], z_fit.value[normal], 1.,
-    )
-    available = normal.copy()
-    recover = ~normal & np.isfinite(geom.alpha)
-    large_alpha = recover & (geom.alpha >= 1.)
-    if np.any(large_alpha):
-        evaluated = _affine_diagnostic(
-            geom.beta[large_alpha], geom.alpha[large_alpha],
-            left[large_alpha], right[large_alpha], geom.target[large_alpha],
-            -_stable_ratio_difference(1., 0., geom.alpha[large_alpha]),
-        )
-        values[large_alpha] = evaluated.value
-        available[large_alpha] = True
-    small_alpha = recover & ~large_alpha
-    if np.any(small_alpha):
-        residual = _affine_diagnostic(
-            geom.beta[small_alpha], geom.alpha[small_alpha],
-            left[small_alpha], right[small_alpha], geom.target[small_alpha],
-        )
-        # Dividing a proven outside-range row by 0 < alpha < 1 cannot
-        # restore representability. Finite rows use the existing ratio owner.
-        values[small_alpha] = _stable_ratio_difference(
-            0., residual.value, geom.alpha[small_alpha],
-        )
-        available[small_alpha] = True
-    return _derived(values, operands_available=available)
+def _algebraic_residual_diagnostic(geom, left, right):
+    return _ratio_affine_diagnostic(geom.alpha, geom.beta, geom.target, left, right)
 
 
 def _algebraic_reduction(geom, left, right, z_obs, z_fit, rows, *, mean_abs):
@@ -887,22 +858,12 @@ def _algebraic_reduction(geom, left, right, z_obs, z_fit, rows, *, mean_abs):
 def _edge_diagnostic_values(constraints, weights, *, geom=None):
     geom = _measurement_geometry(constraints) if geom is None else geom
     alpha, beta, target = geom.alpha, geom.beta, geom.target
-    coefficient_available = np.isfinite(alpha) & np.isfinite(beta)
     confidence = np.asarray(constraints.confidence, dtype=float)
-    absent = confidence == 0.
-    work = ~absent & coefficient_available
-    rho = np.zeros(alpha.shape, dtype=float)
-    rho[work] = _stable_product(confidence[work], alpha[work], alpha[work])
     values = {
         'alpha': _derived(alpha),
         'beta': _derived(beta),
-        'z_obs': _derived(
-            _stable_ratio_difference(target, beta, alpha),
-            operands_available=coefficient_available,
-        ),
-        'edge_weight': _derived(
-            rho, operands_available=coefficient_available | absent,
-        ),
+        'z_obs': _ratio_affine_diagnostic(alpha, beta, target),
+        'edge_weight': _source_edge_weight_diagnostic(confidence, alpha, beta),
     }
     if weights is None:
         values.update({name: _derived(None) for name in (
@@ -910,10 +871,8 @@ def _edge_diagnostic_values(constraints, weights, *, geom=None):
         )})
         return values
     left, right = weights[constraints.i], weights[constraints.j]
-    z_fit = _derived(_stable_scaled_difference(left, right, 1.))
-    residual = _algebraic_residual_diagnostic(
-        geom, left, right, values['z_obs'], z_fit,
-    )
+    z_fit = _difference_diagnostic(left, right)
+    residual = _algebraic_residual_diagnostic(geom, left, right)
     weighted_l2, weighted_rmse = _weighted_affine_norms(
         beta, alpha, left, right, target, confidence,
     )
