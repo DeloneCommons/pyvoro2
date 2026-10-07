@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from contextvars import ContextVar
 from dataclasses import InitVar, KW_ONLY, dataclass
-from decimal import Context, Decimal, ROUND_HALF_EVEN, localcontext
 from fractions import Fraction
 from typing import Literal
 import sys
@@ -51,7 +50,8 @@ from ._numerics import (
 from .constraints import SeparatorObservations
 from ._diagnostics import (
     _affine_diagnostic, _affine_rms,
-    _derived, _has_dependency, _max_diagnostic, _norm_diagnostic,
+    _derived, _exact_mean_diagnostic, _has_dependency,
+    _max_diagnostic, _norm_diagnostic,
 )
 from ._identity import (
     _bind_originating_observations, _require_observation_association,
@@ -876,29 +876,12 @@ def _algebraic_reduction(geom, left, right, z_obs, z_fit, rows, *, mean_abs):
     # or 1/mantissa cannot establish the semantic boundary at MAX. Include
     # every exact r = (target-beta)/alpha - left + right, including finite
     # stored rows: even MAX + a tiny positive term can round to finite MAX.
-    power = 1 if mean_abs else 2
-    limit = count * Fraction(sys.float_info.max)**power
-    total = Fraction()
-    for values in zip(*operands):
-        alpha, beta, target, lhs, rhs = (Fraction(float(v)) for v in values)
-        residual = (target - beta) / alpha - lhs + rhs
-        total += abs(residual) if mean_abs else residual * residual
-        # All dependencies were checked first and contributions are
-        # nonnegative, so this early exit is a proof for the complete sum.
-        if total > limit:
-            return _derived(np.inf)
-    mean = total / count
-    if mean_abs:
-        return _derived(float(mean))
-    # Range was decided exactly, before sqrt. Extra decimal precision is
-    # only for the finite binary64 value, not a new correct-rounding promise.
-    # A private context also avoids inheriting caller decimal policy.
-    with localcontext(Context(
-        prec=80, rounding=ROUND_HALF_EVEN, Emin=-999999, Emax=999999,
-        clamp=0, flags=[], traps=[],
-    )):
-        value = (Decimal(mean.numerator) / Decimal(mean.denominator)).sqrt()
-        return _derived(float(value))
+    def exact_rows():
+        for values in zip(*operands):
+            alpha, beta, target, lhs, rhs = (Fraction(float(v)) for v in values)
+            yield (target - beta) / alpha - lhs + rhs
+
+    return _exact_mean_diagnostic(exact_rows(), count, mean_abs=mean_abs)
 
 
 def _edge_diagnostic_values(constraints, weights, *, geom=None):

@@ -6,7 +6,9 @@ those producers before converting individual eligible leaves to JSON null.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import math
+from decimal import Context, Decimal, ROUND_HALF_EVEN, localcontext
+from fractions import Fraction
+import sys
 
 import numpy as np
 
@@ -118,15 +120,81 @@ def _norm_diagnostic(rows):
 
 
 def _affine_rms(beta, alpha, left, right, target, rows, *scales):
+    """Reduce complete scaled affine rows, deciding range before rounding."""
     if _has_dependency(rows):
         return _derived(np.nan, operands_available=False)
-    if np.all(np.isfinite(rows.value)):
-        return _derived(_stable_rms(rows.value))
     count = rows.value.size
-    scaled = _affine_diagnostic(
-        beta, alpha, left, right, target, *scales, 1./math.sqrt(count),
-    )
-    return _norm_diagnostic(scaled)
+    if count == 0:
+        return _derived(0.)
+    operands = np.broadcast_arrays(*[
+        np.asarray(v, dtype=np.float64)
+        for v in (beta, alpha, left, right, target, *scales)
+    ])
+    available = np.logical_and.reduce([np.isfinite(v) for v in operands])
+    absent = np.zeros(available.shape, dtype=bool)
+    scale_exponent = np.zeros(available.shape, dtype=np.int64)
+    for scale in operands[5:]:
+        absent |= scale == 0.
+        scale_exponent += np.frexp(scale)[1]
+    if np.any(~available & ~absent):
+        return _derived(np.nan, operands_available=False)
+
+    # Bound all four ORIGINAL scaled terms by 2**1021, hence each exact
+    # row and its RMS by 2**1023 < MAX. Integer exponent sums never form
+    # overflowing products. Finite rounded rows alone cannot prove range:
+    # even MAX + a subnormal term rounds to finite MAX.
+    ordinary = True
+    for indices in ((0,), (1, 2), (1, 3), (4,)):
+        exponent = scale_exponent
+        nonzero = ~absent
+        for index in indices:
+            exponent = exponent + np.frexp(operands[index])[1]
+            nonzero &= operands[index] != 0.
+        ordinary &= not np.any(nonzero & (exponent > 1021))
+    if ordinary and np.all(np.isfinite(rows.value)):
+        return _derived(_stable_rms(rows.value))
+
+    def exact_rows():
+        for values in zip(*(v.ravel() for v in operands)):
+            # Zero scale is structural absence under the row producer's
+            # existing rule. It still contributes to the RMS row count.
+            if any(v == 0. for v in values[5:]):
+                yield Fraction()
+                continue
+            b, a, l, r, t, *factors = (Fraction(float(v)) for v in values)
+            residual = b + a * l - a * r - t
+            for factor in factors:
+                residual *= factor
+            yield residual
+
+    return _exact_mean_diagnostic(exact_rows(), count, mean_abs=False)
+
+
+def _exact_mean_diagnostic(rows, count, *, mean_abs):
+    """Reduce exact rows after the owner has checked ALL required operands."""
+    if count == 0:
+        return _derived(0.)
+    power = 1 if mean_abs else 2
+    limit = count * Fraction(sys.float_info.max)**power
+    total = Fraction()
+    for residual in rows:
+        total += abs(residual) if mean_abs else residual * residual
+        # Contributions are nonnegative, so this proves the complete sum
+        # exceeds count*MAX or count*MAX**2, without rounded normalization.
+        if total > limit:
+            return _derived(np.inf)
+    mean = total / count
+    if mean_abs:
+        return _derived(float(mean))
+    # Range was decided exactly, before sqrt. Extra decimal precision is
+    # only for the finite binary64 value, not a new correct-rounding promise.
+    # A private context also avoids inheriting caller decimal policy.
+    with localcontext(Context(
+        prec=80, rounding=ROUND_HALF_EVEN, Emin=-999999, Emax=999999,
+        clamp=0, flags=[], traps=[],
+    )):
+        value = (Decimal(mean.numerator) / Decimal(mean.denominator)).sqrt()
+        return _derived(float(value))
 
 
 def _max_diagnostic(rows):
