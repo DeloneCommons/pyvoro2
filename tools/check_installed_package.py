@@ -540,7 +540,7 @@ def _check_separator_report(report: dict) -> None:
         )
     if report.get('schema') != {
         'name': 'pyvoro2.inverse.separator.report',
-        'version': 2,
+        'version': 3,
     }:
         raise InstalledPackageCheckError(
             'the installed fit report has the wrong schema identity'
@@ -548,6 +548,10 @@ def _check_separator_report(report: dict) -> None:
     if report.get('kind') != 'power_weight_fit':
         raise InstalledPackageCheckError(
             'the installed fit report has the wrong retained kind'
+        )
+    if not isinstance(report.get('unavailable_diagnostics'), dict):
+        raise InstalledPackageCheckError(
+            'the installed fit report lacks its diagnostic availability map'
         )
 
 
@@ -710,7 +714,7 @@ def _run_workflows(
         print('periodic workflow: planar unit-cell coverage with image shifts')
     print('weight/radius transforms: public routes round-trip finite values')
     print('inverse workflow: optimal direct+dense fit with finite values')
-    print('report workflow: schema 2 power_weight_fit strict JSON round trip')
+    print('report workflow: schema 3 power_weight_fit strict JSON round trip')
     if require_scipy:
         print('sparse inverse workflow: optimal direct+SciPy fit')
 

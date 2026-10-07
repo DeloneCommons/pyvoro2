@@ -69,7 +69,7 @@ the outer stop and never reuses earlier geometry. No `success` Boolean is added.
 Without usable weights, realization, candidate diagnostics, residual summaries,
 records and optional tessellation diagnostics are `None`. Output switches do
 not disable internal geometry or required semantic audits. Missing-row measures
-may be NaN in arrays and null in strict report-v2 records; a wrong-image measure
+may be NaN in arrays and structurally null in strict report-v3 records; a wrong-image measure
 must be read with explicit image-matching flags. Full image-qualified cell
 boundaries remain topology authority. Configuration, binding, diagnostic-raise,
 dependency and mandatory certificate failures propagate as exceptions.

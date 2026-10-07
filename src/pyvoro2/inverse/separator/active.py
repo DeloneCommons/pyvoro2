@@ -27,7 +27,6 @@ from ..._internal.weight_transforms import (
 )
 from ._numerics import (
     _stable_norm,
-    _stable_rms,
     _stable_sum,
     _stable_sum_products_sign,
     _stable_sum_scalar,
@@ -38,6 +37,11 @@ from .constraints import (
     SeparatorObservations,
     resolve_separator_observations,
 )
+from ._diagnostics import (
+    _CandidateDiagnosticStorage, _DiagnosticBindingInit,
+    _HistoryBindingInit, _HistorySnapshot, _HistoryStorage, _RowSnapshot,
+    _candidate_values, _history_values,
+)
 from .model import FitModel
 from .realize import (
     _match_realized_pairs,
@@ -47,6 +51,9 @@ from .realize import (
 from .problem import (
     _build_active_set_connectivity_diagnostics,
     _build_power_fit_problem,
+    _fit_diagnostic_values,
+    _residual_diagnostic,
+    _source_diagnostic_values,
     _standalone_gauge_policy_description,
     build_power_fit_problem,
     build_power_fit_result,
@@ -67,7 +74,6 @@ from ...planar.diagnostics import TessellationDiagnostics as TessellationDiagnos
 from ...planar.domains import Box as Box2D, RectangularCell
 from ._identity import (
     _ObservationBindingInit,
-    _ObservationBoundResult,
     _bind_full_source,
     _bind_originating_observations,
     _originating_observations,
@@ -166,7 +172,7 @@ class ActiveSetOptions:
 
 
 @dataclass(frozen=True, slots=True)
-class ActiveSetIteration:
+class ActiveSetIteration(_HistoryStorage):
     iteration: int
     n_active: int
     n_realized: int
@@ -180,6 +186,36 @@ class ActiveSetIteration:
     fit_active_effective_graph_n_components: int | None = None
     fit_active_offsets_identified_by_data: bool | None = None
     n_unaccounted_pairs: int | None = None
+    _: KW_ONLY
+    _history_snapshot_init: InitVar[
+        _HistorySnapshot | None
+    ] = _HistoryBindingInit()
+
+    def __post_init__(self, _history_snapshot_init):
+        object.__setattr__(self, '_history_snapshot', _history_snapshot_init)
+
+
+def _history_getstate(row):
+    return [*(getattr(row, item.name) for item in fields(row)),
+            getattr(row, '_history_snapshot', None)]
+
+
+def _history_setstate(row, state):
+    public = fields(row)
+    if len(state) not in (len(public), len(public) + 1):
+        raise ValueError('invalid active history reconstruction state')
+    for item, value in zip(public, state):
+        object.__setattr__(row, item.name, value)
+    row.__post_init__(state[-1] if len(state) > len(public) else None)
+
+
+ActiveSetIteration.__getstate__ = _history_getstate
+ActiveSetIteration.__setstate__ = _history_setstate
+_history_signature = inspect.signature(ActiveSetIteration)
+ActiveSetIteration.__signature__ = _history_signature.replace(parameters=tuple(
+    p for p in _history_signature.parameters.values()
+    if p.name != '_history_snapshot_init'
+))
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,7 +251,7 @@ class _ActiveSetPathAccumulator:
 
 
 @dataclass(frozen=True, slots=True)
-class PairConstraintDiagnostics(_ObservationBoundResult):
+class PairConstraintDiagnostics(_CandidateDiagnosticStorage):
     """Final candidate data with Experimental path-derived fields.
 
     Final active/image/empty flags, predictions, residuals and optional measures
@@ -250,11 +286,18 @@ class PairConstraintDiagnostics(_ObservationBoundResult):
     _originating_observations_init: InitVar[
         SeparatorObservations | None
     ] = _ObservationBindingInit()
+    _diagnostic_snapshot_init: InitVar[
+        _RowSnapshot | None
+    ] = _DiagnosticBindingInit()
 
     def __post_init__(
         self,
         _originating_observations_init: SeparatorObservations | None,
+        _diagnostic_snapshot_init: _RowSnapshot | None,
     ) -> None:
+        object.__setattr__(
+            self, '_diagnostic_snapshot', _diagnostic_snapshot_init,
+        )
         object.__setattr__(
             self,
             'status',
@@ -297,6 +340,7 @@ class PairConstraintDiagnostics(_ObservationBoundResult):
             context='active constraint diagnostics records',
         )
         row_ids = _row_ids(originating)
+        values = _candidate_values(self, originating)
         rows: list[dict[str, object]] = []
         for k in range(int(self.site_i.shape[0])):
             realized_shifts = tuple(
@@ -330,8 +374,18 @@ class PairConstraintDiagnostics(_ObservationBoundResult):
                     'last_realized_iter': int(self.last_realized_iter[k]),
                     'marginal': bool(self.marginal[k]),
                     'status': self.status[k],
+                    'unavailable_diagnostics': {},
                 }
             )
+            for field, name in (
+                ('predicted', 'predicted'),
+                ('predicted_fraction', 'predicted_fraction'),
+                ('predicted_position', 'predicted_position'),
+                ('residual', 'residuals'),
+            ):
+                rows[-1][field] = values[name].item(k).json_value(
+                    '/' + field, rows[-1]['unavailable_diagnostics'],
+                )
         return tuple(rows)
 
 
@@ -340,6 +394,7 @@ def _pair_constraint_diagnostics_getstate(
 ) -> list[object]:
     values = [getattr(diagnostics, field.name) for field in fields(diagnostics)]
     values.append(getattr(diagnostics, '_originating_observations', None))
+    values.append(getattr(diagnostics, '_diagnostic_snapshot', None))
     return values
 
 
@@ -349,7 +404,11 @@ def _pair_constraint_diagnostics_setstate(
 ) -> None:
     diagnostic_fields = fields(diagnostics)
     values = list(state)
-    if len(values) == len(diagnostic_fields) + 1:
+    snapshot = None
+    if len(values) == len(diagnostic_fields) + 2:
+        snapshot = values.pop()
+        originating = values.pop()
+    elif len(values) == len(diagnostic_fields) + 1:
         originating = values.pop()
     elif len(values) == len(diagnostic_fields):
         originating = None
@@ -357,7 +416,7 @@ def _pair_constraint_diagnostics_setstate(
         raise ValueError('invalid PairConstraintDiagnostics reconstruction state')
     for field, value in zip(diagnostic_fields, values):
         object.__setattr__(diagnostics, field.name, value)
-    diagnostics.__post_init__(originating)
+    diagnostics.__post_init__(originating, snapshot)
 
 
 PairConstraintDiagnostics.__getstate__ = _pair_constraint_diagnostics_getstate
@@ -367,7 +426,9 @@ PairConstraintDiagnostics.__signature__ = _pair_diagnostics_signature.replace(
     parameters=tuple(
         parameter
         for parameter in _pair_diagnostics_signature.parameters.values()
-        if parameter.name != '_originating_observations_init'
+        if parameter.name not in (
+            '_originating_observations_init', '_diagnostic_snapshot_init',
+        )
     )
 )
 
@@ -551,6 +612,9 @@ class _AcceptedActiveSetState:
         if self.fit.resolved_policy != expected_policy.view:
             raise ValueError(
                 'accepted active-state fit policy does not match selection')
+        _fit_diagnostic_values(self.fit, self.origin.active_observations)
+        for row in self.history or ():
+            _history_values(row, self.origin.candidate_observations)
 
         if self.accepted_weights is None:
             self._require_unavailable_mode()
@@ -646,13 +710,6 @@ class _AcceptedActiveSetState:
                 'available active state requires realization, diagnostics, '
                 'and residual summaries'
             )
-        if not np.isfinite(self.rms_residual_all) or not np.isfinite(
-            self.max_residual_all
-        ):
-            raise ValueError(
-                'available active-state residual summaries must be finite'
-            )
-
         candidate = self.origin.candidate_observations
         realized_origin = _originating_observations(
             self.realized,
@@ -733,13 +790,14 @@ class _AcceptedActiveSetState:
                 'accepted active-state tessellation diagnostics do not match '
                 'the final realization'
             )
-        expected_prediction = build_power_fit_problem(candidate).predict(weights)
-        expected_target = (
-            candidate.target_fraction
-            if candidate.measurement == 'fraction'
-            else candidate.target_position
+        evaluation_problem = _build_power_fit_problem(
+            candidate, model=self.origin.candidate_policy.model,
+            compile_hard=False,
         )
-        expected_residuals = expected_prediction.measurement - expected_target
+        expected_values = _source_diagnostic_values(candidate, weights)
+        expected_prediction = evaluation_problem.predict(weights)
+        expected_residuals = expected_values['residuals'].value
+        _candidate_values(self.diagnostics, candidate)
         for name, actual, expected in (
             ('predicted', self.diagnostics.predicted, expected_prediction.measurement),
             (
@@ -754,11 +812,9 @@ class _AcceptedActiveSetState:
             ),
             ('residuals', self.diagnostics.residuals, expected_residuals),
         ):
-            if not np.array_equal(actual, expected):
-                raise ValueError(
-                    'accepted active-state diagnostics were not derived from '
-                    f'the final weights ({name})'
-                )
+            expected_values[name].require(
+                actual, context='accepted active-state diagnostics ' + name,
+            )
         active_mask = self.origin.active_mask
         for name, actual, expected in (
             ('predicted', self.fit.predicted, expected_prediction.measurement),
@@ -772,26 +828,21 @@ class _AcceptedActiveSetState:
                 self.fit.predicted_position,
                 expected_prediction.position,
             ),
+            ('residuals', self.fit.residuals, expected_residuals),
         ):
-            if actual is None or not np.array_equal(actual, expected[active_mask]):
+            if actual is None or not np.array_equal(
+                actual, expected[active_mask], equal_nan=True,
+            ):
                 raise ValueError(
                     'accepted active-state final fit was not rebuilt from '
                     f'the final weights ({name})'
                 )
-        expected_rms = _stable_rms(expected_residuals)
-        expected_max = (
-            float(np.max(np.abs(expected_residuals)))
-            if expected_residuals.size
-            else 0.0
+        expected_values['rms_residual'].require(
+            self.rms_residual_all, context='active final residual RMS',
         )
-        if (
-            self.rms_residual_all != expected_rms
-            or self.max_residual_all != expected_max
-        ):
-            raise ValueError(
-                'accepted active-state residual summaries were not derived '
-                'from the final weights'
-            )
+        expected_values['max_residual'].require(
+            self.max_residual_all, context='active final residual maximum',
+        )
         if tuple(np.flatnonzero(self.diagnostics.marginal).tolist()) != (
             self.marginal_constraints
         ):
@@ -912,19 +963,12 @@ class SelfConsistentPowerFitResult(_PolicyStorage):
 
     @property
     def mismatch_residuals(self):
-        from .problem import _measurement_geometry
-        from ._numerics import _stable_affine_residual
-
         policy = self._require_policy()
         if self.fit.weights is None:
             return None
-        geometry = _measurement_geometry(policy.observations, self.mismatch_space)
-        residuals = _stable_affine_residual(
-            geometry.beta, geometry.alpha, self.fit.weights[self.constraints.i],
-            self.fit.weights[self.constraints.j], geometry.target,
-        )
-        residuals.setflags(write=False)
-        return residuals
+        return _residual_diagnostic(
+            policy.observations, self.fit.weights, space=self.mismatch_space,
+        ).value
 
     @property
     def final_realization(self) -> RealizedPairDiagnostics | None:
@@ -987,18 +1031,31 @@ class SelfConsistentPowerFitResult(_PolicyStorage):
         """Return candidate records, or ``None`` without final weights."""
 
         use_ids_value = require_bool(use_ids, name='use_ids')
+        _accepted_state_from_result(self)
         if self.diagnostics is None:
             return None
         ids = self.constraints.ids if use_ids_value else None
         records = self.diagnostics.to_records(ids=ids)
-        predicted = self.mismatch_predicted
-        residuals = self.mismatch_residuals
-        return tuple({
-            **record, 'mismatch_space': self.mismatch_space,
-            'mismatch_target': float(self.mismatch_target[index]),
-            'mismatch_predicted': float(predicted[index]),
-            'mismatch_residual': float(residuals[index]),
-        } for index, record in enumerate(records))
+        source_values = _source_diagnostic_values(self.constraints, self.fit.weights)
+        prediction = source_values['predicted_' + self.mismatch_space]
+        residual = _residual_diagnostic(
+            self.constraints, self.fit.weights, space=self.mismatch_space,
+        )
+        enriched = []
+        for index, record in enumerate(records):
+            local = dict(record['unavailable_diagnostics'])
+            enriched.append({
+                **record, 'mismatch_space': self.mismatch_space,
+                'mismatch_target': float(self.mismatch_target[index]),
+                'mismatch_predicted': prediction.item(index).json_value(
+                    '/mismatch_predicted', local,
+                ),
+                'mismatch_residual': residual.item(index).json_value(
+                    '/mismatch_residual', local,
+                ),
+                'unavailable_diagnostics': local,
+            })
+        return tuple(enriched)
 
     def to_report(self, *, use_ids: bool = False) -> dict[str, object]:
         """Return a JSON-friendly report for this active-set solve."""
@@ -1230,39 +1287,13 @@ def _assemble_accepted_active_set_state(
         _bind_originating_observations(realized, constraints)
         warnings.extend(realized.warnings)
 
-        prediction = full_problem.predict(accepted_weights)
-        predicted_fraction = np.asarray(
-            prediction.fraction,
-            dtype=np.float64,
-        )
-        predicted_position = np.asarray(
-            prediction.position,
-            dtype=np.float64,
-        )
-        predicted = np.asarray(prediction.measurement, dtype=np.float64)
-        target = (
-            constraints.target_fraction
-            if constraints.measurement == 'fraction'
-            else constraints.target_position
-        )
-        residuals = predicted - target
-        if not all(
-            np.all(np.isfinite(values))
-            for values in (
-                predicted,
-                predicted_fraction,
-                predicted_position,
-                residuals,
-            )
-        ):
-            raise ValueError(
-                'finite final weights produced non-finite active candidate '
-                'diagnostics'
-            )
-        rms_residual_all = _stable_rms(residuals)
-        max_residual_all = (
-            float(np.max(np.abs(residuals))) if residuals.size else 0.0
-        )
+        source_values = _source_diagnostic_values(constraints, accepted_weights)
+        predicted = source_values['predicted'].value
+        predicted_fraction = source_values['predicted_fraction'].value
+        predicted_position = source_values['predicted_position'].value
+        residuals = source_values['residuals'].value
+        rms_residual_all = source_values['rms_residual'].value
+        max_residual_all = source_values['max_residual'].value
 
         marginal = path_marginal | realized.realized_other_shift
         status = _build_constraint_statuses(
@@ -1300,6 +1331,12 @@ def _assemble_accepted_active_set_state(
             last_realized_iter=last_realized_iter.copy(),
             marginal=marginal.copy(),
             status=status,
+            _diagnostic_snapshot_init=_RowSnapshot.produced(
+                constraints, {name: source_values[name] for name in (
+                    'predicted', 'predicted_fraction', 'predicted_position',
+                    'residuals',
+                )},
+            ),
         )
         _bind_originating_observations(diagnostics, constraints)
         tessellation_diagnostics = realized.tessellation_diagnostics
@@ -1666,14 +1703,7 @@ def solve_self_consistent_power_weights(
         n_added = int(np.count_nonzero((~active) & new_active))
         n_removed = int(np.count_nonzero(active & (~new_active)))
 
-        pred_all = full_problem.predict(weights_eval)
-        pred = np.asarray(pred_all.measurement, dtype=np.float64)
-        target = (
-            resolved.target_fraction
-            if resolved.measurement == 'fraction'
-            else resolved.target_position
-        )
-        residuals = pred - target
+        source_values = _source_diagnostic_values(resolved, weights_eval)
         history_rows.append(
             ActiveSetIteration(
                 iteration=outer_iter,
@@ -1681,10 +1711,8 @@ def solve_self_consistent_power_weights(
                 n_realized=int(np.count_nonzero(realized_same)),
                 n_added=n_added,
                 n_removed=n_removed,
-                rms_residual_all=_stable_rms(residuals),
-                max_residual_all=float(np.max(np.abs(residuals)))
-                if residuals.size
-                else 0.0,
+                rms_residual_all=source_values['rms_residual'].value,
+                max_residual_all=source_values['max_residual'].value,
                 weight_step_norm=step_norm,
                 n_active_fit=int(np.count_nonzero(active)),
                 fit_active_graph_n_components=(
@@ -1701,6 +1729,10 @@ def solve_self_consistent_power_weights(
                     fit_active_connectivity.active_offsets_identified_by_data
                 ),
                 n_unaccounted_pairs=n_unaccounted_pairs,
+                _history_snapshot_init=_HistorySnapshot.produced(
+                    resolved, outer_iter, source_values['rms_residual'],
+                    source_values['max_residual'],
+                ),
             )
         )
 

@@ -66,7 +66,7 @@ def fit_self_consistent_weights_from_separators(
     not provided. The fixed ``fit_weights_from_separators`` is a separate solve.
 
     The identical shared result retains Experimental path/counter members and
-    report-v2 data. ``history`` is ``None`` on this route. Final-state inspection
+    report-v3 data. ``history`` is ``None`` on this route. Final-state inspection
     is Provisional regardless of which namespace imported the result class.
     """
     return solve_self_consistent_power_weights(

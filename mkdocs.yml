@@ -122,6 +122,7 @@ nav:
           - WP7 source-certified ghost boundaries: development/decisions/0023-wp7-certified-ghost-boundaries.md
           - External native artifact qualification: development/decisions/0024-external-native-artifact-qualification.md
           - Native occurrence normalization and proof-assisted identities: development/decisions/0025-native-occurrence-normalization-and-proof-assisted-identities.md
+          - Separator final-state certification and diagnostic availability: development/decisions/0026-separator-final-state-and-diagnostic-availability.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

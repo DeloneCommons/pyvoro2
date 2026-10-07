@@ -6,6 +6,21 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+### Separator final-state and report v3 remediation (#116)
+
+- Success certifies applicable hard rows on the exact returned representative;
+  an invalid final success becomes an honest numerical failure. Zero-L2
+  singleton references now agree across direct, ADMM and no-work dispatch.
+- Fixed, active and historical source residuals evaluate complete affine rows;
+  final validation independently checks outer and nested residuals.
+- Schema v3 reports/records preserve proven diagnostic overflow/dependencies as
+  null with exact local/exhaustive `unavailable_diagnostics` maps. Finite
+  weighted norms/RMS recover from complete operands where supported; source
+  units, model operators, strict inputs/objectives and row identities remain.
+- Coherent active final layers remain available with proven unavailable
+  diagnostic cells. Private candidate/history provenance survives supported
+  reconstruction. Independent #116 review remains a Checkpoint-C prerequisite.
+
 ### CI and contributor workflow (#113)
 
 - PR CI cancels superseded heads and fails fast within each matrix; independent
@@ -25,7 +40,8 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - Final-state inspection is Provisional through either namespace; outer
   termination, final inner convergence and availability remain separate.
   Advanced engine/path controls, counters and path-derived labels remain
-  Experimental. Fixed-observation fitting and report v2 retain their contracts.
+  Experimental. The #116 remediation entry amends final certification
+  and diagnostic availability through report v3.
 
 ### Separator row policy and report v2 (WP10)
 
@@ -38,9 +54,10 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - Component solves and the experimental active engine project one bound policy
   with observations, preserving original values on reentry and final refit.
   Problem/result `resolved_policy` and explicit mismatch views expose the model.
-- Separator reports use schema v2 with complete uniform/row model policy and
-  mismatch records. Strict consumers must accept v2 explicitly. The preferred
-  inverse exports and scalar shape parameters retain their current scope.
+- WP10 introduced schema v2 with complete uniform/row model policy and mismatch
+  records at that stage. The current report contract is superseded by schema v3
+  under #116 / ADR 0026; current writers provide no v2 compatibility output.
+  The preferred inverse exports and scalar shape parameters retain their scope.
 
 ### Fixed
 

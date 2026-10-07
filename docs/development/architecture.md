@@ -702,7 +702,20 @@ packaging, and reports: squared/Huber quadratic mismatch and L2 use the
 conventional half factors; reciprocal penalties use a finite tangent
 continuation; zero-strength penalties are absent; hard bounds use one shared
 scale-aware float64 tolerance; and successful solver results require finite
-reported soft objectives.
+reported soft objectives. Issue #116 and
+[ADR 0026](decisions/0026-separator-final-state-and-diagnostic-availability.md)
+also require every applicable hard row to pass its existing predicate on the
+exact final representative. Standalone reference selection precedes packaging
+and final certification across direct, ADMM, empty and singleton paths; false
+success is a structured numerical refusal, not invented infeasibility.
+
+The problem/graph affine coefficients and normal RHS belong to mismatch space.
+Algebraic edge coefficients and descriptive edge weights remain source-owned.
+One private typed diagnostic layer evaluates complete source/mismatch affine
+expressions and scale-safe source summaries; it does not rebuild finite row
+operands from alternate geometry or substitute mixed-model curvature into
+source diagnostics. Fixed export and complete active reconstruction recompute
+from authoritative observations/policy and exact final weights.
 
 SciPy is imported only when sparse conversion or
 `linear_backend='sparse'` is explicitly requested and is not a runtime
@@ -753,7 +766,7 @@ explicitly unsupported rather than filled with misleading placeholders.
 
 ADR 0014 fixes the two-layer observation model used by those results: every row
 and ordered observation set has stable source-independent identity, while exact
-points/domain/ID source binding is optional, monotonic provenance. Version 2 of
+points/domain/ID source binding is optional, monotonic provenance. Version 3 of
 the `pyvoro2.inverse.separator.report` schema preserves that provenance and the
 existing `power_weight_fit`, `realized_pair_diagnostics`, and
 `self_consistent_power_fit` kinds as strict JSON-native data.
@@ -762,6 +775,18 @@ ADR 0015 makes active-set final state atomic. Outer termination and final-inner-
 fit status are distinct. Final realization/diagnostic layers are present only
 when they belong to the accepted final weighted state; otherwise availability,
 reason, final-refit convergence, and JSON nulls make their absence explicit.
+ADR 0026 amends the former finite-only source-diagnostic gate: producer-proven
+range overflow or unavailable dependencies do not remove otherwise coherent
+finite weights/radii, genuine realization or bound source. Typed conversion
+uses a closed numerical-leaf whitelist and required local/exhaustive
+`unavailable_diagnostics` maps; general JSON normalization remains strict.
+Standalone candidate diagnostics retain an immutable row/value binding.
+History retains immutable iteration/source/summary-value/reason bindings in
+O(history length), without historical weight vectors. Copy, replacement and
+same-version pickle preserve those private bindings; no public accepted-state
+type or additional dataclass field is introduced. Full source statistics and
+each iteration's own relaxed evaluation include inactive and zero-confidence
+rows; final certification still covers only selected hard policy.
 
 ### Severity-complete forward diagnostics
 

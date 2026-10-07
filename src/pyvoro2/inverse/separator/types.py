@@ -749,8 +749,9 @@ class SeparatorFitResult(_PolicyResultStorage):
         mismatch_predicted = self.mismatch_predicted
         mismatch_residuals = self.mismatch_residuals
         left, right = constraints.pair_labels(use_ids=use_ids_value)
-        from .problem import _edge_diagnostics_for_result
+        from .problem import _edge_diagnostics_for_result, _fit_diagnostic_values
 
+        evaluation = _fit_diagnostic_values(self, constraints)
         edge_diag = _edge_diagnostics_for_result(self, constraints)
         rows: list[dict[str, object]] = []
         left_is_int = np.issubdtype(np.asarray(left).dtype, np.integer)
@@ -805,8 +806,13 @@ class SeparatorFitResult(_PolicyResultStorage):
                         else float(edge_diag.residual[k])
                     ),
                     'edge_weight': float(edge_diag.edge_weight[k]),
+                    'unavailable_diagnostics': {},
                 }
             )
+            for name, expected in evaluation['record'].items():
+                rows[-1][name] = expected.item(k).json_value(
+                    '/' + name, rows[-1]['unavailable_diagnostics'],
+                )
         return tuple(rows)
 
     def to_report(

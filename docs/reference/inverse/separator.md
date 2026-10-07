@@ -86,7 +86,11 @@ Problems and results expose `mismatch_space`, `hard_constraint_space`, and
 ordered `penalty_spaces`. Fixed results add `mismatch_target`,
 `mismatch_predicted`, and `mismatch_residuals`. Source prediction and algebraic
 diagnostics retain observation units; problem graph/normal coefficients use
-mismatch units. `PowerFitBounds.space` identifies declared hard units, and
+mismatch units. Source edge `alpha`, `beta`, `z_obs`, and descriptive
+`edge_weight = confidence * alpha**2` are not mixed-model curvature or converted
+likelihood weights. The quadratic RHS evaluates the complete scaled
+`confidence * alpha * (target - beta)` in mismatch space; it does not reconstruct
+that value as `edge_weight * z_obs`. `PowerFitBounds.space` identifies declared hard units, and
 its read-only `applicable` mask determines effective rows. Configured measurement
 endpoints remain finite and row-aligned. Inapplicable difference endpoints are
 NaN because they were not computed; absence is never an infinite public bound.
@@ -165,7 +169,7 @@ residuals, image/empty flags, connectivity and optional final geometry are
 Provisional inspection. Toggle/first/last-realized counters, iteration objects,
 marginal classifications and path-derived status labels remain Experimental,
 including inside candidate diagnostics, records and reports. The preferred
-facade returns `history=None` without filtering other research data or report v2.
+facade returns `history=None` without filtering other research data or report v3.
 `realized`, `diagnostics`, `rms_residual_all`, and `max_residual_all` are
 optional and are simultaneously unavailable when the final fit has no usable
 weights. In that state `final_realization`, `candidate_diagnostics`, and
@@ -174,6 +178,18 @@ weights. In that state `final_realization`, `candidate_diagnostics`, and
 `final_refit_converged` distinguish coherent final-layer availability, the
 existing final fit status, and final inner-fit convergence. Outer `converged`
 continues to mean `termination == 'self_consistent'`.
+
+Present final layers may contain producer-established unavailable diagnostic
+cells without losing finite weights/radii, genuine realization or their source
+association. Raw arrays retain signed infinity for range overflow and NaN for a
+proven unavailable dependency; export follows the bounded grammar below. Whole
+`None` containers still mean an absent final state. Source residuals are
+evaluated as complete affine expressions at final weights, not by subtracting
+separately rounded predictions and targets. Full candidate summaries include
+inactive and confidence-zero rows. Each stored history summary uses that
+iteration's own `weights_eval`, after alignment and relaxation; private
+iteration/source/value provenance survives copy, replacement and same-version
+pickle without retaining historical weight vectors.
 
 `observation_view(...)` uses the shared exact origin policy before combining
 observation-owned arrays with fit-owned predictions. Two unbound objects match
@@ -317,6 +333,29 @@ and
 [ADR 0007](../../development/decisions/0007-separator-objective-contract.md)
 for the complete formulas.
 
+An `optimal` or converged native result certifies a finite soft objective and
+each applicable hard row at the exact final returned representative.
+`hard_max_violation <= hard_max_tolerance` is not a substitute for the per-row
+predicate. A failed final success claim becomes `numerical_failure` with absent
+weights-dependent layers, actual solver/backend and completed iteration count;
+it does not change precheck feasibility or fabricate a conflict. The public
+`build_power_fit_result` raises `ValueError` for false success even with
+`canonicalize_gauge=False`. An explicitly nonconverged external candidate and a
+genuine finite `max_iter` candidate remain inspectable.
+Bound export and active reconstruction recheck this predicate independently;
+copying or replacing status/objective metadata cannot create a successful fit.
+
+At zero L2, standalone fits with multiple model-coupling components use supplied
+reference means, or zero means by default; singleton entries equal their
+reference exactly. Positive-confidence mismatch, applicable hard rows and
+positive penalty rows establish coupling. One connected multi-site component
+retains its solver anchor. Empty native fits use the full reference or zeros,
+including one site; public one-site canonicalization remains a no-op. Positive
+L2 retains its objective reference without gauge shifts. Optional active
+alignment to the preceding relaxed state is allowed only when contrasts are
+preserved exactly and L2 is zero. Final certification uses the selected policy,
+without imposing excluded candidate hard rows.
+
 ## Report schema and source provenance
 
 The direct row-only chain from `SeparatorObservations` through
@@ -332,7 +371,7 @@ Fit, realized-pair, and active-set reports retain the kinds
 {
   "schema": {
     "name": "pyvoro2.inverse.separator.report",
-    "version": 2
+    "version": 3
   },
   "producer": {
     "name": "pyvoro2",
@@ -352,7 +391,8 @@ Fit, realized-pair, and active-set reports retain the kinds
     "measurement": "fraction",
     "n_rows": 1,
     "row_ids": ["pyvoro2-separator-row-v1:..."]
-  }
+  },
+  "unavailable_diagnostics": {}
 }
 ```
 
@@ -392,6 +432,68 @@ Fit summaries add `mismatch_space`; fit and active candidate records add
 fit describes the exact selected projection. Missing weights retain known policy
 and targets with null predictions/residuals. Realization-only reports do not add
 model blocks. Observation identity and observation-only records are unchanged.
+
+## Numerical diagnostic availability
+
+Schema v3 requires `unavailable_diagnostics` on every report root, including
+nested fit/realized reports, and on every fixed, standalone candidate and
+enriched active record. Ordinary output contains `{}`. Observation-only and
+realized-only rows have no new map; history rows have no separate map.
+
+Only these derived diagnostic leaves may become numerical nulls:
+
+| Container | Eligible fields |
+|---|---|
+| Fixed record; report `/fit_records/*` | `predicted`, `predicted_fraction`, `predicted_position`, `residual`, `mismatch_predicted`, `mismatch_residual`, `alpha`, `beta`, `z_obs`, `z_fit`, `algebraic_residual`, `edge_weight` |
+| Fixed `/edge_diagnostics` | Elements of `alpha`, `beta`, `z_obs`, `z_fit`, `residual`, `edge_weight`; scalars `weighted_l2`, `weighted_rmse`, `rmse`, `mae` |
+| Fixed `/summary` | `rms_residual`, `max_residual` |
+| Standalone candidate record | `predicted`, `predicted_fraction`, `predicted_position`, `residual` |
+| Enriched active record; `/diagnostics/*`, `/marginal_records/*` | Candidate fields plus `mismatch_predicted`, `mismatch_residual` |
+| Active `/summary` and `/history/*` | `rms_residual_all`, `max_residual_all` |
+| Active `/fit` | Complete nested fixed-report whitelist, rebased with `/fit` |
+| Realized report | No newly nullable scalar; empty root map |
+
+Each map entry points to a null leaf with exactly one reason:
+`out_of_binary64_range` means the finite mathematical diagnostic exceeds finite
+binary64 magnitude; `unavailable_dependency` means an accepted operand is
+unavailable. A typed producer establishes the reason. Caller-supplied infinity,
+NaN or metadata is not proof. Unavailable `alpha` does not produce a spurious
+zero `z_obs`; exact zero confidence removes weighted work before dangerous
+evaluation. Finite values retain ordinary binary64 rounding and underflow.
+
+Pointers are local to their containing record/report, start with `/`, use
+standard `~0`/`~1` escaping and zero-based decimal indices without leading zeros.
+A record might contain `{"/predicted": "out_of_binary64_range"}`; its report
+also includes `/fit_records/0/predicted`. Every report map exhausts its subtree,
+including nested reports, history and marginal-record copies. Nested roots and
+records retain local maps. Enrichment merges maps and rebasing copies them.
+Structural nulls, such as absent final weights, have no reason entry. Finite
+leaves have no entry.
+
+Source weighted norms use complete affine source residuals and apply
+`sqrt(confidence)` before materializing a possibly overflowing residual.
+Weighted RMSE divides squared weighted residuals by the number of rows, not
+the sum of confidence. Aggregate availability is evaluated independently: a
+row outside range can still have a representable weighted norm or RMS.
+Unavailable dependencies propagate without dropping rows. Source algebraic
+RMSE/MAE retain difference-space residuals.
+
+Inputs, target representations, confidence, model policy, successful weights,
+radii/shift, objective components, hard metrics, geometry and identity remain
+strict. History `weight_step_norm` is also excluded because it affects stopping.
+Final exports independently recompute from bound observations/policy and exact
+final weights; equality between two copied wrong residual arrays is rejected.
+Standalone candidate diagnostics and history use private immutable row/value
+or iteration/source/value bindings preserved by supported reconstruction.
+Ordinary finite manual history remains supported; nonfinite manual values
+without producer provenance are rejected.
+
+The general JSON normalizer still rejects arbitrary NaN/infinity and writers
+use `allow_nan=False`; typed conversion precedes that check. Schema name, report
+kinds and source/row identity versions are unchanged. All other v2 key, type
+and absence rules remain; no v2 compatibility writer is provided. See
+[ADR 0026](../../development/decisions/0026-separator-final-state-and-diagnostic-availability.md)
+for the decision and migration boundary.
 
 ::: pyvoro2.inverse.separator
 :::

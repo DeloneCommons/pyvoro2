@@ -38,11 +38,8 @@ from ._objective import (
     _quadratic_row_data,
 )
 from ._numerics import (
-    _stable_affine_difference,
-    _stable_affine_residual,
     _stable_incidence_accumulate,
     _stable_mean_abs,
-    _stable_norm,
     _stable_product,
     _stable_ratio_difference,
     _stable_rms,
@@ -51,6 +48,11 @@ from ._numerics import (
     _stable_sum_scalar,
 )
 from .constraints import SeparatorObservations
+from ._diagnostics import (
+    _affine_diagnostic, _affine_rms,
+    _derived, _exact_mean_diagnostic, _has_dependency,
+    _max_diagnostic, _norm_diagnostic,
+)
 from ._identity import (
     _bind_originating_observations, _require_observation_association,
 )
@@ -538,8 +540,9 @@ def build_power_fit_result(
 ) -> SeparatorFitResult:
     """Package candidate weights into a standard power-fit result object.
 
-    An optimal or converged request is rejected when any reported
-    soft-objective component or total is non-finite.
+    An optimal or converged request requires a finite soft objective and every
+    applicable hard row to satisfy its authoritative per-row predicate on the
+    exact returned representative, after any requested gauge selection.
     """
 
     solver = require_string(solver, name='solver')
@@ -570,22 +573,16 @@ def build_power_fit_result(
     w = _validated_weight_vector(problem, weights)
     if canonicalize_gauge_value:
         w = problem.canonicalize_gauge(w)
-    predictions = _predict_all(problem, w)
-    residuals = _measurement_residuals(problem, w)
+    source_values = _source_diagnostic_values(problem.constraints, w)
+    predictions = _predictions_from_diagnostics(source_values)
+    residuals = source_values['residuals'].value
     edge_diagnostics = _compute_edge_diagnostics(
         problem.constraints,
         weights=w,
         predictions=predictions,
     )
     objective_breakdown = _objective_breakdown(problem, predictions, w)
-    if (
-        (status == 'optimal' or converged_value)
-        and not _soft_objective_is_finite(objective_breakdown)
-    ):
-        raise _NonFiniteOptimalObjectiveError(
-            'cannot package an optimal or converged result with a non-finite '
-            'soft objective'
-        )
+    _require_final_success(objective_breakdown, status, converged_value)
     warnings_list = list(warnings)
     if not objective_breakdown.hard_constraints_satisfied:
         warnings_list.append(
@@ -596,8 +593,8 @@ def build_power_fit_result(
         r_min=r_min_value,
         weight_shift=weight_shift_value,
     )
-    rms = _stable_rms(residuals)
-    mx = float(np.max(np.abs(residuals))) if residuals.size else 0.0
+    rms = source_values['rms_residual'].value
+    mx = source_values['max_residual'].value
     result = SeparatorFitResult(
         status=status,
         status_detail=status_detail,
@@ -749,38 +746,57 @@ def _predict_all(
     problem: SeparatorFitProblem,
     weights: np.ndarray,
 ) -> PowerFitPredictions:
-    left = weights[problem.constraints.i]
-    right = weights[problem.constraints.j]
-    z_pred = _stable_scaled_difference(left, right, 1.0)
-    fraction = _stable_affine_difference(
-        0.5,
-        _stable_ratio_difference(
-            0.5,
-            0.0,
-            problem.constraints.distance2,
-        ),
-        left,
-        right,
+    return _predictions_from_diagnostics(
+        _source_diagnostic_values(problem.constraints, weights),
     )
-    position = _stable_affine_difference(
-        0.5 * problem.constraints.distance,
-        _stable_ratio_difference(
-            0.5,
-            0.0,
-            problem.constraints.distance,
-        ),
-        left,
-        right,
-    )
-    measurement = (
-        fraction if problem.constraints.measurement == 'fraction' else position
-    )
+
+
+def _predictions_from_diagnostics(values):
     return PowerFitPredictions(
-        difference=np.asarray(z_pred, dtype=np.float64),
-        fraction=np.asarray(fraction, dtype=np.float64),
-        position=np.asarray(position, dtype=np.float64),
-        measurement=np.asarray(measurement, dtype=np.float64),
+        difference=values['difference'].value,
+        fraction=values['predicted_fraction'].value,
+        position=values['predicted_position'].value,
+        measurement=values['predicted'].value,
     )
+
+
+def _residual_diagnostic(constraints, weights, *, space=None, active=None):
+    geom = _measurement_geometry(constraints, space)
+    scales = () if active is None else (np.asarray(active, dtype=float),)
+    return _affine_diagnostic(
+        geom.beta, geom.alpha, weights[constraints.i], weights[constraints.j],
+        geom.target, *scales,
+    )
+
+
+def _source_diagnostic_values(constraints, weights):
+    """Evaluate complete source rows, predictions and reductions together."""
+    left, right = weights[constraints.i], weights[constraints.j]
+    fraction_geom = _measurement_geometry(constraints, 'fraction')
+    position_geom = _measurement_geometry(constraints, 'position')
+    fraction = _affine_diagnostic(
+        fraction_geom.beta, fraction_geom.alpha, left, right, 0.,
+    )
+    position = _affine_diagnostic(
+        position_geom.beta, position_geom.alpha, left, right, 0.,
+    )
+    geom = (fraction_geom if constraints.measurement == 'fraction'
+            else position_geom)
+    residuals = _affine_diagnostic(
+        geom.beta, geom.alpha, left, right, geom.target,
+    )
+    return {
+        'difference': _derived(_stable_scaled_difference(left, right, 1.)),
+        'predicted_fraction': fraction,
+        'predicted_position': position,
+        'predicted': (fraction if constraints.measurement == 'fraction'
+                      else position),
+        'residuals': residuals,
+        'rms_residual': _affine_rms(
+            geom.beta, geom.alpha, left, right, geom.target, residuals,
+        ),
+        'max_residual': _max_diagnostic(residuals),
+    }
 
 
 def _measurement_residuals(
@@ -791,15 +807,131 @@ def _measurement_residuals(
 ) -> np.ndarray:
     """Return direct affine residuals without materializing predictions."""
 
-    geom = _measurement_geometry(problem.constraints)
-    return _stable_affine_residual(
-        geom.beta,
-        geom.alpha,
-        weights[problem.constraints.i],
-        weights[problem.constraints.j],
-        problem.measurement_target,
-        active=active,
+    return _residual_diagnostic(
+        problem.constraints, weights, active=active,
+    ).value
+
+
+def _algebraic_residual_diagnostic(geom, left, right, z_obs, z_fit):
+    normal = np.isfinite(z_obs.value) & np.isfinite(z_fit.value)
+    values = np.zeros(normal.shape, dtype=float)
+    values[normal] = _stable_scaled_difference(
+        z_obs.value[normal], z_fit.value[normal], 1.,
     )
+    available = normal.copy()
+    recover = ~normal & np.isfinite(geom.alpha)
+    large_alpha = recover & (geom.alpha >= 1.)
+    if np.any(large_alpha):
+        evaluated = _affine_diagnostic(
+            geom.beta[large_alpha], geom.alpha[large_alpha],
+            left[large_alpha], right[large_alpha], geom.target[large_alpha],
+            -_stable_ratio_difference(1., 0., geom.alpha[large_alpha]),
+        )
+        values[large_alpha] = evaluated.value
+        available[large_alpha] = True
+    small_alpha = recover & ~large_alpha
+    if np.any(small_alpha):
+        residual = _affine_diagnostic(
+            geom.beta[small_alpha], geom.alpha[small_alpha],
+            left[small_alpha], right[small_alpha], geom.target[small_alpha],
+        )
+        # Dividing a proven outside-range row by 0 < alpha < 1 cannot
+        # restore representability. Finite rows use the existing ratio owner.
+        values[small_alpha] = _stable_ratio_difference(
+            0., residual.value, geom.alpha[small_alpha],
+        )
+        available[small_alpha] = True
+    return _derived(values, operands_available=available)
+
+
+def _algebraic_reduction(geom, left, right, z_obs, z_fit, rows, *, mean_abs):
+    """Reduce source differences; decide exceptional range before rounding."""
+    if _has_dependency(rows):
+        return _derived(np.nan, operands_available=False)
+    operands = (geom.alpha, geom.beta, geom.target, left, right)
+    if (not all(np.all(np.isfinite(v)) for v in operands)
+            or np.any(geom.alpha == 0.)):
+        return _derived(np.nan, operands_available=False)
+    count = rows.value.size
+    if count == 0:
+        return _derived(0.)
+
+    # Prove a generous ordinary-range bound from ORIGINAL operands, not
+    # rounded residuals. Each of t/a, b/a, left, right is then < 2**1021
+    # in magnitude, so every exact row and either mean is < 2**1023 < MAX.
+    # frexp uses integer exponents even for the smallest subnormal alpha;
+    # no reciprocal, product, subtraction or normalization can overflow.
+    alpha_exponent = np.frexp(geom.alpha)[1]
+    ordinary = all(np.all(
+        (v == 0.) | (np.frexp(v)[1] - alpha_exponent <= 1020)
+    ) for v in (geom.target, geom.beta))
+    ordinary = ordinary and all(
+        np.all(np.frexp(v)[1] <= 1021) for v in (left, right)
+    )
+    if ordinary and np.all(np.isfinite(rows.value)):
+        reduce = _stable_mean_abs if mean_abs else _stable_rms
+        return _derived(reduce(rows.value))
+
+    # Exceptional diagnostic-only fallback. Rounded 1/count, 1/sqrt(count)
+    # or 1/mantissa cannot establish the semantic boundary at MAX. Include
+    # every exact r = (target-beta)/alpha - left + right, including finite
+    # stored rows: even MAX + a tiny positive term can round to finite MAX.
+    def exact_rows():
+        for values in zip(*operands):
+            alpha, beta, target, lhs, rhs = (Fraction(float(v)) for v in values)
+            yield (target - beta) / alpha - lhs + rhs
+
+    return _exact_mean_diagnostic(exact_rows(), count, mean_abs=mean_abs)
+
+
+def _edge_diagnostic_values(constraints, weights, *, geom=None):
+    geom = _measurement_geometry(constraints) if geom is None else geom
+    alpha, beta, target = geom.alpha, geom.beta, geom.target
+    coefficient_available = np.isfinite(alpha) & np.isfinite(beta)
+    confidence = np.asarray(constraints.confidence, dtype=float)
+    absent = confidence == 0.
+    work = ~absent & coefficient_available
+    rho = np.zeros(alpha.shape, dtype=float)
+    rho[work] = _stable_product(confidence[work], alpha[work], alpha[work])
+    values = {
+        'alpha': _derived(alpha),
+        'beta': _derived(beta),
+        'z_obs': _derived(
+            _stable_ratio_difference(target, beta, alpha),
+            operands_available=coefficient_available,
+        ),
+        'edge_weight': _derived(
+            rho, operands_available=coefficient_available | absent,
+        ),
+    }
+    if weights is None:
+        values.update({name: _derived(None) for name in (
+            'z_fit', 'residual', 'weighted_l2', 'weighted_rmse', 'rmse', 'mae',
+        )})
+        return values
+    left, right = weights[constraints.i], weights[constraints.j]
+    z_fit = _derived(_stable_scaled_difference(left, right, 1.))
+    residual = _algebraic_residual_diagnostic(
+        geom, left, right, values['z_obs'], z_fit,
+    )
+    weighted = _affine_diagnostic(
+        beta, alpha, left, right, target, np.sqrt(confidence),
+    )
+    values.update({
+        'z_fit': z_fit,
+        'residual': residual,
+        'weighted_l2': _norm_diagnostic(weighted),
+        'weighted_rmse': _affine_rms(
+            beta, alpha, left, right, target, weighted, np.sqrt(confidence),
+        ),
+        'rmse': _algebraic_reduction(
+            geom, left, right, values['z_obs'], z_fit, residual, mean_abs=False,
+        ),
+        'mae': _algebraic_reduction(
+            geom, left, right, values['z_obs'], z_fit, residual, mean_abs=True,
+        ),
+    })
+    return values
 
 
 def _compute_edge_diagnostics(
@@ -809,74 +941,86 @@ def _compute_edge_diagnostics(
     predictions: PowerFitPredictions | None = None,
     geom: _MeasurementGeometry | None = None,
 ) -> AlgebraicEdgeDiagnostics:
-    if geom is None:
-        geom = _measurement_geometry(constraints)
-    alpha = np.asarray(geom.alpha, dtype=np.float64)
-    beta = np.asarray(geom.beta, dtype=np.float64)
-    target = np.asarray(geom.target, dtype=np.float64)
-    quadratic_rows = _quadratic_row_data(
-        alpha,
-        beta,
-        target,
-        constraints.confidence,
+    values = _edge_diagnostic_values(constraints, weights, geom=geom)
+    return AlgebraicEdgeDiagnostics(**{
+        name: diagnostic.value for name, diagnostic in values.items()
+    })
+
+
+def _fit_diagnostic_values(result, constraints):
+    """Recompute availability from bound rows/policy and exact final weights."""
+    result.observation_view(constraints)
+    policy = result._require_policy()
+    _require_observation_association(
+        policy.observations, constraints, context='fit diagnostic policy',
     )
-    z_obs = quadratic_rows.z_obs
-    edge_weight = quadratic_rows.rho
-    if weights is None:
-        return AlgebraicEdgeDiagnostics(
-            alpha=alpha,
-            beta=beta,
-            z_obs=z_obs,
-            z_fit=None,
-            residual=None,
-            edge_weight=edge_weight,
-            weighted_l2=None,
-            weighted_rmse=None,
-            rmse=None,
-            mae=None,
-        )
-    if predictions is None:
-        z_fit = _stable_scaled_difference(
-            weights[constraints.i],
-            weights[constraints.j],
-            1.0,
-        )
+    if result.weights is None:
+        if result.status == 'optimal' or result.converged:
+            raise ValueError('a successful final result requires finite weights')
+        source = {name: _derived(None) for name in (
+            'predicted', 'predicted_fraction', 'predicted_position', 'residuals',
+            'rms_residual', 'max_residual',
+        )}
+        mismatch_predicted = mismatch_residual = _derived(None)
+        weights = None
     else:
-        z_fit = np.asarray(predictions.difference, dtype=np.float64)
-    residual = _stable_scaled_difference(z_obs, z_fit, 1.0)
-    if residual.size:
-        measurement_residual = -_stable_affine_residual(
-            beta,
-            alpha,
-            weights[constraints.i],
-            weights[constraints.j],
-            target,
+        weights = coerce_finite_vector(
+            result.weights, name='fit result weights', n=constraints.n_points,
         )
-        weighted_residual = _stable_product(
-            np.sqrt(np.asarray(constraints.confidence, dtype=np.float64)),
-            measurement_residual,
+        source = _source_diagnostic_values(constraints, weights)
+        if result.status == 'optimal' or result.converged:
+            # Replacements and other supported reconstructions must not turn
+            # an honest unsuccessful candidate into a false success claim.
+            # Only this fit's selected policy is authoritative here. Hard
+            # compilation/precheck is unnecessary for its per-row predicate.
+            problem = _build_power_fit_problem(
+                constraints, model=policy.model, compile_hard=False,
+            )
+            breakdown = _objective_breakdown(
+                problem, _predictions_from_diagnostics(source), weights,
+            )
+            _require_final_success(breakdown, result.status, result.converged)
+            if result.objective_breakdown is not None:
+                _require_final_success(
+                    result.objective_breakdown, result.status, result.converged,
+                )
+        geom = _measurement_geometry(constraints, policy.mismatch_space)
+        mismatch_predicted = _affine_diagnostic(
+            geom.beta, geom.alpha, weights[constraints.i],
+            weights[constraints.j], 0.,
         )
-        weighted_l2 = _stable_norm(weighted_residual)
-        weighted_rmse = _stable_rms(weighted_residual)
-        rmse = _stable_rms(residual)
-        mae = _stable_mean_abs(residual)
-    else:
-        weighted_l2 = 0.0
-        weighted_rmse = 0.0
-        rmse = 0.0
-        mae = 0.0
-    return AlgebraicEdgeDiagnostics(
-        alpha=alpha,
-        beta=beta,
-        z_obs=z_obs,
-        z_fit=z_fit,
-        residual=np.asarray(residual, dtype=np.float64),
-        edge_weight=edge_weight,
-        weighted_l2=weighted_l2,
-        weighted_rmse=weighted_rmse,
-        rmse=rmse,
-        mae=mae,
-    )
+        mismatch_residual = _residual_diagnostic(
+            constraints, weights, space=policy.mismatch_space,
+        )
+    for name in (
+        'predicted', 'predicted_fraction', 'predicted_position', 'residuals',
+        'rms_residual', 'max_residual',
+    ):
+        source[name].require(getattr(result, name), context='fit ' + name)
+    mismatch_predicted.require(result.mismatch_predicted,
+                               context='fit mismatch prediction')
+    mismatch_residual.require(result.mismatch_residuals,
+                              context='fit mismatch residual')
+    edge = _edge_diagnostic_values(constraints, weights)
+    if result.edge_diagnostics is not None:
+        for name, expected in edge.items():
+            expected.require(getattr(result.edge_diagnostics, name),
+                             context='edge diagnostic ' + name)
+    record = {
+        'predicted': source['predicted'],
+        'predicted_fraction': source['predicted_fraction'],
+        'predicted_position': source['predicted_position'],
+        'residual': source['residuals'],
+        'mismatch_predicted': mismatch_predicted,
+        'mismatch_residual': mismatch_residual,
+        **{name: edge[name] for name in (
+            'alpha', 'beta', 'z_obs', 'z_fit', 'edge_weight',
+        )},
+        'algebraic_residual': edge['residual'],
+    }
+    return {'record': record, 'edge': edge, 'summary': {
+        name: source[name] for name in ('rms_residual', 'max_residual')
+    }}
 
 
 def _edge_diagnostics_for_result(
@@ -1019,6 +1163,22 @@ def _soft_objective_is_finite(
     return bool(np.all(np.isfinite(np.asarray(values, dtype=np.float64))))
 
 
+def _require_final_success(breakdown, status, converged):
+    """Apply the shared success predicate to a final or reconstructed state."""
+    if status != 'optimal' and not converged:
+        return
+    if not _soft_objective_is_finite(breakdown):
+        raise _NonFiniteOptimalObjectiveError(
+            'cannot accept an optimal or converged result with a non-finite '
+            'soft objective'
+        )
+    if not breakdown.hard_constraints_satisfied:
+        raise ValueError(
+            'cannot accept an optimal or converged result whose final weights '
+            'violate hard measurement bounds'
+        )
+
+
 def _regularization_reference(reg: L2Regularization, n: int) -> np.ndarray:
     if reg.reference is None:
         return np.zeros(n, dtype=np.float64)
@@ -1069,6 +1229,9 @@ def _apply_component_mean_gauge(
     for comp in comps:
         idx = np.asarray(comp, dtype=np.int64)
         if idx.size == 0:
+            continue
+        if idx.size == 1:
+            aligned[idx[0]] = 0.0 if ref is None else ref[idx[0]]
             continue
         if ref is None:
             target_mean = 0.0

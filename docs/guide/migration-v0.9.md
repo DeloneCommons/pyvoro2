@@ -17,7 +17,7 @@ image flags. There is no `success` Boolean.
 The advanced engine retains `active0`, `ActiveSetOptions`, hysteresis,
 relaxation, cycle and history controls. Those controls and all path/counter,
 marginal and path-derived status data remain Experimental. The facade has
-`history=None`; report v2 still includes other path data. No schema or stored
+`history=None`; report v3 still includes other path data. No stored
 result field is removed or renamed.
 
 ## Separate observation units from model units
@@ -37,13 +37,34 @@ rows. `applicable=False` removes a hard restriction independently of confidence.
 Hard `lower == upper` is valid. Shape parameters (`delta`, `margin`, `tau`,
 `epsilon`) remain scalar, and spaces remain term-global.
 
-Separator fit, realization, and active reports now declare schema version `2`.
+Separator fit, realization, and active reports now declare schema version `3`.
 Update exact-key consumers for the fit/active `model_spaces` and `model_policy`
 blocks, fit summary `mismatch_space`, and four mismatch record fields. Realized
-reports carry the v2 envelope without inventing model policy. Scalar and vector
+reports carry the v3 envelope without inventing model policy. Scalar and vector
 configuration remain distinguishable as `uniform` and `rows`, including empty
 selections. Active outer policy is candidate-aligned; its nested fit policy is
-selected-row aligned. Unavailable predictions remain null.
+selected-row aligned.
+
+All report roots (including nested fit/realized reports) and fixed/candidate/
+enriched active records require `unavailable_diagnostics`, empty `{}` for
+ordinary output. Eligible derived diagnostic overflow becomes null with
+`out_of_binary64_range`; a proven unavailable operand becomes null with
+`unavailable_dependency`. Local JSON Pointers are relative to their containing
+record/report; report maps exhaust nested diagnostics, history and marginal
+copies. Structural nulls have no entry. Observation-only and realized-only
+rows remain unchanged, and history rows have no separate map. Update exact-key
+and numeric-only consumers; no v2 compatibility writer is provided. The
+[reference](../reference/inverse/separator.md#numerical-diagnostic-availability)
+lists the closed whitelist. Inputs, targets, weights, objectives and geometry
+do not gain this nullable policy.
+
+Successful native fits now certify applicable hard rows after final reference
+selection. A final failed success claim is an honest `numerical_failure` with
+absent weights-dependent layers, not false convergence or precheck conflict.
+When inspecting an unsuccessful external candidate with
+`build_power_fit_result`, explicitly pass `converged=False`. Coherent active
+final containers can remain available with proven unavailable diagnostic cells;
+outer termination and final inner availability retain their separate meanings.
 
 Ordinary `pyvoro2.planar.compute` now attributes edge owners and images from the
 native execution and audits exact geometry separately. The result class and

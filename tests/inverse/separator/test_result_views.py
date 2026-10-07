@@ -18,6 +18,7 @@ REPORT_ENVELOPE_KEYS = {
     'producer',
     'source',
     'observation_set',
+    'unavailable_diagnostics',
 }
 FIT_REPORT_KEYS = REPORT_ENVELOPE_KEYS | {
     'model_spaces',

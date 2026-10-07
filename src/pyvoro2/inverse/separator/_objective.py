@@ -3994,6 +3994,10 @@ def _quadratic_row_data(
         beta_array,
         alpha_array,
     )
+    # An unavailable accepted coefficient is a diagnostic dependency, not an
+    # infinite divisor proving a zero observed difference. Curvature and RHS
+    # retain their existing admission and exact confidence-zero semantics.
+    z_obs[~np.isfinite(alpha_array)] = np.nan
     return _QuadraticRowData(rho=rho, rhs=rhs, z_obs=z_obs)
 
 
