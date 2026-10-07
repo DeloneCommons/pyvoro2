@@ -22,6 +22,7 @@ from ._numerics import (
 
 _RANGE = 'out_of_binary64_range'
 _DEPENDENCY = 'unavailable_dependency'
+_MAX_EXACT = Fraction(sys.float_info.max)
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +89,7 @@ def _ordinary(value, *, context):
     return _derived(value)
 
 
-def _affine_diagnostic(beta, alpha, left, right, target, *scales):
+def _affine_operands(beta, alpha, left, right, target, *scales):
     operands = np.broadcast_arrays(*[
         np.asarray(v, dtype=np.float64)
         for v in (beta, alpha, left, right, target, *scales)
@@ -97,13 +98,56 @@ def _affine_diagnostic(beta, alpha, left, right, target, *scales):
     absent = np.zeros(available.shape, dtype=bool)
     for scale in operands[5:]:
         absent |= scale == 0.
+    return operands, available, absent
+
+
+def _affine_terms_bounded(operands, absent, limit):
+    """Prove each original scaled term is strictly below 2**limit."""
+    scale_exponent = np.zeros(absent.shape, dtype=np.int64)
+    for scale in operands[5:]:
+        scale_exponent += np.frexp(scale)[1]
+    bounded = np.ones(absent.shape, dtype=bool)
+    for indices in ((0,), (1, 2), (1, 3), (4,)):
+        exponent = scale_exponent
+        nonzero = ~absent
+        for index in indices:
+            exponent = exponent + np.frexp(operands[index])[1]
+            nonzero &= operands[index] != 0.
+        bounded &= ~nonzero | (exponent <= limit)
+    return bounded
+
+
+def _exact_affine_row(values):
+    if any(v == 0. for v in values[5:]):
+        return Fraction()
+    b, a, l, r, t, *factors = (Fraction(float(v)) for v in values)
+    residual = b + a * l - a * r - t
+    for factor in factors:
+        residual *= factor
+    return residual
+
+
+def _affine_diagnostic(beta, alpha, left, right, target, *scales):
+    operands, available, absent = _affine_operands(
+        beta, alpha, left, right, target, *scales,
+    )
     work = available & ~absent
+    # Four terms below 2**1021 give an exact row below 2**1023 < MAX.
+    # Otherwise retain the exact range decision until producer materialization:
+    # an exact MAX + tiny can round to finite MAX even in a stable evaluator.
+    ordinary = _affine_terms_bounded(operands, absent, 1021)
     if scales:
         value = _stable_scaled_affine_residual(
             *operands[:5], *operands[5:], active=work,
         )
     else:
         value = _stable_affine_residual(*operands[:5], active=work)
+    for index in np.flatnonzero(work & ~ordinary):
+        exact = _exact_affine_row([v.flat[index] for v in operands])
+        value.flat[index] = (
+            (-np.inf if exact < 0 else np.inf)
+            if abs(exact) > _MAX_EXACT else float(exact)
+        )
     return _derived(value, operands_available=available | absent)
 
 
@@ -111,12 +155,43 @@ def _has_dependency(value):
     return _DEPENDENCY in value.reasons
 
 
-def _norm_diagnostic(rows):
-    if _has_dependency(rows):
-        return _derived(np.nan, operands_available=False)
-    # A proven outside-range row is a lower bound for the complete norm. This
-    # rule is not valid for RMS until each complete row has been scaled.
-    return _derived(_stable_norm(rows.value))
+def _weighted_affine_norms(beta, alpha, left, right, target, confidence):
+    """Classify both norms from original c*r**2, never rounded sqrt(c)."""
+    operands, available, absent = _affine_operands(
+        beta, alpha, left, right, target, confidence,
+    )
+    if np.any(~available & ~absent):
+        unavailable = _derived(np.nan, operands_available=False)
+        return unavailable, unavailable
+    count = operands[0].size
+    if count == 0:
+        return _derived(0.), _derived(0.)
+    confidence = operands[5]
+    # If each affine term is <2**e, |r| <2**(e+2). With c <2**ce
+    # and count <=2**k, sum(c*r**2) <2**(2*e+4+ce+k). Requiring
+    # that exponent <=2046 proves both norms <2**1023, safely below MAX.
+    # sqrt(c) is allowed for the ordinary VALUE only after this proof.
+    count_exponent = (count - 1).bit_length()
+    limit = (2042 - np.frexp(confidence)[1] - count_exponent) // 2
+    if np.all(_affine_terms_bounded(operands[:5], absent, limit)):
+        weighted = _stable_scaled_affine_residual(
+            *operands[:5], np.sqrt(confidence), active=~absent,
+        )
+        if np.all(np.isfinite(weighted)):
+            return _derived(_stable_norm(weighted)), _derived(_stable_rms(weighted))
+
+    # All required dependencies were checked before any early range exit.
+    # Zero-confidence rows contribute zero but still count in the RMSE.
+    total = Fraction()
+    for values in zip(*(v.ravel() for v in operands)):
+        if values[5] == 0.:
+            continue
+        residual = _exact_affine_row(values[:5])
+        total += Fraction(float(values[5])) * residual**2
+        if total > count * _MAX_EXACT**2:
+            return _derived(np.inf), _derived(np.inf)
+    return (_exact_average_diagnostic(total, 1, mean_abs=False),
+            _exact_average_diagnostic(total, count, mean_abs=False))
 
 
 def _affine_rms(beta, alpha, left, right, target, rows, *scales):
@@ -126,16 +201,9 @@ def _affine_rms(beta, alpha, left, right, target, rows, *scales):
     count = rows.value.size
     if count == 0:
         return _derived(0.)
-    operands = np.broadcast_arrays(*[
-        np.asarray(v, dtype=np.float64)
-        for v in (beta, alpha, left, right, target, *scales)
-    ])
-    available = np.logical_and.reduce([np.isfinite(v) for v in operands])
-    absent = np.zeros(available.shape, dtype=bool)
-    scale_exponent = np.zeros(available.shape, dtype=np.int64)
-    for scale in operands[5:]:
-        absent |= scale == 0.
-        scale_exponent += np.frexp(scale)[1]
+    operands, available, absent = _affine_operands(
+        beta, alpha, left, right, target, *scales,
+    )
     if np.any(~available & ~absent):
         return _derived(np.nan, operands_available=False)
 
@@ -143,29 +211,13 @@ def _affine_rms(beta, alpha, left, right, target, rows, *scales):
     # row and its RMS by 2**1023 < MAX. Integer exponent sums never form
     # overflowing products. Finite rounded rows alone cannot prove range:
     # even MAX + a subnormal term rounds to finite MAX.
-    ordinary = True
-    for indices in ((0,), (1, 2), (1, 3), (4,)):
-        exponent = scale_exponent
-        nonzero = ~absent
-        for index in indices:
-            exponent = exponent + np.frexp(operands[index])[1]
-            nonzero &= operands[index] != 0.
-        ordinary &= not np.any(nonzero & (exponent > 1021))
+    ordinary = np.all(_affine_terms_bounded(operands, absent, 1021))
     if ordinary and np.all(np.isfinite(rows.value)):
         return _derived(_stable_rms(rows.value))
 
     def exact_rows():
         for values in zip(*(v.ravel() for v in operands)):
-            # Zero scale is structural absence under the row producer's
-            # existing rule. It still contributes to the RMS row count.
-            if any(v == 0. for v in values[5:]):
-                yield Fraction()
-                continue
-            b, a, l, r, t, *factors = (Fraction(float(v)) for v in values)
-            residual = b + a * l - a * r - t
-            for factor in factors:
-                residual *= factor
-            yield residual
+            yield _exact_affine_row(values)
 
     return _exact_mean_diagnostic(exact_rows(), count, mean_abs=False)
 
@@ -175,7 +227,7 @@ def _exact_mean_diagnostic(rows, count, *, mean_abs):
     if count == 0:
         return _derived(0.)
     power = 1 if mean_abs else 2
-    limit = count * Fraction(sys.float_info.max)**power
+    limit = count * _MAX_EXACT**power
     total = Fraction()
     for residual in rows:
         total += abs(residual) if mean_abs else residual * residual
@@ -183,6 +235,13 @@ def _exact_mean_diagnostic(rows, count, *, mean_abs):
         # exceeds count*MAX or count*MAX**2, without rounded normalization.
         if total > limit:
             return _derived(np.inf)
+    return _exact_average_diagnostic(total, count, mean_abs=mean_abs)
+
+
+def _exact_average_diagnostic(total, count, *, mean_abs):
+    """Decide final range from the exact sum, then round the finite value."""
+    if total > count * _MAX_EXACT**(1 if mean_abs else 2):
+        return _derived(np.inf)
     mean = total / count
     if mean_abs:
         return _derived(float(mean))

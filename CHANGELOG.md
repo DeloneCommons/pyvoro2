@@ -6,6 +6,16 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+### Separator diagnostic range classification (#118)
+
+- Weighted L2 and RMSE classify range from original confidence and complete
+  affine residuals. Rounded square-root confidence no longer creates false
+  availability or hides a representable RMSE.
+- Row, max and norm diagnostics preserve exact range exits that would round
+  back to finite binary64 MAX. Each aggregate retains its own range decision,
+  including representable RMS values with unavailable individual rows; fixed,
+  active, history and schema-v3 reports share these private producers.
+
 ### Separator final-state and report v3 remediation (#116)
 
 - Success certifies applicable hard rows on the exact returned representative;
