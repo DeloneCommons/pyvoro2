@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextvars import ContextVar
 from dataclasses import InitVar, KW_ONLY, dataclass
+from decimal import Context, Decimal, ROUND_HALF_EVEN, localcontext
 from fractions import Fraction
 from typing import Literal
 import sys
@@ -844,38 +845,60 @@ def _algebraic_residual_diagnostic(geom, left, right, z_obs, z_fit):
 
 
 def _algebraic_reduction(geom, left, right, z_obs, z_fit, rows, *, mean_abs):
+    """Reduce source differences; decide exceptional range before rounding."""
     if _has_dependency(rows):
         return _derived(np.nan, operands_available=False)
-    if np.all(np.isfinite(rows.value)):
+    operands = (geom.alpha, geom.beta, geom.target, left, right)
+    if (not all(np.all(np.isfinite(v)) for v in operands)
+            or np.any(geom.alpha == 0.)):
+        return _derived(np.nan, operands_available=False)
+    count = rows.value.size
+    if count == 0:
+        return _derived(0.)
+
+    # Prove a generous ordinary-range bound from ORIGINAL operands, not
+    # rounded residuals. Each of t/a, b/a, left, right is then < 2**1021
+    # in magnitude, so every exact row and either mean is < 2**1023 < MAX.
+    # frexp uses integer exponents even for the smallest subnormal alpha;
+    # no reciprocal, product, subtraction or normalization can overflow.
+    alpha_exponent = np.frexp(geom.alpha)[1]
+    ordinary = all(np.all(
+        (v == 0.) | (np.frexp(v)[1] - alpha_exponent <= 1020)
+    ) for v in (geom.target, geom.beta))
+    ordinary = ordinary and all(
+        np.all(np.frexp(v)[1] <= 1021) for v in (left, right)
+    )
+    if ordinary and np.all(np.isfinite(rows.value)):
         reduce = _stable_mean_abs if mean_abs else _stable_rms
         return _derived(reduce(rows.value))
-    count = rows.value.size
-    scale = 1./count if mean_abs else 1./np.sqrt(count)
-    normal = np.isfinite(z_obs.value) & np.isfinite(z_fit.value)
-    values = np.zeros(normal.shape, dtype=float)
-    values[normal] = _stable_scaled_difference(
-        z_obs.value[normal], z_fit.value[normal], scale,
-    )
-    recover = ~normal & np.isfinite(geom.alpha) & (geom.alpha != 0.)
-    available = normal | recover
-    if np.any(recover):
-        # Keep the reciprocal as normal factors, including subnormal alpha.
-        # Materializing 1/alpha can overflow; scale/alpha can underflow before
-        # the complete affine products restore a representable aggregate row.
-        part, exponent = np.frexp(geom.alpha[recover])
-        half_exponent = exponent // 2
-        values[recover] = _affine_diagnostic(
-            geom.beta[recover], geom.alpha[recover], left[recover],
-            right[recover], geom.target[recover],
-            -1./part, np.ldexp(1., -half_exponent),
-            np.ldexp(1., half_exponent - exponent), scale,
-        ).value
-    scaled = _derived(values, operands_available=available)
-    if _has_dependency(scaled):
-        return _derived(np.nan, operands_available=False)
+
+    # Exceptional diagnostic-only fallback. Rounded 1/count, 1/sqrt(count)
+    # or 1/mantissa cannot establish the semantic boundary at MAX. Include
+    # every exact r = (target-beta)/alpha - left + right, including finite
+    # stored rows: even MAX + a tiny positive term can round to finite MAX.
+    power = 1 if mean_abs else 2
+    limit = count * Fraction(sys.float_info.max)**power
+    total = Fraction()
+    for values in zip(*operands):
+        alpha, beta, target, lhs, rhs = (Fraction(float(v)) for v in values)
+        residual = (target - beta) / alpha - lhs + rhs
+        total += abs(residual) if mean_abs else residual * residual
+        # All dependencies were checked first and contributions are
+        # nonnegative, so this early exit is a proof for the complete sum.
+        if total > limit:
+            return _derived(np.inf)
+    mean = total / count
     if mean_abs:
-        return _derived(_stable_sum_scalar(*np.abs(scaled.value)))
-    return _norm_diagnostic(scaled)
+        return _derived(float(mean))
+    # Range was decided exactly, before sqrt. Extra decimal precision is
+    # only for the finite binary64 value, not a new correct-rounding promise.
+    # A private context also avoids inheriting caller decimal policy.
+    with localcontext(Context(
+        prec=80, rounding=ROUND_HALF_EVEN, Emin=-999999, Emax=999999,
+        clamp=0, flags=[], traps=[],
+    )):
+        value = (Decimal(mean.numerator) / Decimal(mean.denominator)).sqrt()
+        return _derived(float(value))
 
 
 def _edge_diagnostic_values(constraints, weights, *, geom=None):
