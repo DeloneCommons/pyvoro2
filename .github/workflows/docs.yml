@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -44,6 +44,7 @@ jobs:
           path: site
 
   deploy-docs:
+    if: github.ref == 'refs/heads/main'
     needs: build-docs
     runs-on: ubuntu-latest
     environment:

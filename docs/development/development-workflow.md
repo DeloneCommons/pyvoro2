@@ -10,15 +10,79 @@ and release decisions.
 
 ## Branch model
 
-| Branch | Role |
+| Branch | Role during the reboot transition |
 |---|---|
-| `main` | Latest stable public release. |
-| `dev` | Integration branch for the active release plan. |
-| Feature branches | Optional issue-scoped branches for work that should be reviewed before integration into `dev`. |
+| `main` | Published v0.8.0 release source. |
+| `v0.9-reboot` | Protected integration target for approved reboot work. |
+| Old `dev` | Historical v0.9 attempt; not the reboot base. |
+| Feature branches | Focused PRs based on verified `v0.9-reboot` HEAD. |
 
-Direct changes to `main` should be limited to exceptional release or repository
-administration fixes. Normal development is integrated through `dev` and
-released from a reviewed state.
+[Issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120) owns the later
+branch cutover. [ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) establishes
+PR1 operational bootstrap and PR2 historical knowledge migration. Future
+geometry architecture and release scope are undecided; old release sequences
+and historical ADRs 0018–0026 do not authorize reboot implementation.
+
+The general release-plan lifecycle below applies when a new plan is approved.
+References to `dev` mean the normal integration role after cutover, not authority
+to edit the historical branch during this transition.
+
+## Editable development and focused checks
+
+Use a native C++17 toolchain and the normal scikit-build-core editable install:
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest -q tests/inverse/separator/test_fit.py
+# Broaden validation when appropriate:
+python -m pytest -q
+```
+
+Existing Python-source edits normally need no native rebuild or reinstall.
+Native-source, CMake, interpreter/ABI, package-metadata/dependency, or
+package-discovery changes may require rebuilding or reinstalling. Geometry
+execution still needs the native extensions. This setup uses the existing
+editable mechanism without custom loaders or automatic rebuild-on-import.
+Use `-e ".[all]"` for the additional documentation/notebook stack.
+
+Editable source testing and isolated installed-wheel testing establish different
+things. `tools/check_installed_package.py` deliberately requires installed
+provenance outside the repository and is not the editable provenance check.
+See [CONTRIBUTING.md](https://github.com/DeloneCommons/pyvoro2/blob/v0.9-reboot/CONTRIBUTING.md)
+for toolchains, generated files, and the repository test map.
+
+## CI and handoff
+
+Routine CI runs on PRs targeting `v0.9-reboot`, `dev`, or `main`, pushes to those
+branches, and manual dispatch. Feature-branch pushes do not duplicate PR runs;
+the required workflow has no path filter. Read-only permissions, pip download
+caching, explicit timeouts, ref/event-scoped cancellation, and matrix fail-fast
+bound routine resource use.
+
+The six routine jobs are lint/synchronization, Linux Python 3.10 tests, Linux
+Python 3.14 tests plus notebook validation and strict docs, native sanitizers,
+distribution validation, and `CI gate`. Lint installs only flake8. Expensive
+jobs depend on lint; ordinary non-editable test installs run the complete
+default pytest suite, including seeded fuzz/property tests. The gate always
+evaluates all required results and fails on failure, cancellation, or skipping.
+
+Manual `extended: true` expands the same test job to Ubuntu, macOS, and Windows
+on Python 3.10–3.14. The default is false; Linux 3.14 alone validates notebooks
+and docs. Sanitizer and sdist/wheel checks remain required in either mode.
+Do not dispatch extended validation unless it is needed and authorized.
+
+After a deterministic local failure, resolve its cause or report the blocker;
+do not repeatedly launch broader CI for the same failure. Report actual checks
+and limitations. For PR1 in Work Web, stop after PR creation: do not wait for
+Actions, rerun CI, merge, or claim unobserved checks passed. Independent review
+of actual PR checks and later integration/post-merge verification are separate.
+
+The wheel workflow accepts manual builds. For tag-triggered builds it first
+checks that the tag is exactly `v` plus the literal source package version,
+including development versions; it does not import or compile the package to
+read that version. It builds and validates artifacts without publishing them.
+The docs workflow permits manual builds, but production Pages deployment runs
+only from `refs/heads/main`.
 
 ## Planning levels
 
@@ -125,7 +189,8 @@ plan into every issue.
 
 ### 5. Implement and validate
 
-Work issue by issue on `dev` or an issue-scoped branch.
+Work on a focused branch targeting the current protected integration branch.
+During the reboot that target is `v0.9-reboot`, not historical `dev`.
 
 Every implementation change should:
 
@@ -261,6 +326,9 @@ Agents must:
 - keep current and planned language distinct;
 - include tests, documentation, generated outputs, inventory, and changelog
   changes where required;
+- prefer independent analytic/mathematical oracles for numerical regressions;
+- preserve site IDs, periodic-image meaning, and public semantics unless approved
+  changes explicitly say otherwise;
 - report public behavior changed, compatibility/lifecycle impact, checks passed,
   and any deviations or follow-ups;
 - never mark a plan or decision as approved without an explicit maintainer

@@ -6,6 +6,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   CIBW_SKIP: >-
     cp3??t-* pp* gp* *-musllinux* *-manylinux_i686
@@ -18,7 +21,43 @@ env:
     --repo-root "{project}" --require-scipy
 
 jobs:
+  check-version:
+    name: Check source version and release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Require pushed tag to match source version
+        if: github.event_name == 'push'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PYTHON'
+          import ast
+          import os
+          from pathlib import Path
+
+          source = ast.parse(Path('src/pyvoro2/__about__.py').read_text())
+          versions = [
+              ast.literal_eval(node.value)
+              for node in source.body
+              if isinstance(node, ast.Assign)
+              and any(isinstance(t, ast.Name) and t.id == '__version__'
+                      for t in node.targets)
+          ]
+          if len(versions) != 1 or not isinstance(versions[0], str):
+              raise SystemExit('Expected one literal source version')
+          expected = 'v' + versions[0]
+          if os.environ['RELEASE_TAG'] != expected:
+              raise SystemExit(f'Tag must equal {expected!r}')
+          print(f'Tag matches source version: {expected}')
+          PYTHON
+
   wheels-manylinux-x86_64:
+    needs: check-version
     name: Wheels (manylinux x86_64)
     runs-on: ubuntu-latest
     steps:
@@ -45,6 +84,7 @@ jobs:
           if-no-files-found: error
 
   wheels-windows-amd64:
+    needs: check-version
     name: Wheels (Windows AMD64)
     runs-on: windows-latest
     steps:
@@ -70,6 +110,7 @@ jobs:
           if-no-files-found: error
 
   wheels-macos-arm64:
+    needs: check-version
     name: Wheels (macOS arm64)
     runs-on: macos-15
     steps:
@@ -95,6 +136,7 @@ jobs:
           if-no-files-found: error
 
   wheels-macos-x86_64:
+    needs: check-version
     name: Wheels (macOS x86_64)
     runs-on: macos-15-intel
     steps:
@@ -121,6 +163,7 @@ jobs:
           if-no-files-found: error
 
   sdist:
+    needs: check-version
     name: Build sdist
     runs-on: ubuntu-latest
     steps:

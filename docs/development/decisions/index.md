@@ -30,7 +30,17 @@ Each record has a status:
 14. [Two-layer separator observation and source identity](0014-separator-observation-and-source-identity.md)
 15. [Atomic separator active-set final state](0015-atomic-separator-active-state.md)
 16. [Severity-complete tessellation diagnostics](0016-severity-complete-tessellation-diagnostics.md)
-17. [Functional stabilization precedes 1.0 and later inverse families](0017-v0.9-functional-stabilization-before-1.0.md)
+17. [Functional stabilization precedes 1.0 and later inverse families (superseded)](0017-v0.9-functional-stabilization-before-1.0.md)
+
+## Reboot decision
+
+- [0027 — Restart v0.9 development from published v0.8.0](0027-v0.9-reboot-from-v0.8.md)
+
+Numbers 0018–0026 belong to the protected historical v0.9 attempt and are not
+adopted here. ADR 0027 supersedes ADR 0017's future sequence without reviving
+ADR 0006's earlier sequence; it also governs the status of future inverse
+research candidates. Existing v0.8 implementation decisions remain baseline
+records.
 
 New records should describe context, decision, consequences, alternatives, and
 links to the active plan and relevant issues. See the

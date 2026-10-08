@@ -5,12 +5,13 @@ code, and a developing inverse weighted-tessellation API. Contributions are
 welcome when they are focused, testable, and consistent with the documented
 architecture.
 
-The feature-free v0.8 maintenance and compatibility-removal plans are complete
-and archived. No post-v0.8 plan is currently active; substantial future work
-requires separate plan activation and issue scope. v0.9 is reserved for
-functional/API stabilization and downstream readiness, 1.0 stabilizes the
-existing core, prescribed cell measures begin in v1.1, and mixed-observation
-fitting begins in v1.2.
+Development has restarted from published v0.8.0 under
+[issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120) and
+[ADR 0027](docs/development/decisions/0027-v0.9-reboot-from-v0.8.md).
+PR1 restores the operational workflow; PR2 owns curated historical knowledge
+migration. Future geometry architecture and release scope remain undecided.
+Prescribed measures and mixed inversion are research candidates, not scheduled
+features. The previous v0.9 attempt is preserved as historical evidence.
 
 ## Before starting
 
@@ -36,28 +37,17 @@ Read these documents before architectural or release-scoped work:
 
 ## Branches and planned work
 
-The normal branch model is:
+During the reboot transition:
 
-- `main`: latest stable public release;
-- `dev`: integration branch for the active release plan;
-- feature branches: optional issue-scoped work before integration into `dev`.
+- `main` remains the published v0.8.0 source;
+- `v0.9-reboot` is the protected integration target;
+- old `dev` is historical until a separately approved branch cutover;
+- feature branches start from the verified staging HEAD and enter by PR.
 
-Substantial changes should follow the active release plan and a linked GitHub
-issue. A draft plan records work under discussion; it does not authorize a
-contributor or coding agent to resolve open API decisions independently.
-
-The project uses the following traceable flow:
-
-```text
-roadmap outcome
-    -> active release plan
-    -> decision records where needed
-    -> GitHub milestone and issues
-    -> implementation, tests, and documentation
-    -> CHANGELOG [Unreleased]
-    -> release review
-    -> release and archived plan
-```
+Follow the approved task and applicable source-controlled authority. Substantial
+new implementation needs separate maintainer approval; a research candidate or
+draft plan does not settle public API or architecture. A small correction can
+use an existing issue or PR without creating additional planning artifacts.
 
 See [Development workflow](docs/development/development-workflow.md) for plan
 activation, scope changes, release review, and archival rules.
@@ -84,7 +74,7 @@ not v0.8 wheel targets. Package metadata uses `Requires-Python: >=3.10`, but
 versions newer than 3.14 are not supported until they are added to the source
 and wheel qualification matrices.
 
-Create a clean environment and install the complete contributor stack:
+Create a clean environment and install the normal contributor stack:
 
 ```bash
 python -m venv .venv
@@ -96,7 +86,7 @@ source .venv/bin/activate
 # .venv\Scripts\Activate.ps1
 
 python -m pip install --upgrade pip
-python -m pip install -e ".[all]"
+python -m pip install -e ".[dev]"
 ```
 
 The normal command uses PEP 517 build isolation and obtains the
@@ -114,9 +104,32 @@ pytest -q tests/forward/spatial/test_smoke.py \
     tests/forward/planar/test_planar_lazy_core_import.py
 ```
 
-For a wheel-core plus repository-source workflow, see `tools/README.md` and
-`tools/install_wheel_overlay.py`. The documented release path still requires a
-normal clean source build and installation from built artifacts.
+Editing existing Python source files in this editable installation normally
+requires no native rebuild or reinstall. Native-source, CMake, interpreter/ABI,
+package-metadata/dependency, or package-discovery changes may require rebuilding
+or reinstalling. Native extensions must still be present for tests that execute
+native geometry. Start with focused Python tests:
+
+```bash
+python -m pytest -q tests/inverse/separator/test_fit.py
+```
+
+Then broaden validation when appropriate:
+
+```bash
+python -m pytest -q
+```
+
+Install `-e ".[all]"` when documentation, notebooks, and visualization are also
+needed. The normal setup retains scikit-build-core's standard editable mechanism;
+there is no automatic native rebuild-on-import.
+
+An editable environment is different from an isolated installed-wheel
+environment. `tools/check_installed_package.py` deliberately requires installed
+provenance outside the repository, so it is not a test of editable source
+provenance. CI uses ordinary non-editable installation and separate distribution
+smoke checks. See [Development workflow](docs/development/development-workflow.md)
+for routine and extended CI.
 
 ## Repository conventions
 
@@ -199,8 +212,9 @@ In particular:
 
 `pyvoro2.inverse` is the canonical inverse namespace. The v0.7-only inverse and
 planar compatibility surfaces were removed in the feature-free v0.8 cleanup
-release. New work must place numerical ownership under
-`pyvoro2.inverse.separator` and document migration explicitly.
+release. Separator work keeps numerical ownership under
+`pyvoro2.inverse.separator` and documents migration explicitly. The architecture
+of possible future inverse models requires separate approval under ADR 0027.
 
 ## Planning substantial changes
 
@@ -278,7 +292,8 @@ Root `tests/conftest.py` is reserved for pytest hooks, options, and fixtures
 that apply across the suite. Imported helper code belongs to an explicitly
 owned support module such as `tests/fuzz/_support.py`.
 
-Run the default suite for ordinary changes. It includes deterministic tests and
+Start with the narrowest relevant regression tests, then run the default suite
+when broader validation is appropriate. It includes deterministic tests and
 seeded fuzz/property tests with the default `--fuzz-n=10`:
 
 ```bash

@@ -43,7 +43,7 @@ by periodic boundary image reconstruction.
 In particular, certified nearest/minimum-image resolution for separator
 observations does not make every boundary-image reconstruction path certified.
 The remaining periodic boundary-image and search-window limitations are
-candidate v0.9 functional-stabilization work. Current search controls must be
+candidates for separately approved future work. Current search controls must be
 read according to their individual contracts: separator `image_search` is only
 a performance seed and never a correctness radius, while current forward
 face/edge reconstruction controls may still bound supported reconstruction
@@ -78,8 +78,10 @@ contract or substantive backend work, not merely a larger search radius.
 
 Prescribed cell-measure inversion, mixed separator-plus-measure fitting, and
 moving-site optimization are also not v0.8 capabilities. They are separate
-future inverse families or unknown types, with prescribed measures planned for
-v1.1 and mixed problems for v1.2.
+research candidates without approved implementation or release targets.
+Prescribed measures and mixed inversion also have no approved public API,
+architectural relationship, or pre-1.0 inclusion; see
+[ADR 0027](../development/decisions/0027-v0.9-reboot-from-v0.8.md).
 
 ## Open architecture decisions
 
@@ -88,10 +90,10 @@ native extensions and the inverse Python layer, and it vendors the upstream
 Voro++ sources with a bounded accepted robustness fix. Those are current facts,
 not permanent governance decisions.
 
-[ADR 0017](../development/decisions/0017-v0.9-functional-stabilization-before-1.0.md)
-leaves two policies for explicit pre-1.0 planning: whether to require one
-repository/one distribution through 1.0, and whether to adopt a formal
-no-persistent-functional-Voro++-fork policy. v0.8 does not decide either one.
+[ADR 0027](../development/decisions/0027-v0.9-reboot-from-v0.8.md) leaves
+future geometry architecture and release scope undecided. Permanent package
+and backend policies, including distribution boundaries and treatment of
+functional Voro++ forks, also require separate maintainer decisions.
 
 For exact callable behavior, see [Choosing an API](choosing-api.md), the
 [API reference](../reference/index.md), and the

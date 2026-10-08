@@ -86,14 +86,11 @@ retains the v0.7 stable/provisional boundary for canonical APIs. No
 compatibility-only or deprecated route remains in the current v0.8 public
 namespace.
 
-The v0.8 contract is not the same promise as 1.0. As recorded in
-[ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md), v0.9 is
-the planned functional-stabilization release: it may deliberately refine public API where
-real downstream molecule/crystal workflows expose artificial restrictions, and
-it should promote the normal realization-aware separator workflow from an
-experimental branch to a supported public inverse contract. Version 1.0 then
-stabilizes the existing forward and separator-inverse core. Prescribed cell
-measures move to v1.1 and mixed separator-plus-measure fitting to v1.2.
+The reboot retains the implemented v0.8 lifecycle categories.
+[ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) supersedes ADR 0017's
+future release sequence without reviving ADR 0006's earlier sequence.
+`0.9.0.dev0` does not promote any API or imply new numerical behavior.
+Future stabilization scope and release targets require separate approval.
 
 ## What counts as a breaking change
 
@@ -207,33 +204,23 @@ schemas, status/failure semantics, and compatibility; it does not promise that
 an iterative empirical method succeeds for every admissible problem.
 
 The current realization-aware separator active-set workflow remains
-**experimental in v0.8**. The v0.9 stabilization target is different: ordinary
-downstream callers should have a supported high-level route for the package's
-main realization-aware separator inverse workflow. Promotion requires
-representative downstream use, regression/benchmark coverage, stable source and
-row provenance, atomic final-state semantics, and structured outer termination.
-Cycles, iteration limits, infeasibility, or numerical failure may remain normal
-reported outcomes. The promotion does not require every advanced active-set
-option, iteration record, or research diagnostic to become stable if the normal
-high-level contract does not depend on them.
+**experimental**, as in the published v0.8 baseline. Any future promotion
+requires separate approval backed by representative use, regression/benchmark
+coverage, clear provenance, consistent final-state semantics, and structured
+termination. Cycles, iteration limits, infeasibility, or numerical failure may
+remain normal reported outcomes; promotion is not a convergence theorem.
 
-Prescribed-measure fitting in v1.1 and mixed fitting in v1.2 may initially be
-experimental when:
-
-- supported domains are explicit;
-- target validation is implemented;
-- generated-data recovery tests exist;
-- gauge and empty-cell behavior are documented;
-- non-convergence returns structured diagnostics;
-- no stable API is forced to depend on the experimental solver.
-
-Promotion of those later inverse families from experimental to provisional or
-stable requires downstream use, benchmark coverage, and a public API audit.
+Prescribed-cell-measure and mixed separator-plus-measure inversion are possible
+research candidates only. Neither implementation, public API, architectural
+relationship, release target, nor pre-1.0 inclusion is approved. Separate
+mathematical analysis, representative use cases, validation strategy, and
+maintainer approval must precede implementation. Lifecycle categories cannot
+be assigned to nonexistent candidate APIs merely from historical plans.
 
 ## Downstream validation
 
-chemvoro is an intended early downstream consumer. Downstream evidence for
-v0.9 stabilization and the stronger 1.0 commitment should verify that a
+chemvoro is an intended early downstream consumer. Evidence for any separately approved
+stabilization effort should assess whether a
 chemistry-facing package can:
 
 - preserve atom IDs through forward and inverse workflows;
