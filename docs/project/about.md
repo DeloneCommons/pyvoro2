@@ -17,9 +17,9 @@ Its implemented inverse layer fits power weights from selected pairwise
 separator observations, reports compatibility, identifiability, and
 hard-constraint feasibility, and separates algebraic fitting from
 realized-boundary checks.
-v0.9 is reserved for functional/API stabilization and downstream readiness,
-1.0 stabilizes the existing core, prescribed cell measures begin in v1.1, and
-mixed separator-plus-measure problems begin in v1.2.
+The operational reboot starts from published v0.8.0; future geometry
+architecture and release scope are undecided under
+[ADR 0027](../development/decisions/0027-v0.9-reboot-from-v0.8.md).
 
 ## What is Voro++?
 
@@ -73,9 +73,10 @@ layer to compute cells, measures, boundaries, or periodic neighbor graphs.
 
 The inverse layer answers a different question: given fixed sites and partial
 geometric observations, which power weights reconcile those observations?
-The current method uses pairwise separator positions. The v1.1
-prescribed-measure work and v1.2 mixed work are intended to reuse the geometry
-and result contract stabilized through v0.9 and 1.0.
+The current method uses pairwise separator positions. Prescribed measures and
+mixed separator-plus-measure fitting are possible research candidates. Their
+implementation, public API, architectural relationship, release targets, and
+pre-1.0 inclusion require separate analysis and maintainer approval.
 
 The mathematical distinction between weights, backend radii, global gauge,
 disconnected observation offsets, and realized boundaries is described in the
@@ -134,10 +135,9 @@ for the development workflow.
   records the delivered release scope, accepted decisions, work packages,
   qualification evidence, and deferrals.
 - [Architecture](../development/architecture.md) describes the historical
-  baselines, implemented v0.8 architecture, and accepted post-v0.8 sequence.
+  baselines, implemented v0.8 architecture, and reboot scope boundaries.
 - [API lifecycle](../development/api-lifecycle.md) defines stability and
   compatibility.
 - [Decision records](../development/decisions/index.md) explain durable choices.
-- [Roadmap](roadmap.md) records v0.8 cleanup, v0.9 functional stabilization,
-  the stable 1.0 core, v1.1 prescribed measures, v1.2 mixed problems, and
-  future research.
+- [Roadmap](roadmap.md) records the published v0.8 baseline, operational
+  reboot, and uncommitted research candidates.

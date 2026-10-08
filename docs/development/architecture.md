@@ -3,7 +3,7 @@
 This document has three roles. It describes the **factual v0.6.3
 implementation**, which is the software baseline used by the separator-inverse
 manuscript, records the **v0.7.0 release architecture**, and explains
-the **current v0.8 implementation** and accepted extension boundaries.
+the **v0.8 implementation retained by the reboot**.
 
 !!! note "Current and historical documentation"
     The v0.6.3 section remains a historical manuscript baseline. The v0.7
@@ -11,6 +11,15 @@ the **current v0.8 implementation** and accepted extension boundaries.
     contract. Current sections describe the feature-free v0.8 cleanup fixed by
     ADR 0006. Lifecycle status is finalized in the
     [v0.8 API inventory](api-inventory.md).
+
+## Reboot authority
+
+[ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) governs the operational
+transition from published v0.8.0. The factual implementation below remains the
+baseline. Historical v0.9 designs and ADRs 0018–0026 are not adopted, and
+future geometry architecture and release scope remain undecided. PR2 owns the
+curated historical inventory. Earlier future-facing prescriptions do not fix
+the architecture of possible new inverse models.
 
 ## Architectural principles
 
@@ -465,11 +474,10 @@ v0.7.0 resolves that baseline limitation for both
 
 ### Separator-specific public organization
 
-The v0.6.3 `powerfit` surface grew around one observation family. Prescribed
-cell measures should not be implemented as a second unrelated module with its
-own geometry parsing, gauge policy, result vocabulary, and failure reporting.
-The current v0.8 tree resolves physical ownership under
-`pyvoro2.inverse.separator`; the terminology migration remains separate.
+The v0.6.3 `powerfit` surface grew around one observation family. The current
+v0.8 tree resolves separator ownership under `pyvoro2.inverse.separator`.
+Possible future inverse families require a separate architectural decision
+under ADR 0027; this historical motivation does not settle their relationship.
 
 ### Ambiguous gauge language for disconnected observations
 
@@ -489,7 +497,7 @@ v0.7 provided a bounded transition, and v0.8 removes those exports.
 
 ### Dependency direction
 
-The intended responsibility graph is:
+The implemented dependency direction is:
 
 ```text
 Domains and site configuration
@@ -503,19 +511,17 @@ Forward tessellation core ------> common result concepts
         v
 Inverse weighted-tessellation layer
     - separator observations (implemented)
-    - cell measures (later)
-    - mixed observations (later)
         |
         v
 Observation-specific + common inverse results
         |
         v
-Compatibility facades and downstream adapters
+Downstream adapters
 ```
 
 Dependencies should point downward. The forward core must not depend on inverse
-solvers. Observation blocks may use forward computation and common result
-concepts, but should not duplicate domain or periodic-image logic. Neutral
+solvers. The separator layer uses forward computation and common result concepts.
+The architectural relationship of future observation families is undecided. Neutral
 weight/radius transforms are a shared provider for forward and inverse callers
 and must not depend on `pyvoro2.powerfit` or either native extension.
 
@@ -752,87 +758,34 @@ The current v0.8 architecture already provides most of the intended boundary:
 8. no dependency on private backend radius shifts, solver internals, or record
    ordering accidents.
 
-v0.9 is now responsible for qualifying this boundary under realistic molecule,
-crystal, and independent-frame workflows and for removing remaining wrapper/API
-restrictions that would force chemistry-facing callers to use private data,
-manual radius conversion, or representation-dependent periodic search tuning.
-The realization-aware separator workflow must also become an ordinary supported
-inverse route rather than remain experimental solely because its outer algorithm
-has no universal convergence theorem.
+Further downstream qualification and the lifecycle of the realization-aware
+separator workflow require separately approved work. PR1 makes no API
+promotion or downstream-readiness claim. The current experimental status is
+retained; empirical convergence and supported public semantics remain separate
+questions.
 
-A repository-owned chemvoro-shaped integration suite is the preferred early
-oracle for this downstream boundary while keeping chemistry-specific models out
-of pyvoro2.
+A repository-owned chemvoro-shaped integration suite provides useful downstream
+evidence while keeping chemistry-specific models out of pyvoro2. Independent
+analytic or mathematical oracles are preferred for numerical correctness.
 
-## Release sequence from v0.8
+## Reboot and future scope
 
-[ADR 0017](decisions/0017-v0.9-functional-stabilization-before-1.0.md)
-supersedes the provisional post-v0.8 feature ordering in ADR 0006 without
-changing v0.8 itself.
+[ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) supersedes ADR 0017's
+future release sequence without reactivating ADR 0006's earlier sequence.
+The completed feature-free v0.8 cleanup remains the source baseline; PR1
+changes operations, policy, and development metadata, not geometry or APIs.
 
-### v0.8 cleanup and compatibility removal
+Prescribed-cell-measure inversion and mixed separator-plus-measure inversion
+are possible research candidates. Implementation, public API, architectural
+relationship, release targets, and pre-1.0 inclusion are unapproved. Either
+candidate needs separate mathematical analysis, representative use cases,
+validation strategy, and maintainer approval. No generic composition protocol
+or solver relationship is selected here.
 
-ADR 0006 makes v0.8 a feature-free maintenance release. It removes the bounded
-v0.7 compatibility layer, organizes tests by responsibility, moves root private
-Python helpers under `pyvoro2._internal`, and resolves accepted pre-release
-correctness and maintenance findings. The helper move is complete in the
-current tree: shared code is dimension-neutral, while genuine 3D and 2D
-behavior has explicit `spatial` and `planar` ownership. Compiled `_core` and
-`_core2d` names remain private native extension names; no public
-`pyvoro2.core` namespace is introduced.
-
-### v0.9 functional stabilization and downstream readiness
-
-v0.9 is the last planned broad pre-1.0 refinement release. It may make deliberate
-documented API changes to remove artificial forward/periodic restrictions,
-complete weight-first and periodic-query semantics, and qualify the public
-contract against real downstream use.
-
-The normal "points + separator observations -> fitted weighted tessellation"
-workflow should be promoted to a supported public inverse contract. The
-fixed-observation inner solve remains mathematically separate from the empirical
-realization-aware outer refinement. Stable status means stable input, result,
-provenance, and structured termination semantics; it does not promise that the
-outer algorithm converges on every input.
-
-Documentation work follows the same stabilization in three passes: factual
-alignment, content/information-architecture improvement, then presentation and
-possible documentation-stack redesign.
-
-### 1.0 stable main contract
-
-1.0 stabilizes the forward, periodic, and separator-inverse workflows after
-v0.9 downstream qualification. It does not depend on adding a second inverse
-observation family first.
-
-### v1.1 prescribed cell measures
-
-The second inverse family reuses the stable geometry and result contracts: fixed
-sites and domain, unknown weights, and target areas/volumes. Its first steps are
-measure extraction, target validation, residual evaluation, and a validated
-sensitivity operator before a nonlinear solver is exposed.
-
-### v1.2 mixed observations
-
-Only after separator and measure workflows both exist should the project decide
-whether a generic public observation-block protocol is warranted. Built-in
-per-row/per-site controls and explicit block scaling should be designed before
-freezing that boundary. The first mixed solver uses fixed sites and unknown
-weights only.
-
-### Additional unknowns and observations
-
-Site motion, centroids, sections, and other research extensions should enter as
-new explicit unknown or observation families. They must not be hidden options
-inside the stable weights-only solver.
-
-### Open package and backend policy
-
-The current v0.8 tree is one repository and one distribution with vendored
-Voro++ sources. ADR 0017 deliberately does not turn those current facts into a
-permanent policy. Pre-1.0 planning must still decide whether to require one
-repository/distribution through 1.0 and whether to adopt a formal
-no-persistent-functional-Voro++-fork rule.
+The current one-repository/one-distribution and vendored-backend arrangement
+remains factual v0.8 behavior, not a new permanent policy. Geometry architecture
+and release scope will be chosen separately after the operational transition
+and curated knowledge migration.
 
 ## Dependency rules
 
@@ -861,8 +814,8 @@ The current release line does not commit to:
 - a general computational-geometry framework competing with CGAL;
 - guaranteed convergence of the realization-aware active-set loop;
 - planar oblique-periodic support solely for symmetry with 3D;
-- prescribed-measure or mixed-observation work before the stable 1.0 core;
-- site motion as part of the stable 1.0 inverse workflow.
+- prescribed-measure or mixed-observation implementation;
+- site motion as part of the current inverse workflow.
 
 ## Keeping this document current
 

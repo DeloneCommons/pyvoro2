@@ -9,28 +9,31 @@ timeline, release plan, or list of every implementation task.
 - Decision records explain durable architectural choices.
 - The changelog records completed user-visible behavior.
 
-## Project direction
+## Current direction: operational reboot
 
-pyvoro2 will remain a forward 2D/3D Voronoi and power/Laguerre package with a
-first-class separator-based inverse layer.
+Development restarts from published v0.8.0 under
+[ADR 0027](../development/decisions/0027-v0.9-reboot-from-v0.8.md) and
+[issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120).
+The approved transition is PR1 operational bootstrap, followed by PR2 curated
+historical knowledge migration. Preserve implemented v0.8 behavior while
+restoring a manageable development process.
 
-The sequencing rule is:
+The previous v0.9 attempt is preserved at
+`archive/v0.9-attempt-2026-10-08`; its designs and ADRs 0018–0026 are not
+adopted automatically. Historical Checkpoint C remains pending/unaccepted;
+pre-Phase-D recovery and WP12/WP13 remain unfinished.
 
-> Complete technical cleanup in v0.8, use v0.9 for functional/API stabilization
-> and downstream readiness, stabilize the existing forward and separator inverse
-> workflows in 1.0, then add new inverse observation families after 1.0.
-
-The roadmap preserves potentially valuable workstreams so they are not lost.
-Exact issue grouping, implementation order within a release, and acceptance
-criteria belong to later development plans and GitHub issues. The post-v0.8
-sequence is recorded in
+Future geometry architecture and release scope are undecided. ADR 0017's
+v0.9, 1.0, v1.1, and v1.2 sequence is superseded, and ADR 0006's earlier
+sequence is not reactivated. Historical rationale remains in
 [ADR 0017](../development/decisions/0017-v0.9-functional-stabilization-before-1.0.md).
+Research candidates below do not authorize implementation.
 
 ## v0.7 — Forward and separator API stabilization (completed)
 
 The v0.7 line established the forward and separator-inverse architecture and a
-chemvoro-shaped downstream contract, but not the final downstream-readiness
-claim now assigned to v0.9.
+chemvoro-shaped downstream contract, without establishing a final downstream-readiness
+claim for the reboot.
 
 Delivered outcomes include:
 
@@ -46,12 +49,13 @@ Delivered outcomes include:
 
 See the [archived v0.7 development plan](../development/plans/archive/v0.7.md).
 
-## v0.8 — Technical maintenance and Python 3.14 (source finalized)
+## v0.8 — Technical maintenance and Python 3.14 (published)
 
 v0.8 is intentionally a **technical-maintenance release without new numerical
 functionality**. Its R1–R9 remediation and post-R9 `COPYING` distribution
-correction are complete in the finalized source. Issue #33 qualifies the exact
-source commit frozen after independent review before the public tag is created.
+correction are part of the published v0.8.0 baseline at
+`db0884c641de0998d190de8aeee1d45154e46aff`. Issue #33 is its historical release
+qualification record.
 
 Delivered outcomes include:
 
@@ -70,144 +74,36 @@ See the completed [v0.8 plan](../development/plans/archive/v0.8.md),
 [pre-release audit](../development/audits/v0.8-pre-release.md), and
 [ADR 0006](../development/decisions/0006-v0.8-cleanup-release.md).
 
-## v0.9 — Functional stabilization and downstream readiness
+## Possible future work
 
-v0.9 is the last planned broad pre-1.0 functional/API refinement release. Its
-purpose is to make the existing package a clean substrate for downstream
-molecule, crystal, and independent MD-frame workflows while deliberate
-pre-1.0 API changes are still inexpensive.
+Periodic geometry, weight-first queries, representation robustness, downstream
+usability, and separator-workflow stabilization remain subjects for assessment.
+The previous attempt's detailed requirements, outcomes, and defects belong in
+PR2's curated inventory. They are not a new implementation checklist here.
+A development version or historical success does not settle a geometry design,
+API promotion, release gate, or date.
 
-### Required release outcomes
+### Possible inverse research candidates
 
-- Remove artificial wrapper/API restrictions that materially affect intended
-  downstream workflows, especially periodic crystal use.
-- Complete the preferred weight-first and periodic-query/output semantics needed
-  by downstream code.
-- Use chemvoro-shaped workflows as a primary API qualification oracle without
-  moving chemistry-specific models or structure parsing into pyvoro2.
-- Promote the normal realization-aware separator workflow from experimental to
-  a **supported primary inverse contract**.
-- Perform a final broad API refinement pass before the stronger 1.0 promise.
-- Improve documentation in three ordered passes: **alignment**, then **content
-  and information architecture**, then **visual/navigation design**. Evaluate a
-  replacement for MkDocs Material only in the final pass rather than assuming
-  one in advance.
+- **Prescribed-cell-measure inversion:** infer power weights from cell areas
+  or volumes at fixed sites and domain.
+- **Mixed separator-plus-measure inversion:** investigate combining these two
+  kinds of observations.
 
-The separator promotion does not turn the empirical outer active-set algorithm
-into a convergence theorem. The fixed-observation inner problem remains the
-exact/convex mathematical layer. Cycles, iteration limits, infeasibility, or
-numerical failure may remain structured outcomes. Stable API means supported
-inputs, semantics, provenance, result/status vocabulary, and failure reporting;
-it does not mean every admissible problem converges.
+Neither candidate has approved implementation, public API, architectural
+relationship, release target, or pre-1.0 inclusion. Do not replace the former
+v1.1/v1.2 allocation with another version promise. Promoting either candidate
+requires separate mathematical analysis, representative use cases, a validation
+strategy, and maintainer approval. Substantive inverse-architecture reassessment
+belongs to later work, not PR1.
 
-The exact high-level inverse entry-point shape should be decided during v0.9.
-Ordinary callers should not need an API labelled experimental merely to perform
-"points + separator observations -> fitted weighted tessellation". Advanced
-path/iteration internals may remain provisional if the normal workflow does not
-depend on them.
+### Demand-driven engineering candidates
 
-### Candidate v0.9 workstreams to preserve
-
-These are candidates for later issue design, not a frozen issue list:
-
-| Workstream | Intended correction |
-|---|---|
-| Weight-first query parity | Add mathematically consistent `weights=` support to `locate` and `ghost_cells`, including common generator/ghost gauge conversion. |
-| Orientation-neutral `PeriodicCell` | Accept meaningful left- and right-handed user bases while preserving user vectors and integer shift labels. |
-| Fractional/geometric cell helpers | Add Cartesian↔fractional conversion and user-parallelepiped wrapping without changing backend-primary `remap_cart` semantics. |
-| Representation-robust minimum images | Use exact private unimodular basis reduction in certified minimum-image geometry and map shifts back to the user basis. |
-| Certified boundary image labels | Remove bounded-search correctness from face/edge image reconstruction. |
-| Periodic query/ghost metadata | Make original/wrapped query coordinates, owner/query shifts, and 2D/3D ghost boundary shifts coherent. |
-| Shift metadata without visible vertices | Permit internal temporary geometry for shift reconstruction without forcing detailed vertices into public output. |
-| Search/tolerance/repair API lifecycle | Reassess controls such as face/edge search windows once they no longer determine correctness. |
-| Separator inverse promotion | Stabilize the supported realization-aware high-level workflow while keeping empirical termination semantics explicit. |
-| Downstream contract suite | Exercise nonperiodic molecules, orthorhombic/triclinic crystals, equivalent lattice representations, stable IDs/weights/measures/shifts, inverse fitting, and repeated independent frames. |
-
-v0.9 does **not** mean implementing every mathematically possible wrapper
-extension. Broad wall-domain work, persistent trajectories, automatic global
-scaling, and similar expensive changes remain demand-driven unless real
-chemvoro/downstream use promotes them.
-
-## 1.0 — Stable main release and JOSS-ready core
-
-Version 1.0 follows v0.9 and stabilizes the functionality pyvoro2 already has.
-It does **not** wait for prescribed-measure or mixed inverse solvers.
-
-Expected gates:
-
-- forward and periodic contracts validated by real downstream use;
-- the normal separator inverse workflow supported through a non-experimental
-  public contract with structured realization and termination diagnostics;
-- a final public API, schema, capability, and lifecycle audit;
-- no correctness-critical public search knob whose value changes the scientific
-  answer for supported geometry;
-- complete install, test, documentation, notebook, and release paths;
-- reviewer-grade examples, benchmarks, reproducibility, citation, and archival
-  metadata;
-- JOSS preparation when repository history and release state are ready.
-
-The 1.0 promise stabilizes supported inputs, meanings, outputs, and failure
-semantics. It does not guarantee that every empirical iterative solve succeeds.
-
-## v1.1 — Prescribed cell measures
-
-The next inverse family targets fixed sites and domain, unknown power weights,
-and prescribed cell areas in 2D or volumes in 3D.
-
-Expected development order:
-
-1. common cell-measure extraction;
-2. target validation and explicit mass-balance policies;
-3. residual evaluation without solving;
-4. graph-structured sensitivity/Jacobian diagnostics;
-5. finite-difference validation on stable generated cases;
-6. select and implement an appropriate damped structure-aware nonlinear update;
-7. empty and near-empty cell diagnostics;
-8. generated-data recovery benchmarks;
-9. partial and noisy targets;
-10. expand from simpler 2D domains to stable 3D and periodic cases.
-
-The solver should be judged by generated-data recovery modulo gauge and
-structured failure diagnostics. Difficult periodic claims should reuse the
-periodic representation/image contracts stabilized before 1.0 rather than add a
-new correctness-sensitive search inside the measure solver.
-
-## v1.2 — Mixed inverse problems
-
-The first mixed problem should combine fixed-site, weights-only separator and
-cell-measure observations with explicit block/row scaling and separate final
-realization diagnostics.
-
-Before freezing a generic composition protocol, consider built-in controls that
-existing inverse workflows already need:
-
-- per-row/group hard bounds and robust-loss scales;
-- row-specific soft-penalty strengths where justified;
-- per-site regularization or anchor controls;
-- inspectable block and row objective contributions.
-
-A shared private composition interface may be sufficient initially. A generic
-**public** `ObservationBlock`-style protocol should be created only if the real
-separator and measure implementations justify it. Arbitrary user callbacks and
-site motion are not prerequisites for v1.2.
-
-## Post-1.0 demand-driven engineering
-
-Potentially valuable workstreams that should remain visible but are not release
-commitments include:
-
-- backend execution on a reduced equivalent periodic basis with geometry/shifts
-  mapped back to the user's basis;
-- exact clipping when generators lie outside the requested box;
-- dominated coincident-site preprocessing for unequal power weights;
-- optional automatic similarity scaling of coordinates, domains, weights/radii,
-  tolerances, and outputs;
-- public convex/wall domains;
-- persistent native containers, trajectory APIs, parallelism, or other
-  throughput work after profiling;
-- package/distribution split reassessment if a real inverse-only native-free
-  audience, second forward backend, divergent release cadence, or separate
-  maintainership appears.
+Potential directions without release commitments include improved periodic
+representation, explicit scaling, clipping/wall domains, coincident-site
+policies, persistent trajectories, performance work, and package-boundary
+reassessment. Concrete demand and a separately approved scope must precede
+implementation.
 
 ## Future research directions
 
@@ -235,34 +131,16 @@ pyvoro2 should expose structured failures and adopt useful upstream Voro++
 improvements when practical, but informational limitations are not scheduled
 features.
 
-## Pre-1.0 decisions still to confirm
+## Decisions and scope boundaries
 
-Two package-boundary policies remain explicit maintainer decisions rather than
-assumptions in this roadmap:
+Current v0.8 uses one repository and distribution with vendored Voro++.
+Whether to turn those facts into permanent package/backend policy remains an
+explicit maintainer decision. Future architecture and release targets require
+separate approval rather than inheritance from historical planning.
 
-1. whether to commit to **one repository and one distribution through 1.0**,
-   with strong internal forward/inverse boundaries and post-1.0 reassessment
-   under concrete triggers;
-2. whether to adopt a formal **no persistent pyvoro2-specific functional
-   Voro++ fork** policy, including the treatment of narrowly carried
-   correctness/upstream-backport patches.
-
-The v0.9/1.0 planning pass should settle these before they become release
-policy.
-
-## Explicit near-term non-goals
-
-- prescribed-measure or mixed inversion before 1.0;
-- spherical-surface tessellations;
-- a general-purpose replacement for broad geometry frameworks such as CGAL;
-- arbitrary user-defined nonlinear callbacks before built-in inverse families
-  establish a useful composition model;
-- GPU acceleration without demonstrated need;
-- site-coordinate optimization in the stable 1.0 inverse contract;
-- planar oblique-periodic support solely for API symmetry;
-- persistent trajectory/parallel APIs solely because MD is a downstream use
-  case;
-- preservation of historical inverse namespaces removed after v0.7.
+The operational transition does not authorize geometry or numerical rewrites,
+API changes, new inverse models, site motion, arbitrary objective callbacks,
+new domain families, GPU work, release qualification, or API freeze.
 
 ## Planning responsibilities
 

@@ -6,6 +6,17 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ## [Unreleased]
 
+### Changed
+
+- Bootstrap the v0.9 operational reboot from published v0.8.0: faster routine CI
+  with a required fail-closed gate and optional extended matrix, standard
+  editable-development guidance, simplified agent policy, version/tag checks,
+  and main-only documentation deployment. Development metadata is `0.9.0.dev0`;
+  numerical behavior and public API are unchanged.
+- Supersede the former release sequence in ADR 0027. Historical v0.9 designs
+  remain unadopted; prescribed-measure and mixed inversion are research
+  candidates without committed implementation or release targets.
+
 ## [0.8.0] - 2026-08-17
 
 ### Added

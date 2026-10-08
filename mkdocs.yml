@@ -105,7 +105,8 @@ nav:
           - Two-layer separator observation and source identity: development/decisions/0014-separator-observation-and-source-identity.md
           - Atomic separator active-set final state: development/decisions/0015-atomic-separator-active-state.md
           - Severity-complete tessellation diagnostics: development/decisions/0016-severity-complete-tessellation-diagnostics.md
-          - Post-v0.8 stabilization before 1.0: development/decisions/0017-v0.9-functional-stabilization-before-1.0.md
+          - Historical post-v0.8 sequence (superseded): development/decisions/0017-v0.9-functional-stabilization-before-1.0.md
+          - v0.9 reboot from v0.8: development/decisions/0027-v0.9-reboot-from-v0.8.md
   - Examples:
       - notebooks/01_basic_compute.md
       - notebooks/02_periodic_graph.md

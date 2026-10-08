@@ -9,24 +9,28 @@ milestones.
 
 ## Current plans
 
-No post-v0.8 plan is currently active. Future substantial work requires a
-separately reviewed and activated plan; a v0.9 plan is not implied merely by
-completion of v0.8.
+The approved current workstream is the operational reboot under
+[issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120) and
+[ADR 0027](../decisions/0027-v0.9-reboot-from-v0.8.md): PR1 operational bootstrap,
+then PR2 curated historical knowledge migration. This is not a new geometric
+implementation plan or release qualification. No future release scope is fixed.
 
-The completed [v0.8 technical-maintenance plan](archive/v0.8.md) and
-[v0.8 remediation plan](archive/v0.8-remediation.md) are preserved in the
-archive. R1–R9 and the post-R9 `COPYING` distribution correction are complete.
-After source finalization and independent review, issue #33 qualifies the exact
-frozen source commit and its artifacts before the public tag is created.
-v0.8.0 uses Git tag, GitHub Release, and PyPI distribution without a new
-pyvoro2 Zenodo software-version record.
+Published v0.8.0 is the source baseline. The completed
+[v0.8 technical-maintenance plan](archive/v0.8.md),
+[v0.8 remediation plan](archive/v0.8-remediation.md), and
+[v0.7 stabilization plan](archive/v0.7.md) remain archived history.
 
-The roadmap reserves v0.9 for functional/API stabilization and downstream
-readiness, followed by the stable 1.0 core; prescribed cell measures move to
-v1.1 and mixed separator-plus-measure work to v1.2.
+The former v0.9 attempt is preserved at the protected archive named in ADR
+0027. Its Checkpoint C remains pending/unaccepted, and pre-Phase-D recovery,
+WP12, and WP13 remain unfinished. Its plans and ADRs 0018–0026 are not active
+reboot authority. PR2 owns their curated inventory and adoption status.
 
-The completed [v0.7 forward and separator API stabilization plan](archive/v0.7.md)
-is also preserved in the archive.
+ADR 0017's future v0.9/1.0/v1.1/v1.2 sequence is superseded without reviving
+ADR 0006's earlier sequence. Prescribed measures and mixed inversion are
+possible research candidates only, with no implementation, API, architectural
+relationship, release target, or pre-1.0 inclusion approved. Promotion requires
+separate mathematical analysis, representative use cases, validation strategy,
+and maintainer approval.
 
 ## Plan lifecycle
 

@@ -128,9 +128,13 @@ replacements.
 | Realization-aware active-set refinement | Experimental | Opt-in diagnostic outer algorithm |
 | v0.7-only inverse and planar compatibility routes | Removed in v0.8 | Follow the migration guide |
 | v0.8 cleanup and compatibility removal | Implemented maintenance scope | No new numerical features |
-| v0.9 functional/API stabilization | Planned before 1.0 | Refines existing forward, periodic, and separator workflows |
-| Prescribed cell areas/volumes | Planned for v1.1 | Not implemented |
-| Mixed separator and cell-measure fitting | Planned for v1.2 | Not implemented |
+| Operational reboot | Approved transition | Preserves v0.8 behavior; future release scope undecided |
+| Prescribed cell areas/volumes | Possible research candidate | Not implemented; no approved release target |
+| Mixed separator and cell-measure fitting | Possible research candidate | Not implemented; no approved release target |
+
+[ADR 0027](../development/decisions/0027-v0.9-reboot-from-v0.8.md) governs
+future candidate status; their implementation, APIs, and architectural
+relationship require separate approval.
 
 The complete name-by-name contract is in the
 [v0.8 API inventory](../development/api-inventory.md). The

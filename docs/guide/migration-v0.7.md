@@ -242,8 +242,9 @@ the [separator-fitting guide](powerfit.md).
 | planar `return_result=` | Removed |
 | `output='cells'` | Retained as an explicit useful raw-output mode |
 
-v0.8 is a cleanup-only release. v0.9 performs functional/API stabilization and
-downstream readiness, 1.0 stabilizes the existing core, prescribed cell
-measures begin in v1.1, and mixed separator-plus-measure fitting begins in v1.2.
+v0.8 is a cleanup-only release. The reboot preserves this baseline;
+[ADR 0027](../development/decisions/0027-v0.9-reboot-from-v0.8.md) supersedes
+the former future release sequence. Prescribed measures and mixed fitting are
+research candidates without approved implementation or release targets.
 Canonical numerical algorithms, defaults, result fields, record keys, and gauge
 behavior are unchanged by these removals.

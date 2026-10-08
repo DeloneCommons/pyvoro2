@@ -12,7 +12,7 @@ contributors, reviewers, coding agents, and downstream package authors.
 | How do I use the current package? | [User guide](../guide/concepts.md) and [API reference](../reference/index.md) |
 | What mathematics does it implement? | [Theory](../theory/index.md) |
 | How does work move from proposal to release? | [Development workflow](development-workflow.md) |
-| What work is planned next? | [Development plans](plans/index.md); no post-v0.8 plan is currently active, and the completed [v0.8 cleanup plan](plans/archive/v0.8.md) and [audit remediation plan](plans/archive/v0.8-remediation.md) are archived |
+| What work is planned next? | [Reboot transition / ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) and [development plans](plans/index.md); future release scope is undecided |
 | Which concrete APIs are stable, provisional, experimental, removed, or internal? | [v0.8 API inventory](api-inventory.md) and [API lifecycle](api-lifecycle.md) |
 | How should repository documentation be written? | [Documentation conventions](documentation-conventions.md) |
 | How are modules and layers organized? | [Architecture](architecture.md) |
@@ -28,14 +28,17 @@ contributors, reviewers, coding agents, and downstream package authors.
 The current source code and tests remain the source of truth for implemented
 behavior. User guides and reference pages describe that behavior for callers.
 
-Accepted decision records and architecture documentation define durable
-boundaries. An **active** development plan defines approved release scope and
-gates. The v0.7 and v0.8 plans are **Completed** and archived; no post-v0.8
-plan is currently active. v0.8 R1–R9 and the post-R9 `COPYING` distribution
-correction are complete. After source finalization and independent review,
-issue #33 qualifies the exact frozen source commit and its artifacts before the
-public tag is created. The roadmap describes version-level direction rather
-than current functionality.
+[ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) governs the operational
+reboot from published v0.8.0. PR1 restores development operations; PR2 owns
+curated historical knowledge migration. The former v0.9 attempt and ADRs
+0018–0026 are evidence, not adopted architecture. Its Checkpoint C remains
+unaccepted. Future geometry architecture and release scope are undecided;
+prescribed measures and mixed inversion are research candidates only.
+
+The v0.7 and v0.8 plans are completed and archived. Existing v0.8 behavior and
+its API inventory remain the baseline; the development version does not imply
+new numerical behavior or API promotion. The roadmap distinguishes current
+approved work from future candidates.
 
 Detailed progress belongs in GitHub issues. The API inventory is updated with
 public changes, and completed user-visible behavior is recorded in the dated

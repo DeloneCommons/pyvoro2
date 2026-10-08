@@ -83,11 +83,20 @@ When text combines current and future behavior, label the boundary explicitly.
 For example:
 
 > The current API accepts direct mathematical `weights=` and does not expose
-> the removed v0.7 compatibility routes. Prescribed-measure fitting is targeted
-> for v1.1 rather than described as current behavior.
+> the removed v0.7 compatibility routes. Prescribed-measure fitting is a
+> possible research candidate without approved implementation or release scope.
 
 Avoid words such as “soon,” “eventually,” or “later” when a more precise status
 is available.
+
+During the reboot, distinguish published v0.8 behavior, the superseded
+historical v0.9 attempt, the approved operational transition, research
+candidates, and separately approved implementation. Follow
+[ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md): historical ADRs 0018–0026
+are not adopted; future architecture and release scope are undecided.
+Prescribed measures and mixed inversion have no approved API, architectural
+relationship, implementation, release target, or pre-1.0 inclusion. Do not
+turn their old version assignments into new promises.
 
 ## Tense and claims
 

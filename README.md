@@ -11,11 +11,12 @@
 and power/Laguerre tessellations**, with particular support for periodic
 topology and inverse fitting of power weights from partial geometric data.
 
-> **pyvoro2 0.8.0:** this source describes the finalized v0.8 release contract.
-> One exact source commit is independently reviewed and qualified with its
-> artifacts under issue #33 before the public tag is created. The archived
-> v0.6.3 release remains the software baseline cited by the current
-> separator-inverse manuscript.
+> **Development reboot — 0.9.0.dev0:** development restarts from published
+> v0.8.0, preserving its numerical behavior and public API. The previous v0.9
+> attempt is historical evidence; future architecture and release scope remain
+> undecided. See [ADR 0027](https://delonecommons.github.io/pyvoro2/development/decisions/0027-v0.9-reboot-from-v0.8/).
+> The archived v0.6.3 release remains the separator-inverse manuscript baseline.
+
 
 The v0.8 tree provides:
 
@@ -30,12 +31,10 @@ The v0.8 tree provides:
   diagnostics, hard-constraint witnesses, realized-boundary matching, and an
   optional realization-aware active-set loop.
 
-The package is evolving toward a stable architecture for **forward and inverse
-weighted tessellations**. v0.8 is a feature-free maintenance and
-compatibility-removal release. v0.9 is reserved for functional/API
-stabilization and downstream readiness, 1.0 stabilizes the existing core,
-prescribed cell measures begin in v1.1, and mixed separator-plus-measure fitting
-begins in v1.2.
+The current reboot restores development operations before selecting further
+implementation work. Prescribed-cell-measure and mixed separator-plus-measure
+inversion are possible research candidates without approved implementation,
+architecture, or release assignments.
 
 pyvoro2 is designed to be explicit and predictable:
 
@@ -264,7 +263,7 @@ of the Python-side contracts needed in scientific workflows. pyvoro2 adds:
 | [Examples](https://delonecommons.github.io/pyvoro2/guide/notebooks/) | Executable notebook workflows. |
 | [API reference](https://delonecommons.github.io/pyvoro2/reference/) | Exact signatures and docstring reference for spatial, planar, and separator-fitting APIs. |
 | [v0.8.0 release notes](https://delonecommons.github.io/pyvoro2/project/release-notes-v0.8/) | Removals, fixes, maintenance, documentation, and the release distribution contract. |
-| [Roadmap](https://delonecommons.github.io/pyvoro2/project/roadmap/) | v0.8 cleanup, v0.9 functional stabilization, the stable 1.0 core, v1.1 prescribed measures, v1.2 mixed fitting, and future research. |
+| [Roadmap](https://delonecommons.github.io/pyvoro2/project/roadmap/) | Published v0.8 baseline, operational reboot, and uncommitted research directions. |
 
 ## Installation
 
@@ -344,18 +343,14 @@ python tools/release_check.py
 
 ## Project status and support
 
-pyvoro2 is currently **beta**. This source describes v0.8.0, including the
-completed compatibility removal, Python 3.14 and wheel-matrix preparation, and
-the accepted bounded API-contract corrections. The v0.8 source is finalized
-before one exact commit and its artifacts are qualified under issue #33; any
-tracked correction changes that candidate. The archived v0.6.3 release remains
-the software baseline cited by the separator-inverse manuscript. The v0.8.0
-release uses the project Git tag, GitHub Release, and package-distribution
-process and intentionally creates no new pyvoro2 Zenodo software-version
-record. Existing historical pyvoro2 and project/reproducibility Zenodo records
-remain valid. New inverse families begin after the stable 1.0 core. See the
-[v0.8.0 release notes](https://delonecommons.github.io/pyvoro2/project/release-notes-v0.8/) and the
-[completed v0.8 plans](https://delonecommons.github.io/pyvoro2/development/plans/archive/).
+pyvoro2 is currently **beta**. This development source retains published
+v0.8.0 numerical behavior and public API while bootstrapping the operational
+reboot. Future architecture and release scope are undecided under
+[ADR 0027](https://delonecommons.github.io/pyvoro2/development/decisions/0027-v0.9-reboot-from-v0.8/).
+The archived v0.6.3 release remains the separator-inverse manuscript baseline.
+See the [v0.8.0 release notes](https://delonecommons.github.io/pyvoro2/project/release-notes-v0.8/) and
+[completed v0.8 plans](https://delonecommons.github.io/pyvoro2/development/plans/archive/) for historical
+release and publication decisions; their future sequence has been superseded.
 
 Reproducible bugs and focused feature proposals are welcome through GitHub
 issues. Development is currently led by one maintainer, so support is
