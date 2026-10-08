@@ -314,8 +314,11 @@ the external #96 atlas; the full campaign and provenance graph are not tracked.
 | `test_successful_power_five_audit_is_not_e_s_vertex_bijection` | E counts 29/59/35/5 and S 28/58/35/5 despite successful audit; dyadic-radius control restores E=S. |
 
 The finite atlas found no retained lower-dimensional N face among 5,634 packet
-and 304 pilot faces; this is not impossibility. Twelve saved strict failures
-remain. The oracle assumes full-dimensional cells for this corpus. Synthetic
+and 304 pilot faces; this is not impossibility. The external atlas recorded
+twelve strict failures, with dispositions preserved in the [regression
+catalogue][spatial-dispositions]; only the representative bipyramid failure
+was retained as a maintained regression in the 33-case subset. The oracle
+assumes full-dimensional cells for this corpus. Synthetic
 fragment controls are labeled synthetic. [PR #100][p100]'s incidence-first
 proposal and direct semantic construction remain open, with no spatial
 projection engine adopted.
@@ -422,7 +425,7 @@ retain this distinction. The normal RHS uses complete
 
 | Preserved test | Independent fact or regression; scope |
 |---|---|
-| [test_row_fit.py][row-fit] `test_mixed_space_hand_computable_anchor` | 2D, d=2, source fraction 1/4; position squared loss plus fraction interval/soft penalty. Independently `J(p)=(p-.5)^2/2+8*(.375-p/2)^2`, minimizer p=7/10, z=-6/5, J=1/40; explicit ADMM. |
+| [test_row_fit.py][row-fit] `test_mixed_space_hand_computable_anchor` | 2D, d=2, source fraction 1/4; position squared loss plus fraction interval/soft penalty. On the lower active branch `p < 3/4`, independent arithmetic gives `J(p)=(p-.5)^2/2+8*(.375-p/2)^2`, minimized at p=7/10 with z=-6/5 and J=1/40; explicit ADMM. |
 | [test_row_prox.py][row-prox] `test_policy_complete_prox_key_separates_the_analytic_strength_anchor` | Rational minima 3/8 versus 3/10 distinguish strengths 1 and 4. Separate nondyadic scale 3/7 and offset -1/11 controls; batching sentries are structural regressions. |
 | [test_row_oracles.py][row-oracles] `test_unequal_distance_mixed_prox_matches_original_unit_decimal_minimum` | Independent 80-digit Decimal derivative bisection, d=sqrt(2),2; 24 combinations of source/mismatch spaces, three penalties and squared/Huber losses. |
 | [test_row_active.py][row-active] `test_active_drop_reentry_and_final_refit_use_original_candidate_policy` | Controlled schedule verifies projection/re-entry association; separate native 2D/3D image cases exercise real geometry. |

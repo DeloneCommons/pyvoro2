@@ -390,8 +390,10 @@ construction is a separate hypothesis, not this implementation's conclusion.
 Issue #96's independent atlas and #99/PR #103 fixed a bounded numerical spatial
 contract, without importing a 3D exact identity adapter. The maintained subset
 has 33 input-only cases spanning 16 archetypes, including seven strict-pass
-semantic disagreements; 12 strict failures remain. Eighty-four further physical
-variants were not promoted because they repeated mechanisms. A search finding
+semantic disagreements. The external atlas recorded twelve strict
+failures; their dispositions remain documented, but only the representative
+bipyramid failure was retained as a maintained regression. Eighty-four further
+physical variants were not promoted because they repeated mechanisms. A search finding
 no retained lower-dimensional native face among 5,634 plus 304 examined faces
 is a bounded negative observation, not a theorem.
 
@@ -582,7 +584,7 @@ Issue #116/PR #117 repaired four integrated-C findings under [ADR 0026][h-adr26]
 | Finding | Requirement and historical correction | Relevant baseline impact |
 |---|---|---|
 | F1 — false hard success after final reference alignment | Re-evaluate each unchanged hard predicate on the actual returned weights; unrelated global maxima of violation/tolerance are not a valid test. Impossible binary64 representatives may yield `numerical_failure`; false successful public reconstruction is rejected even without canonicalization. | Baseline final-state contract exists, but later guards are absent; assess each reproducer before asserting the same baseline failure. |
-| F2 — source/model diagnostic confusion | Keep source diagnostics source-owned; a genuinely unavailable diagnostic need not invalidate finite model weights/objective/geometry. Nullable output is limited to typed producer-owned fields. | Independent spaces and later availability/schema handling are absent. |
+| F2 — diagnostic representability and reportability | Keep source diagnostics source-owned; a genuinely unavailable diagnostic need not invalidate finite model weights/objective/geometry. Nullable output is limited to typed producer-owned fields. | Independent spaces and later availability/schema handling are absent. |
 | F3 — cancellation hidden by rounded prediction | Compute the complete affine residual from original operands and each actual evaluated weight vector, including relaxed history; rounded prediction minus target can erase a real residual. Reconstructing two mutually wrong result layers is not validation. | Preserve the counterexample independently of old result builders. |
 | F4 — zero-L2 and no-work states | At zero L2, separate coupling components use the declared reference/zero conventions; singleton values equal reference exactly, and empty fits return reference/zeros. One connected multisite component retains its solver anchor; positive L2 does not permit gauge alignment. | Baseline component-offset mathematics remains; later edge-case repairs need explicit reassessment. |
 
