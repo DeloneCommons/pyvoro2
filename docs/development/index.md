@@ -19,6 +19,7 @@ contributors, reviewers, coding agents, and downstream package authors.
 | Why was a durable choice made? | [Decision records](decisions/index.md) |
 | What is planned over several releases? | [Roadmap](../project/roadmap.md) |
 | What historical work produced v0.8? | [v0.8 audit/remediation record](audits/v0.8-pre-release.md), [completed remediation plan](plans/archive/v0.8-remediation.md), GitHub issues, and milestones |
+| What did the former v0.9 attempt establish? | [Historical knowledge](reboot/index.md), [requirements inventory](reboot/requirements-inventory.md), and [evidence index](reboot/evidence-index.md); historical acceptance is separate from reboot adoption |
 | How do I prepare a change? | [`CONTRIBUTING.md`](https://github.com/DeloneCommons/pyvoro2/blob/main/CONTRIBUTING.md) |
 | What changed historically? | [Changelog](../about/changelog.md) |
 | What is included in v0.8.0? | [v0.8.0 release notes](../project/release-notes-v0.8.md) |
