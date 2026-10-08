@@ -2121,7 +2121,14 @@ def test_direct_affine_mismatch_value_survives_nonrepresentable_residual(
         prediction = problem.predict(weights)
         breakdown = problem.objective_breakdown(weights)
 
-    assert np.isfinite(prediction.measurement[0])
+    exact_prediction = (
+        Fraction(float(problem.beta[0]))
+        + Fraction(float(problem.alpha[0])) * Fraction(float(weights[0]))
+        - Fraction(float(problem.alpha[0])) * Fraction(float(weights[1]))
+    )
+    # MAX + 1/2 rounds to MAX but is mathematically outside diagnostic range.
+    assert exact_prediction > Fraction(float(maximum))
+    assert np.isposinf(prediction.measurement[0])
     assert breakdown.mismatch == pytest.approx(expected, rel=8e-15)
     assert np.isfinite(breakdown.mismatch)
 

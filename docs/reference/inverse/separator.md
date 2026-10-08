@@ -15,8 +15,8 @@ objects on this page are **Provisional**. The active engine and its controls are
 **Experimental**. Ordinary callers use the
 [preferred facade](index.md#realization-aware-workflow), which is not an advanced
 export. The optional explicit sparse quadratic backend is
-**provisional** and is limited to the static squared-loss branch documented
-below.
+**provisional** and serves direct quadratic fits and ADMM weight updates as
+documented below.
 
 Separator external IDs are unique non-negative integers aligned with input-site
 order. Python integers and NumPy integer scalars are accepted consistently by
@@ -470,13 +470,29 @@ records retain local maps. Enrichment merges maps and rebasing copies them.
 Structural nulls, such as absent final weights, have no reason entry. Finite
 leaves have no entry.
 
-Source weighted norms use complete affine source residuals and apply
-`sqrt(confidence)` before materializing a possibly overflowing residual.
-Weighted RMSE divides squared weighted residuals by the number of rows, not
-the sum of confidence. Aggregate availability is evaluated independently: a
-row outside range can still have a representable weighted norm or RMS.
+Source weighted norms use complete affine source residuals. Their range is
+classified from `sum(confidence * residual**2)` with the original accepted
+binary64 operands, before rounding a square root or materializing a row.
+Weighted RMSE divides this sum by the number of rows, including zero-confidence
+rows, not the sum of confidence. Row and max availability also precede rounding:
+an exact value above the largest finite binary64 value remains unavailable even
+if conversion would round it back to that value. Aggregate availability is
+evaluated independently: a row outside range can still have a representable
+weighted norm or RMS. Ordinary finite values retain binary64 rounding semantics.
+Hard certification and penalty evaluation retain their existing conditioned
+binary64 predictions independently of diagnostic range flags.
 Unavailable dependencies propagate without dropping rows. Source algebraic
 RMSE/MAE retain difference-space residuals.
+
+Source edge leaves also classify range from original accepted operands:
+`z_fit=w_i-w_j`, `z_obs=(target-beta)/alpha_source`,
+`algebraic_residual=(target-beta)/alpha_source-w_i+w_j`, and
+`edge_weight=confidence*alpha_source**2`. Each leaf is independent: unavailable
+`z_obs` or `z_fit` can coexist with an available complete algebraic residual.
+Zero confidence removes source-curvature work before evaluation. Diagnostic
+evaluation routes exceptional rows before unsafe intermediate multiplication,
+so a finite complete diagnostic remains available under strict NumPy error
+policy without avoidable overflow warnings.
 
 Inputs, target representations, confidence, model policy, successful weights,
 radii/shift, objective components, hard metrics, geometry and identity remain

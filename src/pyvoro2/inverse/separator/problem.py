@@ -38,20 +38,20 @@ from ._objective import (
     _quadratic_row_data,
 )
 from ._numerics import (
+    _stable_affine_residual,
     _stable_incidence_accumulate,
     _stable_mean_abs,
-    _stable_product,
     _stable_ratio_difference,
     _stable_rms,
-    _stable_scaled_difference,
     _stable_sum_products,
     _stable_sum_scalar,
 )
 from .constraints import SeparatorObservations
 from ._diagnostics import (
     _affine_diagnostic, _affine_rms,
-    _derived, _exact_mean_diagnostic, _has_dependency,
-    _max_diagnostic, _norm_diagnostic,
+    _derived, _difference_diagnostic, _exact_mean_diagnostic, _has_dependency,
+    _max_diagnostic, _ratio_affine_diagnostic, _source_edge_weight_diagnostic,
+    _weighted_affine_norms,
 )
 from ._identity import (
     _bind_originating_observations, _require_observation_association,
@@ -395,8 +395,7 @@ class SeparatorFitProblem(_PolicyStorage):
         weights: np.ndarray,
     ) -> PowerFitObjectiveBreakdown:
         w = _validated_weight_vector(self, weights)
-        predictions = _predict_all(self, w)
-        return _objective_breakdown(self, predictions, w)
+        return _objective_breakdown(self, w)
 
     def evaluate_objective(self, weights: np.ndarray) -> float:
         parts = self.objective_breakdown(weights)
@@ -581,7 +580,7 @@ def build_power_fit_result(
         weights=w,
         predictions=predictions,
     )
-    objective_breakdown = _objective_breakdown(problem, predictions, w)
+    objective_breakdown = _objective_breakdown(problem, w)
     _require_final_success(objective_breakdown, status, converged_value)
     warnings_list = list(warnings)
     if not objective_breakdown.hard_constraints_satisfied:
@@ -786,7 +785,7 @@ def _source_diagnostic_values(constraints, weights):
         geom.beta, geom.alpha, left, right, geom.target,
     )
     return {
-        'difference': _derived(_stable_scaled_difference(left, right, 1.)),
+        'difference': _difference_diagnostic(left, right),
         'predicted_fraction': fraction,
         'predicted_position': position,
         'predicted': (fraction if constraints.measurement == 'fraction'
@@ -812,36 +811,8 @@ def _measurement_residuals(
     ).value
 
 
-def _algebraic_residual_diagnostic(geom, left, right, z_obs, z_fit):
-    normal = np.isfinite(z_obs.value) & np.isfinite(z_fit.value)
-    values = np.zeros(normal.shape, dtype=float)
-    values[normal] = _stable_scaled_difference(
-        z_obs.value[normal], z_fit.value[normal], 1.,
-    )
-    available = normal.copy()
-    recover = ~normal & np.isfinite(geom.alpha)
-    large_alpha = recover & (geom.alpha >= 1.)
-    if np.any(large_alpha):
-        evaluated = _affine_diagnostic(
-            geom.beta[large_alpha], geom.alpha[large_alpha],
-            left[large_alpha], right[large_alpha], geom.target[large_alpha],
-            -_stable_ratio_difference(1., 0., geom.alpha[large_alpha]),
-        )
-        values[large_alpha] = evaluated.value
-        available[large_alpha] = True
-    small_alpha = recover & ~large_alpha
-    if np.any(small_alpha):
-        residual = _affine_diagnostic(
-            geom.beta[small_alpha], geom.alpha[small_alpha],
-            left[small_alpha], right[small_alpha], geom.target[small_alpha],
-        )
-        # Dividing a proven outside-range row by 0 < alpha < 1 cannot
-        # restore representability. Finite rows use the existing ratio owner.
-        values[small_alpha] = _stable_ratio_difference(
-            0., residual.value, geom.alpha[small_alpha],
-        )
-        available[small_alpha] = True
-    return _derived(values, operands_available=available)
+def _algebraic_residual_diagnostic(geom, left, right):
+    return _ratio_affine_diagnostic(geom.alpha, geom.beta, geom.target, left, right)
 
 
 def _algebraic_reduction(geom, left, right, z_obs, z_fit, rows, *, mean_abs):
@@ -887,22 +858,12 @@ def _algebraic_reduction(geom, left, right, z_obs, z_fit, rows, *, mean_abs):
 def _edge_diagnostic_values(constraints, weights, *, geom=None):
     geom = _measurement_geometry(constraints) if geom is None else geom
     alpha, beta, target = geom.alpha, geom.beta, geom.target
-    coefficient_available = np.isfinite(alpha) & np.isfinite(beta)
     confidence = np.asarray(constraints.confidence, dtype=float)
-    absent = confidence == 0.
-    work = ~absent & coefficient_available
-    rho = np.zeros(alpha.shape, dtype=float)
-    rho[work] = _stable_product(confidence[work], alpha[work], alpha[work])
     values = {
         'alpha': _derived(alpha),
         'beta': _derived(beta),
-        'z_obs': _derived(
-            _stable_ratio_difference(target, beta, alpha),
-            operands_available=coefficient_available,
-        ),
-        'edge_weight': _derived(
-            rho, operands_available=coefficient_available | absent,
-        ),
+        'z_obs': _ratio_affine_diagnostic(alpha, beta, target),
+        'edge_weight': _source_edge_weight_diagnostic(confidence, alpha, beta),
     }
     if weights is None:
         values.update({name: _derived(None) for name in (
@@ -910,20 +871,16 @@ def _edge_diagnostic_values(constraints, weights, *, geom=None):
         )})
         return values
     left, right = weights[constraints.i], weights[constraints.j]
-    z_fit = _derived(_stable_scaled_difference(left, right, 1.))
-    residual = _algebraic_residual_diagnostic(
-        geom, left, right, values['z_obs'], z_fit,
-    )
-    weighted = _affine_diagnostic(
-        beta, alpha, left, right, target, np.sqrt(confidence),
+    z_fit = _difference_diagnostic(left, right)
+    residual = _algebraic_residual_diagnostic(geom, left, right)
+    weighted_l2, weighted_rmse = _weighted_affine_norms(
+        beta, alpha, left, right, target, confidence,
     )
     values.update({
         'z_fit': z_fit,
         'residual': residual,
-        'weighted_l2': _norm_diagnostic(weighted),
-        'weighted_rmse': _affine_rms(
-            beta, alpha, left, right, target, weighted, np.sqrt(confidence),
-        ),
+        'weighted_l2': weighted_l2,
+        'weighted_rmse': weighted_rmse,
         'rmse': _algebraic_reduction(
             geom, left, right, values['z_obs'], z_fit, residual, mean_abs=False,
         ),
@@ -976,9 +933,7 @@ def _fit_diagnostic_values(result, constraints):
             problem = _build_power_fit_problem(
                 constraints, model=policy.model, compile_hard=False,
             )
-            breakdown = _objective_breakdown(
-                problem, _predictions_from_diagnostics(source), weights,
-            )
+            breakdown = _objective_breakdown(problem, weights)
             _require_final_success(breakdown, result.status, result.converged)
             if result.objective_breakdown is not None:
                 _require_final_success(
@@ -1055,10 +1010,23 @@ def _penalty_values(
     return _penalty_value(measurement, penalty)
 
 
-def _hard_constraint_status(
-    problem: SeparatorFitProblem,
-    predictions: PowerFitPredictions,
-) -> tuple[bool, float, float]:
+def _control_prediction(geometry, left, right):
+    """Retain conditioned binary64 values for strict objective/hard semantics.
+
+    Diagnostic range flags cannot replace inputs to these existing predicates:
+    e.g. MAX + 1/2 rounds to MAX here but is unavailable in a diagnostic report.
+    """
+    available = np.logical_and.reduce([
+        np.isfinite(v) for v in (geometry.beta, geometry.alpha, left, right)
+    ])
+    value = _stable_affine_residual(
+        geometry.beta, geometry.alpha, left, right, 0., active=available,
+    )
+    value[~available] = np.nan
+    return value
+
+
+def _hard_constraint_status(problem, weights) -> tuple[bool, float, float]:
     lower = problem.bounds.measurement_lower
     upper = problem.bounds.measurement_upper
     if lower is None or upper is None:
@@ -1066,8 +1034,10 @@ def _hard_constraint_status(
     applicable = problem.bounds.applicable
     if not np.any(applicable):
         return True, 0.0, 0.0
-    y = (predictions.fraction if problem.hard_constraint_space == 'fraction'
-         else predictions.position)
+    geometry = _measurement_geometry(problem.constraints, problem.hard_constraint_space)
+    y = _control_prediction(
+        geometry, weights[problem.constraints.i], weights[problem.constraints.j],
+    )
     satisfied, violation, tolerance = _hard_row_status(
         lower[applicable], y[applicable], upper[applicable],
     )
@@ -1080,7 +1050,6 @@ def _hard_constraint_status(
 
 def _objective_breakdown(
     problem: SeparatorFitProblem,
-    predictions: PowerFitPredictions,
     weights: np.ndarray,
 ) -> PowerFitObjectiveBreakdown:
     confidence = np.asarray(problem.constraints.confidence, dtype=np.float64)
@@ -1104,8 +1073,7 @@ def _objective_breakdown(
         if np.any(active):
             space = problem.penalty_spaces[term_index]
             geometry = _measurement_geometry(problem.constraints, space)
-            measurement = (predictions.fraction if space == 'fraction'
-                           else predictions.position)
+            measurement = _control_prediction(geometry, left, right)
             # Row templates are scalarized at the owned policy seam. No absent
             # lane reaches reciprocal or exponential arithmetic.
             if any(isinstance(getattr(penalty, name), np.ndarray)
@@ -1134,7 +1102,7 @@ def _objective_breakdown(
         hard_satisfied,
         hard_max_violation,
         hard_max_tolerance,
-    ) = _hard_constraint_status(problem, predictions)
+    ) = _hard_constraint_status(problem, weights)
     total = _stable_sum_scalar(mismatch, penalties_total, reg)
     return PowerFitObjectiveBreakdown(
         total=float(total),

@@ -104,11 +104,26 @@ and compare supplied values. Unavailable alpha cannot create a false
 confidence-zero weighted work/rho/RHS are exactly zero before dangerous work.
 Solver admission for nonrepresentable model operands is not extended.
 
-Weighted complete affine evaluation applies `sqrt(c)` before materializing a
-possibly overflowing residual. RMS and other reductions establish availability
-at aggregate level; a row outside range does not prove its RMS or weighted norm
-is outside range. Supported scale-safe evaluations recover finite aggregates;
-unresolved dependencies propagate without dropping rows.
+Weighted complete affine evaluation avoids materializing a possibly overflowing
+residual before weighting. Range classification uses the original accepted
+confidence in `sum(c*r**2)`, never an already-rounded `sqrt(c)` reformulation.
+Individual complete affine rows and each aggregate establish mathematical range
+before final binary64 rounding; an exact value above MAX is unavailable even if
+it rounds to finite MAX. RMS and other reductions establish availability at
+aggregate level; a row outside range does not prove its RMS or weighted norm is
+outside range. Supported scale-safe evaluations recover finite aggregates;
+unresolved dependencies propagate without dropping rows. Issue #118 corrects
+these producer boundaries without changing this schema-v3 contract.
+
+Source edge leaves follow the same original-operand boundary: fitted difference
+`w_i-w_j`, observation difference `(target-beta)/alpha_source`, algebraic residual
+`(target-beta)/alpha_source-w_i+w_j`, and curvature `c*alpha_source**2` classify
+independently. An unavailable edge difference does not itself make the complete
+algebraic residual unavailable. A rounded reciprocal cannot establish that
+residual's exact range. Proven ordinary lanes retain vectorized binary64 value
+evaluation; exceptional lanes evaluate their complete diagnostic expression
+before any potentially overflowing intermediate, including under strict NumPy
+error policy. Hard/objective/control kernels retain their existing semantics.
 
 Active final layers remain atomic with respect to finite weights/radii, selected
 fit, genuine realization and source association. Proven unavailable diagnostic
