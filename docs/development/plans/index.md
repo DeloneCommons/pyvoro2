@@ -23,7 +23,9 @@ Published v0.8.0 is the source baseline. The completed
 The former v0.9 attempt is preserved at the protected archive named in ADR
 0027. Its Checkpoint C remains pending/unaccepted, and pre-Phase-D recovery,
 WP12, and WP13 remain unfinished. Its plans and ADRs 0018–0026 are not active
-reboot authority. PR2 owns their curated inventory and adoption status.
+reboot authority. The [historical knowledge guide](../reboot/index.md) maps
+their capabilities, acceptance boundaries, evidence and unreviewed adoption
+candidates. It is a reading resource, not a replacement release plan.
 
 ADR 0017's future v0.9/1.0/v1.1/v1.2 sequence is superseded without reviving
 ADR 0006's earlier sequence. Prescribed measures and mixed inversion are
