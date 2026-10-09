@@ -3,8 +3,9 @@
 ## Establish scope
 
 - Check the current branch, base commit, linked issue, and approved task scope.
-  The operational reboot targets `v0.9-reboot`; `main` remains published v0.8.0
-  and old `dev` is historical until the separately approved branch cutover.
+  The protected reboot integration branch is `dev`, restarted from published
+  v0.8.0. `main` remains the published baseline; the former v0.9 attempt is
+  frozen under `legacy/v0.9-attempt-2026-10-08` and the protected archive tag.
 - Read [ADR 0027](docs/development/decisions/0027-v0.9-reboot-from-v0.8.md),
   the applicable decision records, and any approved plan before editing.
   Source and tests describe implemented behavior; approved decisions describe
