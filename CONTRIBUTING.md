@@ -8,8 +8,8 @@ architecture.
 Development has restarted from published v0.8.0 under
 [issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120) and
 [ADR 0027](docs/development/decisions/0027-v0.9-reboot-from-v0.8.md).
-PR1 restores the operational workflow; PR2 owns curated historical knowledge
-migration. Future geometry architecture and release scope remain undecided.
+PR1 restored the operational workflow; PR2 preserved curated historical
+knowledge. Future geometry architecture and release scope remain undecided.
 Prescribed measures and mixed inversion are research candidates, not scheduled
 features. The previous v0.9 attempt is preserved as historical evidence.
 
@@ -37,12 +37,12 @@ Read these documents before architectural or release-scoped work:
 
 ## Branches and planned work
 
-During the reboot transition:
+After the approved reboot branch cutover:
 
-- `main` remains the published v0.8.0 source;
-- `v0.9-reboot` is the protected integration target;
-- old `dev` is historical until a separately approved branch cutover;
-- feature branches start from the verified staging HEAD and enter by PR.
+- `main` remains the published v0.8.0 source and default branch;
+- `dev` is the protected reboot integration target, descended from v0.8.0;
+- `legacy/v0.9-attempt-2026-10-08` is the frozen historical v0.9 attempt;
+- feature branches start from the verified `dev` HEAD and enter by PR.
 
 Follow the approved task and applicable source-controlled authority. Substantial
 new implementation needs separate maintainer approval; a research candidate or
