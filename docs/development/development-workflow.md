@@ -10,22 +10,22 @@ and release decisions.
 
 ## Branch model
 
-| Branch | Role during the reboot transition |
+| Branch | Role after the reboot branch cutover |
 |---|---|
-| `main` | Published v0.8.0 release source. |
-| `v0.9-reboot` | Protected integration target for approved reboot work. |
-| Old `dev` | Historical v0.9 attempt; not the reboot base. |
-| Feature branches | Focused PRs based on verified `v0.9-reboot` HEAD. |
+| `main` | Published v0.8.0 release source and default branch. |
+| `dev` | Protected integration target for approved reboot work, based on v0.8.0. |
+| `legacy/v0.9-attempt-2026-10-08` | Frozen historical v0.9 attempt; not a development base. |
+| Feature branches | Focused PRs based on the verified current `dev` HEAD. |
 
-[Issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120) owns the later
-branch cutover. [ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) establishes
-PR1 operational bootstrap and PR2 historical knowledge migration. Future
-geometry architecture and release scope are undecided; old release sequences
-and historical ADRs 0018–0026 do not authorize reboot implementation.
+[Issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120) records the
+completed branch cutover, PR1 operational bootstrap, and PR2 historical knowledge
+migration. [ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) governs the
+reboot. Future geometry architecture and release scope remain undecided; old
+release sequences and historical ADRs 0018–0026 do not authorize new work.
 
 The general release-plan lifecycle below applies when a new plan is approved.
-References to `dev` mean the normal integration role after cutover, not authority
-to edit the historical branch during this transition.
+References to `dev` now mean the reboot integration branch, not the frozen
+historical branch.
 
 ## Editable development and focused checks
 
@@ -48,13 +48,13 @@ Use `-e ".[all]"` for the additional documentation/notebook stack.
 Editable source testing and isolated installed-wheel testing establish different
 things. `tools/check_installed_package.py` deliberately requires installed
 provenance outside the repository and is not the editable provenance check.
-See [CONTRIBUTING.md](https://github.com/DeloneCommons/pyvoro2/blob/v0.9-reboot/CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/DeloneCommons/pyvoro2/blob/dev/CONTRIBUTING.md)
 for toolchains, generated files, and the repository test map.
 
 ## CI and handoff
 
-Routine CI runs on PRs targeting `v0.9-reboot`, `dev`, or `main`, pushes to those
-branches, and manual dispatch. Feature-branch pushes do not duplicate PR runs;
+Routine CI runs on PRs targeting `dev` or `main`, pushes to those branches,
+and manual dispatch. Feature-branch pushes do not duplicate PR runs;
 the required workflow has no path filter. Read-only permissions, pip download
 caching, explicit timeouts, ref/event-scoped cancellation, and matrix fail-fast
 bound routine resource use.
@@ -190,7 +190,8 @@ plan into every issue.
 ### 5. Implement and validate
 
 Work on a focused branch targeting the current protected integration branch.
-During the reboot that target is `v0.9-reboot`, not historical `dev`.
+During the reboot that target is protected `dev`, not the historical
+`legacy/v0.9-attempt-2026-10-08`.
 
 Every implementation change should:
 

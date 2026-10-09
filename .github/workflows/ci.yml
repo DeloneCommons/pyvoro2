@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [v0.9-reboot, dev, main]
+    branches: [dev, main]
   pull_request:
-    branches: [v0.9-reboot, dev, main]
+    branches: [dev, main]
 
   workflow_dispatch:
     inputs:
