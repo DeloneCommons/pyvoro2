@@ -20,4 +20,50 @@ The **separator-observation graph** is separate: its nodes are sites and its edg
 - Global vertex identity, coordinate closeness, and face incidence are different assertions. Preserve raw geometry and label any repair/approximation.
 - First assess how much the current `TessellationResult` and normalization functions already provide; do not invent a second core API.
 
+## Candidate: field integration and fixed-boundary analysis
+
+**Status:** ChemVoro scientific research direction, not an accepted pyvoro2 API or release
+commitment. Prioritize gas-phase molecules; crystal IAS integration is out of initial scope.
+
+- **Atomic-basin integrals:** compare \(\int_{\Omega_A^L}\rho(\mathbf r)\,dV\),
+  populations, charges and other properties of Laguerre cells with QTAIM basins.
+  A power cell need not contain its generating site.
+- **Interatomic-surface integrals:** use realized Laguerre faces \(F_{AB}^L\)
+  as planar approximations to QTAIM interatomic surfaces (IAS). Study face area,
+  \(\int_{F_{AB}^L}\rho\,dS\), other surface integrals, and averages per area.
+  A normal-gradient residual \(\nabla\rho\cdot\mathbf n\) tests the *zero-flux*
+  condition independently of integral correlations; a Laguerre face is not a
+  QTAIM zero-flux surface by definition.
+- **Quadrature:** consider face triangulation and adaptive surface integration;
+  convex-cell tetrahedralization and volume integration from a proven internal
+  point (not automatically the generator); or a shared grid with batched
+  `locate()` for precomputed volumetric fields.
+- **Frozen versus refitted boundaries:** fixed sites and weights give fixed
+  Laguerre boundaries even as \(\rho\) redistributes. Refit against separators
+  in a new state to expose the *boundary-motion* contribution separately from
+  a density-only change in the original frozen partition.
+- **Comparison design:** use the same wavefunction, compatible finite
+  integration regions/cutoffs, converged quadrature, and independent QTAIM
+  reference integrations. Include ordinary Voronoi and fixed-radius power
+  baselines. A good correlation alone does not prove IAS geometric agreement.
+
+For aligned states, writing \(N_A(\rho,\Omega)=\int_\Omega\rho\,dV\) gives
+\[
+\Delta N_A =
+[N_A(\rho_1,\Omega_0)-N_A(\rho_0,\Omega_0)]
++[N_A(\rho_1,\Omega_1)-N_A(\rho_1,\Omega_0)].
+\]
+This separates density change on a frozen region from subsequent boundary
+change at the final density. The split depends on the **chosen order**;
+changing nuclear geometries also requires coordinate/atom correspondence.
+
+**Possible ownership:** pyvoro2 could eventually expose wavefunction-agnostic
+geometric quadrature/sampling primitives; ChemVoro would own field evaluation,
+QTAIM comparisons, observables, and benchmarks. No v0.9 requirement; possible
+v1.0 consideration only after evidence, design review, and prioritization.
+
+Related: [numerical input considerations](../documentation-notes/numerical-inputs.md)
+· [native query performance](native-performance.md)
+· [global topology research](global-topology.md).
+
 Follow-up: [global topology research](global-topology.md) · [current result contract](../../../docs/development/decisions/0005-tessellation-result-contract.md).
