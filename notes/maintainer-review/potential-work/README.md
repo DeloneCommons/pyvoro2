@@ -9,5 +9,6 @@ Research candidates and priorities emerging from maintainer reassessment. **No e
 | [`large-weight-numerics.md`](large-weight-numerics.md) | Can the native large-weight numerical failure be repaired and proposed upstream? |
 | [`geometry-output-presets.md`](geometry-output-presets.md) | Would optional geometry-output presets simplify common calls without losing granular control? |
 | [`native-performance.md`](native-performance.md) | Are read-only reusable contexts, 2D ghost batching, or grid-aware locate optimizations worthwhile? |
+| [`development-qualification-boundaries.md`](development-qualification-boundaries.md) | How to keep editable Python iteration fast while separating native-boundary checks and PR/release qualification? |
 
 Historical implementations and accepted *historical* checkpoints remain evidence, not automatic reboot requirements: [historical knowledge guide](../../../docs/development/reboot/index.md).
