@@ -59,11 +59,10 @@ changing nuclear geometries also requires coordinate/atom correspondence.
 
 **Possible ownership:** pyvoro2 could eventually expose wavefunction-agnostic
 geometric quadrature/sampling primitives; ChemVoro would own field evaluation,
-QTAIM comparisons, observables, and benchmarks. No v0.9 requirement; possible
-v1.0 consideration only after evidence, design review, and prioritization.
+QTAIM comparisons, observables, and benchmarks. No release assignment; reconsider only after evidence, design review, and prioritization.
 
 Related: [numerical input considerations](../documentation-notes/numerical-inputs.md)
 · [native query performance](native-performance.md)
-· [global topology research](global-topology.md).
+· [historical global-topology questions](../../../docs/development/reboot/requirements-inventory.md#r-o01).
 
-Follow-up: [global topology research](global-topology.md) · [current result contract](../../../docs/development/decisions/0005-tessellation-result-contract.md).
+Follow-up: [reassessment register](../review-register.md) (R-O01 / P-01) · [current result contract](../../../docs/development/decisions/0005-tessellation-result-contract.md).
