@@ -1,6 +1,6 @@
 # Native query performance and reusable contexts
 
-**Status:** exploratory, **unapproved** performance/usability candidates. Do not add to v0.9 scope. Reconsider only after benchmarks and demonstrated use; a read-only reusable native context is considered **low priority, likely beyond v1.0**, not a committed roadmap item.
+**Status:** priorities selected for **research triage only**, not implementation or a release: P-03a reusable read-only context **`deferred`** (low priority, likely post-v1.0); P-03b 2D ghost batch **`selected for research`** (medium–high priority, v0.9–v1.0 candidate after profiling); P-03c structured-grid locate **`selected for research`** (low priority, no version). Any native changes must follow the R-O02b/R-O03 pre-C++ upstream investigation/report gate.
 
 ## Existing behavior before proposing optimizations
 
@@ -24,13 +24,17 @@ A possible class/context could own a prepared Voro++ container and serve repeate
 - Keep the current stateless API available if any context is later introduced.
 - **Not** a proposal for a generally mutable container or incremental tessellation: Voro++'s insertion/clear and periodic-image caching do not provide a straightforward safe arbitrary remove/update interface. Reweighting a fixed site set may require rebuilding, erasing the expected benefit.
 
-This is a **future research candidate only**, not approved for v0.9 and not expected to be prioritized for v1.0 without new evidence.
+This is a **deferred post-v1.0 possibility**, not an approved context API or timeline. Compare against existing batching before design.
 
 ## Candidate B: 2D ghost batch overhead
+
+**Research priority: medium–high; potential v0.9–v1.0 API-soaking candidate, contingent on profiling.** No native implementation is approved.
 
 Quantify the cost of reconstructing the 2D native container for every ghost query. This does **not** mean recomputing the N persistent Voronoi cells. Investigate whether a safer reusable-setup or temporary insertion strategy is possible under the 2D vendor's actual API and periodic state. Do not assume 3D `compute_ghost_cell` exists in 2D, or that deleting/updating arbitrary generators is supported.
 
 ## Candidate C: locate on regular/adaptive query grids
+
+**Research priority: low; no release assigned.** No demonstrated performance gain or implementation decision.
 
 A suggestion worth measuring: axis-ordered scanning, sweep-line style locality, reuse of previous winning site or different spatial indices might help some structured grids. **No superiority has been established**. Voro++ already scans the query's block, uses a precomputed worklist and geometric lower bounds to avoid examining distant blocks. Convexity of the final Voronoi cells does not by itself make a simple x/y/z sort a proven faster point-location algorithm.
 
@@ -46,4 +50,4 @@ Distinguish **few queries** (construction may dominate), **many known queries** 
 
 A separate [geometry-output preset idea](geometry-output-presets.md) addresses API ergonomics, not native point-location search.
 
-**No benchmark result, algorithmic win, implementation or milestone is claimed by this note.**
+**No benchmark result, algorithmic win, implementation or milestone is claimed by this note.** Any actual native changes require separately approved work after the upstream R-O02b/R-O03 prerequisites.

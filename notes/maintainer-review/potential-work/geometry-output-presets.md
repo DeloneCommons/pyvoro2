@@ -1,6 +1,6 @@
 # Optional geometry-output presets
 
-**Status:** low-priority research/usability candidate; **not approved for implementation**, no assigned milestone or release. Revisit during a later API-soaking period if user feedback supports it. No need to include in v0.9.
+**Status:** P-02 **`deferred`** for possible **v0.9–v1.0 API-soaking** after actual usage feedback; **not approved for implementation**, no assigned milestone or promised release. Preserve v0.8 flags and defaults.
 
 ## User problem
 
