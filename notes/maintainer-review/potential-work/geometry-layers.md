@@ -1,6 +1,6 @@
 # Geometry and graph layers
 
-**Status:** proposed responsibility split; not an accepted public API design.
+**Status:** P-01a **`selected` architecture direction** (no public class/API accepted); P-01b **`selected for research`**, without release commitments.
 
 Keep distinct objects distinct, and avoid making expensive global reconstruction a prerequisite for ordinary forward tessellation.
 
@@ -22,8 +22,7 @@ The **separator-observation graph** is separate: its nodes are sites and its edg
 
 ## Candidate: field integration and fixed-boundary analysis
 
-**Status:** ChemVoro scientific research direction, not an accepted pyvoro2 API or release
-commitment. Prioritize gas-phase molecules; crystal IAS integration is out of initial scope.
+**Status:** P-01b selected for **research into generic geometric integration primitives**, not approved for implementation or any release. ChemVoro-specific density/QTAIM research retains its separate ownership. Prioritize gas-phase molecules; crystal IAS integration is out of initial scope.
 
 - **Atomic-basin integrals:** compare \(\int_{\Omega_A^L}\rho(\mathbf r)\,dV\),
   populations, charges and other properties of Laguerre cells with QTAIM basins.
@@ -59,10 +58,10 @@ changing nuclear geometries also requires coordinate/atom correspondence.
 
 **Possible ownership:** pyvoro2 could eventually expose wavefunction-agnostic
 geometric quadrature/sampling primitives; ChemVoro would own field evaluation,
-QTAIM comparisons, observables, and benchmarks. No release assignment; reconsider only after evidence, design review, and prioritization.
+QTAIM comparisons, observables, and benchmarks. No release assignment; reconsider only after evidence, design review, and prioritization. Simple cell-local moments (centroids, second moments) are separate **R-O05a** candidates for v0.9–v1.0 API-soaking, not dependent on generic field quadrature.
 
 Related: [numerical input considerations](../documentation-notes/numerical-inputs.md)
 · [native query performance](native-performance.md)
 · [historical global-topology questions](../../../docs/development/reboot/requirements-inventory.md#r-o01).
 
-Follow-up: [reassessment register](../review-register.md) (R-O01 / P-01) · [current result contract](../../../docs/development/decisions/0005-tessellation-result-contract.md).
+Follow-up: [reassessment register](../review-register.md) (R-O01 / P-01a / P-01b / R-O05a) · [current result contract](../../../docs/development/decisions/0005-tessellation-result-contract.md).
