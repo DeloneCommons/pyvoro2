@@ -6,6 +6,7 @@ Only substantial new or materially expanded scientific/engineering investigation
 | --- | --- |
 | [`geometry-layers.md`](geometry-layers.md) | Independent local/adjacency/global geometry layers and ChemVoro density/surface integration studies. |
 | [`large-weight-numerics.md`](large-weight-numerics.md) | Concrete native large-radius failure and potential Voro++ upstream investigation; tracked as R-O03. |
+| [`native-allocation-failure.md`](native-allocation-failure.md) | `std::bad_alloc` constructor/growth ownership defects and ANSI C++-compatible upstream reproducer/patch workflow; tracked as R-O02b. |
 | [`geometry-output-presets.md`](geometry-output-presets.md) | Optional output ergonomics separate from historic metadata/certification work. |
 | [`native-performance.md`](native-performance.md) | Read-only contexts, 2D ghost batches and grid-locate hypotheses, distinct from old Fraction optimization. |
 
