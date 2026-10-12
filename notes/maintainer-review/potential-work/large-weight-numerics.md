@@ -1,6 +1,6 @@
 # Large-weight / large-radius native numerical failure
 
-**Status:** confirmed failure class; exact root cause and patch scope under investigation. Candidate for a focused upstream Voro++ report before further native-dependent v0.9 development, **not** an approved vendor patch.
+**Status:** `selected for research`, **pre-C++ upstream prerequisite** (R-O03), coordinated with R-O02b. A reproducible, independently checked fix and focused upstream issue should precede planned edits to pyvoro2's C++-related source layers. This is **not** an approved vendor patch; Chris's upstream merge is not a prerequisite.
 
 ## Reproducer and likely mechanism
 
@@ -13,8 +13,9 @@ The weighted-cut expression in [`rad_option.hh`](../../../vendor/voro++/src/rad_
 1. Preserve minimal deterministic examples and independent geometric expected results (2D/3D, periodic/nonperiodic as relevant; ordinary versus radical).
 2. Trace all squared-radius expressions in separator computation, skip/pruning checks, and weight-to-radius conversion. Check behavior under common weight shifts and block-size changes.
 3. Test proposed numerically stable algebra against adversarial cases, degeneracies, and the historical pruning regression; do not treat volume sums alone as sufficient evidence.
-4. Decide whether a narrow upstream-compatible patch suffices or wider changes are needed. Prepare a concise upstream report and, if supported by evidence, a candidate patch for Chris Rycroft to evaluate and adapt.
-5. Choose a separately reviewed vendor-update and native build/test path; the Python-only review kit cannot validate a modified native binary.
+4. For **each independently confirmed failure**, make its own standalone reproduction repository, pinning the original Voro++ revision and showing the bug before the fix and the repaired behavior after it; keep original-vs-patched test artifacts and independent oracles in that same repository. Do not bundle unrelated defects merely because they concern large weights.
+5. Evaluate narrow upstream-compatible source changes and regressions (including platform/codegen variants). **After** the correction is reproduced and tested, draft/file a focused upstream Voro++ issue for Chris Rycroft, linking its reproducible repository and candidate fix. Upstream contact is an investigative step, not a promise that a particular patch is correct.
+6. Choose a separately reviewed vendor-update and native build/test path if an actual pyvoro2 native change is subsequently approved; the Python-only review kit cannot validate a modified native binary.
 
 Evidence: [R-O03: genuine power-weight range](../../../docs/development/reboot/requirements-inventory.md#r-o03) · [E06](../../../docs/development/reboot/evidence-index.md#e06) · [R-O02: vendor patching policy](../../../docs/development/reboot/requirements-inventory.md#r-o02).
 
