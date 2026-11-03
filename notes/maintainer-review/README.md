@@ -8,6 +8,8 @@ Public working notes for an independent maintainer-level reassessment of pyvoro2
 
 [`review-register.md`](review-register.md) is the single current status index for the reassessment. Selected capability directions are **not** implementation approval; historical evidence stays in its source documents.
 
+The [functional coverage checklist](functional-coverage.md) records **non-blocking questions for later review**. It is not a release gate and need not precede higher-priority work on point/edge identity or inverse row-wise parameters.
+
 ## Browse by subject
 
 | Folder | What is inside |
