@@ -362,9 +362,18 @@ def test_large_delta_huber_is_squared_loss_in_values_derivatives_and_reports() -
             confidence=[1.0, 2.0, 0.5],
         ),
     )
-    assert huber_report['objective_breakdown'] == pytest.approx(
-        squared_report['objective_breakdown']
-    )
+    squared_breakdown = squared_report['objective_breakdown']
+    huber_breakdown = huber_report['objective_breakdown']
+    assert squared_breakdown is not None
+    assert huber_breakdown is not None
+    assert huber_breakdown.keys() == squared_breakdown.keys()
+    for name, expected in squared_breakdown.items():
+        if name == 'penalty_terms':
+            assert huber_breakdown[name] == expected == []
+        elif name == 'hard_constraints_satisfied':
+            assert huber_breakdown[name] is expected
+        else:
+            assert huber_breakdown[name] == pytest.approx(expected)
 
 
 def _manual_penalty_terms(
