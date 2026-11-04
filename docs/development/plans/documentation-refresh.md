@@ -1,12 +1,12 @@
 # Documentation refresh — workstream draft
 
 - **Status:** Draft
-- **Plan revision:** 0.1
+- **Plan revision:** 0.2
 - **Target:** Documentation of current v0.8 behavior, followed by incremental v0.9 updates; not an activated v0.9 release plan
 - **Base release:** v0.8.0 (reboot source, ADR 0027)
 - **Integration branch:** `dev`
 - **Maintainer:** pyvoro2 maintainer
-- **Approved:** Not yet approved
+- **Planning agreement:** Initial order and working principles agreed on 2026-11-04; workstream activation and later content scope remain open
 - **Last revised:** 2026-11-04
 - **Milestone:** None
 
@@ -16,63 +16,80 @@ Make pyvoro2 understandable to new users, scientific readers and maintainers: cl
 
 ## Baseline and supporting material
 
-- The current documentation has User Guide, Theory, API Reference, Examples, and Development sections under MkDocs Material.
-- Follow the [documentation conventions](../documentation-conventions.md), [API lifecycle](../api-lifecycle.md), and [ADR 0027](../decisions/0027-v0.9-reboot-from-v0.8.md).
-- The complete maintainer notebook is retained in [notes/maintainer-review](https://github.com/DeloneCommons/pyvoro2/tree/dev/notes/maintainer-review), with one [candidate register](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/review-register.md), a [non-blocking functional coverage checklist](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/functional-coverage.md), and [documentation working notes](https://github.com/DeloneCommons/pyvoro2/tree/dev/notes/maintainer-review/documentation-notes). These are research and planning evidence, not implemented guarantees or automatic release commitments.
-- The revised powerfit manuscript can inform theory and figures after verifying terminology, correctness, attribution, permissions, and public availability. See [issue #19](https://github.com/DeloneCommons/pyvoro2/issues/19); do not close it merely because documentation work starts.
+- The existing site has User Guide, Theory, API Reference, Examples and Development sections built with MkDocs Material.
+- Follow [documentation conventions](../documentation-conventions.md), [API lifecycle](../api-lifecycle.md), and [ADR 0027](../decisions/0027-v0.9-reboot-from-v0.8.md).
+- The complete [maintainer notebook](https://github.com/DeloneCommons/pyvoro2/tree/dev/notes/maintainer-review) holds a [candidate register](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/review-register.md), a [non-blocking functional coverage checklist](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/functional-coverage.md), and [documentation working notes](https://github.com/DeloneCommons/pyvoro2/tree/dev/notes/maintainer-review/documentation-notes). They are not automatic release commitments.
+- The revised powerfit manuscript may inform theory and figures after checking correctness, terminology, attribution, reuse permissions and public availability. [Issue #19](https://github.com/DeloneCommons/pyvoro2/issues/19) remains separately scoped.
 
-## Proposed sequence
+## Sequencing and evolving scope
 
-| Part | Goal | Timing |
+**DOC-W1 → DOC-W2 → DOC-W3 → DOC-W4** are the agreed initial order. **DOC-W99** reserves the final whole-site scientific and editorial audit, deliberately separate from the initial sequence.
+
+Between DOC-W4 and DOC-W99, add only concrete, reviewable tasks as the documentation develops: an examples gallery, getting-started paths, guides, theory, architecture, or feature-driven v0.9 updates. **Do not define DOC-W5 or DOC-W6 yet.** There is no fixed number of intermediate tasks or requirement to complete the entire functional coverage review before starting important implementation work.
+
+An evolving **umbrella issue** is the operational tracker: initially show DOC-W1–W4 and DOC-W99, then add PR links and further tasks as they are actually scoped. This document describes the durable writing strategy and boundaries, not a duplicate completion checklist. Change this plan when major scope or decisions change; update the issue for routine progress.
+
+Work in focused PRs. A major rewrite may temporarily keep a comparison draft outside published `docs/`, but replace the canonical page only after comparing content, links and limitations. Remove superseded `*_old` pages before merging; do not publish parallel contradictory versions. Favor stable canonical URLs.
+
+## Initial work packages and reserved final audit
+
+| ID | Work package | Boundaries and dependency | Status |
+| --- | --- | --- | --- |
+| **DOC-W1** | **Separate README from the site.** Maintain a concise, independent GitHub/PyPI `README.md`; remove `tools/gen_readme.py`, its sync test, and related CI, release, packaging and contributor references. Keep `docs/index.md` intact for now. | No site engine change and no numerical/API changes. | Selected first |
+| **DOC-W2** | **Migrate site builds to Zensical.** Validate navigation, search, MathJax, mkdocstrings, CSS/JS, notebooks, GitHub Pages and strict CI; update dependencies and build commands. Keep page content materially unchanged. | After DOC-W1. Preserve notebook validation and the current non-executing notebook-to-Markdown exporter. | Selected second |
+| **DOC-W3** | **Design site navigation.** Agree at least two levels of structure, Forward/Inverse entry paths, example gallery vs tutorials, destination URLs and Theory/API/Development relationships. | After DOC-W2; agree destinations before rebuilding the landing page. | Selected third |
+| **DOC-W4** | **Rebuild the landing page.** Present Forward tessellation and Inverse fitting as two prominent entry points, with an accurate introductory message, a reproducible static illustration, accessible lightweight hover/focus behavior and working destination links. | After DOC-W3. No new renderer backend required. | Selected fourth |
+| **DOC-W99** | **Final whole-site audit.** Align actual delivered v0.9 behavior, API/math claims, examples, notebooks, illustrations, navigation, links, accessibility, attribution and strict build. | Reserved for the end of the eventual documentation workstream; not the immediate successor of DOC-W4. | Reserved; not scheduled |
+
+**No DOC-W5 or DOC-W6 is specified by this plan.** New intermediate work is introduced only when its content, validation and dependencies are understood.
+
+## Presentation and visual direction
+
+Use four reader levels: introduction; scientific/user workflows; implementation architecture; and development/maintenance. For important capabilities link three complementary views: a runnable recipe, its mathematical/API contract, and its implementation/data-flow route. Begin with two-site geometry and separate exact mathematics, numerical limitations, current code and research proposals.
+
+The initial landing image can be rendered from actual pyvoro2 geometry by a standalone optional PyVista script. The two entry points should explain (1) Voro++-based native 2D/3D Voronoi/power computations, supported periodic domains and derived geometry; (2) how observations of pairwise separator positions constrain weight differences, with algebraic compatibility distinct from realized face contacts. Do not promise unsupported periodicity or certified global topology.
+
+Explore a gallery of thumbnail-first scientific examples with short reproducible code: supported 2D/3D, domain/periodicity and standard/power cases; plus a pedagogical inverse collection. This is a **future candidate**, not a deliverable of DOC-W4. The gallery complements executable notebooks. Hover styles must have keyboard-focus and reduced-motion equivalents and must not hide essential navigation.
+
+Matplotlib remains the current 2D visualization helper. K3D and Plotly are potential later additions; PyVista is not a new required runtime dependency. Do not block the initial landing page on improvements to package visualizers.
+
+## Optional upstream research: Zensical notebooks and galleries
+
+Direct publication of `.ipynb` and an examples-gallery module may be useful to other scientific packages, but are **not part of DOC-W2**. Revisit [Zensical notebook backlog #9](https://github.com/zensical/backlog/issues/9) and [gallery discussion #96](https://github.com/zensical/zensical/issues/96), and consult upstream maintainers about a supported module API before promising an external plugin. The current non-executing Markdown exporter remains the default until a separately validated replacement exists.
+
+## Decision gates
+
+| Gate | Question | Status |
 | --- | --- | --- |
-| Foundation | Evaluate Zensical migration, existing plugins/MathJax/mkdocstrings/notebook compatibility, landing page, navigation and a polished static hero image. | First documentation work, with compatibility review before engine switch. |
-| v0.8 exposition | Improve guides, theory, architecture and API-contract cross-links for implemented forward, periodic, result, diagnostics and inverse workflows. | Before or alongside first high-priority v0.9 implementation, not blocked by full candidate triage. |
-| v0.9 changes | Update relevant pages and examples together with each separately approved feature. | During actual implementation. |
-| Final pass | Synchronize terminology, versions, screenshots/figures, notebook outputs, API reference and strict builds. | After eventual v0.9 implementation and scope decisions. |
+| DOC-1 | Independent README wording, links and removal of the generator/checks without breaking package metadata or release validation | Initial direction agreed; validate in DOC-W1 |
+| DOC-2 | Zensical feature parity and new strict build/deployment procedure | Open for DOC-W2 |
+| DOC-3 | Landing destinations, gallery/navigation blueprint, image provenance and accessible interactions | Open for DOC-W3/W4 |
+| DOC-4 | Final acceptance of documentation relative to the actual v0.9 scope | Deferred to DOC-W99 |
 
-## Presentation and illustrations
+## Non-goals
 
-Use four levels: introduction, scientific/user workflows, implementation architecture, and development/maintenance. For each important capability cross-link three views: a runnable recipe, its mathematical/API contract, and its code/data-flow route. Begin with simple two-site geometry and distinguish exact mathematics, numerical limitations, implementation and unapproved research.
+- No implementation of new pyvoro2 numerical algorithms, inverse models, renderer backends, public API changes, or release guarantees is authorized here.
+- No full-site rewrite, gallery generator or native `.ipynb` renderer is required to complete DOC-W1–W4.
+- The [functional review checklist](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/functional-coverage.md) is not a blocking dependency; approved high-priority geometry/inverse implementation can proceed independently.
+- Do not assume the powerfit manuscript is already public or reproduce its experiments wholesale.
 
-For the first Zensical landing page, prefer a static illustration built from genuine pyvoro2 geometry by an optional external PyVista script. Do not make improved py3Dmol or K3D a documentation prerequisite. Reassess visuals at the final pass; Matplotlib remains the primary 2D engine, while K3D and Plotly are only possible future additions. Do not mistake visually assembled local cells for a certified global periodic complex.
+## Validation and maintenance
 
-## Non-goals and boundaries
+Check that current examples run for their documented version, math and API claims are correct, internal links and assets resolve, notebook validation/export remain synchronized, and the strict site build succeeds. DOC-W1 removes the *README generation* check, not the README itself or normal package validation. DOC-W2 must verify visual output and API pages, not only a successful exit status. At the moment `mkdocs build --strict` remains authoritative; replace it with a verified Zensical equivalent during DOC-W2.
 
-- No new public API, numeric policy, C++/Voro++ change, visualization backend, optional dependency becoming mandatory, or adopted release scope follows from this draft.
-- The [functional review checklist](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/functional-coverage.md) is **not a development gate**. Independently approved high-priority work on global point/edge identity and inverse per-row model parameters can proceed without completing it.
-- Do not copy whole numerical experiments from the manuscript or treat its molecular application as the only use case of the generic package.
-- Preserve generated README and notebook synchronization rules until a separately approved modification changes them.
-
-## Open decision gates
-
-| Gate | Question | Evidence needed | Status |
-| --- | --- | --- | --- |
-| DOC-1 | Zensical configuration and extension compatibility | Compare representative builds: math, API reference, notebooks, navigation and strict checks. | Open |
-| DOC-2 | README and landing page ownership | Preserve useful GitHub README without unnecessary duplicated sources. | Open |
-| DOC-3 | Hero image / manuscript assets | Reproducible geometry, scientific fidelity, rights and attribution. | Open |
-| DOC-4 | Final v0.9 documentation acceptance | Determine after functionality and release scope are selected. | Open |
-
-## Draft work packages
-
-| ID | Suggested work | Depends on | Status |
-| --- | --- | --- | --- |
-| DOC-W1 | Zensical, navigation, first landing page and static image | DOC-1 to DOC-3 | Proposed |
-| DOC-W2 | v0.8 user, theory, architecture and API-contract documentation | Current source/tests and existing notes | Proposed |
-| DOC-W3 | Feature-driven documentation updates | Corresponding separately approved v0.9 features | Conditional |
-| DOC-W4 | Final consistency and illustration audit | Delivered functionality, DOC-4 | Conditional |
-
-## Validation
-
-Require runnable examples for documented versions, correct present/proposed language, preserved notebook and generated-README synchronization, clear links and mathematical notation, and successful strict documentation builds. The currently applicable build is `mkdocs build --strict`; choose an equivalent check if the engine migration is approved. This is a documentation quality target, **not a new v0.9 release gate**.
+This workstream is not a newly imposed v0.9 release gate. Implementation outcomes and PR progress belong in the umbrella issue; accepted durable decisions or major plan scope changes belong here.
 
 ## Risks
 
-Prevent documentation work from expanding into renderer/backend refactoring, avoid claims for unimplemented candidate features, and keep one decision register rather than two contradictory backlogs. A separate release plan and feature-level approvals govern actual implementation.
+Avoid coupling content rewrites to a new site engine, treating tentative v0.9 features as delivered, or maintaining both the review notes and public site as independent normative authorities. Review and retire temporary notes as their useful content is integrated.
 
-## Changes and outcome
+## Plan revisions
 
 | Date | Revision | Change |
 | --- | --- | --- |
 | 2026-11-04 | 0.1 | Initial draft after maintainer reassessment and documentation-order discussion. |
+| 2026-11-04 | 0.2 | Define DOC-W1–W4, reserve DOC-W99, leave the middle open to umbrella updates, and record notebook-module research as optional. |
 
-**Outcome:** Not applicable while Draft. Record implementation outcomes and actual validation when work is accepted and completed.
+## Outcome
+
+Not applicable while Draft. Record delivered content and checks when the workstream is completed.
