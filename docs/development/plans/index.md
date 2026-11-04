@@ -34,6 +34,10 @@ relationship, release target, or pre-1.0 inclusion approved. Promotion requires
 separate mathematical analysis, representative use cases, validation strategy,
 and maintainer approval.
 
+## Draft workstreams
+
+- [Documentation refresh](documentation-refresh.md) — **Draft** workstream for site infrastructure, v0.8 documentation, incremental v0.9 updates, and the final editorial pass. It is not an activated v0.9 release plan or gate. The [maintainer-review notebook](https://github.com/DeloneCommons/pyvoro2/tree/dev/notes/maintainer-review) holds research and candidate details.
+
 ## Plan lifecycle
 
 - **Draft** — scope and design are being reviewed, or activation mechanics remain.
