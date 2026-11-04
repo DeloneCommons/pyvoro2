@@ -27,7 +27,7 @@ Make pyvoro2 understandable to new users, scientific readers and maintainers: cl
 
 Between DOC-W4 and DOC-W99, add only concrete, reviewable tasks as the documentation develops: an examples gallery, getting-started paths, guides, theory, architecture, or feature-driven v0.9 updates. **Do not define DOC-W5 or DOC-W6 yet.** There is no fixed number of intermediate tasks or requirement to complete the entire functional coverage review before starting important implementation work.
 
-An evolving **umbrella issue** is the operational tracker: initially show DOC-W1–W4 and DOC-W99, then add PR links and further tasks as they are actually scoped. This document describes the durable writing strategy and boundaries, not a duplicate completion checklist. Change this plan when major scope or decisions change; update the issue for routine progress.
+The evolving [documentation umbrella issue #127](https://github.com/DeloneCommons/pyvoro2/issues/127) is the operational tracker: initially show DOC-W1–W4 and DOC-W99, then add PR links and further tasks as they are actually scoped. This document describes the durable writing strategy and boundaries, not a duplicate completion checklist. Change this plan when major scope or decisions change; update the issue for routine progress.
 
 Work in focused PRs. A major rewrite may temporarily keep a comparison draft outside published `docs/`, but replace the canonical page only after comparing content, links and limitations. Remove superseded `*_old` pages before merging; do not publish parallel contradictory versions. Favor stable canonical URLs.
 
