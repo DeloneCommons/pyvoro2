@@ -80,6 +80,10 @@ Periodic geometry, weight-first queries, representation robustness, downstream
 usability, and separator-workflow stabilization remain subjects for assessment.
 The previous attempt's detailed requirements, outcomes, and defects belong in
 PR2's curated inventory. They are not a new implementation checklist here.
+The [maintainer reassessment register](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/review-register.md) collects current candidate decisions
+and unresolved directions without adopting them as release scope. Its
+[functional coverage checklist](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/functional-coverage.md) is non-blocking and may be reviewed
+incrementally.
 A development version or historical success does not settle a geometry design,
 API promotion, release gate, or date.
 
