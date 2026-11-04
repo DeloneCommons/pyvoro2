@@ -41,7 +41,7 @@ Native `preflight_periodic_3d()` does **not** receive the original user lattice.
 
 - Native preflight checks shapes, arithmetic, insertion validity and known eager memory allocations. Its 1 GiB estimate does **not** bound later dynamic growth, returned Python geometry or peak RSS.
 - Finite representable weights/radii can still produce wrong power geometry; numerical gauge cancellation/pruning remain distinct problems ([large-weight investigation](../potential-work/large-weight-numerics.md)).
-- Voro++ computes cells independently; success does not certify reciprocal faces, global topology or exact periodic image assignment ([Voro++ contracts](voro.md), [global topology](../potential-work/global-topology.md)).
+- Voro++ computes cells independently; success does not certify reciprocal faces, global topology or exact periodic image assignment ([Voro++ contracts](voro.md), [geometry-layer/global-topology research](../potential-work/geometry-layers.md)).
 - Native code still has potential fatal-error paths. The preflight covers identified construction hazards, **not** every backend failure.
 - `compute`'s native extraction may report omitted/empty power cells; Python applies its separate result/provenance checks.
 
