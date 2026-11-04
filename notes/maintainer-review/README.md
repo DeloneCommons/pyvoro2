@@ -2,7 +2,13 @@
 
 Public working notes for an independent maintainer-level reassessment of pyvoro2, its Voro++ backends, scientific algorithms, architecture, and documentation.
 
-**Research notebook, not normative project documentation.** Notes may contain observations, hypotheses, rejected ideas, candidate improvements, and documentation drafts. They do not authorize implementation, change an accepted API contract, or commit work to a release. Durable decisions belong in accepted ADRs; implementation belongs in focused PRs against `dev`.
+**Temporary working materials, not normative project documentation.** These notes preserve the maintainer's reassessment, observations, hypotheses, rejected ideas, candidate improvements and documentation drafts during the v0.9 reboot. They do not authorize implementation, change an accepted API contract, or commit work to a release. Durable decisions belong in accepted ADRs; implementation belongs in focused PRs against `dev`.
+
+## How these notes are retired
+
+This directory is a **transitional staging area**, not a permanent parallel documentation system. When a topic is addressed, transfer its enduring content to the appropriate maintained home: `docs/guide/` or `docs/theory/` for user-facing explanations, `docs/development/architecture.md` and accepted ADRs for architecture/contracts, GitHub issues and tests for actionable requirements and regressions, and relevant development plans for approved work. The register remains the single **candidate/status index** while reassessment is ongoing; it is not an implementation checklist.
+
+After migration, verify that significant caveats, evidence references, numerical counterexamples and open questions remain accessible, fix incoming links, then remove the superseded working note. Some independently valuable deferred research can remain until its own decision or archival destination is identified; **there is no promise that all notes disappear by v0.9 or v1.0**. The original Git history remains available, but it is not a substitute for preserving active scientific requirements in their proper maintained location.
 
 ## Review decisions
 
