@@ -18,6 +18,9 @@ contributors, reviewers, coding agents, and downstream package authors.
 | How are modules and layers organized? | [Architecture](architecture.md) |
 | Why was a durable choice made? | [Decision records](decisions/index.md) |
 | What is planned over several releases? | [Roadmap](../project/roadmap.md) |
+| Which capabilities are being considered for implementation? | [Maintainer reassessment register](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/review-register.md) on `dev`; these are proposals or selected research directions, not approved release scope. |
+| What remains to examine? | [Non-blocking functional coverage checklist](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/functional-coverage.md). |
+| What is the documentation workstream? | [Documentation refresh draft](plans/documentation-refresh.md). |
 | What historical work produced v0.8? | [v0.8 audit/remediation record](audits/v0.8-pre-release.md), [completed remediation plan](plans/archive/v0.8-remediation.md), GitHub issues, and milestones |
 | What did the former v0.9 attempt establish? | [Historical knowledge](reboot/index.md), [requirements inventory](reboot/requirements-inventory.md), and [evidence index](reboot/evidence-index.md); historical acceptance is separate from reboot adoption |
 | How do I prepare a change? | [`CONTRIBUTING.md`](https://github.com/DeloneCommons/pyvoro2/blob/main/CONTRIBUTING.md) |
