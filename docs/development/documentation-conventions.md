@@ -14,6 +14,8 @@ Each kind of document has one primary responsibility.
 
 | Location | Primary responsibility |
 |---|---|
+| `README.md` | Provide a concise, independently maintained GitHub/PyPI introduction. |
+| `docs/index.md` | Serve as the documentation site's landing page. |
 | `docs/guide/` | Explain current user workflows and callable behavior. |
 | `docs/theory/` | Explain the mathematics and scientific interpretation independently of provisional API names. |
 | `docs/reference/` | Record exact current imports, signatures, fields, and docstrings. |
@@ -217,10 +219,16 @@ When a change affects several document types, update each according to its role:
 - long-term direction → roadmap;
 - completed user-visible behavior → changelog.
 
-## Generated documents
+## README and site landing page
 
-- Edit `docs/index.md`, then regenerate `README.md` with
-  `python tools/gen_readme.py`.
+Author and maintain the root `README.md` independently for GitHub and PyPI.
+`docs/index.md` is the site landing page. Keep their scientific and API claims
+consistent, but tailor their structure and length to their readers; mechanical
+synchronization is not required. README links and images must use absolute URLs
+that render on both GitHub and PyPI.
+
+## Generated notebook documents
+
 - Edit source notebooks under `notebooks/`, then regenerate
   `docs/notebooks/*.md` with `python tools/export_notebooks.py`.
 
@@ -246,5 +254,7 @@ Before merging a documentation change, check that:
 - the roadmap, active plan, issues, and changelog are not duplicating one
   another;
 - links point to authoritative repository documents;
-- generated README and notebook pages are synchronized;
+- README and site claims remain consistent, and README links work on GitHub
+  and PyPI;
+- notebook sources and generated pages are synchronized;
 - `mkdocs build --strict` passes.

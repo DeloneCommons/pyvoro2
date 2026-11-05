@@ -135,7 +135,6 @@ tools/_notebook_tools.py
 tools/check_notebooks.py
 tools/execute_notebooks.py
 tools/export_notebooks.py
-tools/gen_readme.py
 tools/release_check.py
 tools/README.md
 """.split()

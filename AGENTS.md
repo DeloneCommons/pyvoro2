@@ -29,9 +29,11 @@
   [development workflow](docs/development/development-workflow.md).
 - Do not repeatedly launch broader CI after a deterministic local failure is
   established. Resolve the cause or report the blocker and stop that test family.
-- Edit `docs/index.md` and regenerate `README.md` with
-  `python tools/gen_readme.py`. Edit source notebooks, then follow the execution
-  and export process in [CONTRIBUTING.md](CONTRIBUTING.md).
+- Maintain `README.md` independently as the GitHub/PyPI introduction and
+  `docs/index.md` as the site landing page. Keep their claims consistent;
+  mechanical synchronization is not required. Edit source notebooks, then
+  follow the execution and export process in [CONTRIBUTING.md](CONTRIBUTING.md)
+  to keep `notebooks/*.ipynb` and `docs/notebooks/*.md` synchronized.
 - Report actual commands, outcomes, skips, and environment limitations. Local
   checks do not establish remote CI success or maintainer acceptance.
 

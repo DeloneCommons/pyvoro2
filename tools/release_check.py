@@ -86,7 +86,6 @@ def main() -> int:
     # committed outputs during release validation.
     _run(sys.executable, 'tools/check_notebooks.py')
     _run(sys.executable, 'tools/export_notebooks.py', '--check')
-    _run(sys.executable, 'tools/gen_readme.py', '--check')
     _run(sys.executable, '-m', 'pytest', '-q')
     if not args.skip_docs:
         _run('mkdocs', 'build', '--strict')

@@ -8,6 +8,9 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Maintain the GitHub/PyPI README independently from the site landing page;
+  retire README generation and its synchronization checks while preserving
+  notebook export and package/distribution validation.
 - Bootstrap the v0.9 operational reboot from published v0.8.0: faster routine CI
   with a required fail-closed gate and optional extended matrix, standard
   editable-development guidance, simplified agent policy, version/tag checks,
