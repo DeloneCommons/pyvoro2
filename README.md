@@ -53,7 +53,8 @@ np.testing.assert_allclose(power.cell_measures, [0.4, 0.6])
 ```
 
 `compute` returns a `TessellationResult` with input-aligned `ids`,
-`cell_measures`, `empty_mask`, raw `cells`, and capability-checked geometry.
+`cell_measures`, and `empty_mask` arrays, plus raw `cells` and
+capability-checked geometry.
 Measures are volumes in 3D and areas in 2D. Use the explicit planar namespace
 for a rectangular 2D domain:
 
