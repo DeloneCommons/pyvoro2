@@ -3,6 +3,11 @@
 This directory contains repository-maintenance helpers used in local
 publishability checks and CI.
 
+The root `README.md` is authored independently for GitHub/PyPI, while
+`docs/index.md` is the site landing page. Keep their claims consistent without
+mechanical synchronization. Notebook sources and generated Markdown pages
+remain synchronized through the execution/export tools below.
+
 Main entry points:
 
 - `python tools/execute_notebooks.py` — clear ordinary stored outputs, execute
@@ -13,7 +18,6 @@ Main entry points:
 - `python tools/check_notebooks.py` — validate committed notebook structure,
   execution counts, and stored-error absence, then execute a clean in-memory
   copy in a fresh Jupyter kernel without rewriting repository files.
-- `python tools/gen_readme.py` — regenerate `README.md` from the MkDocs source.
 - `python tools/release_check.py` — run the combined local release-preparation
   checks, including an isolated sdist-to-wheel round trip.
 - `python tools/build_wheel_from_sdist.py dist` — select exactly one generated

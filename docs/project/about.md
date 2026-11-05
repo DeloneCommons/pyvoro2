@@ -110,7 +110,7 @@ Numerical geometry needs layered validation. pyvoro2 uses:
   mode for broader random coverage;
 - optional cross-checks against the older `pyvoro` wrapper;
 - notebook execution and export checks;
-- strict documentation and README synchronization checks;
+- strict documentation builds;
 - source/wheel distribution checks and smoke tests.
 
 Typical local validation is:
@@ -123,6 +123,11 @@ python tools/release_check.py
 
 See [`CONTRIBUTING.md`](https://github.com/DeloneCommons/pyvoro2/blob/main/CONTRIBUTING.md)
 for the development workflow.
+
+The root README is maintained independently as the GitHub/PyPI introduction;
+`docs/index.md` remains the site landing page. Their claims stay consistent
+without mechanical synchronization. Source notebooks and their generated
+Markdown pages remain synchronized through the existing execution/export tools.
 
 ## Design and roadmap
 

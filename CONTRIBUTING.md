@@ -135,17 +135,17 @@ for routine and extended CI.
 
 ### Source and generated files
 
-Edit:
+Maintain `README.md` independently as the concise GitHub/PyPI introduction.
+`docs/index.md` is the site landing page. Their claims must remain consistent,
+but their structure and length may differ; mechanical synchronization is not
+required. Use absolute links in README so they work on both GitHub and PyPI.
 
-- `docs/index.md`, then regenerate `README.md`;
-- `notebooks/*.ipynb`, then regenerate `docs/notebooks/*.md`.
+Edit source `notebooks/*.ipynb`, then regenerate `docs/notebooks/*.md`; keep
+these synchronized and do not edit the generated pages directly.
 
-Do not edit the generated copies directly.
-
-Regeneration commands:
+Notebook refresh and export commands:
 
 ```bash
-python tools/gen_readme.py
 python tools/execute_notebooks.py NAME.ipynb
 python tools/export_notebooks.py
 ```
@@ -311,12 +311,11 @@ pytest -q tests/integration
 pytest -q tests/tooling
 ```
 
-Run lint and generated-file checks:
+Run lint and the notebook-export check:
 
 ```bash
 flake8 src tests tools benchmarks examples
 python tools/export_notebooks.py --check
-python tools/gen_readme.py --check
 ```
 
 Build the documentation strictly:

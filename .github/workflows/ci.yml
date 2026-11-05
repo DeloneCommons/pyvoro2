@@ -39,8 +39,6 @@ jobs:
         run: flake8 src tests tools benchmarks examples
       - name: Check notebook exports
         run: python tools/export_notebooks.py --check
-      - name: Check README sync
-        run: python tools/gen_readme.py --check
 
   native-sanitizers:
     needs: lint-sync
