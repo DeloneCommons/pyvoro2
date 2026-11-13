@@ -318,10 +318,16 @@ flake8 src tests tools benchmarks examples
 python tools/export_notebooks.py --check
 ```
 
+Build the documentation with **Python 3.11+** and the `docs` or `all` extra.
+The package itself still supports Python 3.10; on that interpreter those extras
+omit Zensical, so use a separate Python 3.11+ environment to build the site.
+`mkdocs.yml` remains the canonical configuration, with the classic theme and
+`site_dir: site`. Preview locally with `zensical serve`.
+
 Build the documentation strictly:
 
 ```bash
-mkdocs build --strict
+zensical build --clean --strict
 ```
 
 Notebook changes require execution checks:

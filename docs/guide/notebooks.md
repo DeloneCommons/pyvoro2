@@ -91,7 +91,7 @@ The Markdown exporter does not execute notebook code. It renders code and
 outputs already stored in each source `.ipynb`, so an unexecuted source notebook
 produces a page without its print or final-expression output.
 
-The normal MkDocs build consumes those committed pages and never starts a
+The normal Zensical build consumes those committed pages and never starts a
 kernel.
 
 ## Source-overlay imports

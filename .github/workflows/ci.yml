@@ -111,7 +111,7 @@ jobs:
         run: python tools/check_notebooks.py
       - name: Build docs
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
-        run: mkdocs build --strict
+        run: zensical build --clean --strict
 
   build-dist:
     needs: lint-sync

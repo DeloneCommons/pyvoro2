@@ -1,7 +1,5 @@
-# Documentation build requirements
+# Documentation build requirements (building requires Python >=3.11)
 numpy>=1.23
-mkdocs>=1.6
-mkdocs-material>=9.5
+zensical>=0.1.1,<0.2; python_version >= "3.11"
 mkdocstrings[python]>=0.27
 pymdown-extensions>=10.0
-mkdocs-section-index>=0.3.9

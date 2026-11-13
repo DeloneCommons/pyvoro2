@@ -8,6 +8,12 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Migrate documentation builds to Zensical's classic theme using the existing
+  `mkdocs.yml`, navigation, URLs, API references and notebook exports. Local,
+  CI and release builds use `zensical build --clean --strict`; GitHub Pages
+  publication remains main-only. Building docs requires Python 3.11+, while
+  pyvoro2 and its optional-extra installations retain Python 3.10 support.
+
 - Maintain the GitHub/PyPI README independently from the site landing page;
   retire README generation and its synchronization checks while preserving
   notebook export and package/distribution validation.

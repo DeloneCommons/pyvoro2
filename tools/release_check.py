@@ -67,7 +67,7 @@ def main() -> int:
     parser.add_argument(
         '--skip-docs',
         action='store_true',
-        help='skip the strict MkDocs build step',
+        help='skip the strict Zensical build step',
     )
     parser.add_argument(
         '--skip-build',
@@ -88,7 +88,7 @@ def main() -> int:
     _run(sys.executable, 'tools/export_notebooks.py', '--check')
     _run(sys.executable, '-m', 'pytest', '-q')
     if not args.skip_docs:
-        _run('mkdocs', 'build', '--strict')
+        _run('zensical', 'build', '--clean', '--strict')
 
     if args.skip_build:
         return 0
