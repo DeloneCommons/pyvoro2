@@ -1,4 +1,5 @@
 site_name: pyvoro2
+site_dir: site
 site_description: Scientific Python tools for forward and inverse 2D/3D Voronoi and power/Laguerre tessellations, periodic topology, and separator fitting.
 site_url: https://delonecommons.github.io/pyvoro2/
 repo_url: https://github.com/DeloneCommons/pyvoro2
@@ -7,6 +8,7 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
+  variant: classic
   features:
     - navigation.instant
     - navigation.tabs

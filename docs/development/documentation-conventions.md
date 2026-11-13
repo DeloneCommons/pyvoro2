@@ -257,4 +257,4 @@ Before merging a documentation change, check that:
 - README and site claims remain consistent, and README links work on GitHub
   and PyPI;
 - notebook sources and generated pages are synchronized;
-- `mkdocs build --strict` passes.
+- `zensical build --clean --strict` passes.

@@ -75,7 +75,7 @@ Direct publication of `.ipynb` and an examples-gallery module may be useful to o
 
 ## Validation and maintenance
 
-Check that current examples run for their documented version, math and API claims are correct, internal links and assets resolve, notebook validation/export remain synchronized, and the strict site build succeeds. DOC-W1 removes the *README generation* check, not the README itself or normal package validation. DOC-W2 must verify visual output and API pages, not only a successful exit status. At the moment `mkdocs build --strict` remains authoritative; replace it with a verified Zensical equivalent during DOC-W2.
+Check that current examples run for their documented version, math and API claims are correct, internal links and assets resolve, notebook validation/export remain synchronized, and the strict site build succeeds. DOC-W1 removes the *README generation* check, not the README itself or normal package validation. DOC-W2 must verify visual output and API pages, not only a successful exit status. At drafting, `mkdocs build --strict` was authoritative. DOC-W2 replaces it with `zensical build --clean --strict`; see the current [contributor instructions](https://github.com/DeloneCommons/pyvoro2/blob/dev/CONTRIBUTING.md) for the Python 3.11+ build environment.
 
 This workstream is not a newly imposed v0.9 release gate. Implementation outcomes and PR progress belong in the umbrella issue; accepted durable decisions or major plan scope changes belong here.
 

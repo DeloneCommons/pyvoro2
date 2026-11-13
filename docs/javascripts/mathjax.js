@@ -1,6 +1,6 @@
-// MathJax configuration for mkdocs-material.
+// MathJax configuration for Zensical.
 //
-// - mkdocs-material can use "instant navigation" (client-side page swaps).
+// - Zensical can use "instant navigation" (client-side page swaps).
 // - MathJax typesets on the initial load, but needs an explicit re-typeset after
 //   each page change when instant navigation is enabled.
 // - We support both Markdown pages and notebook-rendered pages.
@@ -31,12 +31,12 @@ window.MathJax = {
 };
 
 // Re-typeset after each page swap (instant navigation).
-// `document$` is a mkdocs-material global.
+// `document$` is a Zensical global.
 document$.subscribe(() => {
   // MathJax replaces the configuration object with the runtime API once loaded.
   if (!window.MathJax || !window.MathJax.typesetPromise) return;
 
-  // Recommended by mkdocs-material to avoid caching issues when navigating.
+  // Recommended by Zensical to avoid caching issues when navigating.
   if (window.MathJax.startup?.output?.clearCache) {
     window.MathJax.startup.output.clearCache();
   }

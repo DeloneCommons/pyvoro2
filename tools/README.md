@@ -78,9 +78,20 @@ python tools/export_notebooks.py --check
 ```
 
 Refresh and validation omit cell timing and widget state and preserve reviewed
-notebook kernel metadata. Markdown export and MkDocs never start a kernel.
+notebook kernel metadata. Markdown export and Zensical never start a kernel.
 
-For a full local pre-release pass after installing the project with all optional
+Documentation uses Zensical with `mkdocs.yml` and writes to `site/`:
+
+```bash
+zensical build --clean --strict
+```
+
+The documentation builder requires Python 3.11+. The `docs` and `all` extras
+omit Zensical on Python 3.10 without changing pyvoro2's supported Python range.
+The release checker uses the same strict command; `--skip-docs` skips only that
+build, preserving notebook validation and export checks.
+
+For a full local pre-release pass on Python 3.11+ after installing all optional
 extras, run:
 
 ```bash

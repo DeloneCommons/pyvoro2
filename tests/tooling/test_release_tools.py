@@ -220,6 +220,27 @@ def test_release_check_help() -> None:
     assert 'release-preparation checks' in _run_help('release_check.py')
 
 
+@pytest.mark.parametrize('skip_docs', [False, True])
+def test_release_check_documentation_build(monkeypatch, skip_docs) -> None:
+    tool = _load_tool_module('release_check')
+    commands = []
+    monkeypatch.setattr(tool, '_run', lambda *args: commands.append(args))
+    argv = ['release_check.py', '--skip-build']
+    if skip_docs:
+        argv.append('--skip-docs')
+    monkeypatch.setattr(sys, 'argv', argv)
+
+    assert tool.main() == 0
+    assert (sys.executable, 'tools/check_notebooks.py') in commands
+    assert (sys.executable, 'tools/export_notebooks.py', '--check') in commands
+    assert (sys.executable, '-m', 'pytest', '-q') in commands
+    docs_commands = [cmd for cmd in commands if cmd[0] != sys.executable
+                     and cmd[0] != 'flake8']
+    assert docs_commands == (
+        [] if skip_docs else [('zensical', 'build', '--clean', '--strict')]
+    )
+
+
 def test_check_notebooks_help() -> None:
     assert 'optional notebook filenames' in _run_help('check_notebooks.py')
 
