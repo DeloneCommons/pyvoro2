@@ -54,104 +54,119 @@ extra_css:
 
 nav:
   - Home: index.md
-  - User guide:
-      - Choosing an API: guide/choosing-api.md
-      - Capabilities and limitations: guide/capabilities.md
-      - Concepts: guide/concepts.md
-      - Glossary: guide/glossary.md
-      - Domains (3D): guide/domains.md
-      - Planar (2D): guide/planar.md
-      - Operations: guide/operations.md
-      - Topology and graphs: guide/topology.md
-      - Separator fitting: guide/powerfit.md
-      - v0.6.3–v0.8 migration: guide/migration-v0.7.md
-      - Visualization: guide/visualization.md
-      - Notebooks: guide/notebooks.md
+  - User Guide:
+      - Start here: guide/index.md
+      - Tessellations & periodic geometry:
+          - Quickstart and geometric output: guide/forward/index.md
+          - 3D domains and periodicity: guide/domains.md
+          - Compute, locate and ghost cells: guide/operations.md
+          - Planar 2D: guide/planar.md
+          - Periodic contacts and image shifts: guide/periodic-contacts.md
+          - Visualization: guide/visualization.md
+      - Inverse fitting:
+          - Getting started: guide/inverse/index.md
+          - Separator fitting and diagnostics: guide/inverse/separator-fitting.md
+      - Background and API choice:
+          - Choosing an API: guide/choosing-api.md
+          - Concepts: guide/concepts.md
+          - Capabilities and limitations: guide/capabilities.md
+          - Glossary: guide/glossary.md
+      - Migrating from v0.6.3 through v0.8: guide/migration-v0.7.md
+  - Examples:
+      - Overview: examples/index.md
+      - Tessellations and periodic geometry:
+          - Basic 3D computations: notebooks/01_basic_compute.md
+          - Periodic neighbor graphs: notebooks/02_periodic_graph.md
+          - Locate and ghost cells: notebooks/03_locate_and_ghost.md
+          - 3D visualization: notebooks/05_visualization.md
+      - Inverse fitting:
+          - Separator-fitting workflow: notebooks/04_powerfit.md
+          - Fit reports and exports: notebooks/06_powerfit_reports.md
+          - Infeasibility diagnostics: notebooks/07_powerfit_infeasibility.md
+          - Active-set paths (experimental): notebooks/08_powerfit_active_path.md
   - Theory:
       - Overview: theory/index.md
       - Power diagrams: theory/power-diagrams.md
       - Inverse fitting from separator observations: theory/separator-inverse.md
-  - Development:
-      - Overview: development/index.md
-      - Development workflow: development/development-workflow.md
-      - Historical v0.9 knowledge:
-          - Overview: development/reboot/index.md
-          - Requirements inventory: development/reboot/requirements-inventory.md
-          - Evidence index: development/reboot/evidence-index.md
-      - v0.7 release checklist: development/release-checklist-v0.7.md
-      - Development plans:
-          - Overview: development/plans/index.md
-          - Documentation refresh (draft): development/plans/documentation-refresh.md
-          - v0.7 archived plan: development/plans/archive/v0.7.md
-          - v0.8 completed cleanup plan: development/plans/archive/v0.8.md
-          - v0.8 completed audit remediation: development/plans/archive/v0.8-remediation.md
-          - Plan template: development/plans/template.md
-          - Archive: development/plans/archive/index.md
-      - Documentation conventions: development/documentation-conventions.md
-      - Architecture: development/architecture.md
-      - API lifecycle: development/api-lifecycle.md
-      - v0.8 API inventory: development/api-inventory.md
-      - Development audits:
-          - Overview: development/audits/index.md
-          - v0.8 historical audit/remediation record: development/audits/v0.8-pre-release.md
-      - Decision records:
-          - Overview: development/decisions/index.md
-          - Project scope and layering: development/decisions/0001-project-scope-and-layering.md
-          - Weights, radii, gauge, and component offsets: development/decisions/0002-weights-radii-and-gauge.md
-          - Compatibility-first evolution: development/decisions/0003-compatibility-first-evolution.md
-          - Canonical inverse namespace: development/decisions/0004-canonical-inverse-namespace.md
-          - Common tessellation result: development/decisions/0005-tessellation-result-contract.md
-          - v0.8 cleanup release: development/decisions/0006-v0.8-cleanup-release.md
-          - Separator inverse objective contract: development/decisions/0007-separator-objective-contract.md
-          - Separator solver and linear-backend selection: development/decisions/0008-separator-solver-and-linear-backend.md
-          - Certified scalar proximal solver: development/decisions/0009-certified-scalar-proximal-solver.md
-          - Strict native construction preconditions: development/decisions/0010-native-construction-preconditions.md
-          - Strict public input and ownership contract: development/decisions/0011-strict-input-and-ownership-contract.md
-          - Certified periodic nearest-image geometry: development/decisions/0012-certified-periodic-image-geometry.md
-          - Central generator preparation and backend safety: development/decisions/0013-central-generator-preparation-and-backend-safety.md
-          - Two-layer separator observation and source identity: development/decisions/0014-separator-observation-and-source-identity.md
-          - Atomic separator active-set final state: development/decisions/0015-atomic-separator-active-state.md
-          - Severity-complete tessellation diagnostics: development/decisions/0016-severity-complete-tessellation-diagnostics.md
-          - Historical post-v0.8 sequence (superseded): development/decisions/0017-v0.9-functional-stabilization-before-1.0.md
-          - v0.9 reboot from v0.8: development/decisions/0027-v0.9-reboot-from-v0.8.md
-  - Examples:
-      - notebooks/01_basic_compute.md
-      - notebooks/02_periodic_graph.md
-      - notebooks/03_locate_and_ghost.md
-      - notebooks/04_powerfit.md
-      - notebooks/05_visualization.md
-      - notebooks/06_powerfit_reports.md
-      - notebooks/07_powerfit_infeasibility.md
-      - notebooks/08_powerfit_active_path.md
-  - API reference:
+  - API Reference:
       - Overview: reference/index.md
-      - Spatial (3D):
+      - TessellationResult (2D/3D): reference/result.md
+      - 3D API — pyvoro2:
           - Domains: reference/domains.md
-          - API: reference/api.md
-          - Common result: reference/result.md
+          - Compute, locate and ghost cells: reference/api.md
           - Diagnostics: reference/diagnostics.md
           - Validation: reference/validation.md
-          - Duplicate check: reference/duplicates.md
-          - Normalization: reference/normalize.md
+          - Duplicate checks: reference/duplicates.md
+          - Vertex, edge and face normalization: reference/normalize.md
           - Face properties: reference/face_properties.md
-          - Visualization (3D): reference/viz3d.md
-      - Planar (2D):
-          - Overview: reference/planar/index.md
+          - Visualization: reference/viz3d.md
+      - 2D API — pyvoro2.planar:
+          - Namespace overview: reference/planar/index.md
           - Domains: reference/planar/domains.md
-          - API: reference/planar/api.md
-          - Common result: reference/result.md
+          - Compute, locate and ghost cells: reference/planar/api.md
           - Diagnostics: reference/planar/diagnostics.md
-          - Normalization: reference/planar/normalize.md
-          - Validation: reference/planar/validation.md
+          - Normalized-geometry validation: reference/planar/validation.md
+          - Vertex and edge normalization: reference/planar/normalize.md
           - Edge properties: reference/edge_properties.md
-          - Visualization (2D): reference/viz2d.md
-      - Inverse fitting:
+          - Visualization: reference/viz2d.md
+      - Inverse fitting — pyvoro2.inverse:
           - High-level API: reference/inverse/index.md
           - Advanced separator API: reference/inverse/separator.md
+  - Development:
+      - Overview: development/index.md
+      - Contributing:
+          - Development workflow: development/development-workflow.md
+          - Documentation conventions: development/documentation-conventions.md
+          - Notebook maintenance: development/notebook-workflow.md
+      - Architecture and API policy:
+          - Architecture: development/architecture.md
+          - API lifecycle: development/api-lifecycle.md
+          - v0.8 API inventory: development/api-inventory.md
+      - Plans:
+          - Overview: development/plans/index.md
+          - Documentation refresh (draft): development/plans/documentation-refresh.md
+          - Plan template: development/plans/template.md
+      - Decision records:
+          - Overview and status: development/decisions/index.md
+          - Current reboot decision (ADR 0027): development/decisions/0027-v0.9-reboot-from-v0.8.md
+          - Scope, API and release baseline:
+              - ADR 0001 — Project scope and layering: development/decisions/0001-project-scope-and-layering.md
+              - ADR 0002 — Weights, radii and gauge: development/decisions/0002-weights-radii-and-gauge.md
+              - ADR 0003 — Compatibility-first evolution: development/decisions/0003-compatibility-first-evolution.md
+              - ADR 0004 — Canonical inverse namespace: development/decisions/0004-canonical-inverse-namespace.md
+              - ADR 0005 — Tessellation result: development/decisions/0005-tessellation-result-contract.md
+              - ADR 0006 — v0.8 cleanup: development/decisions/0006-v0.8-cleanup-release.md
+          - Inverse fitting contracts:
+              - ADR 0007 — Objective contract: development/decisions/0007-separator-objective-contract.md
+              - ADR 0008 — Solver and linear backend: development/decisions/0008-separator-solver-and-linear-backend.md
+              - ADR 0009 — Scalar proximal solver: development/decisions/0009-certified-scalar-proximal-solver.md
+              - ADR 0014 — Observation and source identity: development/decisions/0014-separator-observation-and-source-identity.md
+              - ADR 0015 — Atomic active-set state: development/decisions/0015-atomic-separator-active-state.md
+          - Geometry, inputs and diagnostics:
+              - ADR 0010 — Native preconditions: development/decisions/0010-native-construction-preconditions.md
+              - ADR 0011 — Public input and ownership: development/decisions/0011-strict-input-and-ownership-contract.md
+              - ADR 0012 — Periodic image geometry: development/decisions/0012-certified-periodic-image-geometry.md
+              - ADR 0013 — Generator preparation: development/decisions/0013-central-generator-preparation-and-backend-safety.md
+              - ADR 0016 — Diagnostics: development/decisions/0016-severity-complete-tessellation-diagnostics.md
+          - Superseded sequencing (ADR 0017): development/decisions/0017-v0.9-functional-stabilization-before-1.0.md
+      - Historical records:
+          - Former v0.9 attempt:
+              - Overview: development/reboot/index.md
+              - Requirements inventory: development/reboot/requirements-inventory.md
+              - Evidence index: development/reboot/evidence-index.md
+          - Completed release plans:
+              - Archive overview: development/plans/archive/index.md
+              - v0.7 plan: development/plans/archive/v0.7.md
+              - v0.8 plan: development/plans/archive/v0.8.md
+              - v0.8 remediation plan: development/plans/archive/v0.8-remediation.md
+          - Audits and release qualification:
+              - Audit overview: development/audits/index.md
+              - v0.8 pre-release audit: development/audits/v0.8-pre-release.md
+              - v0.7 release checklist: development/release-checklist-v0.7.md
   - Project:
-      - About: project/about.md
+      - Overview: project/index.md
       - Roadmap: project/roadmap.md
       - v0.8.0 release notes: project/release-notes-v0.8.md
-      - Changelog: about/changelog.md
+      - Changelog: project/changelog.md
       - License: project/license.md
       - AI-assisted development: project/ai.md

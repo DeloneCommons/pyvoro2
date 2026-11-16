@@ -189,5 +189,5 @@ A small algebraic residual does not prove that the requested pair is a realized
 face. The realized geometry is not part of the exact fixed-observation solve,
 and active-set refinement is a separate experimental outer algorithm.
 
-The [separator-fitting guide](powerfit.md) explains the layers in detail. The
+The [separator-fitting guide](inverse/separator-fitting.md) explains the layers in detail. The
 [glossary](glossary.md) defines the recurring terms.

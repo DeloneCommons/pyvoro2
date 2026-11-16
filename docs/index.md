@@ -247,13 +247,13 @@ of the Python-side contracts needed in scientific workflows. pyvoro2 adds:
 | [Domains (3D)](guide/domains.md) | `Box`, `OrthorhombicCell`, and `PeriodicCell`. |
 | [Planar (2D)](guide/planar.md) | The planar namespace, rectangular periodicity, diagnostics, normalization, and plotting. |
 | [Operations](guide/operations.md) | Forward tessellation, owner lookup, and ghost-cell workflows. |
-| [Topology and graphs](guide/topology.md) | Periodic image-labelled adjacency and normalized topology. |
-| [Separator fitting](guide/powerfit.md) | Current inverse API, result diagnostics, realization matching, and active-set refinement. |
+| [Topology and graphs](guide/periodic-contacts.md) | Periodic image-labelled adjacency and normalized topology. |
+| [Separator fitting](guide/inverse/separator-fitting.md) | Current inverse API, result diagnostics, realization matching, and active-set refinement. |
 | [v0.6.3–v0.8 migration](guide/migration-v0.7.md) | Canonical replacements and the completed v0.8 compatibility removal. |
 | [Theory](theory/index.md) | API-independent definitions of power diagrams, weights, gauge, and separator inversion. |
 | [Development](development/index.md) | Architecture, workflow, documentation conventions, release plans, API lifecycle, and decision records. |
 | [Visualization](guide/visualization.md) | Optional `py3Dmol` and `matplotlib` helpers. |
-| [Examples](guide/notebooks.md) | Executable notebook workflows. |
+| [Examples](examples/index.md) | Executable notebook workflows. |
 | [API reference](reference/index.md) | Exact signatures and docstring reference for spatial, planar, and separator-fitting APIs. |
 | [v0.8.0 release notes](project/release-notes-v0.8.md) | Removals, fixes, maintenance, documentation, and the release distribution contract. |
 | [Roadmap](project/roadmap.md) | Published v0.8 baseline, operational reboot, and uncommitted research directions. |

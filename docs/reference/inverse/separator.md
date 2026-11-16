@@ -254,7 +254,7 @@ convention, L2 is `0.5 * strength * ||weights - reference||**2`, and
 `hard_max_tolerance` is the maximum shared float64 absolute-plus-relative
 classification tolerance actually used, or zero without hard-bound rows.
 See the
-[separator-fitting guide](../../guide/powerfit.md#step-2-define-the-fitting-model)
+[separator-fitting guide](../../guide/inverse/separator-fitting.md#step-2-define-the-fitting-model)
 and
 [ADR 0007](../../development/decisions/0007-separator-objective-contract.md)
 for the complete formulas.

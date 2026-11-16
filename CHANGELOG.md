@@ -8,6 +8,12 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Organize documentation into seven sections with geometry-first and inverse
+  entry paths, an annotated Examples catalogue, and one shared result reference.
+  Move periodic contacts, separator fitting, notebook maintenance and project
+  metadata to their task-oriented destinations. Correct the periodic-contact
+  recipe to preserve self-image contacts and distinct lattice shifts.
+
 - Migrate documentation builds to Zensical's classic theme using the existing
   `mkdocs.yml`, navigation, URLs, API references and notebook exports. Local,
   CI and release builds use `zensical build --clean --strict`; GitHub Pages

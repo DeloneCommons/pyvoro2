@@ -1,6 +1,7 @@
 # Planar high-level API
 
-`compute(...)` returns the common `pyvoro2.TessellationResult` by default.
+`pyvoro2.planar.compute(...)` returns the shared
+[TessellationResult (2D/3D)](../result.md) by default.
 Use `output='result'|'cells'` to select structured or raw output explicitly.
 
 `tessellation_check='diagnose'|'warn'|'raise'` computes one final diagnostic;

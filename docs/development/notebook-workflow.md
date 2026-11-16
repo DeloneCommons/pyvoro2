@@ -1,44 +1,9 @@
-# Notebooks
+# Notebook maintenance
 
-The example notebooks are kept in the repository-root `notebooks/` directory so
-that users can browse them directly on GitHub without going through the docs
-site.
-
-For the published docs, each notebook is also exported to a generated Markdown
-page under `docs/notebooks/`.
-
-## Source notebooks in the repository
-
-The repository source notebooks are:
-
-- `notebooks/01_basic_compute.ipynb`
-- `notebooks/02_periodic_graph.ipynb`
-- `notebooks/03_locate_and_ghost.ipynb`
-- `notebooks/04_powerfit.ipynb` — canonical external-ID, weight-first periodic
-  inverse workflow plus advanced fitting
-- `notebooks/05_visualization.ipynb`
-- `notebooks/06_powerfit_reports.ipynb` — ID-labelled records and reports
-- `notebooks/07_powerfit_infeasibility.ipynb` — contradiction witnesses
-- `notebooks/08_powerfit_active_path.ipynb` — experimental outer-loop path
-  diagnostics
-
-The inverse notebooks use only the current canonical routes,
-`pyvoro2.inverse` and `pyvoro2.inverse.separator`. They do not depend on the
-v0.7-only `pyvoro2.powerfit`, historical aliases, or broad top-level separator
-exports.
-
-## Published notebook pages
-
-The generated documentation pages are:
-
-- [01 basic compute](../notebooks/01_basic_compute.md)
-- [02 periodic graph](../notebooks/02_periodic_graph.md)
-- [03 locate and ghost cells](../notebooks/03_locate_and_ghost.md)
-- [04 separator-fitting workflow](../notebooks/04_powerfit.md)
-- [05 visualization](../notebooks/05_visualization.md)
-- [06 separator-fit reports](../notebooks/06_powerfit_reports.md)
-- [07 separator-fit infeasibility](../notebooks/07_powerfit_infeasibility.md)
-- [08 active-set path diagnostics](../notebooks/08_powerfit_active_path.md)
+Source notebooks live in repository-root `notebooks/`; their stored outputs
+are exported to `docs/notebooks/`. For the annotated catalogue, rendered pages,
+original notebooks and normal use instructions, see [Examples](../examples/index.md).
+This page covers contributor execution, validation and export responsibilities.
 
 ## Install the notebook tools
 

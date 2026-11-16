@@ -1,5 +1,12 @@
 # About pyvoro2
 
+Find project metadata here: [Roadmap](roadmap.md),
+[v0.8.0 release notes](release-notes-v0.8.md), [Changelog](changelog.md),
+[License](license.md), and [AI-assisted development](ai.md).
+For callable workflows, start with the [User Guide](../guide/index.md) or
+[Examples](../examples/index.md); contributor policy lives in
+[Development](../development/index.md).
+
 ## Summary
 
 pyvoro2 is a scientific Python package for **forward and inverse weighted
@@ -53,7 +60,7 @@ that both backends support every identical domain or output feature.
 Compared with a minimal wrapper, pyvoro2 provides:
 
 - Python-side validation and duplicate safety checks;
-- 3D triclinic and partially periodic domain handling;
+- fully periodic triclinic and fully/partially periodic orthorhombic 3D domains;
 - rectangular periodic planar workflows;
 - image-labelled adjacency for periodic graph construction;
 - tessellation diagnostics and strict validation;

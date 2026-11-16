@@ -1,13 +1,13 @@
 # Documentation refresh — workstream draft
 
 - **Status:** Draft
-- **Plan revision:** 0.2
+- **Plan revision:** 0.3
 - **Target:** Documentation of current v0.8 behavior, followed by incremental v0.9 updates; not an activated v0.9 release plan
 - **Base release:** v0.8.0 (reboot source, ADR 0027)
 - **Integration branch:** `dev`
 - **Maintainer:** pyvoro2 maintainer
 - **Planning agreement:** Initial order and working principles agreed on 2026-11-04; workstream activation and later content scope remain open
-- **Last revised:** 2026-11-04
+- **Last revised:** 2026-11-17
 - **Milestone:** None
 
 ## Intended outcome
@@ -29,7 +29,14 @@ Between DOC-W4 and DOC-W99, add only concrete, reviewable tasks as the documenta
 
 The evolving [documentation umbrella issue #127](https://github.com/DeloneCommons/pyvoro2/issues/127) is the operational tracker: initially show DOC-W1–W4 and DOC-W99, then add PR links and further tasks as they are actually scoped. This document describes the durable writing strategy and boundaries, not a duplicate completion checklist. Change this plan when major scope or decisions change; update the issue for routine progress.
 
-Work in focused PRs. A major rewrite may temporarily keep a comparison draft outside published `docs/`, but replace the canonical page only after comparing content, links and limitations. Remove superseded `*_old` pages before merging; do not publish parallel contradictory versions. Favor stable canonical URLs.
+Work in focused PRs. A major rewrite may temporarily keep a comparison draft outside published `docs/`, but replace the canonical page only after comparing content, links and limitations. Remove superseded `*_old` pages before merging; do not publish parallel contradictory versions. For DOC-W3, the approved [implementation contract (#132)](https://github.com/DeloneCommons/pyvoro2/issues/132)
+prioritizes clear information architecture over preserving pre-1.0 URLs: seven
+top-level sections (Home, User Guide, Examples, Theory, API Reference,
+Development, Project), four substantive entry pages, five semantic moves, and
+API Reference R1.5 with one shared result entry. Repair links without a redirect
+framework or duplicate published pages. This establishes the v0.8-based
+architecture; it does not claim final content readiness or fix future v0.9 scope.
+The landing-page redesign remains DOC-W4.
 
 ## Initial work packages and reserved final audit
 
@@ -37,7 +44,7 @@ Work in focused PRs. A major rewrite may temporarily keep a comparison draft out
 | --- | --- | --- | --- |
 | **DOC-W1** | **Separate README from the site.** Maintain a concise, independent GitHub/PyPI `README.md`; remove `tools/gen_readme.py`, its sync test, and related CI, release, packaging and contributor references. Keep `docs/index.md` intact for now. | No site engine change and no numerical/API changes. | Selected first |
 | **DOC-W2** | **Migrate site builds to Zensical.** Validate navigation, search, MathJax, mkdocstrings, CSS/JS, notebooks, GitHub Pages and strict CI; update dependencies and build commands. Keep page content materially unchanged. | After DOC-W1. Preserve notebook validation and the current non-executing notebook-to-Markdown exporter. | Selected second |
-| **DOC-W3** | **Design site navigation.** Agree at least two levels of structure, Forward/Inverse entry paths, example gallery vs tutorials, destination URLs and Theory/API/Development relationships. | After DOC-W2; agree destinations before rebuilding the landing page. | Selected third |
+| **DOC-W3** | **Implement the approved information architecture.** Geometry-first and inverse entry paths, exact destinations, Examples catalogue and API Reference R1.5 follow [#132](https://github.com/DeloneCommons/pyvoro2/issues/132). | After DOC-W2; architecture and narrow correctness/link repairs, not a final editorial overhaul. | Approved for implementation in #132 |
 | **DOC-W4** | **Rebuild the landing page.** Present Forward tessellation and Inverse fitting as two prominent entry points, with an accurate introductory message, a reproducible static illustration, accessible lightweight hover/focus behavior and working destination links. | After DOC-W3. No new renderer backend required. | Selected fourth |
 | **DOC-W99** | **Final whole-site audit.** Align actual delivered v0.9 behavior, API/math claims, examples, notebooks, illustrations, navigation, links, accessibility, attribution and strict build. | Reserved for the end of the eventual documentation workstream; not the immediate successor of DOC-W4. | Reserved; not scheduled |
 
@@ -63,7 +70,7 @@ Direct publication of `.ipynb` and an examples-gallery module may be useful to o
 | --- | --- | --- |
 | DOC-1 | Independent README wording, links and removal of the generator/checks without breaking package metadata or release validation | Initial direction agreed; validate in DOC-W1 |
 | DOC-2 | Zensical feature parity and new strict build/deployment procedure | Open for DOC-W2 |
-| DOC-3 | Landing destinations, gallery/navigation blueprint, image provenance and accessible interactions | Open for DOC-W3/W4 |
+| DOC-3 | Landing destinations, gallery/navigation blueprint, image provenance and accessible interactions | IA and destinations approved in #132; landing presentation remains DOC-W4 |
 | DOC-4 | Final acceptance of documentation relative to the actual v0.9 scope | Deferred to DOC-W99 |
 
 ## Non-goals
@@ -89,6 +96,7 @@ Avoid coupling content rewrites to a new site engine, treating tentative v0.9 fe
 | --- | --- | --- |
 | 2026-11-04 | 0.1 | Initial draft after maintainer reassessment and documentation-order discussion. |
 | 2026-11-04 | 0.2 | Define DOC-W1–W4, reserve DOC-W99, leave the middle open to umbrella updates, and record notebook-module research as optional. |
+| 2026-11-17 | 0.3 | Record the approved DOC-W3 architecture-first/URL-priority decision and exact implementation authority; leave later content and v0.9 scope open. |
 
 ## Outcome
 

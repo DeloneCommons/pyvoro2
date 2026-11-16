@@ -105,4 +105,4 @@ all-pairs scalability, automatic backend selection, or parallel execution.
 - [Power diagrams](../theory/power-diagrams.md)
 - [Inverse fitting from separator observations](../theory/separator-inverse.md)
 - [Choosing an API](choosing-api.md)
-- [Separator fitting](powerfit.md)
+- [Separator fitting](inverse/separator-fitting.md)

@@ -94,7 +94,7 @@ only from `refs/heads/main`.
 | GitHub milestone | Which issues belong to one release outcome? |
 | GitHub issue | What concrete unit of work is being implemented and accepted? |
 | Pull request or commit | What exact code and documentation changed? |
-| [Changelog](../about/changelog.md) | What completed user-visible behavior was delivered? |
+| [Changelog](../project/changelog.md) | What completed user-visible behavior was delivered? |
 
 A substantial change should be traceable through these levels without requiring
 access to a private chat or personal notes.

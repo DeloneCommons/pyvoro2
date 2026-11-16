@@ -696,8 +696,16 @@ that pairwise separator data reconstruct a complete application-specific
 partition.
 
 The current calls and result objects are documented in the
-[separator-fitting guide](../guide/powerfit.md) and API reference. Full proofs,
-perturbation results, synthetic experiments, periodic-image tests, and the
-molecular benchmark are given in the manuscript *Fixed-site inverse fitting of
-power-diagram weights from pairwise separator data* and its archived
-reproducibility materials.
+[inverse quickstart](../guide/inverse/index.md),
+[separator-fitting guide](../guide/inverse/separator-fitting.md), and
+[API reference](../reference/inverse/index.md).
+
+**Powerfit research article — current author manuscript (submitted for peer review)**:
+[current HTML](https://delonecommons.github.io/powerfit/article.html) and
+[current PDF](https://delonecommons.github.io/powerfit/manuscript.pdf).
+Full proofs, perturbation results and numerical experiments belong there; see
+also the [reproducibility materials](https://github.com/DeloneCommons/powerfit/blob/main/docs/reproducibility.md)
+and [version/citation guidance](https://github.com/DeloneCommons/powerfit/blob/main/docs/archives.md).
+The current author manuscript is distinct from the frozen powerfit v2.0.0
+archive and its reported pyvoro2 0.6.3 baseline; use the version guidance when
+citing or reproducing those results.
