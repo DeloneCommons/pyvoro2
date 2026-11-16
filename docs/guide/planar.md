@@ -257,4 +257,4 @@ cells are supported, but there is no planar oblique-periodic `PeriodicCell`
 yet.
 
 
-See [Choosing an API](choosing-api.md) and [Separator fitting](powerfit.md) for the canonical imports and lifecycle status.
+See [Choosing an API](choosing-api.md) and [Separator fitting](inverse/separator-fitting.md) for the canonical imports and lifecycle status.

@@ -58,6 +58,7 @@ See [Development workflow](../development-workflow.md) for the complete process.
 
 ## Archive
 
-Completed and superseded plans are kept in the [plan archive](archive/index.md).
+Completed and superseded plans are kept in the [plan archive](archive/index.md),
+under **Historical records → Completed release plans** in the navigation.
 They complement the changelog by preserving intent, dependencies, decisions,
 and deferrals.

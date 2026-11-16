@@ -31,13 +31,13 @@ code decides:
 
 The fixed-observation inverse fit and the geometric realization check answer
 different questions. For the API-independent derivation, see
-[Inverse fitting from separator observations](../theory/separator-inverse.md).
+[Inverse fitting from separator observations](../../theory/separator-inverse.md).
 
 For namespace selection and lifecycle status, begin with
-[Choosing an API](choosing-api.md). The [glossary](glossary.md) defines gauge,
+[Choosing an API](../choosing-api.md). The [glossary](../glossary.md) defines gauge,
 component offsets, representation shift, realized face, and active set. Users
 migrating from v0.6.3 should also read the
-[v0.6.3–v0.8 migration guide](migration-v0.7.md).
+[v0.6.3–v0.8 migration guide](../migration-v0.7.md).
 
 The high-level resolver, observation container, fit result, fit entry
 point, and neutral transforms are **stable**. Advanced models, problem and
@@ -1150,8 +1150,8 @@ observations and generic boundary measure rather than chemistry-specific or
 
 The v0.7 compatibility package, broad top-level separator exports, and five
 historical core aliases are absent in v0.8. See the
-[migration guide](migration-v0.7.md), [architecture](../development/architecture.md),
-and [API lifecycle](../development/api-lifecycle.md).
+[migration guide](../migration-v0.7.md), [architecture](../../development/architecture.md),
+and [API lifecycle](../../development/api-lifecycle.md).
 
 The main current restriction is geometric, not algebraic:
 
@@ -1181,17 +1181,17 @@ freeze an open-ended callback API for arbitrary user-defined objectives.
 
 Four focused notebooks complement the guide:
 
-- [`04_powerfit`](../notebooks/04_powerfit.md) presents the canonical
+- [`04_powerfit`](../../notebooks/04_powerfit.md) presents the canonical
   external-ID, weight-first periodic workflow and then introduces advanced
   objective and active-set features.
 
-- [`06_powerfit_reports`](../notebooks/06_powerfit_reports.md)
+- [`06_powerfit_reports`](../../notebooks/06_powerfit_reports.md)
   shows how to export low-level fits, realized-pair diagnostics, and
   self-consistent active-set results as rows or JSON-friendly reports.
-- [`07_powerfit_infeasibility`](../notebooks/07_powerfit_infeasibility.md)
+- [`07_powerfit_infeasibility`](../../notebooks/07_powerfit_infeasibility.md)
   shows how contradictory hard restrictions are reported through
   `status`, `is_infeasible`, `conflict`, and report bundles.
-- [`08_powerfit_active_path`](../notebooks/08_powerfit_active_path.md)
+- [`08_powerfit_active_path`](../../notebooks/08_powerfit_active_path.md)
   shows how to inspect transient active-set path diagnostics separately from
   the final-state report objects.
 

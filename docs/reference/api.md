@@ -1,6 +1,7 @@
 # High-level API
 
-`compute(...)` returns `pyvoro2.TessellationResult` by default. Use
+`pyvoro2.compute(...)` returns the shared
+[TessellationResult (2D/3D)](result.md) by default. Use
 `output='cells'` only when a low-level workflow deliberately needs raw cell
 dictionaries or the raw diagnostics tuple.
 

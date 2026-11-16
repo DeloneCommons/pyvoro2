@@ -228,7 +228,7 @@ termination = fit.solver_termination
 
 Realization is still a separate operation and result. Active-set path data are
 experimental outer-loop diagnostics. See [Choosing an API](choosing-api.md) and
-the [separator-fitting guide](powerfit.md).
+the [separator-fitting guide](inverse/separator-fitting.md).
 
 ## Completed removal summary for v0.8
 
