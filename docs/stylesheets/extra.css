@@ -26,3 +26,176 @@ Extra CSS for pyvoro2 documentation.
 .md-header[data-md-state="hidden"] {
   transform: none !important;
 }
+
+/* The Home article alone uses an editorial measure and a figure plate.
+   Keep the plate light in every palette so the opaque scientific image blends in. */
+.md-main__inner:has(.landing) { margin-top: clamp(.5rem, 1.8vw, 1.25rem); }
+.md-content__inner:has(> .landing) { margin-top: 0; padding-top: 0; }
+.landing {
+  --landing-accent: #235e64;
+  --landing-rule: #b9c8c7;
+  max-width: 58rem;
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}
+[data-md-color-scheme="slate"] .landing {
+  --landing-accent: #9cd9d6;
+  --landing-rule: #576b70;
+}
+.landing .landing-hero {
+  display: grid;
+  grid-template-columns: 0.94fr 1.06fr;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  padding: clamp(.8rem, 1.7vw, 1.25rem) clamp(.8rem, 2.9vw, 2rem);
+  background: #fafaf7;
+  color: #183133;
+  border-block: 1px solid #c8d0ca;
+}
+.landing h1,
+.landing h2 {
+  color: inherit;
+  letter-spacing: -0.025em;
+  line-height: 1.14;
+}
+.landing h1 {
+  font: 500 clamp(2.1rem, 4.6vw, 3.2rem)/1.03 Georgia, "Times New Roman", serif;
+  letter-spacing: -0.045em;
+  margin: 0;
+  text-wrap: balance;
+}
+.landing h1 em { color: #27666b; }
+.landing-intro p {
+  margin: 1rem 0 0;
+  max-width: 48ch;
+  line-height: 1.55;
+}
+.landing .landing-figure {
+  display: block;
+  margin: 0;
+  width: 100%;
+}
+.landing-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.landing .landing-figure figcaption {
+  border-top: 1px solid #c8d0ca;
+  margin: .55rem 0 0;
+  padding-top: .5rem;
+  max-width: none;
+  color: #465858;
+  font-size: .7rem;
+  font-style: normal;
+  line-height: 1.45;
+  text-align: left;
+}
+.landing h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 .65rem;
+}
+.landing a {
+  color: var(--landing-accent);
+  text-decoration: underline;
+  text-underline-offset: .19em;
+  text-decoration-thickness: 1px;
+}
+.landing a:hover { text-decoration-thickness: 2px; }
+.landing a:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
+.landing-paths,
+.landing-start {
+  display: grid;
+  grid-template-columns: 1.12fr 1fr;
+  gap: clamp(1.2rem, 4vw, 3rem);
+  margin-top: 1.35rem;
+}
+.landing-paths section {
+  border-top: 2px solid var(--landing-rule);
+  padding-top: .8rem;
+}
+.landing-paths section:first-child { border-color: var(--landing-accent); }
+.landing-paths h2 a,
+.landing-end a { text-decoration: none; }
+.landing-paths h2 a::after,
+.landing-end a::after {
+  content: "";
+  display: inline-block;
+  width: .32em;
+  height: .32em;
+  margin: 0 .18em .12em .32em;
+  border: solid currentColor;
+  border-width: .085em .085em 0 0;
+  transform: rotate(45deg);
+}
+.landing-paths h2 a:hover,
+.landing-end a:hover { text-decoration: underline; }
+.landing-paths p,
+.landing-start p { margin: .55rem 0; }
+.landing-links p,
+.landing-utilities p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem 1rem;
+  margin: 0;
+}
+.landing-links,
+.landing-utilities { font-size: .73rem; }
+.landing-utilities {
+  border-block: 1px solid var(--landing-rule);
+  margin-top: 1rem;
+  padding: .65rem 0;
+  font-weight: 600;
+}
+.landing-start {
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  margin-block: 2.2rem;
+}
+.landing-start pre { margin-block: .8rem; }
+.landing-start .highlight .c1 { color: var(--md-default-fg-color); }
+.landing-start pre > code {
+  border-inline-start: 2px solid var(--landing-rule);
+  padding: .8rem 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.landing-details,
+.landing-note {
+  border-top: 1px solid var(--landing-rule);
+  padding-block: 1.5rem;
+}
+.landing-details dl {
+  display: grid;
+  grid-template-columns: minmax(9rem, 1fr) 2.5fr;
+  gap: .95rem 1.5rem;
+  margin: 1rem 0 0;
+}
+.landing-details dt { font-weight: 600; }
+.landing-details dd { margin: 0; }
+.landing-note p { max-width: 74ch; margin: .7rem 0 0; }
+.landing-end {
+  border-block: 1px solid var(--landing-rule);
+  padding: .85rem 0;
+  font-weight: 600;
+}
+.landing-end + p { font-size: .7rem; }
+@media (max-width: 44rem) {
+  .landing .landing-hero,
+  .landing-paths,
+  .landing-start,
+  .landing-details dl { grid-template-columns: minmax(0, 1fr); }
+  .landing .landing-hero { gap: .65rem; }
+  .landing h1 { font-size: clamp(1.55rem, 8.4vw, 2rem); }
+  .landing-paths h2 { font-size: 1.13rem; }
+  .landing-intro p { margin-top: .65rem; }
+  .landing-figure img { max-height: 8.3rem; object-fit: contain; }
+  .landing-paths { gap: .8rem; margin-top: .9rem; }
+  .landing-paths section { padding-top: .6rem; }
+  .landing-start { margin-block: 1.5rem; }
+  .landing-details dl { gap: .2rem; }
+  .landing-details dd + dt { margin-top: .65rem; }
+}

@@ -103,7 +103,7 @@ periodic image is a realized face or edge. Disconnected observation components
 also leave relative weight offsets unidentified; those offsets can change the
 complete diagram.
 
-The [separator-fitting guide](https://delonecommons.github.io/pyvoro2/guide/powerfit/)
+The [separator-fitting guide](https://delonecommons.github.io/pyvoro2/guide/inverse/separator-fitting/)
 explains confidence, connectivity, feasibility, and realization diagnostics.
 Advanced models and reports are in `pyvoro2.inverse.separator`; its experimental
 active-set refinement has no universal convergence guarantee.
@@ -141,8 +141,8 @@ and [power-diagram theory](https://delonecommons.github.io/pyvoro2/theory/power-
 - [3D domains](https://delonecommons.github.io/pyvoro2/guide/domains/),
   [2D workflows](https://delonecommons.github.io/pyvoro2/guide/planar/), and
   [operations](https://delonecommons.github.io/pyvoro2/guide/operations/)
-- [Topology and graphs](https://delonecommons.github.io/pyvoro2/guide/topology/)
-- [Notebook examples](https://delonecommons.github.io/pyvoro2/guide/notebooks/)
+- [Topology and graphs](https://delonecommons.github.io/pyvoro2/guide/periodic-contacts/)
+- [Notebook examples](https://delonecommons.github.io/pyvoro2/examples/)
   and [optional visualization](https://delonecommons.github.io/pyvoro2/guide/visualization/)
 
 ## Status, support, and contributing
