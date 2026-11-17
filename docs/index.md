@@ -11,8 +11,8 @@ hide:
 
 # Voronoi and power tessellations *in Python*
 
-pyvoro2 computes cells around points in 2D and 3D. It can also infer the
-weights of those points from measured cell boundaries.
+Compute 2D and 3D tessellations in bounded and periodic systems. Get cell geometry,
+areas or volumes, and contacts between neighboring cells.
 
 <div class="landing-links" markdown="1">
 
@@ -22,10 +22,10 @@ weights of those points from measured cell boundaries.
 </div>
 
 </div>
-<figure class="landing-figure">
+<figure class="landing-figure" markdown="1">
   <img src="assets/landing/triclinic-voronoi.png" width="1600" height="900"
-       alt="Four translucent Voronoi polyhedra surround dark site markers. Blue and green foreground cells extend across the dashed outline of a skew lattice cell.">
-  <figcaption>3D Voronoi tessellation in a fully periodic triclinic cell.</figcaption>
+       alt="Four complete Voronoi polyhedra surround four points. A dashed skew frame outlines one fundamental domain; the polyhedra extend across that frame.">
+  <figcaption markdown="span">Four complete Voronoi cells from a fully periodic triclinic 3D calculation. [Run this example](guide/forward/index.md).</figcaption>
 </figure>
 </div>
 
@@ -34,13 +34,13 @@ weights of those points from measured cell boundaries.
 
 ## [Compute tessellations](guide/forward/index.md)
 
-Find the region nearest each site, or assign weights to compute a power
-(Laguerre) diagram. pyvoro2 provides Python bindings to Voro++ with structured
-results and diagnostics. Inspect cell shapes, measure areas or volumes, and see
-[which neighbor image](guide/periodic-contacts.md) shares a boundary.
+Voronoi cells assign space to the nearest point. Power (Laguerre) diagrams use
+weights to shift the boundaries.
 
-- **[2D](guide/planar.md)** — Finite rectangles, with optional periodicity along either or both axes.
-- **[3D](guide/domains.md)** — Finite boxes, orthorhombic cells with per-axis periodicity, or fully periodic triclinic cells.
+- **[2D](guide/planar.md)** — Bounded or periodic rectangles.
+- **[3D](guide/domains.md)** — Bounded boxes and orthorhombic periodic cells; fully periodic triclinic cells.
+
+[Identify which periodic copy of a neighbor shares a boundary](guide/periodic-contacts.md).
 
 [Capabilities and limitations](guide/capabilities.md)
 
@@ -49,18 +49,20 @@ results and diagnostics. Inspect cell shapes, measure areas or volumes, and see
 
 ## [Fit power weights](guide/inverse/index.md)
 
-With sites fixed, measure where a boundary crosses the line between two sites.
-Repeat for other pairs. Inverse fitting finds one set of weights that best
-matches the observations, even when they disagree.
-
-Compute the fitted diagram to see which cells touch. A third cell can separate
-a pair even when its boundary position is fitted exactly.
+Keep the points fixed. For selected pairs, specify where their power separator
+should cross the line joining them. Fit one set of power weights to all these
+observations together.
 
 <figure class="landing-cycle">
   <img src="assets/landing/separator-cycle.png" width="820" height="444" loading="lazy"
-       alt="Left, ticks on the three sides of a dashed triangle mark measurements between fixed sites. Right, the same ticks sit just off the computed edges, and all three cells share pairwise contacts.">
-  <figcaption>The three ticks mark observed positions. The fitted edges miss all three marks, yet each pair of cells meets.</figcaption>
+       alt="Two panels show the same three fixed points. Left: short marks on dashed lines joining the points locate three observed pairwise separators. Right: the power diagram computed from fitted weights has three shared edges. The original marks remain offset from those edges; none of the observations is matched exactly.">
+  <figcaption>
+    <p>Ticks: observed positions. Solid interior lines: computed edges.</p>
+    <p>These observations cannot all be matched exactly. All three cell pairs share an edge in this example.</p>
+  </figcaption>
 </figure>
+
+[Fitting a separator does not guarantee a shared cell boundary](guide/inverse/index.md#from-a-fit-to-geometry).
 
 </section>
 </div>
@@ -74,7 +76,7 @@ a pair even when its boundary position is fitted exactly.
 python -m pip install pyvoro2
 ```
 
-For standard GIL-enabled CPython 3.10–3.14. Only NumPy is required at runtime.
+CPython 3.10–3.14 (GIL enabled). NumPy is the only required runtime dependency.
 
 [Wheels and source builds](https://github.com/DeloneCommons/pyvoro2/blob/dev/CONTRIBUTING.md)
 
@@ -83,19 +85,17 @@ For standard GIL-enabled CPython 3.10–3.14. Only NumPy is required at runtime.
 
 ## Divide a unit cube
 
-Place two sites symmetrically about the midplane. Each Voronoi cell occupies half the cube.
+Two points, two cells: each occupies half the cube.
 
 ```python
-import numpy as np
 import pyvoro2 as pv
 
-points = np.array([
-    [0.25, 0.5, 0.5],
-    [0.75, 0.5, 0.5],
-])
+points = [[0.25, 0.5, 0.5],
+          [0.75, 0.5, 0.5]]
 box = pv.Box(((0.0, 1.0),) * 3)
 result = pv.compute(points, domain=box)
-print(result.cell_measures)  # [0.5 0.5]
+print(result.cell_measures)
+# [0.5 0.5]
 ```
 
 </div>
@@ -106,17 +106,19 @@ print(result.cell_measures)  # [0.5 0.5]
 ## Explore the documentation
 
 - [Examples](examples/index.md)<br>
-  Build a periodic neighbor graph or follow a worked separator fit.
+  Worked notebooks.
 - [Theory](theory/index.md)<br>
-  Learn how distance and weight determine a cell boundary.
+  Definitions and fitting mathematics.
 - [API Reference](reference/index.md)<br>
-  Look up Python signatures, return values and output conventions.
+  Signatures, parameters, and return values.
 
 </nav>
 
 <div class="landing-footer" markdown="1">
 
-pyvoro2 is beta. Project code is licensed under LGPLv3+. Vendored Voro++ retains its upstream license.
+Built on Voro++ tessellation engines, with Python interfaces, geometric analysis, and inverse fitting.
+
+Beta · Project code: LGPLv3+ · Voro++: upstream license.
 
 [Project](project/index.md) · [Development](development/index.md) · [License and attribution](project/license.md)
 

@@ -36,7 +36,8 @@ def main():
     np.testing.assert_allclose(result.cell_measures.sum(), 1.0)
     fig, (observed, fitted) = plt.subplots(1, 2, figsize=(4.1, 2.22))
     fig.subplots_adjust(left=0.02, right=0.98, bottom=0.03, top=0.82, wspace=0.15)
-    for axis, title in zip((observed, fitted), ('Measured positions', 'Fitted cells')):
+    panels = [(observed, 'Observed positions'), (fitted, 'Computed cells')]
+    for axis, title in panels:
         axis.set(xlim=(0, 1), ylim=(0, 1), aspect='equal', xticks=[], yticks=[])
         axis.set_title(title, fontsize=11, color='#283e40')
         for spine in axis.spines.values():
@@ -59,11 +60,13 @@ def main():
             # Draw each interior edge once. Negative neighbors are box walls.
             i, j = cell['id'], edge['adjacent_cell']
             if j > i:
-                fitted.plot(*vertices[edge['vertices']].T, color='#235e64', linewidth=1.6)
+                segment = vertices[edge['vertices']]
+                fitted.plot(*segment.T, color='#235e64', linewidth=1.6)
                 contacts.add((i, j))
     assert contacts == {(0, 1), (1, 2), (0, 2)}
 
-    output = Path(__file__).resolve().parents[2] / 'docs/assets/landing/separator-cycle.png'
+    root = Path(__file__).resolve().parents[2]
+    output = root / 'docs/assets/landing/separator-cycle.png'
     fig.savefig(output, dpi=200, facecolor='white')
     plt.close(fig)
 
