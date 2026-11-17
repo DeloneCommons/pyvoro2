@@ -11,48 +11,58 @@ hide:
 
 # Voronoi and power tessellations *in Python*
 
-Compute 2D and 3D Voronoi or weighted Laguerre cells, inspect periodic
-neighbors, or fit power weights from measured separators at fixed sites.
+pyvoro2 computes cells around points in 2D and 3D. It can also infer the
+weights of those points from measured cell boundaries.
+
+<div class="landing-links" markdown="1">
+
+[Installation](#installation)
+[API Reference](reference/index.md)
+
+</div>
 
 </div>
 <figure class="landing-figure">
   <img src="assets/landing/triclinic-voronoi.png" width="1600" height="900"
        alt="Four translucent Voronoi polyhedra surround dark site markers. Blue and green foreground cells extend across the dashed outline of a skew lattice cell.">
-  <figcaption><strong>Fully periodic triclinic lattice.</strong> Four complete cells sum to one lattice-cell volume (3 cubic units).</figcaption>
+  <figcaption>3D Voronoi tessellation in a fully periodic triclinic cell.</figcaption>
 </figure>
 </div>
 
 <div class="landing-paths" markdown="1">
 <section markdown="1">
 
-## [Tessellations &amp; periodic geometry](guide/forward/index.md)
+## [Compute tessellations](guide/forward/index.md)
 
-Compute cells and measures from sites in a domain. Follow the triclinic example
-to identify the neighbor image across each face.
+Find the region nearest each site, or assign weights to compute a power
+(Laguerre) diagram. pyvoro2 provides Python bindings to Voro++ with structured
+results and diagnostics. Inspect cell shapes, measure areas or volumes, and see
+[which neighbor image](guide/periodic-contacts.md) shares a boundary.
 
-<div class="landing-links" markdown="1">
+- **[2D](guide/planar.md)** — Finite rectangles, with optional periodicity along either or both axes.
+- **[3D](guide/domains.md)** — Finite boxes, orthorhombic cells with per-axis periodicity, or fully periodic triclinic cells.
 
-[Planar 2D](guide/planar.md)
-[Periodic contacts and image shifts](guide/periodic-contacts.md)
+[Capabilities and limitations](guide/capabilities.md)
 
-</div>
 </section>
 <section markdown="1">
 
-## [Inverse fitting](guide/inverse/index.md)
+## [Fit power weights](guide/inverse/index.md)
 
-Keep the sites fixed. Use measured positions of pairwise separators to fit
-weight differences, then check which contacts occur in the resulting diagram.
+With sites fixed, measure where a boundary crosses the line between two sites.
+Repeat for other pairs. Inverse fitting finds one set of weights that best
+matches the observations, even when they disagree.
+
+Compute the fitted diagram to see which cells touch. A third cell can separate
+a pair even when its boundary position is fitted exactly.
+
+<figure class="landing-cycle">
+  <img src="assets/landing/separator-cycle.png" width="820" height="444" loading="lazy"
+       alt="Left, ticks on the three sides of a dashed triangle mark measurements between fixed sites. Right, the same ticks sit just off the computed edges, and all three cells share pairwise contacts.">
+  <figcaption>The three ticks mark observed positions. The fitted edges miss all three marks, yet each pair of cells meets.</figcaption>
+</figure>
 
 </section>
-</div>
-
-<div class="landing-utilities" markdown="1">
-
-[Installation](#installation)
-[API Reference](reference/index.md)
-[Capabilities and limitations](guide/capabilities.md)
-
 </div>
 
 <section class="landing-start" markdown="1">
@@ -64,8 +74,7 @@ weight differences, then check which contacts occur in the resulting diagram.
 python -m pip install pyvoro2
 ```
 
-The published package supports standard GIL-enabled CPython 3.10–3.14.
-NumPy is its only required runtime dependency.
+For standard GIL-enabled CPython 3.10–3.14. Only NumPy is required at runtime.
 
 [Wheels and source builds](https://github.com/DeloneCommons/pyvoro2/blob/dev/CONTRIBUTING.md)
 
@@ -74,8 +83,7 @@ NumPy is its only required runtime dependency.
 
 ## Divide a unit cube
 
-Two sites placed symmetrically about the midplane give two cells of equal volume.
-The measures follow the order of the input sites.
+Place two sites symmetrically about the midplane. Each Voronoi cell occupies half the cube.
 
 ```python
 import numpy as np
@@ -93,46 +101,24 @@ print(result.cell_measures)  # [0.5 0.5]
 </div>
 </section>
 
-<section class="landing-details" markdown="1">
+<nav class="landing-explore" aria-labelledby="explore-the-documentation" markdown="1">
 
-## Geometry you can inspect
+## Explore the documentation
 
-<dl>
-  <dt>Domains</dt>
-  <dd>Use a bounded box in either dimension. In 2D, periodicity is rectangular and can be selected per axis. In 3D, orthorhombic cells allow per-axis periodicity, while triclinic cells require periodicity along all three lattice vectors.</dd>
-  <dt>Image-qualified contacts</dt>
-  <dd>A contact <code>(i, j, shift)</code> records the lattice image of site <code>j</code> seen from site <code>i</code>. Its reciprocal has the opposite shift. Keep contacts with a site's own images when building a periodic neighbor graph.</dd>
-  <dt>Measures and topology</dt>
-  <dd>Areas or volumes and empty-cell masks align with the input sites. Request boundaries and diagnostics for a closer look. Planar normalization can attach shared vertices and edges during computation. In 3D, a separate normalization step constructs shared vertices, edges and faces.</dd>
-</dl>
-
-</section>
-
-<section class="landing-note" markdown="1">
-
-## From a separator to a contact
-
-Moving the separator along the line between two fixed sites changes the weight
-difference inferred for that pair. Even a perfect fit can leave the pair
-without a shared boundary. A third site can cover the separator, or the two sites
-can meet through a different periodic image. Compute the fitted diagram and check the
-requested image to establish the contact.
-
-[Follow the inverse guide](guide/inverse/index.md#from-a-fit-to-geometry)
-
-</section>
-
-<nav class="landing-links landing-end" aria-label="Explore the documentation" markdown="1">
-
-[Examples](examples/index.md)
-[Theory](theory/index.md)
-[API Reference](reference/index.md)
-[Project](project/index.md)
+- [Examples](examples/index.md)<br>
+  Build a periodic neighbor graph or follow a worked separator fit.
+- [Theory](theory/index.md)<br>
+  Learn how distance and weight determine a cell boundary.
+- [API Reference](reference/index.md)<br>
+  Look up Python signatures, return values and output conventions.
 
 </nav>
 
-pyvoro2 is beta. Its geometry backend uses Voro++. pyvoro2-authored code is
-licensed under LGPLv3+, and vendored code retains its upstream licenses.
-[License and attribution](project/license.md)
+<div class="landing-footer" markdown="1">
 
+pyvoro2 is beta. Project code is licensed under LGPLv3+. Vendored Voro++ retains its upstream license.
+
+[Project](project/index.md) · [Development](development/index.md) · [License and attribution](project/license.md)
+
+</div>
 </div>

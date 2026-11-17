@@ -119,10 +119,8 @@ Extra CSS for pyvoro2 documentation.
   padding-top: .8rem;
 }
 .landing-paths section:first-child { border-color: var(--landing-accent); }
-.landing-paths h2 a,
-.landing-end a { text-decoration: none; }
-.landing-paths h2 a::after,
-.landing-end a::after {
+.landing-paths h2 a { text-decoration: none; }
+.landing-paths h2 a::after {
   content: "";
   display: inline-block;
   width: .32em;
@@ -132,28 +130,37 @@ Extra CSS for pyvoro2 documentation.
   border-width: .085em .085em 0 0;
   transform: rotate(45deg);
 }
-.landing-paths h2 a:hover,
-.landing-end a:hover { text-decoration: underline; }
+.landing-paths h2 a:hover { text-decoration: underline; }
 .landing-paths p,
 .landing-start p { margin: .55rem 0; }
-.landing-links p,
-.landing-utilities p {
+.landing-links p {
   display: flex;
   flex-wrap: wrap;
   gap: .25rem 1rem;
-  margin: 0;
+  margin: .7rem 0 0;
+  font-size: .73rem;
 }
-.landing-links,
-.landing-utilities { font-size: .73rem; }
-.landing-utilities {
-  border-block: 1px solid var(--landing-rule);
-  margin-top: 1rem;
-  padding: .65rem 0;
-  font-weight: 600;
+.landing-paths ul { padding: 0; }
+.landing-paths li { margin-inline-start: 1em; }
+.landing .landing-cycle {
+  display: block;
+  width: min(100%, 16rem);
+  margin: 1rem 0 0;
+}
+.landing-cycle img { display: block; width: 100%; height: auto; }
+.landing .landing-cycle figcaption {
+  max-width: none;
+  margin: .45rem 0 0;
+  font-size: .7rem;
+  line-height: 1.45;
+  font-style: normal;
+  text-align: left;
 }
 .landing-start {
   grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
-  margin-block: 2.2rem;
+  margin-block: 1.6rem;
+  border-top: 1px solid var(--landing-rule);
+  padding-top: 1.3rem;
 }
 .landing-start pre { margin-block: .8rem; }
 .landing-start .highlight .c1 { color: var(--md-default-fg-color); }
@@ -163,31 +170,30 @@ Extra CSS for pyvoro2 documentation.
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.landing-details,
-.landing-note {
+.landing-explore {
   border-top: 1px solid var(--landing-rule);
-  padding-block: 1.5rem;
+  padding-block: 1.3rem;
 }
-.landing-details dl {
+.landing .landing-explore ul {
   display: grid;
-  grid-template-columns: minmax(9rem, 1fr) 2.5fr;
-  gap: .95rem 1.5rem;
-  margin: 1rem 0 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .8rem 2rem;
+  list-style: none;
+  padding: 0;
+  margin: .8rem 0 0;
 }
-.landing-details dt { font-weight: 600; }
-.landing-details dd { margin: 0; }
-.landing-note p { max-width: 74ch; margin: .7rem 0 0; }
-.landing-end {
-  border-block: 1px solid var(--landing-rule);
-  padding: .85rem 0;
-  font-weight: 600;
+.landing .landing-explore ul li { margin: 0; }
+.landing-explore li a { font-weight: 600; }
+.landing-footer {
+  border-top: 1px solid var(--landing-rule);
+  padding-top: .4rem;
+  font-size: .7rem;
 }
-.landing-end + p { font-size: .7rem; }
 @media (max-width: 44rem) {
   .landing .landing-hero,
   .landing-paths,
   .landing-start,
-  .landing-details dl { grid-template-columns: minmax(0, 1fr); }
+  .landing .landing-explore ul { grid-template-columns: minmax(0, 1fr); }
   .landing .landing-hero { gap: .65rem; }
   .landing h1 { font-size: clamp(1.55rem, 8.4vw, 2rem); }
   .landing-paths h2 { font-size: 1.13rem; }
@@ -196,6 +202,4 @@ Extra CSS for pyvoro2 documentation.
   .landing-paths { gap: .8rem; margin-top: .9rem; }
   .landing-paths section { padding-top: .6rem; }
   .landing-start { margin-block: 1.5rem; }
-  .landing-details dl { gap: .2rem; }
-  .landing-details dd + dt { margin-top: .65rem; }
 }
