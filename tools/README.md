@@ -10,6 +10,8 @@ remain synchronized through the execution/export tools below.
 
 Main entry points:
 
+- `python tools/render_landing.py` regenerates the selected triclinic hero offline.
+  See the [asset, caption and reproduction instructions](landing/README.md).
 - `python tools/execute_notebooks.py` — clear ordinary stored outputs, execute
   each selected source notebook in a fresh Jupyter kernel, and save only after
   successful execution.
