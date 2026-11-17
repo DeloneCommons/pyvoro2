@@ -1,0 +1,449 @@
+{
+  "vectors": [
+    [
+      2.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.5,
+      1.5,
+      0.0
+    ],
+    [
+      0.25,
+      0.375,
+      1.0
+    ]
+  ],
+  "fractional_sites": [
+    [
+      0.15,
+      0.2,
+      0.3
+    ],
+    [
+      0.65,
+      0.25,
+      0.35
+    ],
+    [
+      0.35,
+      0.75,
+      0.7
+    ],
+    [
+      0.8,
+      0.7,
+      0.85
+    ]
+  ],
+  "ids": [
+    40,
+    10,
+    70,
+    20
+  ],
+  "returned_sites": {
+    "40": [
+      0.47500000000000003,
+      0.41250000000000003,
+      0.3
+    ],
+    "10": [
+      1.5125,
+      0.50625,
+      0.35
+    ],
+    "70": [
+      1.25,
+      1.3875,
+      0.7
+    ],
+    "20": [
+      0.1625000000000001,
+      1.36875,
+      0.85
+    ]
+  },
+  "volumes_by_input_id": [
+    0.77955603974319,
+    0.7292771526344204,
+    0.736232720513777,
+    0.754934087108613
+  ],
+  "volume_sum": 3.0,
+  "lattice_volume": 3.0,
+  "oriented_faces_checked": 56,
+  "max_bisector_distance": 3.2769882503251334e-16,
+  "max_reciprocal_vertex_distance": 7.447602459741819e-16,
+  "max_independent_volume_error": 4.440892098500626e-16,
+  "contact": [
+    40,
+    10,
+    [
+      -1,
+      0,
+      0
+    ]
+  ],
+  "reciprocal": [
+    10,
+    40,
+    [
+      1,
+      0,
+      0
+    ]
+  ],
+  "contact_vertices": [
+    [
+      0.039140204973118264,
+      0.7002289146505375,
+      0.7471603557627688
+    ],
+    [
+      0.02180016063084106,
+      0.47480833820093454,
+      0.8360280830169393
+    ],
+    [
+      -0.06697758469626186,
+      -0.07617735105140161,
+      0.16015465281834124
+    ],
+    [
+      -0.06764566296728974,
+      0.010450131425233544,
+      -0.015132383542640182
+    ],
+    [
+      -0.04452494959677428,
+      0.31101940524193517,
+      -0.13362603956653218
+    ],
+    [
+      0.04030787970430105,
+      0.8602003528225806,
+      0.4696916477654569
+    ]
+  ],
+  "contact_nearest_site_violation": 6.661338147750939e-16,
+  "connector_midpoint_inside_face": true,
+  "nearest_site_stencil": "[-2,2]^3; face vertices, centroid, connector midpoint",
+  "round_1_input_match": true,
+  "round_1_output_comparison_atol": 1e-12,
+  "scenes": {
+    "b1-open": {
+      "displayed": [
+        {
+          "id": 40,
+          "image_shift": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": 10,
+          "image_shift": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": 70,
+          "image_shift": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": 20,
+          "image_shift": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "original_face_contributions": 56,
+      "displayed_polygons": 51,
+      "shared_interfaces_drawn_once": 5,
+      "highlighted_faces": 0,
+      "colors": {
+        "40": "#77a4bc",
+        "10": "#8db5a6",
+        "70": "#b7c8ce",
+        "20": "#bbc0b2"
+      },
+      "opacity": {
+        "40": 0.16,
+        "10": 0.16,
+        "70": 0.16,
+        "20": 0.16
+      },
+      "contact_opacity": null,
+      "camera": {
+        "position": [
+          -3.331360507901131,
+          9.07693682669205,
+          4.561648907915552
+        ],
+        "focal_point": [
+          1.2196804840074627,
+          1.1126150908520098,
+          0.5794880399955331
+        ],
+        "view_up": [
+          0.19757050653759667,
+          -0.34574838644079414,
+          0.9172916374959845
+        ],
+        "parallel_scale": 1.14303901638194,
+        "projection": "orthographic"
+      },
+      "depth_peeling_used": true,
+      "opengl": [
+        "OpenGL vendor string:  Mesa",
+        "OpenGL renderer string:  llvmpipe (LLVM 19.1.7, 256 bits)",
+        "OpenGL version string:  4.5 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+      ]
+    },
+    "b2-layered": {
+      "displayed": [
+        {
+          "id": 40,
+          "image_shift": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": 10,
+          "image_shift": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": 70,
+          "image_shift": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": 20,
+          "image_shift": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "original_face_contributions": 56,
+      "displayed_polygons": 51,
+      "shared_interfaces_drawn_once": 5,
+      "highlighted_faces": 0,
+      "colors": {
+        "40": "#77a4bc",
+        "10": "#8db5a6",
+        "70": "#b7c8ce",
+        "20": "#bbc0b2"
+      },
+      "opacity": {
+        "40": 0.34,
+        "10": 0.24,
+        "70": 0.09,
+        "20": 0.09
+      },
+      "contact_opacity": null,
+      "camera": {
+        "position": [
+          -3.892966418634691,
+          -7.3811054742874065,
+          3.481510546940376
+        ],
+        "focal_point": [
+          0.8458246034380476,
+          0.9117788143398852,
+          0.5197661581449148
+        ],
+        "view_up": [
+          0.146943671674129,
+          0.2571514254297257,
+          0.9551338658818385
+        ],
+        "parallel_scale": 1.1740331322348783,
+        "projection": "orthographic"
+      },
+      "depth_peeling_used": true,
+      "opengl": [
+        "OpenGL vendor string:  Mesa",
+        "OpenGL renderer string:  llvmpipe (LLVM 19.1.7, 256 bits)",
+        "OpenGL version string:  4.5 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+      ]
+    },
+    "c1-open": {
+      "displayed": [
+        {
+          "id": 40,
+          "image_shift": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": 10,
+          "image_shift": [
+            -1,
+            0,
+            0
+          ]
+        }
+      ],
+      "original_face_contributions": 28,
+      "displayed_polygons": 27,
+      "shared_interfaces_drawn_once": 1,
+      "highlighted_faces": 1,
+      "colors": {
+        "40": "#77a4bc",
+        "10": "#8db5a6",
+        "70": "#b7c8ce",
+        "20": "#bbc0b2"
+      },
+      "opacity": {
+        "40": 0.18,
+        "10": 0.18
+      },
+      "contact_opacity": 0.86,
+      "camera": {
+        "position": [
+          -4.995541783924727,
+          -7.218987344782354,
+          4.00040501275624
+        ],
+        "focal_point": [
+          0.49267121555979,
+          0.4645108544959702,
+          0.70747721306553
+        ],
+        "view_up": [
+          0.19139754063396272,
+          0.26795655688754777,
+          0.9442278671275492
+        ],
+        "parallel_scale": 1.2931013808261538,
+        "projection": "orthographic"
+      },
+      "depth_peeling_used": true,
+      "opengl": [
+        "OpenGL vendor string:  Mesa",
+        "OpenGL renderer string:  llvmpipe (LLVM 19.1.7, 256 bits)",
+        "OpenGL version string:  4.5 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+      ]
+    },
+    "c2-layered": {
+      "displayed": [
+        {
+          "id": 40,
+          "image_shift": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "id": 10,
+          "image_shift": [
+            -1,
+            0,
+            0
+          ]
+        }
+      ],
+      "original_face_contributions": 28,
+      "displayed_polygons": 27,
+      "shared_interfaces_drawn_once": 1,
+      "highlighted_faces": 1,
+      "colors": {
+        "40": "#77a4bc",
+        "10": "#8db5a6",
+        "70": "#b7c8ce",
+        "20": "#bbc0b2"
+      },
+      "opacity": {
+        "40": 0.34,
+        "10": 0.3
+      },
+      "contact_opacity": 0.86,
+      "camera": {
+        "position": [
+          -3.7392923603957002,
+          9.076080958612222,
+          3.7497476750985204
+        ],
+        "focal_point": [
+          0.9474925475344196,
+          0.8742073697345109,
+          0.468998239547437
+        ],
+        "view_up": [
+          0.16277075419690962,
+          -0.28484881984459187,
+          0.9446516984642077
+        ],
+        "parallel_scale": 1.3805001745491514,
+        "projection": "orthographic"
+      },
+      "depth_peeling_used": true,
+      "opengl": [
+        "OpenGL vendor string:  Mesa",
+        "OpenGL renderer string:  llvmpipe (LLVM 19.1.7, 256 bits)",
+        "OpenGL version string:  4.5 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+      ]
+    }
+  },
+  "versions": {
+    "pyvoro2": "0.9.0.dev0",
+    "numpy": "2.5.5",
+    "pillow": "12.0.0",
+    "pyvista": "0.46.4",
+    "vtk": [
+      9,
+      5,
+      2
+    ],
+    "python": "3.12.14"
+  },
+  "source_revision": "67ce90b34a36f8919fd419e33c8c858a4a3140f8",
+  "generator_sha256": {
+    "render_landing_refined.py": "11f43f64e3cf601a48bd77dc5f8ddd87ab8dd63235878daa6097d799cb35b4d6",
+    "render_landing.py": "00511472c3ee392168e58e1c4b3a20233b0d9e0d246165aecbbf7d01197b4116"
+  },
+  "images_sha256": {
+    "b1-open-360.png": "3cc7d35a89755e473c0e4c8f66758822e1b2e1580d27231955b0b27b4bb9fbc9",
+    "b1-open-800.png": "29c863abbb5a18be6c0c9679f0198d6f923a3e26c73bea6acab0c7c2b9f01b33",
+    "b1-open.png": "9649abfbb20fa4fc392eb86a1b06ef52af2096d009b6015b747d0f4ed7fd5c0e",
+    "b2-layered-360.png": "188e31dfbfc0505138b14afb42de81bcdae970e637f865909e6237ef2cab47ed",
+    "b2-layered-800.png": "d04b4cec31cf712493cb6591d45370ad9c7f1149e58bce2c9457dec76cd58024",
+    "b2-layered.png": "12cc67fa4cc36a82c7a690e8528c548a298034e8c1b8faa2275e080124b9b269",
+    "c1-open-360.png": "1375c6b131311c39c6c892cc357ffea6c510a31ed44c3a752ecb37971f4dd5f3",
+    "c1-open-800.png": "d747096678f25a69c502b5da2715793821c47306aea4650b9f2198488cc52192",
+    "c1-open.png": "b09cde67c79fb34685cbdb3088d9d269559a0a7bf8f80042ce892ac2953f1abf",
+    "c2-layered-360.png": "fee7f1a7700fcebd7e84f1b79ef84842aed1f806eb08c5a4c9cab2fe4386d7fb",
+    "c2-layered-800.png": "6e27da69b40813a1457cb1d2f22560b8e70ce092eeadd87a9c13c7628efcfab6",
+    "c2-layered.png": "a0396684ba318590fb535dd74e5c23d30bb52a26f65f0700bff09db0056f7e93",
+    "comparison-1600.png": "63b8568f754bc40123b9aeadde66af5b84485b2474da0beecba17f82960db5ed",
+    "comparison-360.png": "677f03b24b67ba7296756d738c15efc7aca78b8dd4f1ce12b59eb970a20c98e6",
+    "comparison-800.png": "99e345506eecca62ac5ab289cbb2461ec99a87d6f584cf800360bf92f85136d0",
+    "small-scale-review.png": "192ea563961503194b3fde7a517e6256e291d764b6a8abca26d240c645575f33"
+  }
+}

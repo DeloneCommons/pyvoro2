@@ -1,5 +1,9 @@
 # DOC-W4-A: three scientific illustration candidates
 
+**Current review: [round two — refined translucent B/C comparison](ROUND-2.md).**
+The first-round candidates and recommendation below are retained as exploration
+history; no direction has been selected or discarded.
+
 **Exploration only — awaiting maintainer selection.** Related:
 [#134](https://github.com/DeloneCommons/pyvoro2/issues/134),
 [#127](https://github.com/DeloneCommons/pyvoro2/issues/127).
