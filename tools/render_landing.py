@@ -1,8 +1,5 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Offline DOC-W4-A exploration; public pyvoro2 geometry, optional PyVista.
-
-See landing-exploration/README.md. Nothing here runs during the docs build.
-"""
+"""Generate the selected four-cell triclinic documentation hero offline."""
 
 import argparse
 import hashlib
@@ -10,7 +7,6 @@ import itertools
 import json
 from pathlib import Path
 import platform
-import subprocess
 
 import numpy as np
 import pyvoro2 as pv
@@ -23,8 +19,8 @@ FRACTIONAL = np.array([[.15, .20, .30], [.65, .25, .35],
 IDS = [40, 10, 70, 20]
 CONTACT = (40, 10, (-1, 0, 0))
 BACKGROUND = '#fafaf7'
-INK = '#354950'
-ACCENT = '#c77843'
+COLORS = {40: '#77a4bc', 10: '#8db5a6', 70: '#b7c8ce', 20: '#bbc0b2'}
+OPACITY = {40: .34, 10: .24, 70: .14, 20: .14}
 
 
 def polygon(cell, face):
@@ -97,7 +93,7 @@ def compute_and_check():
     # That is not guaranteed for an arbitrary Voronoi neighbor pair.
     side = np.cross(np.roll(p, -1, axis=0) - p, midpoint - p) @ (sj - si)
     assert np.all(side < -1e-10) or np.all(side > 1e-10)
-    # Independent nearest-site check on the highlighted face, against a stated
+    # Independent nearest-site check on the reference contact face, against a stated
     # finite stencil (not a general certificate for arbitrary lattices).
     images = np.concatenate([
         np.asarray([cells[k]['site'] for k in IDS]) + np.array(s) @ VECTORS
@@ -124,188 +120,115 @@ def compute_and_check():
     return cells, report
 
 
-def mesh(pvplot, cell, delta=None, only_face=None):
-    points = np.asarray(cell['vertices'])
-    if delta is not None:
-        points = points + delta
-    faces = cell['faces'] if only_face is None else [only_face]
-    indices = []
-    site = np.asarray(cell['site'])
-    if delta is not None:
-        site = site + delta
-    for face in faces:
-        loop = list(face['vertices'])
-        xyz = points[loop]
-        normal = np.cross(xyz[1] - xyz[0], xyz[2] - xyz[0])
-        if np.dot(normal, xyz.mean(axis=0) - site) < 0:
-            # Rendering winding only: exactly the same polygon and coordinates.
-            loop.reverse()
-        indices.extend([len(loop), *loop])
-    return pvplot.PolyData(points, indices)
-
-
-def edges(pvplot, cell, delta=None):
-    points = np.asarray(cell['vertices'])
-    if delta is not None:
-        points = points + delta
-    pairs = set()
-    for face in cell['faces']:
-        v = face['vertices']
-        pairs.update(tuple(sorted((a, b))) for a, b in zip(v, v[1:] + v[:1]))
-    lines = [n for a, b in sorted(pairs) for n in (2, a, b)]
-    return pvplot.PolyData(points, lines=lines)
-
-
-def lattice(plot, pvplot, color='#6e7f83', width=2.8, dashed=True):
-    for corner in itertools.product((0, 1), repeat=3):
-        for axis in range(3):
-            if corner[axis]:
-                continue
-            start = np.array(corner) @ VECTORS
-            end = start + VECTORS[axis]
-            if dashed:
-                for t in np.arange(0, 1, .07):
-                    segment = pvplot.Line(
-                        start + t * (end - start),
-                        start + min(t + .04, 1) * (end - start))
-                    plot.add_mesh(segment,
-                                  color=color, line_width=width, lighting=False)
-            else:
-                plot.add_mesh(pvplot.Line(start, end), color=color,
-                              line_width=width, lighting=False)
-
-
-def render(cells, name, output, camera=None):
+def render(cells, output):
     import pyvista as p
     from PIL import Image
 
-    plot = p.Plotter(off_screen=True, window_size=(1600, 900), lighting='none')
+    plot = p.Plotter(off_screen=True, window_size=(3200, 1800), lighting='none')
     plot.set_background(BACKGROUND)
-    plot.enable_anti_aliasing('ssaa')
-    plot.add_light(p.Light(position=(-3, -4, 8), focal_point=(1, .5, .5),
-                           intensity=.8, light_type='scene light'))
-    plot.add_light(p.Light(position=(-4, -2, 1), focal_point=(1, .5, .5),
-                           intensity=.45, light_type='scene light'))
-    i, j, shift = CONTACT
-    delta = np.array(shift) @ VECTORS
-    face = find_face(cells, *CONTACT)
-
-    def surface(cell, color, translation=None):
-        plot.add_mesh(mesh(p, cell, translation), color=color, smooth_shading=False,
-                      ambient=.5, diffuse=.5, specular=0, show_edges=True,
-                      edge_color=INK, line_width=1.8)
-
-    def wire(cell, color=INK, translation=None, width=2.4):
-        plot.add_mesh(edges(p, cell, translation), color=color, line_width=width,
-                      lighting=False)
-
-    def marker(point, color=INK, radius=.035):
-        plot.add_mesh(p.Sphere(radius=radius, center=point,
-                               theta_resolution=32, phi_resolution=32),
-                      color=color, ambient=.4, specular=0)
-
-    if name == 'a-cell':
-        surface(cells[i], '#a8bcc0')
-        lattice(plot, p)
-        # Replace the face's appearance, never its geometry; polygon offset
-        # avoids z fighting without displacing the returned vertices.
-        actor = plot.add_mesh(mesh(p, cells[i], only_face=face), color=ACCENT,
-                              ambient=.4, diffuse=.6, specular=0,
-                              show_edges=True, edge_color=INK, line_width=2.4)
-        actor.mapper.SetResolveCoincidentTopologyToPolygonOffset()
-        actor.mapper.SetRelativeCoincidentTopologyPolygonOffsetParameters(-1, -1)
-        position, focal, scale = (-5, 5, 2.5), (1., .85, .48), 1.2
-    elif name == 'b-lattice':
-        for k, color in [(70, '#d4d9d5'), (20, '#bdc7c5'),
-                         (10, '#96aeb4'), (40, '#6b8c96')]:
-            surface(cells[k], color)
-        lattice(plot, p, color='#45565c', width=3.)
-        position, focal, scale = (5, -7, 5), (1.35, .9, .5), 1.75
-    elif name == 'c-contact':
-        wire(cells[i], '#617d87', width=3.2)
-        wire(cells[j], '#617d87', delta, width=3.2)
-        plot.add_mesh(mesh(p, cells[i], only_face=face), color=ACCENT,
-                      ambient=.5, diffuse=.5, specular=0,
-                      show_edges=True, edge_color=INK, line_width=3.5)
-        si, sj = np.asarray(cells[i]['site']), np.asarray(cells[j]['site']) + delta
-        marker(si, INK, .042)
-        marker(sj, INK, .042)
-        plot.add_mesh(p.Line(si, sj), color=INK, line_width=3, lighting=False)
-        lattice(plot, p, color='#88989b', width=2.4)
-        position, focal, scale = (-3.5, -6, 3.5), (.5, .5, .45), 1.65
-    else:
-        raise ValueError(name)
-    if camera is not None:
-        position, focal, scale = camera
-    plot.camera_position = [position, focal, (0, 0, 1)]
+    # Supersample explicitly rather than stacking an AA render pass on peeling.
+    plot.ren_win.SetMultiSamples(0)
+    plot.enable_depth_peeling(number_of_peels=100, occlusion_ratio=0.)
+    plot.add_light(p.Light(position=(-3, -4, 8), focal_point=(.5, .5, .5),
+                           intensity=.7, light_type='scene light'))
+    plot.add_light(p.Light(position=(4, 1, 4), focal_point=(.5, .5, .5),
+                           intensity=.3, light_type='scene light'))
+    # A pair of unshifted cells shares a rendered polygon only at zero shift.
+    # Other shifts refer to distinct images, including self-image contacts.
+    seen = set()
+    contributions = 0
+    for i in IDS:
+        cell = cells[i]
+        vertices = np.asarray(cell['vertices'])
+        site = np.asarray(cell['site'])
+        edges = set()
+        for face in cell['faces']:
+            contributions += 1
+            loop = face['vertices']
+            edges.update(tuple(sorted(edge)) for edge in zip(loop, loop[1:] + loop[:1]))
+            j = face['adjacent_cell']
+            shift = tuple(face['adjacent_shift'])
+            # Anchor the key to the actual displayed images in Cartesian space.
+            key = tuple(sorted(((i, (0, 0, 0)), (j, shift))))
+            if key in seen:
+                continue
+            seen.add(key)
+            points = vertices[loop]
+            normal = np.cross(points[1] - points[0], points[2] - points[0])
+            if normal @ (points.mean(axis=0) - site) < 0:
+                points = points[::-1]
+            poly = p.PolyData(points, [len(points), *range(len(points))])
+            plot.add_mesh(poly, color=COLORS[i], opacity=OPACITY[i], ambient=.7,
+                          diffuse=.3, specular=0, smooth_shading=False)
+        lines = [v for a, b in sorted(edges) for v in (2, a, b)]
+        plot.add_mesh(p.PolyData(vertices, lines=lines), color='#41616d',
+                      line_width=4.4, lighting=False)
+        plot.add_mesh(p.Sphere(radius=.032, center=site), color='#274550',
+                      ambient=.7, diffuse=.3, specular=0)
+    assert (contributions, len(seen)) == (56, 51)
+    for corner in itertools.product((0, 1), repeat=3):
+        start = np.array(corner) @ VECTORS
+        for bit, vector in zip(corner, VECTORS):
+            if bit == 0:
+                for t in np.arange(0, 1, .07):
+                    segment = p.Line(start + t * vector,
+                                     start + min(t + .04, 1) * vector)
+                    plot.add_mesh(segment, color='#829093', line_width=3.8,
+                                  lighting=False)
+    # B2 orthographic camera; fit 88% of the limiting dimension (formerly 84%).
+    position = (-3.892966418634691, -7.3811054742874065, 3.481510546940376)
+    focal = (0.8458246034380476, 0.9117788143398852, 0.5197661581449148)
+    up = (0.146943671674129, 0.2571514254297257, 0.9551338658818385)
+    scale = 1.1206679898605656
+    plot.camera_position = [position, focal, up]
     plot.enable_parallel_projection()
     plot.camera.parallel_scale = scale
     plot.reset_camera_clipping_range()
-    plot.screenshot(str(output / f'{name}.png'))
-    renderer = plot.ren_win.GetClassName()
+    pixels = plot.screenshot(return_img=True)
+    peeling = bool(plot.renderer.GetLastRenderingUsedDepthPeeling())
+    assert peeling, 'Depth peeling unavailable; do not publish unordered alpha'
     prefixes = ('OpenGL vendor', 'OpenGL renderer', 'OpenGL version')
     opengl = [line for line in plot.ren_win.ReportCapabilities().splitlines()
               if line.startswith(prefixes)]
     plot.close()
-    with Image.open(output / f'{name}.png') as im:
-        im.save(output / f'{name}.png', optimize=True)
-        for width in (800, 360):
-            im.resize((width, round(width * 9 / 16)), Image.Resampling.LANCZOS).save(
-                output / f'{name}-{width}.png', optimize=True)
-    return dict(position=position, focal_point=focal, view_up=(0, 0, 1),
-                parallel_scale=scale, projection='orthographic', renderer=renderer,
-                opengl=opengl)
-
-
-def review_sheet(output):
-    """Native 360 px thumbnails, grayscale, and a 60% contrast stress test."""
-    from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
-
-    sheet = Image.new('RGB', (1080, 765), BACKGROUND)
-    draw = ImageDraw.Draw(sheet)
-    font = ImageFont.load_default(size=18)
-    for col, name in enumerate(('a-cell', 'b-lattice', 'c-contact')):
-        im = Image.open(output / f'{name}-360.png').convert('RGB')
-        for row, (label, thumb) in enumerate([
-            ('360 px / color', im),
-            ('360 px / grayscale', ImageOps.grayscale(im).convert('RGB')),
-            ('360 px / 60% contrast', ImageEnhance.Contrast(im).enhance(.6)),
-        ]):
-            x, y = col * 360, row * 255
-            draw.text((x + 14, y + 12), f'{name[0].upper()}   {label}',
-                      fill=INK, font=font)
-            sheet.paste(thumb, (x, y + 42))
-    sheet.save(output / 'small-scale-review.png', optimize=True)
+    full = Image.fromarray(pixels).resize((1600, 900), Image.Resampling.LANCZOS)
+    full.save(output, optimize=True)
+    return dict(displayed_polygons=len(seen), opacity=OPACITY, colors=COLORS,
+                camera=dict(position=position, focal_point=focal, view_up=up,
+                            parallel_scale=scale, projection='orthographic'),
+                depth_peeling_used=peeling, opengl=opengl)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path,
-                        default=ROOT / 'tools/landing-exploration/candidates')
+                        default=ROOT / 'docs/assets/landing/triclinic-voronoi.png')
     parser.add_argument('--check-only', action='store_true')
     args = parser.parse_args()
+    if not __debug__:
+        parser.error('Run with assertions enabled to check the scientific geometry.')
     cells, report = compute_and_check()
+    baseline = json.loads((ROOT / 'tools/landing/reference.json').read_text())
+    for field in ('vectors', 'fractional_sites', 'ids'):
+        assert report[field] == baseline[field], field
+    for i in IDS:
+        np.testing.assert_allclose(cells[i]['site'], baseline['returned_sites'][str(i)],
+                                   atol=1e-12, rtol=0)
+    for field in ('volumes_by_input_id', 'contact_vertices'):
+        np.testing.assert_allclose(report[field], baseline[field], atol=1e-12, rtol=0)
+    if not args.check_only:
+        import PIL
+        import pyvista
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        report['render'] = render(cells, args.output)
+        report['versions'] = dict(pyvoro2=pv.__version__, numpy=np.__version__,
+                                  pyvista=pyvista.__version__, pillow=PIL.__version__,
+                                  vtk=pyvista.vtk_version_info,
+                                  python=platform.python_version())
+        report['png_sha256'] = hashlib.sha256(args.output.read_bytes()).hexdigest()
+        source = Path(__file__).read_bytes()
+        report['generator_sha256'] = hashlib.sha256(source).hexdigest()
     print(json.dumps(report, indent=2))
-    if args.check_only:
-        return
-    import pyvista
-    import PIL
-    args.output.mkdir(parents=True, exist_ok=True)
-    report['cameras'] = {name: render(cells, name, args.output)
-                         for name in ('a-cell', 'b-lattice', 'c-contact')}
-    review_sheet(args.output)
-    report['versions'] = dict(pyvoro2=pv.__version__, numpy=np.__version__,
-                              pyvista=pyvista.__version__, pillow=PIL.__version__,
-                              vtk=pyvista.vtk_version_info,
-                              python=platform.python_version())
-    report['source_revision'] = subprocess.check_output(
-        ['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-    report['generator_sha256'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
-    report['images_sha256'] = {
-        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(args.output.glob('*.png'))
-    }
-    (args.output / 'checks.json').write_text(json.dumps(report, indent=2) + '\n')
 
 
 if __name__ == '__main__':
