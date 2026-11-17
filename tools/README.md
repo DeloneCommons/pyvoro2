@@ -10,6 +10,9 @@ remain synchronized through the execution/export tools below.
 
 Main entry points:
 
+- `python tools/render_landing.py` — optional offline DOC-W4-A scientific
+  illustration exploration; see [candidate previews and reproduction](landing-exploration/README.md).
+  Rendering is separate from the documentation build and package dependencies.
 - `python tools/execute_notebooks.py` — clear ordinary stored outputs, execute
   each selected source notebook in a fresh Jupyter kernel, and save only after
   successful execution.

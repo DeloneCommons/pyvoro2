@@ -1,0 +1,237 @@
+{
+  "vectors": [
+    [
+      2.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.5,
+      1.5,
+      0.0
+    ],
+    [
+      0.25,
+      0.375,
+      1.0
+    ]
+  ],
+  "fractional_sites": [
+    [
+      0.15,
+      0.2,
+      0.3
+    ],
+    [
+      0.65,
+      0.25,
+      0.35
+    ],
+    [
+      0.35,
+      0.75,
+      0.7
+    ],
+    [
+      0.8,
+      0.7,
+      0.85
+    ]
+  ],
+  "ids": [
+    40,
+    10,
+    70,
+    20
+  ],
+  "returned_sites": {
+    "40": [
+      0.47500000000000003,
+      0.41250000000000003,
+      0.3
+    ],
+    "10": [
+      1.5125,
+      0.50625,
+      0.35
+    ],
+    "70": [
+      1.25,
+      1.3875,
+      0.7
+    ],
+    "20": [
+      0.1625000000000001,
+      1.36875,
+      0.85
+    ]
+  },
+  "volumes_by_input_id": [
+    0.77955603974319,
+    0.7292771526344204,
+    0.736232720513777,
+    0.754934087108613
+  ],
+  "volume_sum": 3.0,
+  "lattice_volume": 3.0,
+  "oriented_faces_checked": 56,
+  "max_bisector_distance": 3.2769882503251334e-16,
+  "max_reciprocal_vertex_distance": 7.447602459741819e-16,
+  "max_independent_volume_error": 4.440892098500626e-16,
+  "contact": [
+    40,
+    10,
+    [
+      -1,
+      0,
+      0
+    ]
+  ],
+  "reciprocal": [
+    10,
+    40,
+    [
+      1,
+      0,
+      0
+    ]
+  ],
+  "contact_vertices": [
+    [
+      0.039140204973118264,
+      0.7002289146505375,
+      0.7471603557627688
+    ],
+    [
+      0.02180016063084106,
+      0.47480833820093454,
+      0.8360280830169393
+    ],
+    [
+      -0.06697758469626186,
+      -0.07617735105140161,
+      0.16015465281834124
+    ],
+    [
+      -0.06764566296728974,
+      0.010450131425233544,
+      -0.015132383542640182
+    ],
+    [
+      -0.04452494959677428,
+      0.31101940524193517,
+      -0.13362603956653218
+    ],
+    [
+      0.04030787970430105,
+      0.8602003528225806,
+      0.4696916477654569
+    ]
+  ],
+  "contact_nearest_site_violation": 6.661338147750939e-16,
+  "connector_midpoint_inside_face": true,
+  "nearest_site_stencil": "[-2,2]^3; face vertices, centroid, connector midpoint",
+  "cameras": {
+    "a-cell": {
+      "position": [
+        -5,
+        5,
+        2.5
+      ],
+      "focal_point": [
+        1.0,
+        0.85,
+        0.48
+      ],
+      "view_up": [
+        0,
+        0,
+        1
+      ],
+      "parallel_scale": 1.2,
+      "projection": "orthographic",
+      "renderer": "vtkEGLRenderWindow",
+      "opengl": [
+        "OpenGL vendor string:  Mesa",
+        "OpenGL renderer string:  llvmpipe (LLVM 19.1.7, 256 bits)",
+        "OpenGL version string:  4.5 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+      ]
+    },
+    "b-lattice": {
+      "position": [
+        5,
+        -7,
+        5
+      ],
+      "focal_point": [
+        1.35,
+        0.9,
+        0.5
+      ],
+      "view_up": [
+        0,
+        0,
+        1
+      ],
+      "parallel_scale": 1.75,
+      "projection": "orthographic",
+      "renderer": "vtkEGLRenderWindow",
+      "opengl": [
+        "OpenGL vendor string:  Mesa",
+        "OpenGL renderer string:  llvmpipe (LLVM 19.1.7, 256 bits)",
+        "OpenGL version string:  4.5 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+      ]
+    },
+    "c-contact": {
+      "position": [
+        -3.5,
+        -6,
+        3.5
+      ],
+      "focal_point": [
+        0.5,
+        0.5,
+        0.45
+      ],
+      "view_up": [
+        0,
+        0,
+        1
+      ],
+      "parallel_scale": 1.65,
+      "projection": "orthographic",
+      "renderer": "vtkEGLRenderWindow",
+      "opengl": [
+        "OpenGL vendor string:  Mesa",
+        "OpenGL renderer string:  llvmpipe (LLVM 19.1.7, 256 bits)",
+        "OpenGL version string:  4.5 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+      ]
+    }
+  },
+  "versions": {
+    "pyvoro2": "0.9.0.dev0",
+    "numpy": "2.5.5",
+    "pyvista": "0.46.4",
+    "pillow": "12.0.0",
+    "vtk": [
+      9,
+      5,
+      2
+    ],
+    "python": "3.12.14"
+  },
+  "source_revision": "9788f4e487e04b660c290a94daa83de9b5c1e16f",
+  "generator_sha256": "00511472c3ee392168e58e1c4b3a20233b0d9e0d246165aecbbf7d01197b4116",
+  "images_sha256": {
+    "a-cell-360.png": "f60f0d5e25efa9b580d9c5a96cb2e53952b45ea9f80e7914f43fdb668271e75c",
+    "a-cell-800.png": "bc3f86988b86db48c56aaf13683863fb65e1cae882b4c1bbe9238ef3ed978249",
+    "a-cell.png": "cf6a32a2380e4a2af710f549098fc6bcfe5d4cb8a95b6e2c01efc57cb193fea3",
+    "b-lattice-360.png": "babf2d7bcb32d7cf60c015034d2f572fc432a5fb0694814ecf258099810ff68c",
+    "b-lattice-800.png": "4047966bdaefec117f9011905815f4c33e1ebc110d01c5f334064a37707b7ce4",
+    "b-lattice.png": "c562a92a2bb38054a3e36c619ba3e3079f9ed74a56f9e5cd43978a5a727a1bc7",
+    "c-contact-360.png": "47ac219caf63147202c7026742aef77e743dd34c259e4a363f77dbd5ab418cd0",
+    "c-contact-800.png": "6da3b2228aa8cc0f08a057750815e2e20e9dba738c7c4b233c211ec72f04314b",
+    "c-contact.png": "69aa7a564b666188fe874c666833a5194ca8334edb71b1ddc935800ec842c9fa",
+    "small-scale-review.png": "ee5c38050c0845b211acc57aefa39b88f6787265c78661bd10ab482601d95e26"
+  }
+}
