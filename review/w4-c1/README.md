@@ -6,8 +6,10 @@ is accepted. This draft must remain unmerged until the maintainer chooses a
 direction and requests finalization. C2 themes and C3 animation are deferred.
 
 Base: live `dev` verified as `f5a65347ae3d4ae90fcf891dce4495030ed81f7c`.
-The checkout initially had older refs; the explicit `refs/heads/dev` fetch and
-fast-forward were completed before editing.
+Refinement started from the verified live PR #139 HEAD
+`4160c5bd11e15398b3c2c2ba4d7e977569ee4cb5`, with a clean working tree.
+This round changes only Home CSS and review evidence; the template, Markdown,
+assets, navigation destinations and native search integration are unchanged.
 
 ## Compare the actual builds
 
@@ -25,20 +27,65 @@ The ordinary build temporarily shows A for review; this is not a design decision
 Desktop: **1366 × 768**. Mobile/narrow: **390/320 × 844**. Full-page versions
 include both workflows, the inverse figure, Quick start, navigation and footer.
 
+## Focused refinement round
+
+Before captures are pinned to the last reviewed commit, not overwritten history.
+Compare each hero at the same 1366 × 768 viewport:
+
+| Direction | Before (`4160c5b`) | Refined |
+| --- | --- | --- |
+| A | [Previous hero](https://github.com/DeloneCommons/pyvoro2/blob/4160c5bd11e15398b3c2c2ba4d7e977569ee4cb5/review/w4-c1/screenshots/a-desktop.png) | [Current hero](screenshots/a-desktop.png) |
+| B | [Previous hero](https://github.com/DeloneCommons/pyvoro2/blob/4160c5bd11e15398b3c2c2ba4d7e977569ee4cb5/review/w4-c1/screenshots/b-desktop.png) | [Current hero](screenshots/b-desktop.png) |
+
+**A:** The introduction now aligns with the top of the composition, with 44 px
+between the header rule and the hero box. The image grows from approximately
+618 to 677 px wide at desktop (about 10%), keeping its complete 16:9 plate.
+The headline now occupies three lines, with “in Python” on its own line at this
+width. The caption is centered, smaller and muted, with no rule above it.
+Both workflow entrances still appear in the first desktop viewport.
+
+The [serif functional-heading experiment](refinement/a-serif-full.png) and
+[retained sans-serif treatment](screenshots/a-desktop-full.png) are actual
+Zensical renders with the same refined hero. Serif headings sustain the editorial
+voice throughout, but make the capability titles feel like continuations of the
+introduction. Sans-serif makes Compute, Fit and Quick start clearer practical
+entry points, so this refinement retains sans-serif for those headings and serif
+for the hero. At 320 px, slightly tighter heading spacing keeps the workflow
+arrow with its title; no copy changes were needed.
+
+**B:** The headline, distinct “in Python” line and introductory sentence now
+share one left axis. The large centered plate follows this complete text block.
+The image therefore starts lower than before: the first viewport contains less
+of the plate, an explicit cost of restoring a coherent reading order while
+preserving its scale. The full image remains uncropped in the page.
+
+Compare the [1080 px width experiment](refinement/b-1080-full.png) with the
+[retained 1120 px composition](screenshots/b-desktop-full.png). Both substantially
+reduce the previous 1240 px spread. At 1120 px, the capability prose has slightly
+more breathing room while the columns remain closely related; 1080 does not
+provide a clear enough reading benefit to justify the extra compression. The
+image retains its independent 960 px maximum in both tests. Sequential wide
+capability rows and the larger inverse-fitting figure remain distinctive to B.
+
+Both directions remove the lower Explore divider. Restrained whitespace now
+connects Examples / Theory / API Reference with project and licensing metadata;
+the rule above Explore remains. At 390 and 320 px both preserve source order,
+complete scientific images, accessible search and a compact two-row header.
+A has a shorter opening; B's larger introduction and geometry require more scroll.
+
 ## Design assessment
 
 | Criterion | A — Scientific editorial | B — Geometric showcase |
 | --- | --- | --- |
-| Opening composition | Serif identity beside the scientific plate; balanced text and image. | Broad sans-serif identity above a large, centered scientific plate. |
-| Geometry | Integrated with reading; subtle figure rule and caption. | The geometry dominates; the larger plate makes periodic boundaries and complete cells easier to inspect. |
+| Opening composition | Top-aligned serif identity beside a moderately larger scientific plate. | Left-aligned title, distinct second line and introduction above a large centered plate. |
+| Geometry | Integrated with reading; centered, muted caption with no figure rule. | The geometry dominates; the larger plate makes periodic boundaries and complete cells easier to inspect. |
 | Workflow rhythm | Compute and Fit are equal adjacent entrances, visible at the bottom of the first desktop screen. | Sequential horizontal rows pair each entrance with its detail or figure, giving the inverse figure more space. |
-| Navigation | Compact wordmark and a quiet documentation route; native Search remains visible. | Serif wordmark, a wider header, the same destinations and native Search. |
+| Navigation | Compact wordmark and a quiet documentation route; native Search remains visible. | Serif wordmark, a narrower 1120 px header, the same destinations and native Search. |
 | Mobile | More compact headline and a shorter opening; familiar reading rhythm. | Larger sans-serif headline and slightly wider hero; stronger identity, but more scrolling before workflows. |
 | Cost | The hero has less visual impact than B; some readers may still see an editorial documentation page. | The first desktop screen does not expose the workflow entrances. The long hero and sequential rows delay Quick start. |
 
 **Recommendation: develop A further.** It gives the geometry a clear identity
-while making the two scientific workflows immediately discoverable. Its type
-and rules fit the project's calm, precise tone. B is a credible alternative if
+while making the two scientific workflows immediately discoverable. Its serif introduction and neutral functional headings fit the project's calm, precise tone. B is a credible alternative if
 inspectable geometry should be the dominant first impression; its larger stage
 would accommodate a future interactive hero particularly well. A could also
 accommodate one inside its existing figure area. No viewer infrastructure has
@@ -83,10 +130,14 @@ were not tested. The cloud could not fetch Google Fonts; Home deliberately uses
 system Arial/Georgia, and documentation comparisons used identical font
 availability on baseline and candidates.
 
-Home surface, text, accent, rule and code colors use scoped tokens. C2 can map
+Home surface, text, caption, accent, rule and code colors use scoped tokens. C2 can map
 these tokens to the native theme without changing content or layout. The current
 light PNG presentation remains intentional; neither a theme toggle nor a dark
-hero has been implemented.
+hero has been implemented. A benefits from retaining a quiet, continuous surface.
+B's narrower container leaves useful side gutters for a possible restrained
+scientific treatment in C2, after the composition is selected; no patterns have
+been added. Both figure areas could accommodate later C3 work without changing
+the approved reading order; no interactive infrastructure is included.
 
 ## Reproduce
 
@@ -147,16 +198,17 @@ Local commands executed:
 - `node review/w4-c1/verify.cjs ...` — browser checks and captures.
 - A Python standard-library HTML parser scanned all 93 HTML pages in each build
   for internal link, asset and fragment resolution. No missing targets.
-- Source comparison confirms `docs/index.md` differs only by `template:` and
+- Source comparison confirms `docs/index.md` is byte-identical to reviewed
+  `4160c5b` (and differs from the original `dev` only by `template:`), and
   both scientific PNGs retain their baseline SHA-256 hashes. Non-Home HTML is
   identical to the baseline after removing the added stylesheet link.
 
-The initial editable install failed because inherited `CXX=clang++` pointed to
-an unavailable compiler. Repeating with `CC=gcc CXX=g++` succeeded. Early checks
-caught Home syntax-color contrast and a B mobile margin-specificity issue; both
-were corrected before final captures. The browser test was corrected to follow the native drawer's section hierarchy
-and wait beyond the theme's existing 125 ms delayed close on navigation;
-clicking sooner races that native behavior. No site workaround was added.
+The first refinement browser run passed both Home variants but could not finish
+the documentation pixel comparison because the older local baseline server no
+longer responded. It was restarted and the full suite rerun. A focused code
+review found no severity findings. These are local results, separate from CI.
+The review script retains its wait for the theme's existing 125 ms delayed drawer
+close; no site JavaScript or workaround was introduced.
 
 No package code, API, README, notebook sources, navigation inventory,
 Markdown extensions, MathJax integration, dependencies, or deployment workflows
