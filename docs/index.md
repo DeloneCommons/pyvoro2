@@ -35,7 +35,7 @@ Standard Voronoi and power/Laguerre diagrams, with dedicated 2D and 3D interface
   <dt>Geometry &amp; measures</dt>
   <dd>Cell shapes, areas and volumes. Global vertices and edges in 2D; separate normalization helpers for vertices, edges and faces in 3D.</dd>
   <dt>Diagnostics &amp; validation</dt>
-  <dd>Check cell geometry and inspect diagnostics.</dd>
+  <dd>Check area or volume totals and periodic-contact consistency.</dd>
 </dl>
 
 [Capabilities and limitations](guide/capabilities.md)
@@ -94,16 +94,11 @@ print(result.cell_measures)
 </div>
 </section>
 
-<nav class="landing-explore" aria-labelledby="explore-the-documentation" markdown="1">
+<nav class="landing-explore" aria-label="Explore documentation" markdown="1">
 
-## Explore the documentation
-
-- [Examples](examples/index.md)<br>
-  Worked notebooks.
-- [Theory](theory/index.md)<br>
-  Definitions and fitting mathematics.
-- [API Reference](reference/index.md)<br>
-  Signatures, parameters, and return values.
+[Examples](examples/index.md)
+[Theory](theory/index.md)
+[API Reference](reference/index.md)
 
 </nav>
 
