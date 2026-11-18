@@ -9,6 +9,7 @@ edit_uri: edit/main/docs/
 theme:
   name: material
   variant: classic
+  custom_dir: overrides
   features:
     - navigation.instant
     - navigation.tabs
@@ -52,6 +53,7 @@ extra_javascript:
 
 extra_css:
   - stylesheets/extra.css
+  - stylesheets/landing.css
 
 nav:
   - Home: index.md
