@@ -1,12 +1,13 @@
 // Review-only browser checks. No browser dependencies are part of the site.
-// Usage: node review/w4-c1/verify.cjs A_URL B_URL BASELINE_URL
+// Usage: node review/w4-c1/verify.cjs HOME_URL BASELINE_URL
 const { chromium } = require('playwright');
 const { AxeBuilder } = require('@axe-core/playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const [a, b, baseline] = process.argv.slice(2);
-if (!baseline) throw Error('Supply A, B, and baseline URLs ending in /pyvoro2/');
+const urls = process.argv.slice(2);
+if (urls.length !== 2) throw Error('Supply exactly Home and baseline URLs ending in /pyvoro2/');
+const [a, baseline] = urls;
 const output = path.join(__dirname, 'screenshots');
 fs.mkdirSync(output, {recursive: true});
 const report = { browser: '', variants: {}, documentation: [] };
@@ -30,7 +31,7 @@ async function loaded(p, pathname) {
   const browser = await chromium.launch(launch);
   report.browser = browser.version();
   try {
-    for (const [variant, url] of [['a', a], ['b', b]]) {
+    for (const [variant, url] of [['a', a]]) {
       const context = await browser.newContext({viewport: {width: 1366, height: 768}, reducedMotion: 'reduce'});
       const p = await context.newPage();
       const result = report.variants[variant] = {viewports: [], navigation: [], axe: [], pageErrors: []};
@@ -124,7 +125,7 @@ async function loaded(p, pathname) {
         const c = await browser.newContext({viewport:{width,height:768},reducedMotion:'reduce'});
         const p = await c.newPage();
         const shots = [];
-        for (const url of [baseline,a,b]) {
+        for (const url of [baseline,a]) {
           await p.goto(new URL(route,url).href);
           await p.evaluate(()=>document.fonts.ready);
           shots.push(await p.screenshot());

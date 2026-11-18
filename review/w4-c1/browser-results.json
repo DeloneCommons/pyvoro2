@@ -10,90 +10,12 @@
           "images": [
             {
               "loaded": true,
-              "ratio": 1.777796005413608,
+              "ratio": 1.7777909083746948,
               "naturalRatio": 1.7777777777777777
             },
             {
               "loaded": true,
               "ratio": 1.8469207057125991,
-              "naturalRatio": 1.8468468468468469
-            }
-          ]
-        },
-        {
-          "width": 390,
-          "height": 844,
-          "overflow": false,
-          "images": [
-            {
-              "loaded": true,
-              "ratio": 1.7777777777777777,
-              "naturalRatio": 1.7777777777777777
-            },
-            {
-              "loaded": true,
-              "ratio": 1.847002067539628,
-              "naturalRatio": 1.8468468468468469
-            }
-          ]
-        },
-        {
-          "width": 320,
-          "height": 844,
-          "overflow": false,
-          "images": [
-            {
-              "loaded": true,
-              "ratio": 1.7777777777777777,
-              "naturalRatio": 1.7777777777777777
-            },
-            {
-              "loaded": true,
-              "ratio": 1.8468909942284657,
-              "naturalRatio": 1.8468468468468469
-            }
-          ]
-        }
-      ],
-      "navigation": [
-        "Home → Guide → Home → API → Back → Forward → Home: instant, sentinel retained",
-        "Native search: periodic → Periodic contacts and image shifts, instant",
-        "Direct #installation lands in viewport",
-        "Keyboard skip → main → link; 3px visible focus",
-        "200% root text size at desktop: no page overflow",
-        "390px: native search; Home → Guide → drawer Home"
-      ],
-      "axe": [
-        {
-          "width": 1366,
-          "violations": []
-        },
-        {
-          "width": 390,
-          "violations": []
-        },
-        {
-          "width": 320,
-          "violations": []
-        }
-      ],
-      "pageErrors": []
-    },
-    "b": {
-      "viewports": [
-        {
-          "width": 1366,
-          "height": 768,
-          "overflow": false,
-          "images": [
-            {
-              "loaded": true,
-              "ratio": 1.7777777777777777,
-              "naturalRatio": 1.7777777777777777
-            },
-            {
-              "loaded": true,
-              "ratio": 1.8468580526394347,
               "naturalRatio": 1.8468468468468469
             }
           ]

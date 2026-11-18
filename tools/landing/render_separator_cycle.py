@@ -76,7 +76,7 @@ def main():
 
     root = Path(__file__).resolve().parents[2]
     output = root / 'docs/assets/landing/separator-cycle.png'
-    fig.savefig(output, dpi=200, facecolor='white')
+    fig.savefig(output, dpi=200, transparent=True)
     plt.close(fig)
 
 

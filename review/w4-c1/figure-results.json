@@ -1,0 +1,18 @@
+{
+  "generator_change": "savefig transparent=True only; all scientific inputs, assertions and drawing commands unchanged",
+  "original_opaque_reproduced_byte_identically": true,
+  "transparent_repeated_byte_identically": true,
+  "dimensions": [
+    820,
+    444
+  ],
+  "alpha_range": [
+    0,
+    255
+  ],
+  "opaque_pixels_rgb_unchanged": true,
+  "white_composite_max_channel_delta": 2,
+  "white_composite_changed_pixel_fraction": 0.019704460558119096,
+  "opaque_sha256": "58ac8c03847905d6ffabfa9505ab8382c48e30a19b7531c6088bbd8dc32cbfc0",
+  "transparent_sha256": "181e2365fa716eaa09763c87f37916ebfd179ee19ad6a594b484604d442b109b"
+}

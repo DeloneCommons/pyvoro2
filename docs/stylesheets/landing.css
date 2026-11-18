@@ -1,4 +1,4 @@
-/* DOC-W4-C1 review concepts. Only landing.html supplies .pv-home.
+/* Scientific editorial Home. Only landing.html supplies .pv-home.
    Tokens belong to Home; documentation palette and native search stay intact.
    :has follows the container replacement used by navigation.instant. */
 body:has(.pv-home) {
@@ -87,15 +87,16 @@ body:has(.pv-home) :is(a, button):focus-visible {
 .landing a:hover { text-decoration-thickness: 2px; }
 .landing :is(h1, h2, h3) { color: var(--home-ink); }
 .landing h1 { font: 400 clamp(2.2rem, 4.4vw, 3.2rem)/1.06 Georgia, 'Times New Roman', serif; letter-spacing: -.045em; margin: 0; }
-.landing h1 em { color: var(--home-accent); font-weight: 400; display: inline-block; max-width: 100%; }
+.landing h1 em { color: var(--home-accent); font-weight: 400; display: block; margin-top: 8px; max-width: 100%; }
 .landing h2 { font: 500 1.5rem/1.2 Arial, Helvetica, sans-serif; letter-spacing: -.025em; margin: 0 0 20px; }
 .landing h3 { margin: 0 0 16px; font-size: 0.9rem; font-weight: 600; }
-.landing-hero { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); align-items: start; gap: 32px; padding: 44px 0 42px; }
+.landing-hero { display: grid; grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr); align-items: start; gap: 24px; padding: 44px 0 42px; }
 .landing-intro p { max-width: 39ch; font-size: 0.9rem; line-height: 1.6; margin: 24px 0 0; color: var(--home-muted); }
 .landing .landing-figure { display: block; width: 100%; margin: 0; }
+.landing .landing-figure p { margin: 0; }
 .landing-figure img, .landing-cycle img { display: block; width: 100%; height: auto; }
 .landing :is(.landing-figure, .landing-cycle) figcaption { max-width: none; font: 0.65rem/1.55 Arial, Helvetica, sans-serif; color: var(--home-muted); text-align: left; margin: 16px 0 0; }
-.landing .landing-figure figcaption { text-align: center; font-size: .6rem; color: var(--home-caption); }
+.landing .landing-figure figcaption { text-align: center; font-size: .6rem; color: var(--home-caption); margin-top: 8px; }
 .landing .landing-figure figcaption a { color: inherit; }
 .landing-paths { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; border-top: 1px solid var(--home-rule); padding: 38px 0 54px; }
 .landing-paths section { min-width: 0; }
@@ -119,30 +120,10 @@ body:has(.pv-home) :is(a, button):focus-visible {
 .landing-start pre { margin: 16px 0; }
 .landing-start pre > code { font-size: 0.7rem; padding: 20px; border-left: 2px solid var(--home-rule); white-space: pre-wrap; overflow-wrap: anywhere; }
 .landing-start .highlight .c1 { color: var(--home-muted); }
-.landing-explore { padding: 24px 0 12px; border-top: 1px solid var(--home-rule); }
+.landing-explore { padding: 24px 0 8px; border-top: 1px solid var(--home-rule); }
 .landing-explore p { display: flex; flex-wrap: wrap; gap: 20px 48px; margin: 0; font-size: 0.85rem; }
-.landing-footer { padding: 22px 0 35px; font-size: 0.65rem; color: var(--home-muted); }
+.landing-footer { padding: 8px 0 35px; font-size: 0.65rem; color: var(--home-muted); }
 .landing-footer p { margin: 8px 0; }
-/* B: a broad geometry stage, followed by sequential horizontal workflow rows.
-   Same DOM/source order and uncropped images; no decorative geometry. */
-body:has(.pv-home--showcase) { --home-max-width: 1120px; }
-.pv-home--showcase .pv-home__brand { font-family: Georgia, 'Times New Roman', serif; font-size: 1.5rem; font-weight: 400; }
-body:has(.pv-home--showcase) .landing-hero { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 38px 0 36px; }
-body:has(.pv-home--showcase) .landing h1 { font-family: Arial, Helvetica, sans-serif; font-size: clamp(2.2rem, 4.5vw, 3.3rem); font-weight: 500; letter-spacing: -.065em; line-height: 1.02; }
-body:has(.pv-home--showcase) .landing h1 em { display: block; font-family: Georgia, 'Times New Roman', serif; font-size: .88em; margin-top: 8px; letter-spacing: -.045em; }
-body:has(.pv-home--showcase) .landing-intro { display: block; }
-body:has(.pv-home--showcase) .landing .landing-figure { max-width: 960px; margin: 0 auto; }
-body:has(.pv-home--showcase) .landing-intro p { max-width: 64ch; font-size: .9rem; margin-top: 20px; }
-body:has(.pv-home--showcase) .landing .landing-figure figcaption { text-align: right; font-size: .65rem; color: var(--home-muted); }
-body:has(.pv-home--showcase) .landing h2 { font-family: Arial, Helvetica, sans-serif; font-weight: 500; font-size: 1.5rem; letter-spacing: -.04em; }
-body:has(.pv-home--showcase) .landing-paths { display: block; padding: 0; border-top: 2px solid var(--home-ink); }
-body:has(.pv-home--showcase) .landing-paths section { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 0 56px; grid-template-rows: min-content min-content 1fr; padding: 44px 0; border-bottom: 1px solid var(--home-rule); }
-body:has(.pv-home--showcase) .landing-paths h2 { grid-column: 1; }
-body:has(.pv-home--showcase) .landing-paths section > p { grid-column: 1; align-self: start; max-width: 42ch; }
-body:has(.pv-home--showcase) .landing-facts { grid-column: 2; grid-row: 1 / span 3; margin: 0; }
-body:has(.pv-home--showcase) .landing-facts dt:first-child { margin-top: 0; }
-body:has(.pv-home--showcase) .landing .landing-cycle { grid-column: 2; grid-row: 1 / span 3; width: 100%; max-width: 580px; margin: 0; }
-body:has(.pv-home--showcase) .landing-quickstart { border: 0; padding-top: 44px; }
 @media (max-width: 760px) {
   body:has(.pv-home) { --home-width: calc(100% - 40px); }
   .pv-home { padding: 20px 0 18px; }
@@ -152,21 +133,14 @@ body:has(.pv-home--showcase) .landing-quickstart { border: 0; padding-top: 44px;
   body:has(.pv-home) .md-search { top: 20px; }
   body:has(.pv-home) .md-search__button { min-width: 96px; }
   .landing { font-size: 0.75rem; }
-  .landing .landing-hero, body:has(.pv-home--showcase) .landing-hero { grid-template-columns: minmax(0, 1fr); gap: 26px; padding: 38px 0 32px; }
+  .landing .landing-hero { grid-template-columns: minmax(0, 1fr); gap: 26px; padding: 38px 0 32px; }
   .landing h1 { font-size: clamp(1.8rem, 9.5vw, 2.6rem); }
   .landing-intro p { font-size: 0.8rem; margin-top: 20px; }
   .landing .landing-figure figcaption { font-size: 0.6rem; }
   .landing-paths, .landing-start { grid-template-columns: minmax(0, 1fr); gap: 38px; }
   .landing-paths { padding: 30px 0 35px; }
-  .landing h2, body:has(.pv-home--showcase) .landing h2 { font-size: 1.35rem; letter-spacing: -.04em; margin-bottom: 16px; }
+  .landing h2 { font-size: 1.35rem; letter-spacing: -.04em; margin-bottom: 16px; }
   .landing .landing-cycle { width: 100%; margin-top: 24px; }
   .landing-explore p { gap: 16px 28px; font-size: 0.75rem; }
   .landing-start pre > code { padding: 14px; font-size: 0.6rem; }
-  body:has(.pv-home--showcase) .landing-intro { display: block; }
-  body:has(.pv-home--showcase) .landing h1 { font-size: clamp(2rem, 10.8vw, 2.9rem); max-width: 16ch; }
-  body:has(.pv-home--showcase) .landing h1 em { display: block; margin-top: 8px; }
-  body:has(.pv-home--showcase) .landing .landing-figure { width: calc(100% + 24px); margin-left: -12px; }
-  body:has(.pv-home--showcase) .landing .landing-figure figcaption { text-align: left; margin-inline: 12px; }
-  body:has(.pv-home--showcase) .landing-paths section { display: block; padding: 30px 0; }
-  body:has(.pv-home--showcase) .landing .landing-cycle { margin-top: 25px; }
 }

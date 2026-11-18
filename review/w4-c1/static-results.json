@@ -5,16 +5,10 @@
     "missing_fragments": [],
     "non_home_html_differences_after_removing_new_stylesheet_link": []
   },
-  "b": {
-    "pages": 93,
-    "missing_links_or_assets": [],
-    "missing_fragments": [],
-    "non_home_html_differences_after_removing_new_stylesheet_link": []
-  },
   "content_byte_identical_except_template_frontmatter": true,
-  "content_byte_identical_to_reviewed_4160c5b": true,
+  "content_byte_identical_to_reviewed_0115d0e": true,
   "figures": {
     "triclinic-voronoi.png": "4ce4f9d635ee7b09ce2e33a608798618cd847817688876cfce77911f5040f431",
-    "separator-cycle.png": "58ac8c03847905d6ffabfa9505ab8382c48e30a19b7531c6088bbd8dc32cbfc0"
+    "separator-cycle.png": "181e2365fa716eaa09763c87f37916ebfd179ee19ad6a594b484604d442b109b"
   }
 }
