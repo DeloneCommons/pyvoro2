@@ -53,9 +53,18 @@ def main():
         for axis in (observed, fitted):
             axis.plot(*tick.T, color='#a34e25', linewidth=2, zorder=3)
 
+    colors = ('#e1ecec', '#e5ede5', '#eeece5')
     contacts = set()
     for cell in result.cells:
         vertices = np.asarray(cell['vertices'])
+        # Planar cells are convex; order returned vertices around their centroid.
+        center = vertices.mean(axis=0)
+        angles = np.arctan2(vertices[:, 1] - center[1], vertices[:, 0] - center[0])
+        polygon = vertices[np.argsort(angles)]
+        x, y = polygon.T
+        area = abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))) / 2
+        np.testing.assert_allclose(area, cell['area'], rtol=1e-12, atol=1e-12)
+        fitted.fill(*polygon.T, color=colors[cell['id']], linewidth=0, zorder=0)
         for edge in cell['edges']:
             # Draw each interior edge once. Negative neighbors are box walls.
             i, j = cell['id'], edge['adjacent_cell']
