@@ -31,6 +31,7 @@ plugins:
             show_root_toc_entry: false
             heading_level: 2
 markdown_extensions:
+  - md_in_html
   - admonition
   - pymdownx.details
   - pymdownx.superfences
