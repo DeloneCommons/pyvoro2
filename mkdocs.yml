@@ -74,8 +74,6 @@ extra_css:
   - stylesheets/extra.css
   - stylesheets/landing.css
   - stylesheets/themes.css
-  # Provisional candidate A. The review build helper also builds candidate B.
-  - stylesheets/palettes/graphite.css
 
 nav:
   - Home: index.md

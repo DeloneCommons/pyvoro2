@@ -2,13 +2,13 @@
    Light tokens belong to Home; themes.css supplies native dark overrides.
    :has follows the container replacement used by navigation.instant. */
 body:has(.pv-home) {
-  --home-paper: #fafaf7;
-  --home-ink: #233b3c;
-  --home-muted: #536365;
-  --home-accent: #24666a;
-  --home-rule: #c9d2ce;
-  --home-code: #eff2ee;
-  --home-caption: #687672;
+  --home-paper: var(--pv-paper, #fafaf7);
+  --home-ink: var(--pv-ink, #233b3c);
+  --home-muted: var(--pv-muted, #536365);
+  --home-accent: var(--pv-accent, #24666a);
+  --home-rule: var(--pv-rule, #c9d2ce);
+  --home-code: var(--pv-code, #eff2ee);
+  --home-caption: var(--pv-muted, #687672);
   --home-max-width: 1180px;
   --home-width: min(var(--home-max-width), calc(100% - 80px));
   background: var(--home-paper);
@@ -146,9 +146,9 @@ body:has(.pv-home) :is(a, button):focus-visible {
 .landing-start pre { margin: 16px 0; }
 .landing-start pre > code { font-size: 0.7rem; padding: 20px; border-left: 2px solid var(--home-rule); white-space: pre-wrap; overflow-wrap: anywhere; }
 .landing-start .highlight .c1 { color: var(--home-muted); }
-.landing-explore { padding: 24px 0 8px; border-top: 1px solid var(--home-rule); }
+.landing-explore { padding: 24px 0 4px; border-top: 1px solid var(--home-rule); }
 .landing-explore p { display: flex; flex-wrap: wrap; gap: 20px 48px; margin: 0; font-size: 0.85rem; }
-.landing-footer { padding: 8px 0 35px; font-size: 0.65rem; color: var(--home-muted); }
+.landing-footer { padding: 4px 0 35px; font-size: 0.65rem; color: var(--home-muted); }
 .landing-footer p { margin: 8px 0; }
 @media (max-width: 760px) {
   body:has(.pv-home) { --home-width: calc(100% - 40px); }

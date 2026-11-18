@@ -37,6 +37,43 @@
           "violations": []
         },
         {
+          "where": "guide 390",
+          "violations": []
+        },
+        {
+          "where": "guide 320",
+          "violations": []
+        },
+        {
+          "where": "api 390",
+          "violations": []
+        },
+        {
+          "where": "api 320",
+          "violations": [
+            {
+              "id": "scrollable-region-focusable",
+              "impact": "serious",
+              "nodes": [
+                {
+                  "target": [
+                    ".doc-function.doc-object.doc:nth-child(3) > .doc-contents.doc > .md-typeset__scrollwrap:nth-child(6)"
+                  ],
+                  "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "where": "theory 390",
+          "violations": []
+        },
+        {
+          "where": "theory 320",
+          "violations": []
+        },
+        {
           "where": "search",
           "violations": [
             {
@@ -167,13 +204,13 @@
           "overflow": false,
           "images": [
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/triclinic-voronoi.png#only-light",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/triclinic-voronoi.png#only-light",
               "loaded": true,
               "ratio": 1.7758186397984888,
               "naturalRatio": 1.7777777777777777
             },
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/separator-cycle.png#only-light",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/separator-cycle.png#only-light",
               "loaded": true,
               "ratio": 1.8487394957983194,
               "naturalRatio": 1.8468468468468469
@@ -186,13 +223,13 @@
           "overflow": false,
           "images": [
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/triclinic-voronoi.png#only-light",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/triclinic-voronoi.png#only-light",
               "loaded": true,
               "ratio": 1.7819148936170213,
               "naturalRatio": 1.7777777777777777
             },
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/separator-cycle.png#only-light",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/separator-cycle.png#only-light",
               "loaded": true,
               "ratio": 1.850828729281768,
               "naturalRatio": 1.8468468468468469
@@ -205,13 +242,13 @@
           "overflow": false,
           "images": [
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/triclinic-voronoi.png#only-light",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/triclinic-voronoi.png#only-light",
               "loaded": true,
               "ratio": 1.778523489932886,
               "naturalRatio": 1.7777777777777777
             },
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/separator-cycle.png#only-light",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/separator-cycle.png#only-light",
               "loaded": true,
               "ratio": 1.8531468531468531,
               "naturalRatio": 1.8468468468468469
@@ -232,383 +269,29 @@
       "paint": [
         {
           "width": 1366,
-          "frames": [
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            }
+          "sampledFrames": 30,
+          "backgrounds": [
+            "rgb(250, 250, 247)"
           ]
         },
         {
           "width": 390,
-          "frames": [
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            }
+          "sampledFrames": 30,
+          "backgrounds": [
+            "rgb(250, 250, 247)"
           ]
         },
         {
           "width": 320,
-          "frames": [
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            },
-            {
-              "scheme": "default",
-              "bg": "rgb(250, 250, 247)"
-            }
+          "sampledFrames": 30,
+          "backgrounds": [
+            "rgb(250, 250, 247)"
           ]
         }
       ]
     },
-    "graphite": {
-      "name": "graphite",
+    "carbon": {
+      "name": "carbon",
       "axe": [
         {
           "where": "Home 1366",
@@ -643,6 +326,43 @@
           "violations": []
         },
         {
+          "where": "guide 390",
+          "violations": []
+        },
+        {
+          "where": "guide 320",
+          "violations": []
+        },
+        {
+          "where": "api 390",
+          "violations": []
+        },
+        {
+          "where": "api 320",
+          "violations": [
+            {
+              "id": "scrollable-region-focusable",
+              "impact": "serious",
+              "nodes": [
+                {
+                  "target": [
+                    ".doc-function.doc-object.doc:nth-child(3) > .doc-contents.doc > .md-typeset__scrollwrap:nth-child(6)"
+                  ],
+                  "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "where": "theory 390",
+          "violations": []
+        },
+        {
+          "where": "theory 320",
+          "violations": []
+        },
+        {
           "where": "search",
           "violations": []
         },
@@ -658,13 +378,13 @@
           "overflow": false,
           "images": [
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/exploration/triclinic-voronoi-dark.png#only-dark",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/triclinic-voronoi-dark.png#only-dark",
               "loaded": true,
               "ratio": 1.7758186397984888,
               "naturalRatio": 1.7777777777777777
             },
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/exploration/separator-cycle-dark.png#only-dark",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/separator-cycle-dark.png#only-dark",
               "loaded": true,
               "ratio": 1.8487394957983194,
               "naturalRatio": 1.8468468468468469
@@ -677,13 +397,13 @@
           "overflow": false,
           "images": [
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/exploration/triclinic-voronoi-dark.png#only-dark",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/triclinic-voronoi-dark.png#only-dark",
               "loaded": true,
               "ratio": 1.7819148936170213,
               "naturalRatio": 1.7777777777777777
             },
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/exploration/separator-cycle-dark.png#only-dark",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/separator-cycle-dark.png#only-dark",
               "loaded": true,
               "ratio": 1.850828729281768,
               "naturalRatio": 1.8468468468468469
@@ -696,13 +416,13 @@
           "overflow": false,
           "images": [
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/exploration/triclinic-voronoi-dark.png#only-dark",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/triclinic-voronoi-dark.png#only-dark",
               "loaded": true,
               "ratio": 1.778523489932886,
               "naturalRatio": 1.7777777777777777
             },
             {
-              "src": "http://127.0.0.1:8771/pyvoro2/assets/landing/exploration/separator-cycle-dark.png#only-dark",
+              "src": "http://127.0.0.1:8775/pyvoro2/assets/landing/separator-cycle-dark.png#only-dark",
               "loaded": true,
               "ratio": 1.8531468531468531,
               "naturalRatio": 1.8468468468468469
@@ -723,868 +443,23 @@
       "paint": [
         {
           "width": 1366,
-          "frames": [
-            {
-              "scheme": "default",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            }
+          "sampledFrames": 30,
+          "backgrounds": [
+            "rgb(36, 39, 40)"
           ]
         },
         {
           "width": 390,
-          "frames": [
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            }
+          "sampledFrames": 30,
+          "backgrounds": [
+            "rgb(36, 39, 40)"
           ]
         },
         {
           "width": 320,
-          "frames": [
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(36, 39, 40)"
-            }
-          ]
-        }
-      ]
-    },
-    "midnight": {
-      "name": "midnight",
-      "axe": [
-        {
-          "where": "Home 1366",
-          "violations": []
-        },
-        {
-          "where": "Home 390",
-          "violations": []
-        },
-        {
-          "where": "Home 320",
-          "violations": []
-        },
-        {
-          "where": "guide",
-          "violations": []
-        },
-        {
-          "where": "api",
-          "violations": []
-        },
-        {
-          "where": "theory",
-          "violations": []
-        },
-        {
-          "where": "examples",
-          "violations": []
-        },
-        {
-          "where": "admonition",
-          "violations": []
-        },
-        {
-          "where": "search",
-          "violations": []
-        },
-        {
-          "where": "mobile drawer",
-          "violations": []
-        }
-      ],
-      "viewports": [
-        {
-          "width": 1366,
-          "height": 768,
-          "overflow": false,
-          "images": [
-            {
-              "src": "http://127.0.0.1:8772/pyvoro2/assets/landing/exploration/triclinic-voronoi-dark.png#only-dark",
-              "loaded": true,
-              "ratio": 1.7758186397984888,
-              "naturalRatio": 1.7777777777777777
-            },
-            {
-              "src": "http://127.0.0.1:8772/pyvoro2/assets/landing/exploration/separator-cycle-dark.png#only-dark",
-              "loaded": true,
-              "ratio": 1.8487394957983194,
-              "naturalRatio": 1.8468468468468469
-            }
-          ]
-        },
-        {
-          "width": 390,
-          "height": 844,
-          "overflow": false,
-          "images": [
-            {
-              "src": "http://127.0.0.1:8772/pyvoro2/assets/landing/exploration/triclinic-voronoi-dark.png#only-dark",
-              "loaded": true,
-              "ratio": 1.7819148936170213,
-              "naturalRatio": 1.7777777777777777
-            },
-            {
-              "src": "http://127.0.0.1:8772/pyvoro2/assets/landing/exploration/separator-cycle-dark.png#only-dark",
-              "loaded": true,
-              "ratio": 1.850828729281768,
-              "naturalRatio": 1.8468468468468469
-            }
-          ]
-        },
-        {
-          "width": 320,
-          "height": 844,
-          "overflow": false,
-          "images": [
-            {
-              "src": "http://127.0.0.1:8772/pyvoro2/assets/landing/exploration/triclinic-voronoi-dark.png#only-dark",
-              "loaded": true,
-              "ratio": 1.778523489932886,
-              "naturalRatio": 1.7777777777777777
-            },
-            {
-              "src": "http://127.0.0.1:8772/pyvoro2/assets/landing/exploration/separator-cycle-dark.png#only-dark",
-              "loaded": true,
-              "ratio": 1.8531468531468531,
-              "naturalRatio": 1.8468468468468469
-            }
-          ]
-        }
-      ],
-      "functional": [
-        "Native search result navigation",
-        "Mobile drawer Guide → Home",
-        "Manual light/dark survives reload and opposite OS preference",
-        "Home → Guide → API → Home → Back → Forward: persisted slate, instant sentinel retained",
-        "Auto follows live system changes and survives reload",
-        "Keyboard Tab → native palette, visible 3px focus, arrow-key selection",
-        "200% root text at desktop: no horizontal page overflow"
-      ],
-      "pageErrors": [],
-      "paint": [
-        {
-          "width": 1366,
-          "frames": [
-            {
-              "scheme": "default",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            }
-          ]
-        },
-        {
-          "width": 390,
-          "frames": [
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            }
-          ]
-        },
-        {
-          "width": 320,
-          "frames": [
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            },
-            {
-              "scheme": "slate",
-              "bg": "rgb(16, 45, 53)"
-            }
+          "sampledFrames": 30,
+          "backgrounds": [
+            "rgb(36, 39, 40)"
           ]
         }
       ]
@@ -1593,16 +468,51 @@
   "lightBaseline": [
     {
       "width": 1366,
-      "contentPixelsIdentical": true
+      "sections": [
+        ".landing-hero",
+        ".landing-paths",
+        ".landing-start",
+        ".landing-explore p"
+      ],
+      "contentPixelsIdentical": true,
+      "exploreToMetadataGap": {
+        "before": 24,
+        "after": 16
+      }
     },
     {
       "width": 390,
-      "contentPixelsIdentical": true
+      "sections": [
+        ".landing-hero",
+        ".landing-paths",
+        ".landing-start",
+        ".landing-explore p"
+      ],
+      "contentPixelsIdentical": true,
+      "exploreToMetadataGap": {
+        "before": 24,
+        "after": 16
+      }
     },
     {
       "width": 320,
-      "contentPixelsIdentical": true
+      "sections": [
+        ".landing-hero",
+        ".landing-paths",
+        ".landing-start",
+        ".landing-explore p"
+      ],
+      "contentPixelsIdentical": true,
+      "exploreToMetadataGap": {
+        "before": 24,
+        "after": 16
+      }
     }
   ],
-  "failures": []
+  "failures": [],
+  "accessibilityFailures": [
+    "light api 320: axe scrollable-region-focusable",
+    "light search: axe color-contrast",
+    "carbon api 320: axe scrollable-region-focusable"
+  ]
 }

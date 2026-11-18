@@ -1,20 +1,35 @@
+// Public MathJax CDN requires ignoreHTTPSErrors under this environment proxy.
 // Review-only browser evidence; no dependencies or JavaScript are shipped by the site.
-// NODE_PATH=<disposable node_modules> CHROMIUM_PATH=/usr/bin/chromium node review/w4-c2/verify.cjs A_URL B_URL BASELINE_URL
+// NODE_PATH=<disposable node_modules> CHROMIUM_PATH=/usr/bin/chromium node review/w4-c2/verify.cjs PRODUCTION_URL BASELINE_URL
 const {chromium} = require('playwright');
 const {AxeBuilder} = require('@axe-core/playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const [a,b,baseline] = process.argv.slice(2);
-if (!a || !b || !baseline) throw Error('Supply A, B and C1 baseline URLs ending in /pyvoro2/');
+const [a,baseline] = process.argv.slice(2);
+if (!a || !baseline) throw Error('Supply production and C1 baseline URLs ending in /pyvoro2/');
 const out = path.join(__dirname,'screenshots');
 fs.mkdirSync(out,{recursive:true});
-const report = {browser:'',variants:{},lightBaseline:[],failures:[]};
+const report = {browser:'',variants:{},lightBaseline:[],failures:[],accessibilityFailures:[]};
 const overflow = p => p.evaluate(()=>document.documentElement.scrollWidth > innerWidth);
 const scheme = p => p.locator('body').getAttribute('data-md-color-scheme');
-async function expectScheme(p,s) { await p.waitForFunction(s=>document.body.dataset.mdColorScheme===s,s); }
+async function expectScheme(p,s) {
+ await p.waitForFunction(s=>document.body.dataset.mdColorScheme===s,s);
+ if(await p.locator('.landing').count()) {
+  const figures=p.locator('.landing figure');
+  assert.equal(await figures.count(),2);
+  for(const figure of await figures.all()) {
+   assert.equal(await figure.getByRole('img').count(),1);
+   const img=figure.locator('img:visible');
+   assert((await img.getAttribute('src')).endsWith(s==='slate'?'#only-dark':'#only-light'));
+   assert((await img.getAttribute('alt')).length>30);
+   assert((await figure.locator('figcaption').innerText()).length>30);
+  }
+ }
+}
 async function ready(p) {
   await p.locator('.md-content').waitFor();
+  await p.evaluate(()=>window.MathJax?.startup?.promise);
   await p.evaluate(()=>document.fonts.ready);
   await p.waitForTimeout(200); // native search/drawer cleanup after instant routing (125ms)
 }
@@ -24,17 +39,22 @@ async function axe(p,r,where) {
   const a=await new AxeBuilder({page:p}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   const violations=a.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));
   r.axe.push({where,violations});
-  if(violations.some(v=>!(where==='search' && v.id==='color-contrast' && v.nodes.every(n=>JSON.stringify(n.target).includes('-path'))))) report.failures.push(`${r.name} ${where}: axe ${violations.map(v=>v.id)}`);
+  if(violations.length) report.accessibilityFailures.push(`${r.name} ${where}: axe ${violations.map(v=>v.id)}`);
 }
-async function palette(p,title) { await p.locator(`[data-md-component="palette"] label[title="${title}"]`).click(); }
+async function palette(p,title) {
+ const before=await p.locator('.landing figure').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height]}));
+ await p.locator(`[data-md-component="palette"] label[title="${title}"]`).click();
+ const after=await p.locator('.landing figure').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height]}));
+ assert.deepEqual(after,before,'Theme change must not move/resize scientific figures');
+}
 async function route(p,url) { await p.waitForURL(u=>u.pathname===new URL(url).pathname); await ready(p); }
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH||undefined,args:['--no-sandbox']});
  report.browser=browser.version();
  try {
-  for(const [name,url,mode] of [['light',a,'light'],['graphite',a,'dark'],['midnight',b,'dark']]) {
+  for(const [name,url,mode] of [['light',a,'light'],['carbon',a,'dark']]) {
    const r=report.variants[name]={name,axe:[],viewports:[],functional:[],pageErrors:[],paint:[]};
-   const c=await browser.newContext({viewport:{width:1366,height:768},colorScheme:mode,reducedMotion:'reduce'});
+   const c=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:1366,height:768},colorScheme:mode,reducedMotion:'reduce'});
    const p=await c.newPage();p.on('pageerror',e=>r.pageErrors.push(e.message));
    await p.addInitScript(()=>{
     window.themeFrames=[];let n=0;
@@ -48,14 +68,22 @@ async function route(p,url) { await p.waitForURL(u=>u.pathname===new URL(url).pa
     const bounds=await p.locator('[data-md-component="palette"]').boundingBox();assert(bounds.width>=36&&bounds.x>=0&&bounds.x+bounds.width<=width);
     await shot(p,`${name}-${size}`);await shot(p,`${name}-${size}-full`,true);
     await axe(p,r,`Home ${width}`);r.viewports.push({width,height,overflow:false,images});
-    r.paint.push({width,frames:await p.evaluate(()=>window.themeFrames)});
+    const frames=await p.evaluate(()=>window.themeFrames);
+    assert(frames.length>0);assert(frames.every(f=>f.bg===(mode==='dark'?'rgb(36, 39, 40)':'rgb(250, 250, 247)')));
+    r.paint.push({width,sampledFrames:frames.length,backgrounds:[...new Set(frames.map(f=>f.bg))]});
    }
    await p.setViewportSize({width:1366,height:768});
    for(const [label,routeName] of [['guide','guide/forward/'],['api','reference/api/'],['theory','theory/power-diagrams/'],['examples','examples/'],['admonition','development/architecture/']]) {
     await go(p,new URL(routeName,url).href);assert.equal(await overflow(p),false);
+    if(label==='theory')assert(await p.locator('mjx-container').count()>0,'Theory equations must render');
     await shot(p,`${name}-${label}`);await axe(p,r,label);
     if(label==='api') {const table=p.locator('.md-typeset table').first();await table.scrollIntoViewIfNeeded();await shot(p,`${name}-api-table`);}
    }
+   for(const [label,routeName] of [['guide','guide/forward/'],['api','reference/api/'],['theory','theory/power-diagrams/']]) for(const width of [390,320]) {
+    await p.setViewportSize({width,height:844});await go(p,new URL(routeName,url).href);assert.equal(await overflow(p),false);
+    await shot(p,`${name}-${label}-${width}`);await axe(p,r,`${label} ${width}`);
+   }
+   await p.setViewportSize({width:1366,height:768});
    await go(p,url);await p.getByRole('button',{name:'Search',exact:true}).click();await p.getByPlaceholder('Search',{exact:true}).fill('periodic');
    const hit=p.locator('[role="option"][href*="/guide/periodic-contacts/"]').first();await hit.waitFor();await shot(p,`${name}-search`);await axe(p,r,'search');
    await hit.click();await route(p,new URL('guide/periodic-contacts/',url).href);r.functional.push('Native search result navigation');
@@ -81,12 +109,31 @@ async function route(p,url) { await p.waitForURL(u=>u.pathname===new URL(url).pa
    await go(p,url);await p.evaluate(()=>document.documentElement.style.fontSize='40px');assert.equal(await overflow(p),false);r.functional.push('200% root text at desktop: no horizontal page overflow');
    assert.equal(r.pageErrors.length,0,JSON.stringify(r.pageErrors));await c.close();console.log(name,'done');
   }
-  // Approved light content remains byte-identical in browser rasterization.
+  // Approved light sections remain pixel-identical; only the footer gap changes.
   for(const width of [1366,390,320]) {
-   const c=await browser.newContext({viewport:{width,height:width===1366?768:844},colorScheme:'light',reducedMotion:'reduce'});const p=await c.newPage();let images=[];
-   for(const [name,url] of [['baseline',baseline],['light',a]]) {await go(p,url);images.push(await p.locator('.md-content').screenshot());if(name==='baseline'){await shot(p,`baseline-${width}`);await shot(p,`baseline-${width}-full`,true)}}
-   const identical=images[0].equals(images[1]);report.lightBaseline.push({width,contentPixelsIdentical:identical});assert(identical,`Light content differs at ${width}`);await c.close();
+   const c=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width,height:width===1366?768:844},colorScheme:'light',reducedMotion:'reduce'});const p=await c.newPage();let images=[];
+   const selectors=['.landing-hero','.landing-paths','.landing-start','.landing-explore p'];
+   const gaps=[];
+   for(const [name,url] of [['baseline',baseline],['light',a]]) {
+    await go(p,url);
+    // Full-width capture includes transformed arrows beyond section bounds.
+    // Cropping at a rotated border can change edge rasterization at 320 px.
+    await p.locator('.landing-explore').scrollIntoViewIfNeeded();
+    await p.locator('.landing img:visible').evaluateAll(es=>Promise.all(es.map(e=>e.decode())));
+    await p.evaluate(()=>window.scrollTo(0,0));
+    const clip=await p.evaluate(()=>{
+     const first=document.querySelector('.landing-hero').getBoundingClientRect();
+     const last=document.querySelector('.landing-explore p').getBoundingClientRect();
+     return {x:0,y:first.top+scrollY,width:innerWidth,height:last.bottom-first.top};
+    });
+    images.push(await p.screenshot({fullPage:true,clip}));
+    gaps.push(await p.evaluate(()=>{const nav=document.querySelector('.landing-explore p').getBoundingClientRect();const meta=document.querySelector('.landing-footer p').getBoundingClientRect();return meta.top-nav.bottom}));
+   }
+   const identical=images[0].equals(images[1]);
+   report.lightBaseline.push({width,sections:selectors,contentPixelsIdentical:identical,exploreToMetadataGap:{before:gaps[0],after:gaps[1]}});
+   assert(identical,`Light content differs at ${width}`);assert.equal(gaps[0]-gaps[1],8);await c.close();
   }
  }catch(e){report.failures.push(e.stack);throw e}finally{fs.writeFileSync(path.join(__dirname,'browser-results.json'),JSON.stringify(report,null,2)+'\n');await browser.close()}
- assert.equal(report.failures.length,0,report.failures.join('\n'));console.log('PASS: native behavior and baseline; inspect reported native search contrast limitations');
+ assert.equal(report.failures.length,0,report.failures.join('\n'));console.log('PASS: native behavior and approved light sections');
+ assert.equal(report.accessibilityFailures.length,0,report.accessibilityFailures.join('\n'));console.log('PASS: automated accessibility');
 })().catch(e=>{console.error(e);process.exitCode=1});

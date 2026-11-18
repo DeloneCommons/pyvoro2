@@ -60,6 +60,11 @@ def main():
             articles.append({'page': str(relative), 'identical': identical})
             if not identical:
                 failures.append(f'Changed article: {relative}')
+    css = Path('docs/stylesheets/themes.css').read_text()
+    slate = re.search(r'\[data-md-color-scheme="slate"\] \{([^}]+)', css)[1]
+    bootstrap = re.search(r'body:not\(\[data-md-color-media\]\) \{([^}]+)', css)[1]
+    declarations = lambda block: dict(re.findall(r'(--[\w-]+):\s*([^;]+);', block))
+    assert declarations(slate) == declarations(bootstrap), 'Cold Auto tokens drifted'
     light_assets = {}
     for name in ('triclinic-voronoi', 'separator-cycle'):
         asset = f'docs/assets/landing/{name}.png'
@@ -67,7 +72,7 @@ def main():
         current = Path(asset).read_bytes()
         assert old == current
         light_assets[name] = hashlib.sha256(current).hexdigest()
-    result = {'html_pages': len(pages), 'failures': failures,
+    result = {'cold_auto_tokens_match_slate': True, 'html_pages': len(pages), 'failures': failures,
               'unchanged_articles': articles, 'unchanged_light_assets': light_assets}
     Path('review/w4-c2/static-results.json').write_text(json.dumps(result, indent=2)+'\n')
     assert not failures, '\n'.join(failures)

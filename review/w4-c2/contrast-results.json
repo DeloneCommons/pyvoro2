@@ -1,19 +1,54 @@
 {
   "light": {
+    "colors": {
+      "paper": "#fafaf7",
+      "ink": "#233b3c",
+      "muted": "#536365",
+      "accent": "#24666a",
+      "code": "#eff2ee"
+    },
     "ink": 11.4,
     "muted": 6.01,
-    "accent": 6.31
+    "accent": 6.31,
+    "code": {
+      "number": 4.59,
+      "special": 4.53,
+      "function": 4.54,
+      "constant": 4.71,
+      "keyword": 4.52,
+      "string": 4.71,
+      "name": 8.99,
+      "operator": 5.77,
+      "punctuation": 5.77,
+      "comment": 5.77,
+      "generic": 5.77,
+      "variable": 5.77
+    }
   },
-  "graphite": {
+  "dark": {
+    "colors": {
+      "paper": "#242728",
+      "ink": "#e0e3df",
+      "muted": "#b4bdb9",
+      "accent": "#91bdb5",
+      "code": "#1d2122"
+    },
     "ink": 11.62,
     "muted": 7.82,
     "accent": 7.27,
-    "code_minimum": 8.2
-  },
-  "midnight": {
-    "ink": 11.64,
-    "muted": 7.93,
-    "accent": 8.01,
-    "code_minimum": 8.2
+    "code": {
+      "number": 8.96,
+      "special": 8.2,
+      "function": 8.8,
+      "constant": 9.19,
+      "keyword": 9.67,
+      "string": 9.85,
+      "name": 12.55,
+      "operator": 8.45,
+      "punctuation": 8.45,
+      "comment": 8.45,
+      "generic": 8.45,
+      "variable": 12.55
+    }
   }
 }

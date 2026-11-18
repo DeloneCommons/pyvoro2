@@ -1,0 +1,31 @@
+{
+  "zensical": "0.1.2",
+  "zensical_ui": "0.0.42",
+  "axe_core": "4.14.1",
+  "bundle": "bundle.3cb411a8.min.js",
+  "native_breadcrumb_rule": ".n{position:relative;display:inline-flex;flex-wrap:wrap;flex:1 1 auto;min-width:0;font-size:12px;gap:var(--space-1);color:rgb(var(--color-foreground)/.45);list-style:none;padding:0;margin:0}",
+  "light_foreground_token": "0 0 0",
+  "supported_search_config": [
+    "enabled",
+    "separator"
+  ],
+  "documented_reference": "https://zensical.org/docs/setup/search/",
+  "finding": "color-contrast",
+  "nodes": 12,
+  "measured_contrast": 3.33,
+  "required_contrast": 4.5,
+  "reason": "The native shadow-root rule fixes opacity at .45 and inherited foreground is already black. md color tokens cannot change that opacity. No exposed part or documented breadcrumb-specific token. Upstream needs higher opacity (about .54 or more on white), an accessible default or a supported token/part. No shadow mutation or rule suppression applied.",
+  "additional_native_finding": {
+    "rule": "scrollable-region-focusable",
+    "route": "reference/api/",
+    "viewport_width": 320,
+    "nodes_per_theme": 1,
+    "c1_baseline_reproduces": true,
+    "native_wrapper": ".md-typeset__scrollwrap",
+    "client_width": 305,
+    "scroll_width": 347,
+    "chromium_programmatic_focus": true,
+    "axe_description": "Ensure elements that have scrollable content are accessible by keyboard in Safari",
+    "needed_upstream_change": "Native wrapper should provide tabindex=0 when scrollable (with an appropriate visible focus style); no article content or generated wrapper was patched."
+  }
+}

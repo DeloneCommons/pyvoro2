@@ -71,11 +71,57 @@ depth peeling. The normal Zensical build consumes the committed static PNG.
 On the recorded stack two independent runs produced identical PNGs and
 records. Other graphics drivers can produce different raster bytes.
 
-## C2-1 dark exploration
+## Production Carbon pair (DOC-W4-C2)
 
-The optional `--dark-prototype --output PATH` render mode keeps the B2 geometry,
-opacity and camera and changes only colors/background transparency. The inverse
-script accepts the same flags. Both require a separate output path so the approved
-light assets remain intact. Current prototypes and their limitations are recorded
-in the [C2-1 comparison](../../review/w4-c2/README.md); they are not production
-asset acceptance. No offline renderer is needed for a normal documentation build.
+The maintainer selected Carbon / Graphite editorial in PR #141. The light B2
+and inverse PNGs are unchanged, including their exact bytes. The production
+variants are `triclinic-voronoi-dark.png` (1600 × 900) and
+`separator-cycle-dark.png` (820 × 444), alongside the light assets. Native
+Zensical `#only-light` / `#only-dark` image selection controls their visibility.
+
+The dark B2 uses the same four complete polyhedra, site IDs, vertices, faces,
+periodic-image shifts and orthographic camera. Its opaque `#242728` background
+matches Carbon. Pale neutral edges (5.6 supersampled pixels) and a quieter
+dashed lattice (4.4 pixels) retain distant structure at mobile size. Slightly
+higher face opacity separates the four cells; lighting, site radius and camera
+are unchanged. No clipping, inversion or substitute geometry is used.
+
+The inverse generator retains the three fixed sites and original inconsistent
+fraction observations. It fits weights, computes actual power cells, checks the
+fit status and observation residuals, reconstructs polygon areas, checks unit
+area and verifies all three realized contacts. The dark variant changes only
+presentation: muted cell fills, pale computed boundaries and warm observation
+marks. The two original panel titles remain unchanged. Both inverse PNGs have
+transparent backgrounds. The fitted boundaries are not observation marks.
+
+[Production provenance](production-provenance.json) records both themes' exact
+render parameters, dependency versions, PNG and generator hashes, raw geometry
+hashes and scientific assertions. The two themes have identical raw geometry
+hashes, also checked against the previously reviewed `5c41b85` generators. The
+older [light B2 record](provenance.json) is retained as historical provenance;
+its old generator hash and Pillow version describe that original run.
+
+```bash
+# Inside the dedicated rendering environment described above:
+python tools/render_landing.py --theme dark --check-only
+python tools/landing/render_separator_cycle.py --theme dark --check-only
+VTK_DEFAULT_OPENGL_WINDOW=vtkEGLRenderWindow \
+  python tools/render_landing.py --theme dark > work/hero-dark-record.json
+python tools/landing/render_separator_cycle.py --theme dark > work/inverse-dark-record.json
+# Eight renders in temporary files; no committed PNG is overwritten:
+MPLCONFIGDIR="$PWD/work/mpl" XDG_CACHE_HOME="$PWD/work/cache" \
+  python tools/landing/verify_assets.py --records work/reproduced
+```
+
+`--theme light` is the default; `--output PATH` redirects either renderer.
+Each rejects the other theme's production path, including symlink resolution.
+Do not use Python `-O`: the offline scientific assertions must execute.
+The recorded production environment uses Pillow 13.0.0 and reproduces the
+approved Pillow-12 light B2 bytes exactly. Eight independent renders (two per
+asset) matched the committed files and each other's records. Raster bytes may
+vary on other graphics stacks; geometry assertions must still pass.
+
+All rendering remains optional and offline. Neither the normal Zensical build
+nor pyvoro2 runtime depends on VTK, PyVista or these scripts. Earlier candidate
+screenshots and provisional render records remain available in
+[the C2-1 commit](https://github.com/DeloneCommons/pyvoro2/tree/5c41b8593a3338e3798c2731976e53d2bde8f18f/review/w4-c2).
