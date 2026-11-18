@@ -143,8 +143,8 @@ Extra CSS for pyvoro2 documentation.
 .landing-paths li { margin-inline-start: 1em; }
 .landing .landing-cycle {
   display: block;
-  width: min(100%, 16rem);
-  margin: 1rem 0 0;
+  width: min(100%, 18rem);
+  margin: 1rem auto 0;
 }
 .landing-cycle img { display: block; width: 100%; height: auto; }
 .landing .landing-cycle figcaption {
