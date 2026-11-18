@@ -1,0 +1,25 @@
+{% extends "main.html" %}
+
+{# Keep the native header/search mounted across navigation.instant. The Home
+   navigation lives in the replaced container; CSS selects this marker rather
+   than a body class (body attributes are not replaced by instant navigation).
+   Direction B is selected only by the review build's extra configuration. #}
+{% block hero %}
+<header class="pv-home pv-home--{{ config.extra.landing_direction | default('editorial', true) }}">
+  <nav class="pv-home__nav" aria-label="Homepage navigation">
+    <a class="pv-home__brand" href="{{ nav.homepage.url | url }}" aria-label="pyvoro2 Home">{{ config.site_name }}</a>
+    <div class="pv-home__links">
+      <a href="{{ 'guide/' | url }}">Documentation</a>
+      <a href="{{ 'examples/' | url }}">Examples</a>
+      <a href="{{ config.repo_url }}">GitHub</a>
+    </div>
+  </nav>
+</header>
+{% endblock %}
+
+{% block content %}
+  {{ page.content }}
+{% endblock %}
+
+{# The approved project/license footer is already in docs/index.md. #}
+{% block footer %}{% endblock %}
