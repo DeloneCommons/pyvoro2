@@ -53,3 +53,23 @@ changelog section while a fresh `[Unreleased]` section remains for future work.
 User-facing lifecycle and migration decisions are summarized in
 [Choosing an API](../guide/choosing-api.md) and
 [Migrating from v0.6.3 through v0.8](../guide/migration-v0.7.md).
+
+## Known documentation UI limitations
+
+These are documentation-interface limitations, not pyvoro2 computational or
+public API defects. **Native Search:** with Zensical 0.1.2 / `zensical-ui` 0.0.42,
+light-mode result breadcrumbs have approximately **3.33:1** contrast, below
+the WCAG AA normal-text threshold of **4.5:1**, affecting 12 elements in the
+recorded results. Search fixes foreground opacity at 45% inside its Shadow DOM
+and exposes no documented breadcrumb-specific styling interface. An upstream
+accessible default or supported styling mechanism is needed.
+
+**Scrollable API tables:** at a 320 px viewport, axe reports
+`scrollable-region-focusable` for one native `.md-typeset__scrollwrap` in the
+API Reference, which lacks the expected keyboard-focus semantics. This may
+particularly affect Safari keyboard navigation; Safari was not tested directly.
+The same finding reproduces on the unchanged DOC-W4-C1 baseline. An upstream
+focusability/accessibility correction is needed. Both findings are tracked in
+[#142](https://github.com/DeloneCommons/pyvoro2/issues/142); see the
+[commit-pinned evidence](https://github.com/DeloneCommons/pyvoro2/blob/9006390a9f6807aad48e48cb7136c489629be523/review/w4-c2/native-findings.json)
+and [PR #141](https://github.com/DeloneCommons/pyvoro2/pull/141).
