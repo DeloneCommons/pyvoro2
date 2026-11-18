@@ -5,6 +5,7 @@ The ticks in both panels are input observations. Only the solid interior
 edges on the right are computed boundaries.
 """
 
+import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -18,6 +19,16 @@ from pyvoro2.inverse import (
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path)
+    parser.add_argument('--dark-prototype', action='store_true')
+    args = parser.parse_args()
+    root = Path(__file__).resolve().parents[2]
+    light = root / 'docs/assets/landing/separator-cycle.png'
+    output = args.output or light
+    if args.dark_prototype and output.resolve() == light:
+        parser.error('--dark-prototype requires a separate --output path')
+    dark = args.dark_prototype
     points = np.array([[0.22, 0.24], [0.80, 0.30], [0.45, 0.79]])
     pairs = [(0, 1, 0.40), (1, 2, 0.58), (2, 0, 0.72)]
     domain = planar.Box(((0.0, 1.0), (0.0, 1.0)))
@@ -39,21 +50,24 @@ def main():
     panels = [(observed, 'Observed positions'), (fitted, 'Computed cells')]
     for axis, title in panels:
         axis.set(xlim=(0, 1), ylim=(0, 1), aspect='equal', xticks=[], yticks=[])
-        axis.set_title(title, fontsize=11, color='#283e40')
+        axis.set_title(title, fontsize=11, color='#dce9e8' if dark else '#283e40')
         for spine in axis.spines.values():
-            spine.set_color('#758788')
-        axis.scatter(*points.T, s=18, color='#182f35', zorder=4)
+            spine.set_color('#8caaae' if dark else '#758788')
+        axis.scatter(*points.T, s=18, color='#e5eeed' if dark else '#182f35', zorder=4)
 
     for i, j, fraction in pairs:
-        observed.plot(*points[[i, j]].T, '--', color='#758788', linewidth=1)
+        observed.plot(*points[[i, j]].T, '--',
+                      color='#8caaae' if dark else '#758788', linewidth=1)
         direction = points[j] - points[i]
         position = points[i] + fraction * direction
         normal = np.array([-direction[1], direction[0]]) / np.linalg.norm(direction)
         tick = np.array([position - 0.045 * normal, position + 0.045 * normal])
         for axis in (observed, fitted):
-            axis.plot(*tick.T, color='#a34e25', linewidth=2, zorder=3)
+            axis.plot(*tick.T, color='#edb58c' if dark else '#a34e25',
+                      linewidth=2, zorder=3)
 
-    colors = ('#e1ecec', '#e5ede5', '#eeece5')
+    colors = (('#28454e', '#354b45', '#4b4b40') if dark
+              else ('#e1ecec', '#e5ede5', '#eeece5'))
     contacts = set()
     for cell in result.cells:
         vertices = np.asarray(cell['vertices'])
@@ -70,12 +84,12 @@ def main():
             i, j = cell['id'], edge['adjacent_cell']
             if j > i:
                 segment = vertices[edge['vertices']]
-                fitted.plot(*segment.T, color='#235e64', linewidth=1.6)
+                fitted.plot(*segment.T, color='#a7d2d1' if dark else '#235e64',
+                            linewidth=1.6)
                 contacts.add((i, j))
     assert contacts == {(0, 1), (1, 2), (0, 2)}
 
-    root = Path(__file__).resolve().parents[2]
-    output = root / 'docs/assets/landing/separator-cycle.png'
+    output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=200, transparent=True)
     plt.close(fig)
 

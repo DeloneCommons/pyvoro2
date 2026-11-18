@@ -1,0 +1,19 @@
+{
+  "light": {
+    "ink": 11.4,
+    "muted": 6.01,
+    "accent": 6.31
+  },
+  "graphite": {
+    "ink": 11.62,
+    "muted": 7.82,
+    "accent": 7.27,
+    "code_minimum": 8.2
+  },
+  "midnight": {
+    "ink": 11.64,
+    "muted": 7.93,
+    "accent": 8.01,
+    "code_minimum": 8.2
+  }
+}

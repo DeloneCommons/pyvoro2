@@ -1,0 +1,274 @@
+{
+  "cold": [
+    {
+      "candidate": "graphite",
+      "os": "light",
+      "route": "",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(250, 250, 247)",
+      "images": [
+        "assets/landing/triclinic-voronoi.png#only-light",
+        "assets/landing/separator-cycle.png#only-light"
+      ],
+      "fcp": 400
+    },
+    {
+      "candidate": "graphite",
+      "os": "light",
+      "route": "guide/forward/",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(255, 255, 255)",
+      "images": [],
+      "fcp": 312
+    },
+    {
+      "candidate": "graphite",
+      "os": "dark",
+      "route": "",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(36, 39, 40)",
+      "images": [
+        "assets/landing/exploration/triclinic-voronoi-dark.png#only-dark",
+        "assets/landing/exploration/separator-cycle-dark.png#only-dark"
+      ],
+      "fcp": 228
+    },
+    {
+      "candidate": 0,
+      "manualLightSurvivesDelayedReload": true
+    },
+    {
+      "candidate": "graphite",
+      "os": "dark",
+      "route": "guide/forward/",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(36, 39, 40)",
+      "images": [],
+      "fcp": 216
+    },
+    {
+      "candidate": "midnight",
+      "os": "light",
+      "route": "",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(250, 250, 247)",
+      "images": [
+        "assets/landing/triclinic-voronoi.png#only-light",
+        "assets/landing/separator-cycle.png#only-light"
+      ],
+      "fcp": 296
+    },
+    {
+      "candidate": "midnight",
+      "os": "light",
+      "route": "guide/forward/",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(255, 255, 255)",
+      "images": [],
+      "fcp": 288
+    },
+    {
+      "candidate": "midnight",
+      "os": "dark",
+      "route": "",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(16, 45, 53)",
+      "images": [
+        "assets/landing/exploration/triclinic-voronoi-dark.png#only-dark",
+        "assets/landing/exploration/separator-cycle-dark.png#only-dark"
+      ],
+      "fcp": 316
+    },
+    {
+      "candidate": 1,
+      "manualLightSurvivesDelayedReload": true
+    },
+    {
+      "candidate": "midnight",
+      "os": "dark",
+      "route": "guide/forward/",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(16, 45, 53)",
+      "images": [],
+      "fcp": 264
+    }
+  ],
+  "reflow": [
+    {
+      "candidate": 0,
+      "width": 1366,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 1366,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 1366,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 1366,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 390,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 390,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 390,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 390,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 320,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 320,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 320,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 0,
+      "width": 320,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 1366,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 1366,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 1366,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 1366,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 390,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 390,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 390,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 390,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 320,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 320,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 320,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "candidate": 1,
+      "width": 320,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    }
+  ]
+}

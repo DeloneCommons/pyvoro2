@@ -17,7 +17,9 @@ inverse weight fitting.
 
 </div>
 <figure class="landing-figure" markdown="1">
-  <img src="assets/landing/triclinic-voronoi.png" width="1600" height="900"
+  <img src="assets/landing/triclinic-voronoi.png#only-light" width="1600" height="900"
+       alt="Four complete Voronoi polyhedra surround four points. A dashed skew frame outlines one fundamental domain; the polyhedra extend across that frame.">
+  <img src="assets/landing/exploration/triclinic-voronoi-dark.png#only-dark" width="1600" height="900"
        alt="Four complete Voronoi polyhedra surround four points. A dashed skew frame outlines one fundamental domain; the polyhedra extend across that frame.">
   <figcaption markdown="span">Fully periodic triclinic 3D Voronoi · [Example](guide/forward/index.md)</figcaption>
 </figure>
@@ -50,7 +52,9 @@ Fit power weights to observed pairwise separator positions at fixed points,
 reconciling the observations in one weighted diagram.
 
 <figure class="landing-cycle">
-  <img src="assets/landing/separator-cycle.png" width="820" height="444" loading="lazy"
+  <img src="assets/landing/separator-cycle.png#only-light" width="820" height="444" loading="lazy"
+       alt="Two panels show the same three fixed points. Left: short marks on dashed lines joining the points locate three observed pairwise separators. Right: the power diagram computed from fitted weights has three shared edges. The original marks remain offset from those edges; none of the observations is matched exactly.">
+  <img src="assets/landing/exploration/separator-cycle-dark.png#only-dark" width="820" height="444" loading="lazy"
        alt="Two panels show the same three fixed points. Left: short marks on dashed lines joining the points locate three observed pairwise separators. Right: the power diagram computed from fitted weights has three shared edges. The original marks remain offset from those edges; none of the observations is matched exactly.">
   <figcaption>Observed positions (ticks) are approximately matched by one fitted diagram. All three cell pairs meet in this example.</figcaption>
 </figure>

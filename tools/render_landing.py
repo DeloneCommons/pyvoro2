@@ -120,12 +120,14 @@ def compute_and_check():
     return cells, report
 
 
-def render(cells, output):
+def render(cells, output, *, dark=False):
     import pyvista as p
     from PIL import Image
 
     plot = p.Plotter(off_screen=True, window_size=(3200, 1800), lighting='none')
-    plot.set_background(BACKGROUND)
+    plot.set_background('#242728' if dark else BACKGROUND)
+    colors = ({40: '#77a4bc', 10: '#8db5a6', 70: '#a8b4bb', 20: '#abb4a2'}
+              if dark else COLORS)
     # Supersample explicitly rather than stacking an AA render pass on peeling.
     plot.ren_win.SetMultiSamples(0)
     plot.enable_depth_peeling(number_of_peels=100, occlusion_ratio=0.)
@@ -158,12 +160,14 @@ def render(cells, output):
             if normal @ (points.mean(axis=0) - site) < 0:
                 points = points[::-1]
             poly = p.PolyData(points, [len(points), *range(len(points))])
-            plot.add_mesh(poly, color=COLORS[i], opacity=OPACITY[i], ambient=.7,
+            plot.add_mesh(poly, color=colors[i], opacity=OPACITY[i], ambient=.7,
                           diffuse=.3, specular=0, smooth_shading=False)
         lines = [v for a, b in sorted(edges) for v in (2, a, b)]
-        plot.add_mesh(p.PolyData(vertices, lines=lines), color='#41616d',
+        plot.add_mesh(p.PolyData(vertices, lines=lines),
+                      color='#a7c0c5' if dark else '#41616d',
                       line_width=4.4, lighting=False)
-        plot.add_mesh(p.Sphere(radius=.032, center=site), color='#274550',
+        plot.add_mesh(p.Sphere(radius=.032, center=site),
+                      color='#e0e3df' if dark else '#274550',
                       ambient=.7, diffuse=.3, specular=0)
     assert (contributions, len(seen)) == (56, 51)
     for corner in itertools.product((0, 1), repeat=3):
@@ -173,7 +177,9 @@ def render(cells, output):
                 for t in np.arange(0, 1, .07):
                     segment = p.Line(start + t * vector,
                                      start + min(t + .04, 1) * vector)
-                    plot.add_mesh(segment, color='#829093', line_width=3.8,
+                    plot.add_mesh(segment,
+                                  color='#748c92' if dark else '#829093',
+                                  line_width=3.8,
                                   lighting=False)
     # B2 orthographic camera; fit 88% of the limiting dimension (formerly 84%).
     position = (-3.892966418634691, -7.3811054742874065, 3.481510546940376)
@@ -184,7 +190,7 @@ def render(cells, output):
     plot.enable_parallel_projection()
     plot.camera.parallel_scale = scale
     plot.reset_camera_clipping_range()
-    pixels = plot.screenshot(return_img=True)
+    pixels = plot.screenshot(return_img=True, transparent_background=dark)
     peeling = bool(plot.renderer.GetLastRenderingUsedDepthPeeling())
     assert peeling, 'Depth peeling unavailable; do not publish unordered alpha'
     prefixes = ('OpenGL vendor', 'OpenGL renderer', 'OpenGL version')
@@ -193,7 +199,8 @@ def render(cells, output):
     plot.close()
     full = Image.fromarray(pixels).resize((1600, 900), Image.Resampling.LANCZOS)
     full.save(output, optimize=True)
-    return dict(displayed_polygons=len(seen), opacity=OPACITY, colors=COLORS,
+    return dict(displayed_polygons=len(seen), opacity=OPACITY, colors=colors,
+                preliminary_dark=dark, transparent_background=dark,
                 camera=dict(position=position, focal_point=focal, view_up=up,
                             parallel_scale=scale, projection='orthographic'),
                 depth_peeling_used=peeling, opengl=opengl)
@@ -204,7 +211,13 @@ def main():
     parser.add_argument('--output', type=Path,
                         default=ROOT / 'docs/assets/landing/triclinic-voronoi.png')
     parser.add_argument('--check-only', action='store_true')
+    parser.add_argument('--dark-prototype', action='store_true',
+                        help='C2-1 exploratory colors, transparent background')
     args = parser.parse_args()
+    if args.dark_prototype and args.output.resolve() == (
+        ROOT / 'docs/assets/landing/triclinic-voronoi.png'
+    ):
+        parser.error('--dark-prototype requires a separate --output path')
     if not __debug__:
         parser.error('Run with assertions enabled to check the scientific geometry.')
     cells, report = compute_and_check()
@@ -220,7 +233,7 @@ def main():
         import PIL
         import pyvista
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        report['render'] = render(cells, args.output)
+        report['render'] = render(cells, args.output, dark=args.dark_prototype)
         report['versions'] = dict(pyvoro2=pv.__version__, numpy=np.__version__,
                                   pyvista=pyvista.__version__, pillow=PIL.__version__,
                                   vtk=pyvista.vtk_version_info,

@@ -1,0 +1,11 @@
+/* C2-1 candidate B: midnight teal. Same layout and native slate semantics. */
+body {
+  --pv-paper: #102d35;
+  --pv-surface: #193b44;
+  --pv-header: #0c242d;
+  --pv-ink: #dce9e8;
+  --pv-muted: #acc4c8;
+  --pv-accent: #83cdd0;
+  --pv-rule: #40616a;
+  --pv-code: #0c232c;
+}

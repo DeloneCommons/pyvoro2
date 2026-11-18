@@ -1,0 +1,11 @@
+/* C2-1 candidate A: graphite editorial. Not a final palette selection. */
+body {
+  --pv-paper: #242728;
+  --pv-surface: #2d3132;
+  --pv-header: #202324;
+  --pv-ink: #e0e3df;
+  --pv-muted: #b4bdb9;
+  --pv-accent: #91bdb5;
+  --pv-rule: #505958;
+  --pv-code: #1d2122;
+}

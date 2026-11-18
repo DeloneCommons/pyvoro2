@@ -1,5 +1,5 @@
 /* Scientific editorial Home. Only landing.html supplies .pv-home.
-   Tokens belong to Home; documentation palette and native search stay intact.
+   Light tokens belong to Home; themes.css supplies native dark overrides.
    :has follows the container replacement used by navigation.instant. */
 body:has(.pv-home) {
   --home-paper: #fafaf7;
@@ -15,7 +15,7 @@ body:has(.pv-home) {
   color: var(--home-ink);
   font-family: Arial, Helvetica, sans-serif;
 }
-/* Preserve the native search component and its keyboard behavior. All other
+/* Preserve native search and palette components and their keyboard behavior. All other
    native header controls return unchanged on documentation pages. */
 body:has(.pv-home) .md-header {
   position: absolute;
@@ -24,22 +24,47 @@ body:has(.pv-home) .md-header {
   box-shadow: none;
   background: transparent;
   color: var(--home-ink);
+  container: home-controls / inline-size;
 }
 body:has(.pv-home) .md-header__inner {
   position: relative;
-  display: block;
+  top: 24px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 12px;
   max-width: var(--home-width);
   margin: auto;
   padding: 0;
   height: 0;
 }
-body:has(.pv-home) .md-header__inner > :not(.md-search),
+body:has(.pv-home) .md-header__inner > :not(.md-search):not([data-md-component="palette"]),
 body:has(.pv-home) .md-tabs { display: none; }
-body:has(.pv-home) .md-search {
-  position: absolute;
+body:has(.pv-home) [data-md-component="palette"] {
+  position: static;
   display: block;
-  top: 24px;
-  right: 0;
+  flex: none;
+  margin: 0;
+}
+body:has(.pv-home) [data-md-component="palette"] .md-header__button {
+  margin: 0;
+  padding: 8px;
+  width: max(36px, 1.8rem);
+  height: max(36px, 1.8rem);
+  border: 1px solid var(--home-rule);
+}
+body:has(.pv-home) [data-md-component="palette"] .md-header__button:hover {
+  background: var(--home-code);
+  opacity: 1;
+}
+body:has(.pv-home) [data-md-component="palette"] input:focus-visible + label {
+  outline: 3px solid var(--home-accent);
+  outline-offset: 3px;
+}
+body:has(.pv-home) .md-search {
+  position: static;
+  display: block;
+  flex: none;
   padding: 0;
 }
 body:has(.pv-home) .md-search__button {
@@ -67,6 +92,7 @@ body:has(.pv-home) .md-content__inner::before,
 body:has(.pv-home) .md-content__inner::after { display: none; }
 body:has(.pv-home) .md-top { display: none; }
 .pv-home {
+  container: home-navigation / inline-size;
   width: 100%;
   max-width: var(--home-width);
   margin: 0 auto;
@@ -75,7 +101,7 @@ body:has(.pv-home) .md-top { display: none; }
 }
 .pv-home__nav { display: flex; align-items: center; gap: 32px; min-height: 36px; }
 .pv-home__brand { font-size: 1.25rem; font-weight: 700; letter-spacing: -.055em; }
-.pv-home__links { display: flex; gap: 28px; margin-left: auto; padding-right: 6.7rem; }
+.pv-home__links { display: flex; gap: 28px; margin-left: auto; padding-right: calc(6.7rem + 48px); }
 .pv-home__links a { font-size: 0.7rem; }
 .pv-home a:hover { color: var(--home-accent); text-decoration: underline; text-underline-offset: 5px; }
 body:has(.pv-home) :is(a, button):focus-visible {
@@ -130,7 +156,7 @@ body:has(.pv-home) :is(a, button):focus-visible {
   .pv-home__nav { display: block; }
   .pv-home__links { flex-wrap: wrap; padding: 0; gap: 25px; margin-top: 24px; }
   .pv-home__links a { font-size: 0.65rem; }
-  body:has(.pv-home) .md-search { top: 20px; }
+  body:has(.pv-home) .md-header__inner { top: 20px; }
   body:has(.pv-home) .md-search__button { min-width: 96px; }
   .landing { font-size: 0.75rem; }
   .landing .landing-hero { grid-template-columns: minmax(0, 1fr); gap: 26px; padding: 38px 0 32px; }
@@ -143,4 +169,12 @@ body:has(.pv-home) :is(a, button):focus-visible {
   .landing .landing-cycle { width: 100%; margin-top: 24px; }
   .landing-explore p { gap: 16px 28px; font-size: 0.75rem; }
   .landing-start pre > code { padding: 14px; font-size: 0.6rem; }
+}
+/* Container-query rem units follow enlarged text. Only when the brand and
+   controls no longer fit, give controls a row before the existing links. */
+@container home-controls (width < 15rem) {
+  body:has(.pv-home) .md-header__inner { top: calc(32px + 1.5rem); }
+}
+@container home-navigation (width < calc(15rem - 40px)) {
+  .pv-home__links { margin-top: calc(24px + 2.4rem); }
 }

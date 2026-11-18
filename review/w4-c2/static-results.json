@@ -1,0 +1,374 @@
+{
+  "html_pages": 93,
+  "failures": [],
+  "unchanged_articles": [
+    {
+      "page": "project/index.html",
+      "identical": true
+    },
+    {
+      "page": "examples/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/index.html",
+      "identical": true
+    },
+    {
+      "page": "theory/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/index.html",
+      "identical": true
+    },
+    {
+      "page": "project/license/index.html",
+      "identical": true
+    },
+    {
+      "page": "project/ai/index.html",
+      "identical": true
+    },
+    {
+      "page": "project/roadmap/index.html",
+      "identical": true
+    },
+    {
+      "page": "project/changelog/index.html",
+      "identical": true
+    },
+    {
+      "page": "project/release-notes-v0.8/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/validation/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/normalize/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/diagnostics/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/face_properties/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/planar/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/duplicates/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/viz2d/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/result/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/edge_properties/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/api/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/domains/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/inverse/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/viz3d/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/planar/validation/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/planar/normalize/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/planar/diagnostics/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/planar/api/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/planar/domains/index.html",
+      "identical": true
+    },
+    {
+      "page": "reference/inverse/separator/index.html",
+      "identical": true
+    },
+    {
+      "page": "theory/power-diagrams/index.html",
+      "identical": true
+    },
+    {
+      "page": "theory/separator-inverse/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/visualization/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/forward/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/glossary/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/migration-v0.7/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/periodic-contacts/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/choosing-api/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/planar/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/capabilities/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/concepts/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/operations/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/domains/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/inverse/index.html",
+      "identical": true
+    },
+    {
+      "page": "guide/inverse/separator-fitting/index.html",
+      "identical": true
+    },
+    {
+      "page": "notebooks/02_periodic_graph/index.html",
+      "identical": true
+    },
+    {
+      "page": "notebooks/03_locate_and_ghost/index.html",
+      "identical": true
+    },
+    {
+      "page": "notebooks/07_powerfit_infeasibility/index.html",
+      "identical": true
+    },
+    {
+      "page": "notebooks/06_powerfit_reports/index.html",
+      "identical": true
+    },
+    {
+      "page": "notebooks/08_powerfit_active_path/index.html",
+      "identical": true
+    },
+    {
+      "page": "notebooks/05_visualization/index.html",
+      "identical": true
+    },
+    {
+      "page": "notebooks/04_powerfit/index.html",
+      "identical": true
+    },
+    {
+      "page": "notebooks/01_basic_compute/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/api-lifecycle/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/documentation-conventions/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/reboot/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/plans/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/architecture/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/api-inventory/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/audits/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/release-checklist-v0.7/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/notebook-workflow/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/development-workflow/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0009-certified-scalar-proximal-solver/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0003-compatibility-first-evolution/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0002-weights-radii-and-gauge/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0008-separator-solver-and-linear-backend/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0016-severity-complete-tessellation-diagnostics/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0015-atomic-separator-active-state/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0011-strict-input-and-ownership-contract/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0007-separator-objective-contract/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0006-v0.8-cleanup-release/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0013-central-generator-preparation-and-backend-safety/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0004-canonical-inverse-namespace/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0012-certified-periodic-image-geometry/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0010-native-construction-preconditions/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0017-v0.9-functional-stabilization-before-1.0/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0005-tessellation-result-contract/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0014-separator-observation-and-source-identity/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0001-project-scope-and-layering/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/decisions/0027-v0.9-reboot-from-v0.8/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/reboot/evidence-index/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/reboot/requirements-inventory/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/plans/archive/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/plans/documentation-refresh/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/plans/template/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/plans/archive/v0.8/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/plans/archive/v0.7/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/plans/archive/v0.8-remediation/index.html",
+      "identical": true
+    },
+    {
+      "page": "development/audits/v0.8-pre-release/index.html",
+      "identical": true
+    }
+  ],
+  "unchanged_light_assets": {
+    "triclinic-voronoi": "4ce4f9d635ee7b09ce2e33a608798618cd847817688876cfce77911f5040f431",
+    "separator-cycle": "181e2365fa716eaa09763c87f37916ebfd179ee19ad6a594b484604d442b109b"
+  }
+}

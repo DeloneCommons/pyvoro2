@@ -70,3 +70,12 @@ path uses pyvoro2 and NumPy. Rendering requires a VTK backend with working
 depth peeling. The normal Zensical build consumes the committed static PNG.
 On the recorded stack two independent runs produced identical PNGs and
 records. Other graphics drivers can produce different raster bytes.
+
+## C2-1 dark exploration
+
+The optional `--dark-prototype --output PATH` render mode keeps the B2 geometry,
+opacity and camera and changes only colors/background transparency. The inverse
+script accepts the same flags. Both require a separate output path so the approved
+light assets remain intact. Current prototypes and their limitations are recorded
+in the [C2-1 comparison](../../review/w4-c2/README.md); they are not production
+asset acceptance. No offline renderer is needed for a normal documentation build.

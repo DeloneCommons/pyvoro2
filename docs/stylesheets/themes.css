@@ -1,0 +1,137 @@
+/* Shared native theme colors. Layout stays in Zensical and landing.css. */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #284b4e;
+  --md-primary-fg-color--light: #3b6264;
+  --md-primary-fg-color--dark: #233b3c;
+  --md-primary-bg-color: #fafaf7;
+  --md-primary-bg-color--light: #e1e8e4;
+  --md-accent-fg-color: #24666a;
+  --md-accent-fg-color--transparent: #24666a1a;
+  --md-typeset-a-color: #24666a;
+  --md-footer-fg-color--lighter: #b4bdb9;
+}
+body[data-md-color-scheme="default"]:not(:has(.pv-home)) {
+  --md-default-fg-color--light: #536365;
+  --md-code-hl-comment-color: #536365;
+  --md-code-hl-operator-color: #536365;
+}
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: var(--pv-paper);
+  --md-default-bg-color--light: var(--pv-surface);
+  --md-default-fg-color: var(--pv-ink);
+  --md-default-fg-color--light: var(--pv-muted);
+  --md-default-fg-color--lighter: var(--pv-rule);
+  --md-default-fg-color--lightest: #ffffff12;
+  --md-primary-fg-color: var(--pv-header);
+  --md-primary-fg-color--light: var(--pv-surface);
+  --md-primary-fg-color--dark: var(--pv-header);
+  --md-primary-bg-color: var(--pv-ink);
+  --md-primary-bg-color--light: var(--pv-muted);
+  --md-accent-fg-color: var(--pv-accent);
+  --md-accent-fg-color--transparent: #83c5be1a;
+  --md-typeset-a-color: var(--pv-accent);
+  --md-code-fg-color: var(--pv-ink);
+  --md-code-bg-color: var(--pv-code);
+  --md-code-hl-color: #91bdb526;
+  --md-code-hl-number-color: #edb58c;
+  --md-code-hl-special-color: #e6a8b1;
+  --md-code-hl-function-color: #c8b8df;
+  --md-code-hl-constant-color: #a9c5ec;
+  --md-code-hl-keyword-color: #a8cfd0;
+  --md-code-hl-string-color: #bfd09f;
+  --md-code-hl-name-color: var(--pv-ink);
+  --md-code-hl-operator-color: var(--pv-muted);
+  --md-code-hl-punctuation-color: var(--pv-muted);
+  --md-code-hl-comment-color: var(--pv-muted);
+  --md-code-hl-generic-color: var(--pv-muted);
+  --md-code-hl-variable-color: var(--pv-ink);
+  --md-typeset-table-color: var(--pv-rule);
+  --md-typeset-table-color--light: #ffffff08;
+  --md-footer-bg-color: var(--pv-header);
+  --md-footer-bg-color--dark: var(--pv-code);
+  --md-footer-fg-color: var(--pv-ink);
+  --md-footer-fg-color--light: var(--pv-muted);
+  --md-footer-fg-color--lighter: var(--pv-muted);
+}
+/* Muted links need a non-color cue within ordinary article text. */
+body:not(:has(.pv-home)) .md-typeset a:not(.headerlink),
+.md-copyright a {
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+body[data-md-color-scheme="slate"]:has(.pv-home) {
+  --home-paper: var(--pv-paper);
+  --home-ink: var(--pv-ink);
+  --home-muted: var(--pv-muted);
+  --home-accent: var(--pv-accent);
+  --home-rule: var(--pv-rule);
+  --home-code: var(--pv-code);
+  --home-caption: var(--pv-muted);
+}
+[data-md-color-scheme="slate"] .landing-start .highlight {
+  --md-code-hl-keyword-color: #a8cfd0;
+  --md-code-hl-number-color: #edb58c;
+  --md-code-hl-function-color: #c8b8df;
+}
+
+/* Native bootstrap sets data-md-color-media before paint for saved choices.
+   On a first visit it waits for the bundle. Bridge that interval using only
+   OS CSS; these rules stop matching as soon as native state is available.
+   Keep these provisional declarations in sync with the slate rules above. */
+@media (prefers-color-scheme: dark) {
+body:not([data-md-color-media]) {
+  color-scheme: dark;
+  --md-default-bg-color: var(--pv-paper);
+  --md-default-bg-color--light: var(--pv-surface);
+  --md-default-fg-color: var(--pv-ink);
+  --md-default-fg-color--light: var(--pv-muted);
+  --md-default-fg-color--lighter: var(--pv-rule);
+  --md-default-fg-color--lightest: #ffffff12;
+  --md-primary-fg-color: var(--pv-header);
+  --md-primary-fg-color--light: var(--pv-surface);
+  --md-primary-fg-color--dark: var(--pv-header);
+  --md-primary-bg-color: var(--pv-ink);
+  --md-primary-bg-color--light: var(--pv-muted);
+  --md-accent-fg-color: var(--pv-accent);
+  --md-accent-fg-color--transparent: #83c5be1a;
+  --md-typeset-a-color: var(--pv-accent);
+  --md-code-fg-color: var(--pv-ink);
+  --md-code-bg-color: var(--pv-code);
+  --md-code-hl-color: #91bdb526;
+  --md-code-hl-number-color: #edb58c;
+  --md-code-hl-special-color: #e6a8b1;
+  --md-code-hl-function-color: #c8b8df;
+  --md-code-hl-constant-color: #a9c5ec;
+  --md-code-hl-keyword-color: #a8cfd0;
+  --md-code-hl-string-color: #bfd09f;
+  --md-code-hl-name-color: var(--pv-ink);
+  --md-code-hl-operator-color: var(--pv-muted);
+  --md-code-hl-punctuation-color: var(--pv-muted);
+  --md-code-hl-comment-color: var(--pv-muted);
+  --md-code-hl-generic-color: var(--pv-muted);
+  --md-code-hl-variable-color: var(--pv-ink);
+  --md-typeset-table-color: var(--pv-rule);
+  --md-typeset-table-color--light: #ffffff08;
+  --md-footer-bg-color: var(--pv-header);
+  --md-footer-bg-color--dark: var(--pv-code);
+  --md-footer-fg-color: var(--pv-ink);
+  --md-footer-fg-color--light: var(--pv-muted);
+  --md-footer-fg-color--lighter: var(--pv-muted);
+}
+body:not([data-md-color-media]):has(.pv-home) {
+  --home-paper: var(--pv-paper);
+  --home-ink: var(--pv-ink);
+  --home-muted: var(--pv-muted);
+  --home-accent: var(--pv-accent);
+  --home-rule: var(--pv-rule);
+  --home-code: var(--pv-code);
+  --home-caption: var(--pv-muted);
+}
+body:not([data-md-color-media]) .landing-start .highlight {
+  --md-code-hl-keyword-color: #a8cfd0;
+  --md-code-hl-number-color: #edb58c;
+  --md-code-hl-function-color: #c8b8df;
+}
+body:not([data-md-color-media]) img[src$="#only-light"] { display: none; }
+body:not([data-md-color-media]) img[src$="#only-dark"] { display: block; }
+}

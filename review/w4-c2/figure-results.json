@@ -1,0 +1,43 @@
+{
+  "status": "Preliminary C2-1 assets, not production visual acceptance",
+  "light_assets_unchanged": {
+    "triclinic-voronoi": "4ce4f9d635ee7b09ce2e33a608798618cd847817688876cfce77911f5040f431",
+    "separator-cycle": "181e2365fa716eaa09763c87f37916ebfd179ee19ad6a594b484604d442b109b"
+  },
+  "prototypes": {
+    "triclinic-voronoi": {
+      "sha256": "07450a1f0f8c5a73047e69a3e66422f1971cdc543f45b784b6d65bf775de5cdd",
+      "size": [
+        1600,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    "separator-cycle": {
+      "sha256": "44fc82c802569ed1b502c3baf6364115b77ba1f52003b39590ad33e36f9fe11b",
+      "size": [
+        820,
+        444
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    }
+  },
+  "overwrite_guards": {
+    "triclinic-voronoi": "relative approved light path rejected",
+    "separator-cycle": "relative approved light path rejected"
+  },
+  "hero_geometry_checks_match_light": true,
+  "inverse_checks": "Generator assertions passed: optimal fit; all residual fractions >0.05; unit total area; polygon areas; all three contacts realized. Geometry/fit expressions unchanged.",
+  "generator_sha256": {
+    "tools/render_landing.py": "7644cc542e5a17eb255f61aff5d76e137273ee1fc93693d1483bca97e00fe4f8",
+    "tools/landing/render_separator_cycle.py": "3dce045eca2fb128f0b84898acaab93fef8125ed1aab5e2a0dd5041c9b69e2e9"
+  }
+}
