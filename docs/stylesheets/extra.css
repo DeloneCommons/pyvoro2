@@ -144,7 +144,7 @@ Extra CSS for pyvoro2 documentation.
 .landing .landing-cycle {
   display: block;
   width: min(100%, 18rem);
-  margin: 1rem auto 0;
+  margin: 1rem 0 0;
 }
 .landing-cycle img { display: block; width: 100%; height: auto; }
 .landing .landing-cycle figcaption {
