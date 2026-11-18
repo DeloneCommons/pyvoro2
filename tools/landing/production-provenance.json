@@ -1,0 +1,686 @@
+{
+  "runs": 8,
+  "all_assets_byte_identical": true,
+  "light_dark_geometry_identical": true,
+  "approved_camera_unchanged": true,
+  "records": {
+    "triclinic-voronoi": {
+      "vectors": [
+        [
+          2.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.5,
+          1.5,
+          0.0
+        ],
+        [
+          0.25,
+          0.375,
+          1.0
+        ]
+      ],
+      "fractional_sites": [
+        [
+          0.15,
+          0.2,
+          0.3
+        ],
+        [
+          0.65,
+          0.25,
+          0.35
+        ],
+        [
+          0.35,
+          0.75,
+          0.7
+        ],
+        [
+          0.8,
+          0.7,
+          0.85
+        ]
+      ],
+      "ids": [
+        40,
+        10,
+        70,
+        20
+      ],
+      "returned_sites": {
+        "40": [
+          0.47500000000000003,
+          0.41250000000000003,
+          0.3
+        ],
+        "10": [
+          1.5125,
+          0.50625,
+          0.35
+        ],
+        "70": [
+          1.25,
+          1.3875,
+          0.7
+        ],
+        "20": [
+          0.1625000000000001,
+          1.36875,
+          0.85
+        ]
+      },
+      "volumes_by_input_id": [
+        0.77955603974319,
+        0.7292771526344204,
+        0.736232720513777,
+        0.754934087108613
+      ],
+      "volume_sum": 3.0,
+      "lattice_volume": 3.0,
+      "oriented_faces_checked": 56,
+      "max_bisector_distance": 3.2769882503251334e-16,
+      "max_reciprocal_vertex_distance": 7.447602459741819e-16,
+      "max_independent_volume_error": 4.440892098500626e-16,
+      "contact": [
+        40,
+        10,
+        [
+          -1,
+          0,
+          0
+        ]
+      ],
+      "reciprocal": [
+        10,
+        40,
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "contact_vertices": [
+        [
+          0.039140204973118264,
+          0.7002289146505375,
+          0.7471603557627688
+        ],
+        [
+          0.02180016063084106,
+          0.47480833820093454,
+          0.8360280830169393
+        ],
+        [
+          -0.06697758469626186,
+          -0.07617735105140161,
+          0.16015465281834124
+        ],
+        [
+          -0.06764566296728974,
+          0.010450131425233544,
+          -0.015132383542640182
+        ],
+        [
+          -0.04452494959677428,
+          0.31101940524193517,
+          -0.13362603956653218
+        ],
+        [
+          0.04030787970430105,
+          0.8602003528225806,
+          0.4696916477654569
+        ]
+      ],
+      "contact_nearest_site_violation": 6.661338147750939e-16,
+      "connector_midpoint_inside_face": true,
+      "nearest_site_stencil": "[-2,2]^3; face vertices, centroid, connector midpoint",
+      "geometry_sha256": "7cc373bbdcfe3a0b28ca17be08f7a0e5c3134a81d4472bfd20326c9b1b6d19af",
+      "render": {
+        "displayed_polygons": 51,
+        "opacity": {
+          "40": 0.34,
+          "10": 0.24,
+          "70": 0.14,
+          "20": 0.14
+        },
+        "colors": {
+          "40": "#77a4bc",
+          "10": "#8db5a6",
+          "70": "#b7c8ce",
+          "20": "#bbc0b2"
+        },
+        "theme": "light",
+        "transparent_background": false,
+        "background": "#fafaf7",
+        "cell_edges": {
+          "color": "#41616d",
+          "width": 4.4
+        },
+        "lattice_frame": {
+          "color": "#829093",
+          "width": 3.8,
+          "dash_step": 0.07,
+          "dash_length": 0.04
+        },
+        "sites": {
+          "color": "#274550",
+          "radius": 0.032
+        },
+        "material": {
+          "ambient": 0.7,
+          "diffuse": 0.3,
+          "specular": 0
+        },
+        "lights": [
+          {
+            "position": [
+              -3,
+              -4,
+              8
+            ],
+            "intensity": 0.7
+          },
+          {
+            "position": [
+              4,
+              1,
+              4
+            ],
+            "intensity": 0.3
+          }
+        ],
+        "light_focal_point": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "render_size": [
+          3200,
+          1800
+        ],
+        "output_size": [
+          1600,
+          900
+        ],
+        "resampling": "Pillow LANCZOS",
+        "camera": {
+          "position": [
+            -3.892966418634691,
+            -7.3811054742874065,
+            3.481510546940376
+          ],
+          "focal_point": [
+            0.8458246034380476,
+            0.9117788143398852,
+            0.5197661581449148
+          ],
+          "view_up": [
+            0.146943671674129,
+            0.2571514254297257,
+            0.9551338658818385
+          ],
+          "parallel_scale": 1.1206679898605656,
+          "projection": "orthographic"
+        },
+        "depth_peeling_used": true,
+        "opengl": [
+          "OpenGL vendor string:  Mesa",
+          "OpenGL renderer string:  llvmpipe (LLVM 19.1.7, 256 bits)",
+          "OpenGL version string:  4.5 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+        ]
+      },
+      "versions": {
+        "pyvoro2": "0.9.0.dev0",
+        "numpy": "2.5.5",
+        "pyvista": "0.46.4",
+        "pillow": "13.0.0",
+        "vtk": [
+          9,
+          5,
+          2
+        ],
+        "python": "3.12.14"
+      },
+      "png_sha256": "4ce4f9d635ee7b09ce2e33a608798618cd847817688876cfce77911f5040f431",
+      "generator_sha256": "2b3f72471a5bfd4bb6995c8e04408167c4097e34ffd1562b2d0d7d48682369aa"
+    },
+    "triclinic-voronoi-dark": {
+      "vectors": [
+        [
+          2.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.5,
+          1.5,
+          0.0
+        ],
+        [
+          0.25,
+          0.375,
+          1.0
+        ]
+      ],
+      "fractional_sites": [
+        [
+          0.15,
+          0.2,
+          0.3
+        ],
+        [
+          0.65,
+          0.25,
+          0.35
+        ],
+        [
+          0.35,
+          0.75,
+          0.7
+        ],
+        [
+          0.8,
+          0.7,
+          0.85
+        ]
+      ],
+      "ids": [
+        40,
+        10,
+        70,
+        20
+      ],
+      "returned_sites": {
+        "40": [
+          0.47500000000000003,
+          0.41250000000000003,
+          0.3
+        ],
+        "10": [
+          1.5125,
+          0.50625,
+          0.35
+        ],
+        "70": [
+          1.25,
+          1.3875,
+          0.7
+        ],
+        "20": [
+          0.1625000000000001,
+          1.36875,
+          0.85
+        ]
+      },
+      "volumes_by_input_id": [
+        0.77955603974319,
+        0.7292771526344204,
+        0.736232720513777,
+        0.754934087108613
+      ],
+      "volume_sum": 3.0,
+      "lattice_volume": 3.0,
+      "oriented_faces_checked": 56,
+      "max_bisector_distance": 3.2769882503251334e-16,
+      "max_reciprocal_vertex_distance": 7.447602459741819e-16,
+      "max_independent_volume_error": 4.440892098500626e-16,
+      "contact": [
+        40,
+        10,
+        [
+          -1,
+          0,
+          0
+        ]
+      ],
+      "reciprocal": [
+        10,
+        40,
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "contact_vertices": [
+        [
+          0.039140204973118264,
+          0.7002289146505375,
+          0.7471603557627688
+        ],
+        [
+          0.02180016063084106,
+          0.47480833820093454,
+          0.8360280830169393
+        ],
+        [
+          -0.06697758469626186,
+          -0.07617735105140161,
+          0.16015465281834124
+        ],
+        [
+          -0.06764566296728974,
+          0.010450131425233544,
+          -0.015132383542640182
+        ],
+        [
+          -0.04452494959677428,
+          0.31101940524193517,
+          -0.13362603956653218
+        ],
+        [
+          0.04030787970430105,
+          0.8602003528225806,
+          0.4696916477654569
+        ]
+      ],
+      "contact_nearest_site_violation": 6.661338147750939e-16,
+      "connector_midpoint_inside_face": true,
+      "nearest_site_stencil": "[-2,2]^3; face vertices, centroid, connector midpoint",
+      "geometry_sha256": "7cc373bbdcfe3a0b28ca17be08f7a0e5c3134a81d4472bfd20326c9b1b6d19af",
+      "render": {
+        "displayed_polygons": 51,
+        "opacity": {
+          "40": 0.4,
+          "10": 0.3,
+          "70": 0.2,
+          "20": 0.18
+        },
+        "colors": {
+          "40": "#80abc0",
+          "10": "#92baa7",
+          "70": "#adbfc6",
+          "20": "#bcc2ad"
+        },
+        "theme": "carbon",
+        "transparent_background": false,
+        "background": "#242728",
+        "cell_edges": {
+          "color": "#c1d0d1",
+          "width": 5.6
+        },
+        "lattice_frame": {
+          "color": "#879c9e",
+          "width": 4.4,
+          "dash_step": 0.07,
+          "dash_length": 0.04
+        },
+        "sites": {
+          "color": "#e0e3df",
+          "radius": 0.032
+        },
+        "material": {
+          "ambient": 0.7,
+          "diffuse": 0.3,
+          "specular": 0
+        },
+        "lights": [
+          {
+            "position": [
+              -3,
+              -4,
+              8
+            ],
+            "intensity": 0.7
+          },
+          {
+            "position": [
+              4,
+              1,
+              4
+            ],
+            "intensity": 0.3
+          }
+        ],
+        "light_focal_point": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "render_size": [
+          3200,
+          1800
+        ],
+        "output_size": [
+          1600,
+          900
+        ],
+        "resampling": "Pillow LANCZOS",
+        "camera": {
+          "position": [
+            -3.892966418634691,
+            -7.3811054742874065,
+            3.481510546940376
+          ],
+          "focal_point": [
+            0.8458246034380476,
+            0.9117788143398852,
+            0.5197661581449148
+          ],
+          "view_up": [
+            0.146943671674129,
+            0.2571514254297257,
+            0.9551338658818385
+          ],
+          "parallel_scale": 1.1206679898605656,
+          "projection": "orthographic"
+        },
+        "depth_peeling_used": true,
+        "opengl": [
+          "OpenGL vendor string:  Mesa",
+          "OpenGL renderer string:  llvmpipe (LLVM 19.1.7, 256 bits)",
+          "OpenGL version string:  4.5 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+        ]
+      },
+      "versions": {
+        "pyvoro2": "0.9.0.dev0",
+        "numpy": "2.5.5",
+        "pyvista": "0.46.4",
+        "pillow": "13.0.0",
+        "vtk": [
+          9,
+          5,
+          2
+        ],
+        "python": "3.12.14"
+      },
+      "png_sha256": "28e46eec1862979bb63e9990773f97662e066b2dad00b12d84c8b20eca0d35f6",
+      "generator_sha256": "2b3f72471a5bfd4bb6995c8e04408167c4097e34ffd1562b2d0d7d48682369aa"
+    },
+    "separator-cycle": {
+      "theme": "light",
+      "points": [
+        [
+          0.22,
+          0.24
+        ],
+        [
+          0.8,
+          0.3
+        ],
+        [
+          0.45,
+          0.79
+        ]
+      ],
+      "pairs": [
+        [
+          0,
+          1,
+          0.4
+        ],
+        [
+          1,
+          2,
+          0.58
+        ],
+        [
+          2,
+          0,
+          0.72
+        ]
+      ],
+      "weights": [
+        0.0,
+        0.11332261032976103,
+        0.10685471245882831
+      ],
+      "predicted_fraction": [
+        0.33334910245623384,
+        0.5089187780900892,
+        0.6503302088616043
+      ],
+      "status": "optimal",
+      "areas": [
+        0.19755147593487987,
+        0.35527689690146,
+        0.44717162716365993
+      ],
+      "contacts": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "geometry_sha256": "a996049f093d71b3823ed39e3ed250dc8ed7bba340fee7914e5f7096ae5f7e25",
+      "colors": {
+        "cells": [
+          "#e1ecec",
+          "#e5ede5",
+          "#eeece5"
+        ],
+        "label": "#283e40",
+        "site": "#182f35",
+        "frame": "#758788",
+        "observed": "#a34e25",
+        "boundary": "#235e64"
+      },
+      "linewidth": {
+        "connector": 1,
+        "observed": 2,
+        "boundary": 1.6
+      },
+      "transparent": true,
+      "dpi": 200,
+      "figure_inches": [
+        4.1,
+        2.22
+      ],
+      "versions": {
+        "python": "3.12.14",
+        "pyvoro2": "0.9.0.dev0",
+        "numpy": "2.5.5",
+        "matplotlib": "3.11.2"
+      },
+      "generator_sha256": "d2f97eefbe6401729b581597614812a382b08aeb65bea4d8e2125f6b2a192273",
+      "png_sha256": "181e2365fa716eaa09763c87f37916ebfd179ee19ad6a594b484604d442b109b"
+    },
+    "separator-cycle-dark": {
+      "theme": "carbon",
+      "points": [
+        [
+          0.22,
+          0.24
+        ],
+        [
+          0.8,
+          0.3
+        ],
+        [
+          0.45,
+          0.79
+        ]
+      ],
+      "pairs": [
+        [
+          0,
+          1,
+          0.4
+        ],
+        [
+          1,
+          2,
+          0.58
+        ],
+        [
+          2,
+          0,
+          0.72
+        ]
+      ],
+      "weights": [
+        0.0,
+        0.11332261032976103,
+        0.10685471245882831
+      ],
+      "predicted_fraction": [
+        0.33334910245623384,
+        0.5089187780900892,
+        0.6503302088616043
+      ],
+      "status": "optimal",
+      "areas": [
+        0.19755147593487987,
+        0.35527689690146,
+        0.44717162716365993
+      ],
+      "contacts": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "geometry_sha256": "a996049f093d71b3823ed39e3ed250dc8ed7bba340fee7914e5f7096ae5f7e25",
+      "colors": {
+        "cells": [
+          "#2c4850",
+          "#3d514a",
+          "#535044"
+        ],
+        "label": "#e0e3df",
+        "site": "#e0e3df",
+        "frame": "#90a4a4",
+        "observed": "#e9ad81",
+        "boundary": "#acd0cb"
+      },
+      "linewidth": {
+        "connector": 1,
+        "observed": 2,
+        "boundary": 1.8
+      },
+      "transparent": true,
+      "dpi": 200,
+      "figure_inches": [
+        4.1,
+        2.22
+      ],
+      "versions": {
+        "python": "3.12.14",
+        "pyvoro2": "0.9.0.dev0",
+        "numpy": "2.5.5",
+        "matplotlib": "3.11.2"
+      },
+      "generator_sha256": "d2f97eefbe6401729b581597614812a382b08aeb65bea4d8e2125f6b2a192273",
+      "png_sha256": "b36f6de2db798ec74eb6b03d7edd3093c1962307887c0e02aca82de7b7aaceb7"
+    }
+  }
+}

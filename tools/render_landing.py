@@ -120,12 +120,20 @@ def compute_and_check():
     return cells, report
 
 
-def render(cells, output):
+def render(cells, output, *, dark=False):
     import pyvista as p
     from PIL import Image
 
     plot = p.Plotter(off_screen=True, window_size=(3200, 1800), lighting='none')
-    plot.set_background(BACKGROUND)
+    plot.set_background('#242728' if dark else BACKGROUND)
+    colors = ({40: '#80abc0', 10: '#92baa7', 70: '#adbfc6', 20: '#bcc2ad'}
+              if dark else COLORS)
+    opacity = {40: .40, 10: .30, 70: .20, 20: .18} if dark else OPACITY
+    edge_color = '#c1d0d1' if dark else '#41616d'
+    edge_width = 5.6 if dark else 4.4
+    site_color = '#e0e3df' if dark else '#274550'
+    frame_color = '#879c9e' if dark else '#829093'
+    frame_width = 4.4 if dark else 3.8
     # Supersample explicitly rather than stacking an AA render pass on peeling.
     plot.ren_win.SetMultiSamples(0)
     plot.enable_depth_peeling(number_of_peels=100, occlusion_ratio=0.)
@@ -158,12 +166,14 @@ def render(cells, output):
             if normal @ (points.mean(axis=0) - site) < 0:
                 points = points[::-1]
             poly = p.PolyData(points, [len(points), *range(len(points))])
-            plot.add_mesh(poly, color=COLORS[i], opacity=OPACITY[i], ambient=.7,
+            plot.add_mesh(poly, color=colors[i], opacity=opacity[i], ambient=.7,
                           diffuse=.3, specular=0, smooth_shading=False)
         lines = [v for a, b in sorted(edges) for v in (2, a, b)]
-        plot.add_mesh(p.PolyData(vertices, lines=lines), color='#41616d',
-                      line_width=4.4, lighting=False)
-        plot.add_mesh(p.Sphere(radius=.032, center=site), color='#274550',
+        plot.add_mesh(p.PolyData(vertices, lines=lines),
+                      color=edge_color,
+                      line_width=edge_width, lighting=False)
+        plot.add_mesh(p.Sphere(radius=.032, center=site),
+                      color=site_color,
                       ambient=.7, diffuse=.3, specular=0)
     assert (contributions, len(seen)) == (56, 51)
     for corner in itertools.product((0, 1), repeat=3):
@@ -173,7 +183,8 @@ def render(cells, output):
                 for t in np.arange(0, 1, .07):
                     segment = p.Line(start + t * vector,
                                      start + min(t + .04, 1) * vector)
-                    plot.add_mesh(segment, color='#829093', line_width=3.8,
+                    plot.add_mesh(segment,
+                                  color=frame_color, line_width=frame_width,
                                   lighting=False)
     # B2 orthographic camera; fit 88% of the limiting dimension (formerly 84%).
     position = (-3.892966418634691, -7.3811054742874065, 3.481510546940376)
@@ -184,7 +195,7 @@ def render(cells, output):
     plot.enable_parallel_projection()
     plot.camera.parallel_scale = scale
     plot.reset_camera_clipping_range()
-    pixels = plot.screenshot(return_img=True)
+    pixels = plot.screenshot(return_img=True, transparent_background=False)
     peeling = bool(plot.renderer.GetLastRenderingUsedDepthPeeling())
     assert peeling, 'Depth peeling unavailable; do not publish unordered alpha'
     prefixes = ('OpenGL vendor', 'OpenGL renderer', 'OpenGL version')
@@ -193,7 +204,19 @@ def render(cells, output):
     plot.close()
     full = Image.fromarray(pixels).resize((1600, 900), Image.Resampling.LANCZOS)
     full.save(output, optimize=True)
-    return dict(displayed_polygons=len(seen), opacity=OPACITY, colors=COLORS,
+    return dict(displayed_polygons=len(seen), opacity=opacity, colors=colors,
+                theme='carbon' if dark else 'light', transparent_background=False,
+                background='#242728' if dark else BACKGROUND,
+                cell_edges=dict(color=edge_color, width=edge_width),
+                lattice_frame=dict(color=frame_color, width=frame_width,
+                                   dash_step=.07, dash_length=.04),
+                sites=dict(color=site_color, radius=.032),
+                material=dict(ambient=.7, diffuse=.3, specular=0),
+                lights=[dict(position=(-3, -4, 8), intensity=.7),
+                        dict(position=(4, 1, 4), intensity=.3)],
+                light_focal_point=(.5, .5, .5),
+                render_size=(3200, 1800), output_size=(1600, 900),
+                resampling='Pillow LANCZOS',
                 camera=dict(position=position, focal_point=focal, view_up=up,
                             parallel_scale=scale, projection='orthographic'),
                 depth_peeling_used=peeling, opengl=opengl)
@@ -201,13 +224,21 @@ def render(cells, output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', type=Path,
-                        default=ROOT / 'docs/assets/landing/triclinic-voronoi.png')
+    parser.add_argument('--output', type=Path)
     parser.add_argument('--check-only', action='store_true')
+    parser.add_argument('--theme', choices=('light', 'dark'), default='light')
     args = parser.parse_args()
+    light = ROOT / 'docs/assets/landing/triclinic-voronoi.png'
+    dark = ROOT / 'docs/assets/landing/triclinic-voronoi-dark.png'
+    args.output = args.output or (dark if args.theme == 'dark' else light)
+    protected = light if args.theme == 'dark' else dark
+    if args.output.resolve() == protected:
+        parser.error('Output would overwrite the other theme asset')
     if not __debug__:
         parser.error('Run with assertions enabled to check the scientific geometry.')
     cells, report = compute_and_check()
+    geometry = json.dumps(cells, sort_keys=True, separators=(',', ':')).encode()
+    report['geometry_sha256'] = hashlib.sha256(geometry).hexdigest()
     baseline = json.loads((ROOT / 'tools/landing/reference.json').read_text())
     for field in ('vectors', 'fractional_sites', 'ids'):
         assert report[field] == baseline[field], field
@@ -220,7 +251,7 @@ def main():
         import PIL
         import pyvista
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        report['render'] = render(cells, args.output)
+        report['render'] = render(cells, args.output, dark=args.theme == 'dark')
         report['versions'] = dict(pyvoro2=pv.__version__, numpy=np.__version__,
                                   pyvista=pyvista.__version__, pillow=PIL.__version__,
                                   vtk=pyvista.vtk_version_info,

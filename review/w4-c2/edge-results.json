@@ -1,0 +1,388 @@
+{
+  "cold": [
+    {
+      "theme": "carbon",
+      "os": "light",
+      "route": "",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(250, 250, 247)",
+      "images": [
+        "assets/landing/triclinic-voronoi.png#only-light",
+        "assets/landing/separator-cycle.png#only-light"
+      ],
+      "fcp": 668
+    },
+    {
+      "manualDarkSurvivesDelayedReload": true
+    },
+    {
+      "theme": "carbon",
+      "os": "light",
+      "route": "guide/forward/",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(255, 255, 255)",
+      "images": [],
+      "fcp": 400
+    },
+    {
+      "theme": "carbon",
+      "os": "dark",
+      "route": "",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(36, 39, 40)",
+      "images": [
+        "assets/landing/triclinic-voronoi-dark.png#only-dark",
+        "assets/landing/separator-cycle-dark.png#only-dark"
+      ],
+      "fcp": 272
+    },
+    {
+      "manualLightSurvivesDelayedReload": true
+    },
+    {
+      "theme": "carbon",
+      "os": "dark",
+      "route": "guide/forward/",
+      "delayMs": 1500,
+      "media": null,
+      "background": "rgb(36, 39, 40)",
+      "images": [],
+      "fcp": 228
+    }
+  ],
+  "reflow": [
+    {
+      "theme": "light",
+      "width": 1366,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "light",
+      "route": "guide/forward/",
+      "width": 1366,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "desktop layout"
+    },
+    {
+      "theme": "light",
+      "route": "guide/forward/",
+      "width": 390,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "light",
+      "route": "guide/forward/",
+      "width": 320,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "light",
+      "route": "reference/api/",
+      "width": 1366,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "desktop layout"
+    },
+    {
+      "theme": "light",
+      "route": "reference/api/",
+      "width": 390,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "light",
+      "route": "reference/api/",
+      "width": 320,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "light",
+      "route": "theory/power-diagrams/",
+      "width": 1366,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "desktop layout"
+    },
+    {
+      "theme": "light",
+      "route": "theory/power-diagrams/",
+      "width": 390,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "light",
+      "route": "theory/power-diagrams/",
+      "width": 320,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "fontSize": 20,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "fontSize": 25,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "fontSize": 30,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "fontSize": 40,
+      "disjoint": true,
+      "hitTest": true
+    },
+    {
+      "theme": "dark",
+      "route": "guide/forward/",
+      "width": 1366,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "desktop layout"
+    },
+    {
+      "theme": "dark",
+      "route": "guide/forward/",
+      "width": 390,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "dark",
+      "route": "guide/forward/",
+      "width": 320,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "dark",
+      "route": "reference/api/",
+      "width": 1366,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "desktop layout"
+    },
+    {
+      "theme": "dark",
+      "route": "reference/api/",
+      "width": 390,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "dark",
+      "route": "reference/api/",
+      "width": 320,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "dark",
+      "route": "theory/power-diagrams/",
+      "width": 1366,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "desktop layout"
+    },
+    {
+      "theme": "dark",
+      "route": "theory/power-diagrams/",
+      "width": 390,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    },
+    {
+      "theme": "dark",
+      "route": "theory/power-diagrams/",
+      "width": 320,
+      "fontSize": 40,
+      "noOverflow": true,
+      "paletteAccessible": true,
+      "mobileSearchAndDrawer": "passed"
+    }
+  ]
+}

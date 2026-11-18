@@ -1,0 +1,153 @@
+/* Scientific Editorial light + Carbon. Native Zensical owns theme state.
+   Carbon tokens are scoped to slate (or the brief cold Auto bootstrap below).
+   Home consumes them with its approved light values as fallbacks. */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #284b4e;
+  --md-primary-fg-color--light: #3b6264;
+  --md-primary-fg-color--dark: #233b3c;
+  --md-primary-bg-color: #fafaf7;
+  --md-primary-bg-color--light: #e1e8e4;
+  --md-accent-fg-color: #24666a;
+  --md-accent-fg-color--transparent: #24666a1a;
+  --md-typeset-a-color: #24666a;
+  --md-footer-fg-color--lighter: #b4bdb9;
+}
+body[data-md-color-scheme="default"]:not(:has(.pv-home)) {
+  --md-default-fg-color--light: #536365;
+  --md-code-hl-comment-color: #536365;
+  --md-code-hl-operator-color: #536365;
+}
+[data-md-color-scheme="slate"] {
+  --pv-paper: #242728;
+  --pv-surface: #2d3132;
+  --pv-header: #202324;
+  --pv-ink: #e0e3df;
+  --pv-muted: #b4bdb9;
+  --pv-accent: #91bdb5;
+  --pv-rule: #505958;
+  --pv-code: #1d2122;
+
+  --md-default-bg-color: var(--pv-paper);
+  --md-default-bg-color--light: var(--pv-surface);
+  --md-default-fg-color: var(--pv-ink);
+  --md-default-fg-color--light: var(--pv-muted);
+  --md-default-fg-color--lighter: var(--pv-rule);
+  --md-default-fg-color--lightest: #ffffff12;
+  --md-primary-fg-color: var(--pv-header);
+  --md-primary-fg-color--light: var(--pv-surface);
+  --md-primary-fg-color--dark: var(--pv-header);
+  --md-primary-bg-color: var(--pv-ink);
+  --md-primary-bg-color--light: var(--pv-muted);
+  --md-accent-fg-color: var(--pv-accent);
+  --md-accent-fg-color--transparent: #83c5be1a;
+  --md-typeset-a-color: var(--pv-accent);
+  --md-code-fg-color: var(--pv-ink);
+  --md-code-bg-color: var(--pv-code);
+  --md-code-hl-color: #91bdb526;
+  --md-code-hl-number-color: #edb58c;
+  --md-code-hl-special-color: #e6a8b1;
+  --md-code-hl-function-color: #c8b8df;
+  --md-code-hl-constant-color: #a9c5ec;
+  --md-code-hl-keyword-color: #a8cfd0;
+  --md-code-hl-string-color: #bfd09f;
+  --md-code-hl-name-color: var(--pv-ink);
+  --md-code-hl-operator-color: var(--pv-muted);
+  --md-code-hl-punctuation-color: var(--pv-muted);
+  --md-code-hl-comment-color: var(--pv-muted);
+  --md-code-hl-generic-color: var(--pv-muted);
+  --md-code-hl-variable-color: var(--pv-ink);
+  --md-typeset-table-color: var(--pv-rule);
+  --md-typeset-table-color--light: #ffffff08;
+  --md-footer-bg-color: var(--pv-header);
+  --md-footer-bg-color--dark: var(--pv-code);
+  --md-footer-fg-color: var(--pv-ink);
+  --md-footer-fg-color--light: var(--pv-muted);
+  --md-footer-fg-color--lighter: var(--pv-muted);
+}
+/* Muted links need a non-color cue within ordinary article text. */
+body:not(:has(.pv-home)) .md-typeset a:not(.headerlink),
+.md-copyright a {
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+[data-md-color-scheme="slate"] .landing-start .highlight {
+  --md-code-hl-keyword-color: #a8cfd0;
+  --md-code-hl-number-color: #edb58c;
+  --md-code-hl-function-color: #c8b8df;
+}
+
+/* Native bootstrap sets data-md-color-media before paint for saved choices.
+   On a first visit it waits for the bundle. Bridge that interval using only
+   OS CSS; these rules stop matching as soon as native state is available.
+   The static regression checks these declarations against the slate rules.
+   This deliberate mapping duplication avoids new CSS/browser requirements. */
+@media (prefers-color-scheme: dark) {
+  body:not([data-md-color-media]) {
+    --pv-paper: #242728;
+    --pv-surface: #2d3132;
+    --pv-header: #202324;
+    --pv-ink: #e0e3df;
+    --pv-muted: #b4bdb9;
+    --pv-accent: #91bdb5;
+    --pv-rule: #505958;
+    --pv-code: #1d2122;
+
+    color-scheme: dark;
+    --md-default-bg-color: var(--pv-paper);
+    --md-default-bg-color--light: var(--pv-surface);
+    --md-default-fg-color: var(--pv-ink);
+    --md-default-fg-color--light: var(--pv-muted);
+    --md-default-fg-color--lighter: var(--pv-rule);
+    --md-default-fg-color--lightest: #ffffff12;
+    --md-primary-fg-color: var(--pv-header);
+    --md-primary-fg-color--light: var(--pv-surface);
+    --md-primary-fg-color--dark: var(--pv-header);
+    --md-primary-bg-color: var(--pv-ink);
+    --md-primary-bg-color--light: var(--pv-muted);
+    --md-accent-fg-color: var(--pv-accent);
+    --md-accent-fg-color--transparent: #83c5be1a;
+    --md-typeset-a-color: var(--pv-accent);
+    --md-code-fg-color: var(--pv-ink);
+    --md-code-bg-color: var(--pv-code);
+    --md-code-hl-color: #91bdb526;
+    --md-code-hl-number-color: #edb58c;
+    --md-code-hl-special-color: #e6a8b1;
+    --md-code-hl-function-color: #c8b8df;
+    --md-code-hl-constant-color: #a9c5ec;
+    --md-code-hl-keyword-color: #a8cfd0;
+    --md-code-hl-string-color: #bfd09f;
+    --md-code-hl-name-color: var(--pv-ink);
+    --md-code-hl-operator-color: var(--pv-muted);
+    --md-code-hl-punctuation-color: var(--pv-muted);
+    --md-code-hl-comment-color: var(--pv-muted);
+    --md-code-hl-generic-color: var(--pv-muted);
+    --md-code-hl-variable-color: var(--pv-ink);
+    --md-typeset-table-color: var(--pv-rule);
+    --md-typeset-table-color--light: #ffffff08;
+    --md-footer-bg-color: var(--pv-header);
+    --md-footer-bg-color--dark: var(--pv-code);
+    --md-footer-fg-color: var(--pv-ink);
+    --md-footer-fg-color--light: var(--pv-muted);
+    --md-footer-fg-color--lighter: var(--pv-muted);
+  }
+  body:not([data-md-color-media]) .landing-start .highlight {
+    --md-code-hl-keyword-color: #a8cfd0;
+    --md-code-hl-number-color: #edb58c;
+    --md-code-hl-function-color: #c8b8df;
+  }
+  body:not([data-md-color-media]) img[src$="#only-light"] { display: none; }
+  body:not([data-md-color-media]) img[src$="#only-dark"] { display: block; }
+}
+
+/* At very narrow widths with enlarged text, native title margins otherwise
+   push Search outside the viewport. Keep all three native controls reachable. */
+body:not(:has(.pv-home)) .md-header {
+  container: documentation-controls / inline-size;
+}
+@container documentation-controls (width < 9rem) {
+  body:not(:has(.pv-home)) .md-header__title { margin-inline: 0; }
+}
+/* Native drawer widths are in rem. Cap the drawer and its nested panels when
+   text enlargement makes that width larger than a mobile viewport. */
+.md-sidebar--primary { max-width: 100vw; }
+.md-sidebar--primary .md-nav { max-width: 100%; }
