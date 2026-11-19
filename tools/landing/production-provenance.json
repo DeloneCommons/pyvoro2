@@ -153,8 +153,15 @@
           "20": "#bbc0b2"
         },
         "theme": "light",
-        "transparent_background": false,
-        "background": "#fafaf7",
+        "transparent_background": true,
+        "background": null,
+        "framebuffer_clear_rgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "alpha_encoding": "native premultiplied RGBA to straight PNG",
         "cell_edges": {
           "color": "#41616d",
           "width": 4.4
@@ -205,7 +212,8 @@
           1600,
           900
         ],
-        "resampling": "Pillow LANCZOS",
+        "resampling": "2x2 area average in floating premultiplied RGBA",
+        "multisamples": 0,
         "camera": {
           "position": [
             -3.892966418634691,
@@ -244,8 +252,8 @@
         ],
         "python": "3.12.14"
       },
-      "png_sha256": "4ce4f9d635ee7b09ce2e33a608798618cd847817688876cfce77911f5040f431",
-      "generator_sha256": "2b3f72471a5bfd4bb6995c8e04408167c4097e34ffd1562b2d0d7d48682369aa"
+      "png_sha256": "52f9603ee844935a96629023b7cc2161259d1b914d72eabb4af92a6e756713f8",
+      "generator_sha256": "0d209acc1d8d555e7004a6a7f060257f7c6e749f850ed21f86f89ed411698716"
     },
     "triclinic-voronoi-dark": {
       "vectors": [
@@ -396,8 +404,15 @@
           "20": "#bcc2ad"
         },
         "theme": "carbon",
-        "transparent_background": false,
-        "background": "#242728",
+        "transparent_background": true,
+        "background": null,
+        "framebuffer_clear_rgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "alpha_encoding": "native premultiplied RGBA to straight PNG",
         "cell_edges": {
           "color": "#c1d0d1",
           "width": 5.6
@@ -448,7 +463,8 @@
           1600,
           900
         ],
-        "resampling": "Pillow LANCZOS",
+        "resampling": "2x2 area average in floating premultiplied RGBA",
+        "multisamples": 0,
         "camera": {
           "position": [
             -3.892966418634691,
@@ -487,8 +503,8 @@
         ],
         "python": "3.12.14"
       },
-      "png_sha256": "28e46eec1862979bb63e9990773f97662e066b2dad00b12d84c8b20eca0d35f6",
-      "generator_sha256": "2b3f72471a5bfd4bb6995c8e04408167c4097e34ffd1562b2d0d7d48682369aa"
+      "png_sha256": "c94bb39ef76cf8a1dc4672938d7114323cd319df10a4de490ff3b59287cb655c",
+      "generator_sha256": "0d209acc1d8d555e7004a6a7f060257f7c6e749f850ed21f86f89ed411698716"
     },
     "separator-cycle": {
       "theme": "light",
@@ -681,6 +697,28 @@
       },
       "generator_sha256": "d2f97eefbe6401729b581597614812a382b08aeb65bea4d8e2125f6b2a192273",
       "png_sha256": "b36f6de2db798ec74eb6b03d7edd3093c1962307887c0e02aca82de7b7aaceb7"
+    }
+  },
+  "alpha_validation": {
+    "analytical_layers_rgba": [
+      128,
+      0,
+      32,
+      160
+    ],
+    "light": {
+      "native_response_max_error": 2.842170943040401e-14,
+      "composite_max_error": {
+        "white": 0.7833333333333314,
+        "theme": 0.8666666666666742
+      }
+    },
+    "carbon": {
+      "native_response_max_error": 2.842170943040401e-14,
+      "composite_max_error": {
+        "white": 0.7176470588235304,
+        "theme": 0.8294117647058954
+      }
     }
   }
 }

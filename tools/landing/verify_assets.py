@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def verify(directory):
+    from PIL import Image
+
     records = {}
     expected = json.loads(
         (ROOT / 'tools/landing/production-provenance.json').read_text(),
@@ -43,8 +45,21 @@ def verify(directory):
                 assert output.read_bytes() == asset.read_bytes(), stem
                 digest = hashlib.sha256(asset.read_bytes()).hexdigest()
                 assert record['png_sha256'] == digest
+                assert expected[stem]['png_sha256'] == digest, (
+                    f'{stem}: stored provenance PNG hash mismatch'
+                )
                 for key in ('geometry_sha256', 'generator_sha256'):
                     assert record[key] == expected[stem][key], f'{stem}: {key}'
+                if name == 'triclinic-voronoi':
+                    for key in expected[stem]:
+                        if key not in ('render', 'versions', 'png_sha256',
+                                       'generator_sha256'):
+                            assert record[key] == expected[stem][key], f'{stem}: {key}'
+                    with Image.open(output) as image:
+                        assert image.mode == 'RGBA' and image.size == (1600, 900)
+                        assert image.getchannel('A').getextrema() == (0, 255)
+                        assert image.getpixel((0, 0)) == (0, 0, 0, 0)
+                    assert record['render']['transparent_background'] is True
                 runs.append(record)
             assert runs[0] == runs[1], f'{stem}: records differ between runs'
             records[stem] = runs[0]
@@ -58,9 +73,15 @@ def verify(directory):
     for name in ('triclinic-voronoi', 'triclinic-voronoi-dark'):
         assert records[name]['render']['camera'] == historical['render']['camera']
         assert records[name]['render']['displayed_polygons'] == 51
+    alpha = subprocess.run(
+        [sys.executable, str(ROOT / 'tools/landing/check_alpha.py')],
+        check=True, capture_output=True, text=True,
+        env={**os.environ, 'VTK_DEFAULT_OPENGL_WINDOW': 'vtkEGLRenderWindow'},
+    )
     print(json.dumps({'runs': 8, 'all_assets_byte_identical': True,
                       'light_dark_geometry_identical': True,
                       'approved_camera_unchanged': True,
+                      'alpha_validation': json.loads(alpha.stdout),
                       'records': records}, indent=2))
 
 

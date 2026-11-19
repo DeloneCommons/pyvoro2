@@ -18,7 +18,6 @@ FRACTIONAL = np.array([[.15, .20, .30], [.65, .25, .35],
                        [.35, .75, .70], [.80, .70, .85]])
 IDS = [40, 10, 70, 20]
 CONTACT = (40, 10, (-1, 0, 0))
-BACKGROUND = '#fafaf7'
 COLORS = {40: '#77a4bc', 10: '#8db5a6', 70: '#b7c8ce', 20: '#bbc0b2'}
 OPACITY = {40: .34, 10: .24, 70: .14, 20: .14}
 
@@ -125,7 +124,11 @@ def render(cells, output, *, dark=False):
     from PIL import Image
 
     plot = p.Plotter(off_screen=True, window_size=(3200, 1800), lighting='none')
-    plot.set_background('#242728' if dark else BACKGROUND)
+    # VTK captures premultiplied RGB, even with transparent_background=True.
+    # Clear to transparent black so no background color is baked into RGB.
+    plot.set_background('black')
+    plot.renderer.SetBackgroundAlpha(0.)
+    plot.ren_win.SetAlphaBitPlanes(1)
     colors = ({40: '#80abc0', 10: '#92baa7', 70: '#adbfc6', 20: '#bcc2ad'}
               if dark else COLORS)
     opacity = {40: .40, 10: .30, 70: .20, 20: .18} if dark else OPACITY
@@ -195,18 +198,31 @@ def render(cells, output, *, dark=False):
     plot.enable_parallel_projection()
     plot.camera.parallel_scale = scale
     plot.reset_camera_clipping_range()
-    pixels = plot.screenshot(return_img=True, transparent_background=False)
+    pixels = plot.screenshot(return_img=True, transparent_background=True)
     peeling = bool(plot.renderer.GetLastRenderingUsedDepthPeeling())
     assert peeling, 'Depth peeling unavailable; do not publish unordered alpha'
     prefixes = ('OpenGL vendor', 'OpenGL renderer', 'OpenGL version')
     opengl = [line for line in plot.ren_win.ReportCapabilities().splitlines()
               if line.startswith(prefixes)]
     plot.close()
-    full = Image.fromarray(pixels).resize((1600, 900), Image.Resampling.LANCZOS)
+    assert pixels.shape == (1800, 3200, 4)
+    assert np.all(pixels[:, :, :3] <= pixels[:, :, 3:4]), 'Expected premultiplied RGBA'
+    # Average coverage and premultiplied color together, then encode straight
+    # alpha for PNG. Positive box weights avoid Lanczos coverage overshoot and
+    # ringing; floating arithmetic avoids Pillow's intermediate 8-bit clipping.
+    samples = pixels.astype(float).reshape(900, 2, 1600, 2, 4).mean(axis=(1, 3))
+    alpha = samples[:, :, 3:4] / 255
+    rgb = np.divide(samples[:, :, :3], alpha,
+                    out=np.zeros_like(samples[:, :, :3]), where=alpha > 0)
+    rgba = np.rint(np.concatenate([rgb, samples[:, :, 3:4]], axis=2)).astype(np.uint8)
+    assert (rgba[:, :, 3] == 0).any() and (rgba[:, :, 3] == 255).any()
+    assert ((rgba[:, :, 3] > 0) & (rgba[:, :, 3] < 255)).any()
+    full = Image.fromarray(rgba)
     full.save(output, optimize=True)
     return dict(displayed_polygons=len(seen), opacity=opacity, colors=colors,
-                theme='carbon' if dark else 'light', transparent_background=False,
-                background='#242728' if dark else BACKGROUND,
+                theme='carbon' if dark else 'light', transparent_background=True,
+                background=None, framebuffer_clear_rgba=(0, 0, 0, 0),
+                alpha_encoding='native premultiplied RGBA to straight PNG',
                 cell_edges=dict(color=edge_color, width=edge_width),
                 lattice_frame=dict(color=frame_color, width=frame_width,
                                    dash_step=.07, dash_length=.04),
@@ -216,7 +232,8 @@ def render(cells, output, *, dark=False):
                         dict(position=(4, 1, 4), intensity=.3)],
                 light_focal_point=(.5, .5, .5),
                 render_size=(3200, 1800), output_size=(1600, 900),
-                resampling='Pillow LANCZOS',
+                resampling='2x2 area average in floating premultiplied RGBA',
+                multisamples=0,
                 camera=dict(position=position, focal_point=focal, view_up=up,
                             parallel_scale=scale, projection='orthographic'),
                 depth_peeling_used=peeling, opengl=opengl)
