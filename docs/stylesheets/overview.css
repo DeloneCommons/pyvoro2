@@ -28,6 +28,9 @@
   letter-spacing: -.02em;
 }
 .pv-overview > p { max-width: 74ch; }
+/* Allow for native list indentation while keeping a prose-like reading width. */
+.md-typeset .pv-overview > ul { max-width: 78ch; }
+.md-typeset .pv-overview > ul > li + li { margin-top: .6em; }
 .pv-overview-lead {
   max-width: 62ch;
   font-size: 1rem;

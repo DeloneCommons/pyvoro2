@@ -67,8 +67,8 @@ card or pretend the Home figures depict other notebooks.
 
 ## Browser captures
 
-Actual full-page native Zensical builds. Project captures reflect the editorial
-correction; the approved specimen captures are unchanged. Click for original PNGs.
+Actual full-page native Zensical builds. Project captures include the final list
+typography correction; approved specimen captures are unchanged. Click for original PNGs.
 
 | Width | Light | Carbon |
 | --- | --- | --- |
@@ -104,7 +104,46 @@ findings, separately from functional/assertion failures (exit 1). No rules or
 nodes are suppressed. Native limitations in [#142](https://github.com/DeloneCommons/pyvoro2/issues/142)
 and their Development record remain intact.
 
-## Focused editorial correction
+## Final list typography correction
+
+Verified PR HEAD `477f09b80ddc97d16b10b77831f6a574eb010d48` before editing.
+Only `docs/stylesheets/overview.css` changes in production: direct overview lists
+receive `max-width: 78ch`; successive direct list items receive `margin-top: .6em`.
+Approved Project text, paragraph widths, native indentation/markers, cards,
+information groups, palettes and specimen source are unchanged.
+
+In Chromium's font fallback at 1366 px, list text narrows from 908 px to 674 px,
+beside 658 px prose. The list box is 694 px wide, including its native 20 px item
+indent. Adjacent item margins collapse to about 9.6 px (previously 8 px), rather
+than adding together. The list grows by about 34 px on desktop and 8 px at
+390/320 px; mobile line wrapping is unchanged. This small increase needs no
+mobile override. Status-card width and height remain unchanged; their vertical
+position follows the list's added height.
+
+- `zensical build --clean --strict`: **pass**, no issues. Repository flake8,
+  notebook export synchronization and `git diff --check`: **pass**.
+- Static check: **93 pages**, no broken local links/anchors/assets; **91
+  non-Project article bodies unchanged**. Project Markdown is byte-identical
+  to the reviewed HEAD. No scientific assets changed.
+- The [focused browser check](editorial-browser-results.json) was rerun: six
+  updated full-page Light/Carbon captures at 1366/390/320 px, 150%/200% text
+  reflow, all 13 article links by keyboard, native palette, instant navigation,
+  history, Search and mobile drawer passed with no horizontal overflow.
+  Result data is identical to the preceding editorial run. Project axe scans
+  have no findings; the harness still exits **2** for the 12 native light Search
+  contrast nodes in #142, with zero functional/layout failures.
+- Applying the new stylesheet to the reviewed build passes **34 full-page
+  raster comparisons**: specimen at all three widths and
+  Home, Guide, Examples, Theory, API Reference, Development and License at
+  1366/320 px, all in Light/Carbon. Six Project comparisons confirm unchanged
+  card dimensions. Across the 34 comparisons, 7 pixels differ within the existing
+  native raster-noise tolerance described below. These use in-memory captures; no extra screenshot
+  collection or specimen-source change was needed.
+
+The focused command below reproduces the captures and interaction checks.
+Final-head GitHub CI is recorded in the PR description.
+
+## Previous editorial correction (`477f09b`)
 
 Verified PR #144 HEAD `6e2e2b30810f5cbe6c98ec499d8f2966ac04b84c` before editing.
 The only production change since that reviewed version is `docs/project/index.md`:
@@ -135,9 +174,8 @@ PROJECT_ONLY=1 NODE_PATH=/absolute/scratch/node_modules \
   node review/w5-a/verify.cjs CANDIDATE_URL
 ```
 
-The six screenshots and `editorial-browser-results.json` are refreshed; original
-design evidence below is retained separately. Final pushed-head CI is reported
-in PR #144 rather than predicted here.
+The six screenshots and focused results have since been rechecked for the list
+typography correction above; original design evidence below is retained separately.
 
 ## Initial design validation and limits (reviewed HEAD `6e2e2b3`)
 
