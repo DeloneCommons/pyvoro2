@@ -45,6 +45,9 @@ def verify(directory):
                 assert output.read_bytes() == asset.read_bytes(), stem
                 digest = hashlib.sha256(asset.read_bytes()).hexdigest()
                 assert record['png_sha256'] == digest
+                assert expected[stem]['png_sha256'] == digest, (
+                    f'{stem}: stored provenance PNG hash mismatch'
+                )
                 for key in ('geometry_sha256', 'generator_sha256'):
                     assert record[key] == expected[stem][key], f'{stem}: {key}'
                 if name == 'triclinic-voronoi':

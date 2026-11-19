@@ -253,7 +253,7 @@
         "python": "3.12.14"
       },
       "png_sha256": "52f9603ee844935a96629023b7cc2161259d1b914d72eabb4af92a6e756713f8",
-      "generator_sha256": "f2e3e3463df590cd6d1f01cbe5146a3a520f1dc18b6adb2b945d48926b9f7dca"
+      "generator_sha256": "0d209acc1d8d555e7004a6a7f060257f7c6e749f850ed21f86f89ed411698716"
     },
     "triclinic-voronoi-dark": {
       "vectors": [
@@ -504,7 +504,7 @@
         "python": "3.12.14"
       },
       "png_sha256": "c94bb39ef76cf8a1dc4672938d7114323cd319df10a4de490ff3b59287cb655c",
-      "generator_sha256": "f2e3e3463df590cd6d1f01cbe5146a3a520f1dc18b6adb2b945d48926b9f7dca"
+      "generator_sha256": "0d209acc1d8d555e7004a6a7f060257f7c6e749f850ed21f86f89ed411698716"
     },
     "separator-cycle": {
       "theme": "light",
