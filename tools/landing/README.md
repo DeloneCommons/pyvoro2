@@ -2,7 +2,9 @@
 
 [![Four translucent Voronoi cells with one dark site marker in each and a dashed skew lattice outline](../../docs/assets/landing/triclinic-voronoi.png)](../../docs/assets/landing/triclinic-voronoi.png)
 
-**Asset** `docs/assets/landing/triclinic-voronoi.png` (1600 × 900, opaque warm white).
+**Assets** `docs/assets/landing/triclinic-voronoi.png` (Light) and
+`docs/assets/landing/triclinic-voronoi-dark.png` (Carbon): 1600 × 900 RGBA,
+shared by Home and User Guide.
 The maintainer selected B2-layered in [PR #136](https://github.com/DeloneCommons/pyvoro2/pull/136).
 The final pass raised the face opacity of cells 70 and 20 from 9% to 14%
 and increased the assembly's frame occupancy from 84% to 88% along the limiting
@@ -71,17 +73,17 @@ depth peeling. The normal Zensical build consumes the committed static PNG.
 On the recorded stack two independent runs produced identical PNGs and
 records. Other graphics drivers can produce different raster bytes.
 
-## Production Carbon pair (DOC-W4-C2)
+## Historical Carbon introduction (DOC-W4-C2)
 
-The maintainer selected Carbon / Graphite editorial in PR #141. The light B2
-and inverse PNGs are unchanged, including their exact bytes. The production
+The maintainer selected Carbon / Graphite editorial in PR #141. At that stage, the light B2
+and inverse PNGs were unchanged, including their exact bytes. The production
 variants are `triclinic-voronoi-dark.png` (1600 × 900) and
 `separator-cycle-dark.png` (820 × 444), alongside the light assets. Native
 Zensical `#only-light` / `#only-dark` image selection controls their visibility.
 
 The dark B2 uses the same four complete polyhedra, site IDs, vertices, faces,
-periodic-image shifts and orthographic camera. Its opaque `#242728` background
-matches Carbon. Pale neutral edges (5.6 supersampled pixels) and a quieter
+periodic-image shifts and orthographic camera. Its original opaque `#242728`
+background matched Carbon. Pale neutral edges (5.6 supersampled pixels) and a quieter
 dashed lattice (4.4 pixels) retain distant structure at mobile size. Slightly
 higher face opacity separates the four cells; lighting, site radius and camera
 are unchanged. No clipping, inversion or substitute geometry is used.
@@ -116,7 +118,7 @@ MPLCONFIGDIR="$PWD/work/mpl" XDG_CACHE_HOME="$PWD/work/cache" \
 `--theme light` is the default; `--output PATH` redirects either renderer.
 Each rejects the other theme's production path, including symlink resolution.
 Do not use Python `-O`: the offline scientific assertions must execute.
-The recorded production environment uses Pillow 13.0.0 and reproduces the
+That opaque production run used Pillow 13.0.0 and reproduced the
 approved Pillow-12 light B2 bytes exactly. Eight independent renders (two per
 asset) matched the committed files and each other's records. Raster bytes may
 vary on other graphics stacks; geometry assertions must still pass.
@@ -125,3 +127,45 @@ All rendering remains optional and offline. Neither the normal Zensical build
 nor pyvoro2 runtime depends on VTK, PyVista or these scripts. Earlier candidate
 screenshots and provisional render records remain available in
 [the C2-1 commit](https://github.com/DeloneCommons/pyvoro2/tree/5c41b8593a3338e3798c2731976e53d2bde8f18f/review/w4-c2).
+
+## Transparent shared B2 pair (#146)
+
+The two canonical B2 PNGs now use native VTK alpha. The approved Light and
+Carbon colors, opacity, lighting, four complete cells and camera are unchanged.
+Home and User Guide still select those same two paths with native theme variants.
+The inverse PNGs are unchanged. The
+[opaque production record at the baseline](https://github.com/DeloneCommons/pyvoro2/blob/fe2f3b085a321ba88098a607b892693e82eadd1e/tools/landing/production-provenance.json)
+and the historical `provenance.json` describe the earlier files; the current
+`production-provenance.json` describes the transparent pair.
+
+`transparent_background=True` alone is insufficient: VTK's RGB already includes
+the renderer background and uses premultiplied alpha. The generator clears to
+transparent black, captures RGBA with verified depth peeling and MSAA disabled,
+averages each 2×2 block in floating premultiplied RGBA, then divides RGB by alpha
+to encode standard straight-alpha PNG. Zero-alpha pixels remain zero. Native
+alpha is only area-averaged and quantized to 8 bits; it is never inferred from
+color, thresholded or otherwise retouched. Geometry is never clipped or altered.
+
+Positive area-filter weights avoid coverage overshoot. The former Lanczos filter
+has negative lobes; applying it to RGBA can introduce clipped coverage and edge
+ringing. Pillow's intermediate 8-bit premultiplied resampling also clips color.
+The new filter retains 2× supersampling without either problem.
+
+`verify_assets.py` additionally runs `check_alpha.py`. Its independent analytical
+two-layer scene checks depth order in both actor insertion orders. The actual
+B2 scene is rendered over black, white and the former theme backgrounds:
+native alpha must match background transmittance, and straight-PNG compositing
+must reproduce independently area-filtered opaque captures within two 8-bit
+levels per channel, including edges and overlaps. The recorded maxima are below
+one level for both themes. Unused pixels, fractional coverage and opaque pixels
+are checked explicitly. The scientific checks and eight repeat renders still
+verify exact production bytes, raw geometry hashes and the approved camera.
+
+```bash
+VTK_DEFAULT_OPENGL_WINDOW=vtkEGLRenderWindow \
+  python tools/landing/check_alpha.py
+```
+
+[Browser evidence](../../review/b2-transparency/README.md) compares the approved
+opaque files with the transparent candidates in both pages and themes at 1366,
+390 and 320 px. Final maintainer acceptance remains separate from these checks.
