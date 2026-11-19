@@ -9,14 +9,14 @@ timeline, release plan, or list of every implementation task.
 - Decision records explain durable architectural choices.
 - The changelog records completed user-visible behavior.
 
-## Current direction: operational reboot
+## Current direction: v0.8-based functional reassessment
 
-Development restarts from published v0.8.0 under
+Development restarted from published v0.8.0 under
 [ADR 0027](../development/decisions/0027-v0.9-reboot-from-v0.8.md) and
 [issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120).
-The approved transition is PR1 operational bootstrap, followed by PR2 curated
-historical knowledge migration. Preserve implemented v0.8 behavior while
-restoring a manageable development process.
+The operational bootstrap, curated historical knowledge migration and branch
+cutover are complete. Preserve implemented v0.8 behavior during subsequent
+functional reassessment unless a separate decision approves changes.
 
 The previous v0.9 attempt is preserved at
 `archive/v0.9-attempt-2026-10-08`; its designs and ADRs 0018–0026 are not
@@ -28,6 +28,16 @@ v0.9, 1.0, v1.1, and v1.2 sequence is superseded, and ADR 0006's earlier
 sequence is not reactivated. Historical rationale remains in
 [ADR 0017](../development/decisions/0017-v0.9-functional-stabilization-before-1.0.md).
 Research candidates below do not authorize implementation.
+
+The [functional sequencing draft](../development/plans/functional-sequencing.md)
+records a **research-first dependency order**: evaluate global periodic
+geometry (R-O01) before finalizing its necessary foundational image/coordinate
+contracts; pursue independent forward/query and algebraic inverse improvements
+in parallel; distinguish realized contacts from the full global complex.
+This prioritization is **not** a release commitment or acceptance of a new
+globalization algorithm. [ADR 0028](../development/decisions/0028-upstream-voro-vendor-policy.md)
+defines temporary, per-defect maintenance of the vendored Voro++ while upstream
+`dev` evolves; it does not authorize blanket patching or immediate migration.
 
 ## v0.7 — Forward and separator API stabilization (completed)
 

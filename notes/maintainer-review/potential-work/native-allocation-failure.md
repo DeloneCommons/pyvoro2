@@ -1,6 +1,6 @@
 # Native allocation-failure exception safety — upstream Voro++
 
-**Status:** `selected for research`, **pre-C++ upstream prerequisite** R-O02b (paired with [R-O03](large-weight-numerics.md)). **No upstream issue, reproducer repo, PR, pyvoro2 native patch or fork has been created or authorized for immediate execution by this note.**
+**Status:** `selected for research` (R-O02b, alongside [R-O03](large-weight-numerics.md)). The former blanket pre-C++ reporting prerequisite is superseded by [ADR 0028](../../../docs/development/decisions/0028-upstream-voro-vendor-policy.md): compare each concrete defect against pinned upstream `dev` before deciding on a local backport, mitigation or deferral. **No upstream issue, reproducer repo, PR, pyvoro2 native patch or fork is automatically authorized by this note.**
 
 ## Source-evident defects to reproduce
 
@@ -9,12 +9,15 @@
 - **Constructor / partial ownership:** `container_periodic_base` allocates several raw arrays in the member initializer list and per-block `id[]`/`p[]` pairs in the body; `container_base` has similar raw arrays and per-block allocations. When construction throws, the most-derived container destructor is not called, so ownership must be managed separately.
 - **Growth / empty-block initialization:** `container_periodic_base::add_particle_memory()` and `container_base::add_particle_memory()` allocate new `id[]` followed by `p[]`. Failure of the later allocation can leak the earlier one; the periodic empty-block path also sets `mem[i]` before allocations succeed, potentially leaving an inconsistent live container.
 
-## Workflow before planned C++ edits in pyvoro2
+## Per-defect investigation and possible local backport
 
-1. **Reproduce independently.** Identify each distinct confirmed error; make **one standalone repository per error**, each with a minimal pure-Voro++ harness, pinned upstream revision, deterministic failure injection at the relevant `new[]` boundary, and clear expected/observed behavior. Test constructor failure versus growth separately and include both periodic and nonperiodic containers; split into separate repositories where the failure or repair materially differs.
-2. **Propose an upstream-compatible fix.** Chris Rycroft explicitly prefers **ANSI C++** compatibility in [earlier upstream issue #43](https://github.com/chr1shr/voro/issues/43); avoid C++11-only `unique_ptr` or `nextafter`. Use C++98-compatible local ownership (e.g. careful `try/catch`, cleanup, or a small C++98 RAII guard). Ensure construction failure frees successful prior allocations; growth failure must not leak, corrupt existing arrays, or prematurely commit capacities.
-3. **Demonstrate before/after.** In each bug's repository, show original failure and fixed behavior with repeatable commands, fault injection and ASan/LSan where supported. Include normal-success controls and avoid claiming all of Voro++ is globally exception-safe based on these cases.
-4. **Then approach upstream.** Only after a focused candidate fix passes its reproducer, prepare/file the corresponding **Voro++ issue for Chris**, with evidence, concise source explanation and the repository link; let the upstream maintainer choose the final patch form. No upstream acceptance or merge is required to finish the **reporting** prerequisite.
-5. **Separately decide pyvoro2 integration.** Do not change vendored/native source, wrappers, CI or its documented safety contract automatically. Such work requires a specific maintainer-approved decision and ordinary tests. The broader fork-versus-patch policy remains R-O02a (`pending`).
+1. **Reproduce and compare upstream `dev`.** Identify each distinct confirmed error on the current vendored snapshot and a pinned upstream `dev` revision. Prefer a small standalone pure-Voro++ reproducer per independent defect, using deterministic failure injection at relevant `new[]` boundaries, normal-success controls and clear expected/observed behavior. Test constructor versus growth and periodic versus nonperiodic containers where applicable.
+2. **Assess a bounded correction where needed.** If upstream `dev` has fixed a relevant case, consider the smallest C++98-compatible backport. If it still reproduces, evaluate severity, supported recovery semantics and a separately approved correction or deferral. Chris Rycroft's [earlier upstream issue #43](https://github.com/chr1shr/voro/issues/43) notes **ANSI C++** compatibility; avoid C++11-only `unique_ptr` or `nextafter`. Correct construction/growth ownership without premature capacity commits.
+3. **Demonstrate before/after when patching.** Show original failure and fixed behavior with repeatable commands, independent fault injection and ASan/LSan where supported. Include normal-success controls; do not claim global exception safety from these cases.
+4. **Communicate upstream when appropriate.** Share reproducible findings or candidate fixes with Chris when useful and welcome, in the branch/workflow he currently maintains. A new issue against the old upstream `master`, an upstream merge and a separate reproducer repository are **not unconditional gates** for unrelated pyvoro2 C++ work.
+5. **Separately decide pyvoro2 integration.** Do not change vendored/native source, wrappers, CI or the documented safety contract automatically. Each local change needs a focused maintainer-approved issue/PR and tests under ADR 0028. The permanent backend-fork and future upstream-`dev` migration policies remain separate decisions.
 
-This **pre-C++ ordering** is recorded in [the decision register](../review-register.md). It also covers [R-O03's independent large-weight reproducers](large-weight-numerics.md); it does not block ordinary Python/docs work. An explicit maintainer decision is required to waive the ordering.
+The [decision register](../review-register.md) now uses **per-defect**
+upstream-`dev` triage under ADR 0028 instead of treating this investigation as
+a universal gate for every planned native edit. [R-O03](large-weight-numerics.md)
+is assessed independently.
