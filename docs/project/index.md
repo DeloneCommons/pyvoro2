@@ -4,36 +4,43 @@
 
 <div class="pv-overview-lead" markdown="1">
 
-Open scientific Python software for studying space through **Voronoi and
-power/Laguerre tessellations**: from 2D and 3D periodic geometry to fitting
-power weights from pairwise separator observations.
+pyvoro2 is an open-source Python library for computing 2D and 3D Voronoi and
+power/Laguerre tessellations, including supported periodic domains, and for
+fitting power weights from pairwise separator observations.
 
 </div>
 
-pyvoro2 supplies geometry and inspectable numerical results for research
-applications. Domain-specific models and interpretation belong in downstream
-software, such as chemvoro, rather than in the geometric core.
+## What pyvoro2 provides
 
-## Scientific foundations and software
+pyvoro2 uses **Voro++** to compute Voronoi and power cells. Beyond the underlying
+tessellation engine, it provides Python tools for working with their geometry
+and results:
 
-**Voro++ computes the cells.** pyvoro2 builds on vendored 3D and legacy 2D
-Voro++ sources through separate native extensions. The 3D snapshot includes
-the upstream radical-pruning robustness fix for periodic power diagrams,
-recorded in the [changelog](changelog.md).
+- **Domains.** Convenient Python objects for describing bounded boxes and
+  supported periodic cells, including fully periodic triclinic cells in 3D.
+- **Cell geometry.** Structured results containing areas or volumes, with cell
+  shapes, vertices, boundaries, and other geometric properties available when
+  requested.
+- **Topology.** Tools for identifying shared vertices and edges across cells,
+  as well as shared faces in 3D, rather than working only with separate cell
+  geometries.
+- **Periodic neighbors.** Information about which sites share a boundary and
+  which translated periodic image of a neighboring site forms that boundary.
+- **Validation and diagnostics.** Checks for invalid inputs, geometric
+  consistency, and potential problems in computed results.
+- **Inverse fitting.** Estimation of power weights from observed pairwise
+  separator positions at fixed sites, with information about how well the
+  observations are matched.
 
-**pyvoro2 connects geometry to scientific workflows.** Its Python layer adds
-domain handling, validation, normalized topology, image-labelled periodic
-contacts, and separator-based inverse fitting with structured diagnostics.
-Forward computation is independently useful; inverse fitting estimates
-weights at fixed sites. A good separator fit does not by itself establish
-that the requested boundaries exist in the resulting diagram.
+The 2D and 3D interfaces have different supported domains and some different
+output capabilities. See [Capabilities and limitations](../guide/capabilities.md)
+for details.
 
-The 3D and planar interfaces have distinct domain and output capabilities.
-Forward operations are stateless: each builds a backend container and returns
-Python data. See [capabilities and limitations](../guide/capabilities.md),
-[operations](../guide/operations.md), and the
-[mathematical foundations](../theory/index.md) for these contracts and their
-scientific interpretation.
+Forward tessellation and inverse fitting can be used independently. In inverse
+fitting, matching the observed separator positions does not necessarily mean
+that the corresponding cell boundaries exist in the resulting power diagram.
+See [Inverse fitting](../guide/inverse/index.md) and [Theory](../theory/index.md)
+for an explanation.
 
 ## Project status
 
@@ -42,8 +49,8 @@ scientific interpretation.
 
 <p class="pv-overview-label">Published · v0.8.0</p>
 
-The public release is the baseline for current behavior. The package remains
-beta; API lifecycle status varies by surface.
+**v0.8.0 is the latest published release.** Some APIs are still provisional or
+experimental; see API lifecycle for details.
 
 [Release notes](release-notes-v0.8.md) ·
 [API lifecycle](../development/api-lifecycle.md)
@@ -53,11 +60,11 @@ beta; API lifecycle status varies by surface.
 
 <p class="pv-overview-label">In development · v0.9</p>
 
-Development restarts from v0.8.0 under
-[ADR 0027](../development/decisions/0027-v0.9-reboot-from-v0.8.md).
-Future geometry architecture and release scope remain undecided.
+**Development of v0.9 is based on v0.8.0.** Its final feature set and release
+schedule have not yet been established.
 
-[Roadmap](roadmap.md) · [Changelog](changelog.md)
+[Roadmap](roadmap.md) · [Changelog](changelog.md) ·
+[Development basis (ADR 0027)](../development/decisions/0027-v0.9-reboot-from-v0.8.md)
 
 </div>
 </div>

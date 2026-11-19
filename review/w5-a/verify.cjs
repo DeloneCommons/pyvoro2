@@ -1,5 +1,7 @@
 // Review-only: NODE_PATH=<scratch node_modules> node review/w5-a/verify.cjs
 // CANDIDATE_URL BASELINE_URL SPECIMEN_URL (all ending in /).
+// PROJECT_ONLY=1 refreshes only Project screenshots and functional checks.
+// Existing specimen captures and design-baseline evidence are preserved.
 const {chromium} = require('playwright');
 const {PNG} = require('pngjs');
 const {AxeBuilder} = require('@axe-core/playwright');
@@ -7,9 +9,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const [candidate, baseline, specimen] = process.argv.slice(2);
-assert(candidate && baseline && specimen, 'Supply three site base URLs');
+const projectOnly=process.env.PROJECT_ONLY==='1';
+assert(candidate && (projectOnly || (baseline && specimen)), 'Supply site URLs; PROJECT_ONLY=1 needs only candidate');
 const compareOnly=process.env.COMPARE_ONLY==='1';
-const report = compareOnly ? JSON.parse(fs.readFileSync(path.join(__dirname,'browser-results.json'),'utf8')) : {browser:'', project:[], specimen:[], reflow:[], keyboard:[], functional:[], unchangedPixels:[], axe:[], failures:[]};
+const resultFile=projectOnly?'editorial-browser-results.json':'browser-results.json';
+const report = compareOnly ? JSON.parse(fs.readFileSync(path.join(__dirname,resultFile),'utf8')) : {browser:'', project:[], specimen:[], reflow:[], keyboard:[], functional:[], unchangedPixels:[], axe:[], failures:[]};
 if(compareOnly){report.failures=[];report.unchangedPixels=[];}
 const out = path.join(__dirname, 'screenshots');
 fs.mkdirSync(out, {recursive:true});
@@ -45,6 +49,7 @@ async function palette(p,title,scheme) {
     await p.setViewportSize({width,height:width===1366?768:844});await go(p,candidate);
     assert.equal(await p.locator('body').getAttribute('data-md-color-scheme'),scheme);
     const dimensions=await reflow(p);
+    if(projectOnly){assert.equal(await p.locator('.pv-overview > ul > li').count(),6);assert.equal(await p.locator('.pv-overview-card').count(),2);assert.equal(await p.locator('.pv-overview-links > div').count(),3);assert(!/chemvoro/i.test(await p.locator('article').innerText()));}
     assert.equal(await p.locator('article h1').count(),1);
     assert.equal(await p.locator('article h2').count(),3);
     assert.equal(await p.locator('article h3').count(),0,'Project must keep one level of section headings');
@@ -103,7 +108,7 @@ async function palette(p,title,scheme) {
    report.functional.push(`${name}: 320px / 200% text Search and drawer navigation`);
    await p.evaluate(()=>document.documentElement.style.removeProperty('font-size'));
    // Specimen: actual cards, native light/dark image selection, alternating rows.
-   for(const width of [1366,390,320]) {
+   for(const width of (projectOnly?[]:[1366,390,320])) {
     await p.setViewportSize({width,height:844});await go(p,specimen,'specimen/');await reflow(p);
     const images=await p.locator('.pv-overview img:visible').evaluateAll(es=>es.map(e=>({src:e.getAttribute('src'),loaded:e.complete&&e.naturalWidth>0,ratio:e.width/e.height,native:e.naturalWidth/e.naturalHeight,alt:e.alt})));
     assert.equal(images.length,4);assert.equal(await p.locator('.pv-overview').getByRole('img').count(),4);
@@ -117,7 +122,7 @@ async function palette(p,title,scheme) {
    assert.deepEqual(pageErrors,[]);await context.close();console.log(name,'functional checks complete');
   }
   // Same docs stack, browser and font fallback: full-page baseline comparisons.
-  for(const mode of ['light','dark']) for(const width of [1366,390,320]) {
+  for(const mode of ['light','dark']) for(const width of (projectOnly?[]:[1366,390,320])) {
    const c=await browser.newContext({viewport:{width,height:844},colorScheme:mode,reducedMotion:'reduce',ignoreHTTPSErrors:true});const p=await c.newPage();
    for(const route of ['', 'guide/','examples/','theory/','reference/','development/','project/license/']) {
     const shots=[];
@@ -135,7 +140,7 @@ async function palette(p,title,scheme) {
    await c.close();
   }
  } catch(e) {report.failures.push(e.stack);throw e;}
- finally {fs.writeFileSync(path.join(__dirname,'browser-results.json'),JSON.stringify(report,null,2)+'\n');await browser.close();}
+ finally {fs.writeFileSync(path.join(__dirname,resultFile),JSON.stringify(report,null,2)+'\n');await browser.close();}
  const violations=report.axe.filter(x=>x.violations.length);
  console.log('Functional/layout checks passed. Accessibility scans with findings:',violations.map(x=>x.where));
  // Leave all native findings visible: a nonzero exit is not a functional failure.

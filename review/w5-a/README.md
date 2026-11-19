@@ -6,11 +6,11 @@ against the remote before editing and resolved to
 `87f01569015a2cc79908a002c03da12325d1d6cb`.
 PR B and merge are explicitly outside this change.
 
-## Proposed composition
+## Approved composition
 
 A text-led scientific project profile: serif title and introductory positioning,
-three paragraphs on scientific foundations, a published/development status
-pair, and three quiet information groups. All section headings are at one level.
+a six-item Markdown capability list with scientific qualifications, a
+published/development status pair, and three quiet information groups. All section headings are at one level.
 The native documentation shell, navigation tree, URLs, Search and palette stay
 in place. Project does not repeat the Home figures: neither explains licensing,
 release status or project responsibility better than text.
@@ -28,16 +28,16 @@ Linked destinations already exist; no technical content was migrated into new pa
 | Original content | Treatment and authoritative destination |
 | --- | --- |
 | Opening metadata routes | Release/status pair and information groups retain Roadmap, release notes, Changelog, License and AI policy. Native tabs retain Guide and Examples routes. |
-| Summary: 2D/3D standard/power, periodic geometry, diagnostics, inverse | Condensed into introduction and scientific foundations. [Forward guide](../../docs/guide/forward/index.md), [inverse guide](../../docs/guide/inverse/index.md) and [API Reference](../../docs/reference/index.md) retain callable details. |
-| Voro++ identity, vendored 3D/legacy 2D, separate pybind11 extensions | Compact backend paragraph; extension/build implementation in [Architecture](../../docs/development/architecture.md#native-backend-and-build-layer). |
-| Upstream radical-pruning fix | Retained explicitly with Changelog link; original fix history remains in [Changelog](../../CHANGELOG.md#063---2026-03-19). No new numerical assertion or rendering. |
+| Summary: 2D/3D standard/power, periodic geometry, diagnostics, inverse | Condensed into the introduction and six concrete capability descriptions. [Forward guide](../../docs/guide/forward/index.md), [inverse guide](../../docs/guide/inverse/index.md) and [API Reference](../../docs/reference/index.md) retain callable details. |
+| Voro++ identity, vendored 3D/legacy 2D, separate pybind11 extensions | Retain Voro++ attribution; omit native-extension implementation from Project. Details remain in [Architecture](../../docs/development/architecture.md#native-backend-and-build-layer). |
+| Upstream radical-pruning fix | Omit the implementation detail from Project; its original fix history remains discoverable through the status card’s Changelog link and in [Changelog](../../CHANGELOG.md#063---2026-03-19). No new numerical assertion or rendering. |
 | Explicit namespaces and domain differences | Retain dimensional capability warning; [capabilities](../../docs/guide/capabilities.md), [3D domains](../../docs/guide/domains.md), [planar guide](../../docs/guide/planar.md) and [API choice](../../docs/guide/choosing-api.md) contain exact namespaces/domain support. |
-| Validation, duplicate safety, normalization, properties, locate/ghost, visualization | Summarize validation/normalization/contacts; [operations](../../docs/guide/operations.md), [forward output](../../docs/guide/forward/index.md#geometric-output-and-normalization), [periodic contacts](../../docs/guide/periodic-contacts.md), [visualization](../../docs/guide/visualization.md) and [planar guide](../../docs/guide/planar.md) retain workflows. |
-| Inverse confidence, robust losses, restrictions, compatibility, identifiability, feasibility, reports and active-set paths | Retain fixed-site inverse role, structured diagnostics and fit-versus-realization distinction. [Separator fitting and diagnostics](../../docs/guide/inverse/separator-fitting.md) and [advanced reference](../../docs/reference/inverse/separator.md) retain details and provisional/experimental lifecycle. |
+| Validation, duplicate safety, normalization, properties, locate/ghost, visualization | Explain geometry, shared topology, neighbor images and checks in plain language without promising automatic normalization; [operations](../../docs/guide/operations.md), [forward output](../../docs/guide/forward/index.md#geometric-output-and-normalization), [periodic contacts](../../docs/guide/periodic-contacts.md), [visualization](../../docs/guide/visualization.md) and [planar guide](../../docs/guide/planar.md) retain workflows. |
+| Inverse confidence, robust losses, restrictions, compatibility, identifiability, feasibility, reports and active-set paths | Retain fixed-site inverse role and fit-versus-realization distinction, with direct Guide and Theory links. [Separator fitting and diagnostics](../../docs/guide/inverse/separator-fitting.md) and [advanced reference](../../docs/reference/inverse/separator.md) retain details and provisional/experimental lifecycle. |
 | Weights/radii, gauge, component offsets, realized boundaries | Keep explicit Theory route. [Power diagrams](../../docs/theory/power-diagrams.md) and [separator inverse](../../docs/theory/separator-inverse.md) are authoritative. |
 | Forward independently useful; new inverse families unapproved | Retain independent forward role. Future architecture/scope remains undecided; [Roadmap](../../docs/project/roadmap.md) and linked ADR 0027 explicitly govern unapproved measures/mixed research. |
-| Domain-agnostic boundary, chemvoro atomic models and other applications | Retain domain-agnostic positioning and named downstream example. Details in [Architecture's downstream contract](../../docs/development/architecture.md#downstream-contract-for-chemvoro); omit illustrative application list. |
-| Stateless calls and possible persistent index | Retain stateless explanation and link to [operations](../../docs/guide/operations.md). Persistent containers remain demand-driven candidates in [Roadmap](../../docs/project/roadmap.md#demand-driven-engineering-candidates). |
+| Domain-agnostic boundary, chemvoro atomic models and other applications | Intentionally omit the chemvoro example and downstream-boundary sentence from Project; no substitute application is named. The technical boundary remains in [Architecture's downstream contract](../../docs/development/architecture.md#downstream-contract-for-chemvoro); omit illustrative application list. |
+| Stateless calls and possible persistent index | Omit the implementation explanation from Project; it remains in [operations](../../docs/guide/operations.md). Persistent containers remain demand-driven candidates in [Roadmap](../../docs/project/roadmap.md#demand-driven-engineering-candidates). |
 | Test layers and local commands | Replace command block/list with contributor setup and Development routes. [CONTRIBUTING](../../CONTRIBUTING.md) covers unit/fuzz/optional wrapper, notebook, strict docs and distribution checks; setup uses the current development workflow. |
 | Independent README/site; synchronized notebook exports | Contributor route leads to [documentation conventions](../../docs/development/documentation-conventions.md#readme-and-site-landing-page) and [notebook maintenance](../../docs/development/notebook-workflow.md). These are contributor responsibilities, not project identity. |
 | Design/roadmap link list | Roadmap and API lifecycle retain direct links. Development and Decision records route to Architecture, workflow, archived v0.7 and other history without duplicating the Development index. |
@@ -67,7 +67,8 @@ card or pretend the Home figures depict other notebooks.
 
 ## Browser captures
 
-Actual full-page native Zensical builds. Click for original PNGs.
+Actual full-page native Zensical builds. Project captures reflect the editorial
+correction; the approved specimen captures are unchanged. Click for original PNGs.
 
 | Width | Light | Carbon |
 | --- | --- | --- |
@@ -103,7 +104,42 @@ findings, separately from functional/assertion failures (exit 1). No rules or
 nodes are suppressed. Native limitations in [#142](https://github.com/DeloneCommons/pyvoro2/issues/142)
 and their Development record remain intact.
 
-## Validation and limits
+## Focused editorial correction
+
+Verified PR #144 HEAD `6e2e2b30810f5cbe6c98ec499d8f2966ac04b84c` before editing.
+The only production change since that reviewed version is `docs/project/index.md`:
+remove the chemvoro sentence, replace implementation-heavy prose with six ordinary
+capability bullets, retain the dimensional and inverse-realization qualifications,
+and simplify both status cards. Detailed geometry is explicitly available when
+requested. Layout, CSS, lower information groups and specimen are unchanged.
+
+- Strict native build: **pass**, no issues. Flake8, notebook export synchronization
+  and `git diff --check`: **pass**. Focused documentation/tooling tests: **6 passed**.
+- Static link/anchor/asset check: **93 pages, no failures**; **91 non-Project
+  article bodies unchanged** against the reviewed version. Scientific PNGs unchanged.
+- [Focused Chromium results](editorial-browser-results.json): all six Project
+  captures inspected at 1366/390/320 px in Light/Carbon; no horizontal overflow,
+  including 150% and 200% root text size. All 13 article links keyboard reachable.
+  Native palette switching, Auto, persistence, instant navigation across sections,
+  history, Search and the 320 px / 200% text mobile drawer checks passed.
+- Project axe scans: no findings at the six viewports. The existing light Search
+  breadcrumb contrast issue remains visible (12 nodes, #142); the harness exits
+  **2** for that finding, with **zero functional/layout failures**. The original
+  API-table finding below remains outside this correction and was not rerun.
+
+The commands above were rerun except specimen generation, full-site pixel
+comparisons and the unchanged-style contrast sweep. For this focused browser run:
+
+```bash
+PROJECT_ONLY=1 NODE_PATH=/absolute/scratch/node_modules \
+  node review/w5-a/verify.cjs CANDIDATE_URL
+```
+
+The six screenshots and `editorial-browser-results.json` are refreshed; original
+design evidence below is retained separately. Final pushed-head CI is reported
+in PR #144 rather than predicted here.
+
+## Initial design validation and limits (reviewed HEAD `6e2e2b3`)
 
 - Native `zensical build --clean --strict`: pass, no issues, for production,
   baseline and the isolated specimen. Zensical 0.1.2 / zensical-ui 0.0.42;
@@ -145,19 +181,13 @@ configuration or dependency was changed.
 
 ## Critical self-review
 
-The text-led page works without illustrative filler. Serif/sans hierarchy,
-quiet rules and the paired release statuses connect it to Home while the
-ordinary documentation interface stays familiar. Licensing and provenance are
-findable without becoming another large feature list. A fresh source reviewer
-found no blocking issue; its wording correction distinguishes stateless forward
-operations from algebraic inverse fitting.
+The approved composition remains text-led, with the status cards providing its
+main boxed emphasis. The revised six-item list makes capabilities scannable;
+optional geometry, dimensional differences and the fit-versus-realization
+qualification avoid overstating behavior. Implementation terminology now belongs
+to the linked technical destinations rather than the introduction.
 
-The scientific-foundations section is still the densest part, deliberately
-retaining a few qualifications. It is the first place to reconsider if the
-maintainer wants a lighter profile. The image catalogue preserves natural
-aspect ratios, so differently shaped figures do not guarantee perfectly aligned
-titles; cropping scientific images to force alignment would be the wrong
-tradeoff. The reverse row is for explanatory prose plus a non-interactive
-figure, not an instruction to reorder interactive controls. The three-column
-information group suits this short metadata; do not generalize it into a dense
-Examples/task directory. No PR B page has been changed or pre-approved.
+The list adds vertical length, especially at 320 px, but each capability remains
+one ordinary bullet rather than another card. Natural figure aspect ratios and
+alternating rows retain the limitations noted in the approved specimen; neither
+was redesigned here. PR B remains outside this correction.
