@@ -1,23 +1,82 @@
+<div class="pv-overview" markdown="1">
+
 # Theory
 
-The theory section records the mathematical definitions and distinctions that
-should remain valid even when Python names, modules, or result containers
-change. It states the central equations and interpretations in a compact form;
-full proofs and numerical evidence remain in the manuscript and archived
-reproducibility materials.
+<div class="pv-overview-lead" markdown="1">
 
-A useful reading order is:
+How do sites and weights divide space, and what can observed separators tell
+us about those weights? These two topics develop the mathematical ideas
+independently of Python API names.
 
-1. [Power diagrams](power-diagrams.md) introduces sites, weights, cells,
-   pairwise separators, backend radii, global gauge, periodic images, and
-   dimension-independent measure terminology.
-2. [Inverse fitting from separator observations](separator-inverse.md) shows how
-   local separator data become a graph of weight differences, why cycles control
-   compatibility, how the Laplacian estimator arises, and why algebraic fit must
-   be separated from geometric realization.
+</div>
 
-These pages are deliberately independent of provisional API names. Current
-calls are documented in the [user guide](../guide/concepts.md), while future
-prescribed-measure and mixed inverse methods remain in the
-[roadmap](../project/roadmap.md) until their mathematical and software contracts
-are mature enough for dedicated theory pages.
+<div class="pv-overview-row" markdown="1">
+<div markdown="1">
+
+## Power diagrams
+
+Assign a site a scalar weight and compare its power distance with those of
+all other sites. Each cell contains the points where its site has the least
+power distance. Equal weights recover the ordinary Voronoi diagram.
+
+Two sites have equal power along a pairwise separator, whose position depends
+on their weight difference. Only the portions where they also beat competing
+sites can form a shared cell boundary.
+
+**[Explore power diagrams](power-diagrams.md)**
+
+</div>
+<figure markdown="1">
+
+<div class="pv-overview-equation" markdown="1">
+
+\[
+\begin{gathered}
+\pi_i(x)=\\
+\lVert x-p_i\rVert^2-w_i
+\end{gathered}
+\]
+
+</div>
+
+<figcaption markdown="1">
+
+Power distance is the squared distance from a point to a site, minus that
+site’s weight. A weight has units of squared length; it is not a cell area or
+volume.
+
+</figcaption>
+</figure>
+</div>
+
+<div class="pv-overview-row pv-overview-row--reverse" markdown="1">
+<div markdown="1">
+
+## Inverse fitting from separator observations
+
+An observed separator position between two fixed sites constrains their
+weight difference. Across a cycle of observations, those signed differences
+must sum to zero for exact compatibility. Inconsistent observations require
+an approximate fit.
+
+Fitting and geometric realization answer different questions: even an
+exactly fitted pairwise equation may be hidden by another site's cell.
+The chapter develops observation graphs, fitting and checks on actual
+boundaries, including periodic images.
+
+**[Explore separator fitting](separator-inverse.md)**
+
+</div>
+<figure>
+  <img src="../assets/landing/separator-cycle.png#only-light" width="820" height="444" alt="Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.">
+  <img src="../assets/landing/separator-cycle-dark.png#only-dark" width="820" height="444" alt="Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.">
+  <figcaption>The three illustrated observations are not exactly compatible. Ticks show the observed positions; computed edges belong to the fitted power diagram. All three pairs meet here, without exactly matching the ticks.</figcaption>
+</figure>
+</div>
+
+For current calls, see the [User Guide](../guide/concepts.md). The separator
+chapter links full proofs and numerical evidence. Prescribed-measure and mixed
+inverse methods remain research candidates in the [roadmap](../project/roadmap.md),
+without approved implementation or release targets.
+
+</div>

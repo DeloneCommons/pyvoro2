@@ -1,49 +1,154 @@
+<div class="pv-overview" markdown="1">
+
 # Examples
 
-These eight notebooks provide longer workflows using the implemented API.
-Follow a rendered page to read its stored output, or open the original `.ipynb`
-on GitHub to download and run it in a local Jupyter environment. Install
-`pyvoro2`; visualization examples additionally use `pyvoro2[viz]`.
-Run code cells in order in a fresh kernel, since later sections may reuse
-objects created earlier.
+<div class="pv-overview-lead" markdown="1">
+
+Explore eight notebooks by the computation you want to try. Each demonstrates
+an independent workflow; for a connected introduction, follow the
+[User Guide](../guide/index.md).
+
+</div>
 
 ## Tessellations and periodic geometry
 
-These examples are **3D-oriented**. For **2D**, start with the
-[planar guide](../guide/planar.md) and its
-[Matplotlib plotting recipe](../guide/planar.md#planar-plotting); this catalogue
-does not contain a comprehensive planar notebook.
+These examples emphasize **3D**. New to tessellations? Start with **Basic 3D
+computations**. For **2D**, use the [planar guide](../guide/planar.md) and its
+[Matplotlib plotting recipe](../guide/planar.md#planar-plotting).
 
-| Notebook | What it demonstrates | Original |
-|---|---|---|
-| [01 — Basic 3D computations](../notebooks/01_basic_compute.md) | Finite and triclinic periodic cells, standard/power modes, empty cells, face shifts, normalization and face properties. | [`.ipynb`](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/01_basic_compute.ipynb) |
-| [02 — Periodic neighbor graphs](../notebooks/02_periodic_graph.md) | Directed contacts, image shifts and graph extraction from a periodic sample. For a general reciprocal key retaining self-images, use the [periodic-contact recipe](../guide/periodic-contacts.md#building-a-periodic-graph-in-practice). | [`.ipynb`](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/02_periodic_graph.ipynb) |
-| [03 — Locate and ghost cells](../notebooks/03_locate_and_ghost.md) | Find owners of query points and inspect hypothetical probe cells. | [`.ipynb`](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/03_locate_and_ghost.ipynb) |
-| [05 — 3D visualization](../notebooks/05_visualization.md) | Optional py3Dmol inspection, styles, triclinic wrapping and global vertex labels. Interactive viewing requires a compatible notebook frontend. | [`.ipynb`](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/05_visualization.ipynb) |
+<div class="pv-overview-grid pv-overview-grid--catalogue" markdown="1">
+<div class="pv-overview-card" markdown="1">
+
+<p class="pv-overview-label">Notebook 01 · Start here</p>
+
+### [Basic 3D computations](../notebooks/01_basic_compute.md)
+
+Compute finite and fully periodic triclinic tessellations. Compare standard
+Voronoi and weighted power cells, inspect geometry and empty cells, then
+construct shared vertices, edges and faces through normalization.
+
+[Source notebook 01 (.ipynb)](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/01_basic_compute.ipynb)
+
+</div>
+<div class="pv-overview-card" markdown="1">
+
+<p class="pv-overview-label">Notebook 02 · Periodic contacts</p>
+
+### [Periodic neighbor graphs](../notebooks/02_periodic_graph.md)
+
+Turn cell contacts into a graph while keeping the lattice-image shift of each
+neighbor. Inspect reciprocal contacts and build adjacency lists. For an
+undirected graph that also retains self-images, use the
+[Guide recipe](../guide/periodic-contacts.md#building-a-periodic-graph-in-practice).
+
+[Source notebook 02 (.ipynb)](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/02_periodic_graph.ipynb)
+
+</div>
+<div class="pv-overview-card" markdown="1">
+
+<p class="pv-overview-label">Notebook 03 · Point queries</p>
+
+### [Locate and probe cells](../notebooks/03_locate_and_ghost.md)
+
+Find which site owns a query point in a finite box. Compute the hypothetical
+cell around an inserted probe without changing the original sites, and see
+how out-of-domain queries are handled.
+
+[Source notebook 03 (.ipynb)](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/03_locate_and_ghost.ipynb)
+
+</div>
+<div class="pv-overview-card" markdown="1">
+
+<p class="pv-overview-label">Notebook 05 · Provisional visualization helpers</p>
+
+### [Inspect 3D geometry](../notebooks/05_visualization.md)
+
+Explore cell wireframes with optional py3Dmol tools. Adjust styles, wrap
+triclinic cell geometry for viewing and label shared vertices. Interactive
+viewing needs a compatible notebook frontend.
+
+[Source notebook 05 (.ipynb)](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/05_visualization.ipynb)
+
+</div>
+</div>
 
 ## Inverse fitting
 
-Start with the [high-level inverse quickstart](../guide/inverse/index.md).
-The notebooks then use `pyvoro2.inverse` and the advanced
-`pyvoro2.inverse.separator` namespace. Advanced models and report/realization
-helpers are provisional; active-set refinement is experimental.
+Begin with the [inverse quickstart](../guide/inverse/index.md) for the stable
+high-level fitting workflow. These notebooks also use advanced models and
+report/realization helpers, which are **provisional**. Active-set refinement
+is **experimental**; see [API choice and lifecycle](../guide/choosing-api.md#feature-and-lifecycle-status).
 
-| Notebook | What it demonstrates | Original |
-|---|---|---|
-| [04 — Separator-fitting workflow](../notebooks/04_powerfit.md) | External IDs, explicit periodic images, weight-first fitting and forward realization; then advanced objectives and active sets. | [`.ipynb`](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/04_powerfit.ipynb) |
-| [06 — Fit reports and exports](../notebooks/06_powerfit_reports.md) | ID-labelled records, realization diagnostics, final-state reports and JSON export. | [`.ipynb`](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/06_powerfit_reports.ipynb) |
-| [07 — Infeasibility diagnostics](../notebooks/07_powerfit_infeasibility.md) | Contradictory hard constraints, status inspection and contradiction witnesses. | [`.ipynb`](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/07_powerfit_infeasibility.ipynb) |
-| [08 — Active-set paths (experimental)](../notebooks/08_powerfit_active_path.md) | Transient outer-loop events and path diagnostics, separate from the final fit and realization. | [`.ipynb`](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/08_powerfit_active_path.ipynb) |
+<div class="pv-overview-grid pv-overview-grid--catalogue" markdown="1">
+<div class="pv-overview-card" markdown="1">
 
-The filenames retain their historical `powerfit` label; they use the current
-inverse namespaces, not the removed `pyvoro2.powerfit` package.
+<p class="pv-overview-label">Notebook 04 · Advanced workflow</p>
 
-## How the published examples are maintained
+### [Fit separators, then check geometry](../notebooks/04_powerfit.md)
 
-The site reads committed Markdown exports of stored notebook outputs. **Export
-does not execute notebooks**, and a documentation build does not start a
-kernel. Separate maintenance tools refresh source outputs and validate
-in-memory copies in clean kernels. Reviewed rich-output cells can carry the
-explicit `skip-execution` tag; their stored output is maintained manually.
-See [Notebook maintenance](../development/notebook-workflow.md) for the exact
-execution, validation and export commands.
+Fit weights from periodic separator observations with external site IDs and
+explicit image shifts. Compute the power diagram and check actual contacts.
+Continue into provisional fitting models and experimental active-set refinement.
+
+[Source notebook 04 (.ipynb)](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/04_powerfit.ipynb)
+
+</div>
+<div class="pv-overview-card" markdown="1">
+
+<p class="pv-overview-label">Notebook 06 · Provisional report helpers</p>
+
+### [Fit reports and exports](../notebooks/06_powerfit_reports.md)
+
+Inspect fit residuals and realized contacts in records labelled by site ID.
+Export reports as JSON, and distinguish the final state from iteration history
+in an experimental active-set run.
+
+[Source notebook 06 (.ipynb)](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/06_powerfit_reports.ipynb)
+
+</div>
+<div class="pv-overview-card" markdown="1">
+
+<p class="pv-overview-label">Notebook 07 · Provisional constraint models</p>
+
+### [Diagnose incompatible constraints](../notebooks/07_powerfit_infeasibility.md)
+
+Build a set of separator restrictions that cannot all hold at once. Inspect
+the infeasible status and the conflicting observations, then export the
+contradiction witness in a report.
+
+[Source notebook 07 (.ipynb)](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/07_powerfit_infeasibility.ipynb)
+
+</div>
+<div class="pv-overview-card" markdown="1">
+
+<p class="pv-overview-label">Notebook 08 · Experimental</p>
+
+### [Follow an active-set path](../notebooks/08_powerfit_active_path.md)
+
+Track a fit that starts with no active observations and reconnects during
+iteration. Compare temporary disconnections with the final result. This
+experimental refinement has no universal convergence guarantee.
+
+[Source notebook 08 (.ipynb)](https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/08_powerfit_active_path.ipynb)
+
+</div>
+</div>
+
+<span id="how-the-published-examples-are-maintained"></span>
+
+## Reading and running notebooks
+
+The linked titles open rendered pages with **committed outputs**; the separate
+source links open `.ipynb` files on GitHub. To run a notebook locally, install
+`pyvoro2` (or `pyvoro2[viz]` for visualization) and run its cells in order in a
+fresh Jupyter kernel.
+
+**Notebook export does not execute code**, and a documentation build does not
+start a kernel. See [Notebook maintenance](../development/notebook-workflow.md)
+for the separate execution, validation and export procedures. The historical
+`powerfit` filenames use the current inverse namespaces.
+
+This is the existing collection. Its final selection and any replacements
+remain deferred until the v0.9 functionality is clearer.
+
+</div>

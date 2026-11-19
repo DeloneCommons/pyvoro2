@@ -1,0 +1,1386 @@
+{
+  "browser": "155.0.8059.79",
+  "views": [
+    {
+      "route": "examples/",
+      "theme": "light",
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [],
+      "positions": []
+    },
+    {
+      "route": "examples/",
+      "theme": "light",
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [],
+      "positions": []
+    },
+    {
+      "route": "examples/",
+      "theme": "light",
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [],
+      "positions": []
+    },
+    {
+      "route": "guide/",
+      "theme": "light",
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/triclinic-voronoi.png#only-light",
+          "loaded": true,
+          "alt": "Four complete Voronoi polyhedra surround four sites and extend across a dashed skew lattice frame.",
+          "ratio": 1.7782101167315174,
+          "native": 1.7777777777777777
+        },
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle.png#only-light",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8502024291497976,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 331.5,
+          "ty": 363.625,
+          "fx": 812.5,
+          "fy": 368.484375,
+          "textFirst": true
+        },
+        {
+          "tx": 812.5,
+          "ty": 735.40625,
+          "fx": 331.5,
+          "fy": 745.078125,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "guide/",
+      "theme": "light",
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/triclinic-voronoi.png#only-light",
+          "loaded": true,
+          "alt": "Four complete Voronoi polyhedra surround four sites and extend across a dashed skew lattice frame.",
+          "ratio": 1.7772020725388602,
+          "native": 1.7777777777777777
+        },
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle.png#only-light",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8440860215053763,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 383.140625,
+          "fx": 16,
+          "fy": 831.59375,
+          "textFirst": true
+        },
+        {
+          "tx": 16,
+          "ty": 1150.53125,
+          "fx": 16,
+          "fy": 1569.09375,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "guide/",
+      "theme": "light",
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/triclinic-voronoi.png#only-light",
+          "loaded": true,
+          "alt": "Four complete Voronoi polyhedra surround four sites and extend across a dashed skew lattice frame.",
+          "ratio": 1.7727272727272727,
+          "native": 1.7777777777777777
+        },
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle.png#only-light",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8445945945945945,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 414.140625,
+          "fx": 16,
+          "fy": 915.375,
+          "textFirst": true
+        },
+        {
+          "tx": 16,
+          "ty": 1215.9375,
+          "fx": 16,
+          "fy": 1713.671875,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "theory/",
+      "theme": "light",
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle.png#only-light",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8502024291497976,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 331.5,
+          "ty": 363.625,
+          "fx": 812.5,
+          "fy": 449.34375,
+          "textFirst": true
+        },
+        {
+          "tx": 812.5,
+          "ty": 735.40625,
+          "fx": 331.5,
+          "fy": 771.46875,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "theory/",
+      "theme": "light",
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle.png#only-light",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8440860215053763,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 383.140625,
+          "fx": 16,
+          "fy": 801.703125,
+          "textFirst": true
+        },
+        {
+          "tx": 16,
+          "ty": 1002.046875,
+          "fx": 16,
+          "fy": 1503.28125,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "theory/",
+      "theme": "light",
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle.png#only-light",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8445945945945945,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 445.140625,
+          "fx": 16,
+          "fy": 916.484375,
+          "textFirst": true
+        },
+        {
+          "tx": 16,
+          "ty": 1137.828125,
+          "fx": 16,
+          "fy": 1718.234375,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "examples/",
+      "theme": "carbon",
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [],
+      "positions": []
+    },
+    {
+      "route": "examples/",
+      "theme": "carbon",
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [],
+      "positions": []
+    },
+    {
+      "route": "examples/",
+      "theme": "carbon",
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [],
+      "positions": []
+    },
+    {
+      "route": "guide/",
+      "theme": "carbon",
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/triclinic-voronoi-dark.png#only-dark",
+          "loaded": true,
+          "alt": "Four complete Voronoi polyhedra surround four sites and extend across a dashed skew lattice frame.",
+          "ratio": 1.7782101167315174,
+          "native": 1.7777777777777777
+        },
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle-dark.png#only-dark",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8502024291497976,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 331.5,
+          "ty": 363.625,
+          "fx": 812.5,
+          "fy": 368.484375,
+          "textFirst": true
+        },
+        {
+          "tx": 812.5,
+          "ty": 735.40625,
+          "fx": 331.5,
+          "fy": 745.078125,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "guide/",
+      "theme": "carbon",
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/triclinic-voronoi-dark.png#only-dark",
+          "loaded": true,
+          "alt": "Four complete Voronoi polyhedra surround four sites and extend across a dashed skew lattice frame.",
+          "ratio": 1.7772020725388602,
+          "native": 1.7777777777777777
+        },
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle-dark.png#only-dark",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8440860215053763,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 383.140625,
+          "fx": 16,
+          "fy": 831.59375,
+          "textFirst": true
+        },
+        {
+          "tx": 16,
+          "ty": 1150.53125,
+          "fx": 16,
+          "fy": 1569.09375,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "guide/",
+      "theme": "carbon",
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/triclinic-voronoi-dark.png#only-dark",
+          "loaded": true,
+          "alt": "Four complete Voronoi polyhedra surround four sites and extend across a dashed skew lattice frame.",
+          "ratio": 1.7727272727272727,
+          "native": 1.7777777777777777
+        },
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle-dark.png#only-dark",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8445945945945945,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 414.140625,
+          "fx": 16,
+          "fy": 915.375,
+          "textFirst": true
+        },
+        {
+          "tx": 16,
+          "ty": 1215.9375,
+          "fx": 16,
+          "fy": 1713.671875,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "theory/",
+      "theme": "carbon",
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle-dark.png#only-dark",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8502024291497976,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 331.5,
+          "ty": 363.625,
+          "fx": 812.5,
+          "fy": 449.34375,
+          "textFirst": true
+        },
+        {
+          "tx": 812.5,
+          "ty": 735.40625,
+          "fx": 331.5,
+          "fy": 771.46875,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "theory/",
+      "theme": "carbon",
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle-dark.png#only-dark",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8440860215053763,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 383.140625,
+          "fx": 16,
+          "fy": 801.703125,
+          "textFirst": true
+        },
+        {
+          "tx": 16,
+          "ty": 1002.046875,
+          "fx": 16,
+          "fy": 1503.28125,
+          "textFirst": true
+        }
+      ]
+    },
+    {
+      "route": "theory/",
+      "theme": "carbon",
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": [],
+      "images": [
+        {
+          "src": "http://127.0.0.1:8000/assets/landing/separator-cycle-dark.png#only-dark",
+          "loaded": true,
+          "alt": "Three fixed sites with observed separator ticks on the left; fitted power cells on the right. The original ticks do not coincide exactly with the fitted edges.",
+          "ratio": 1.8445945945945945,
+          "native": 1.8468468468468469
+        }
+      ],
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 445.140625,
+          "fx": 16,
+          "fy": 916.484375,
+          "textFirst": true
+        },
+        {
+          "tx": 16,
+          "ty": 1137.828125,
+          "fx": 16,
+          "fy": 1718.234375,
+          "textFirst": true
+        }
+      ]
+    }
+  ],
+  "reflow": [
+    {
+      "route": "examples/",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "examples/",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "guide/",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 1366,
+      "width": 1366,
+      "scroll": 1351,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 390,
+      "width": 390,
+      "scroll": 375,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    },
+    {
+      "route": "theory/",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 320,
+      "width": 320,
+      "scroll": 305,
+      "escaped": [],
+      "localOverflow": []
+    }
+  ],
+  "keyboard": [
+    {
+      "route": "examples/",
+      "theme": "light",
+      "links": 23,
+      "focus": "3px solid"
+    },
+    {
+      "route": "guide/",
+      "theme": "light",
+      "links": 20,
+      "focus": "3px solid"
+    },
+    {
+      "route": "theory/",
+      "theme": "light",
+      "links": 4,
+      "focus": "3px solid"
+    },
+    {
+      "route": "examples/",
+      "theme": "carbon",
+      "links": 23,
+      "focus": "3px solid"
+    },
+    {
+      "route": "guide/",
+      "theme": "carbon",
+      "links": 20,
+      "focus": "3px solid"
+    },
+    {
+      "route": "theory/",
+      "theme": "carbon",
+      "links": 4,
+      "focus": "3px solid"
+    }
+  ],
+  "functional": [
+    "light: native Auto/Light/Dark, persistence, live OS changes and image variants",
+    "light: native palette via Tab and arrow keys",
+    "light: instant navigation across seven sections, MathJax on entry, child route and history",
+    "light: native Search and result navigation",
+    "light: 320px / 200% text Search and drawer",
+    "carbon: native Auto/Light/Dark, persistence, live OS changes and image variants",
+    "carbon: native palette via Tab and arrow keys",
+    "carbon: instant navigation across seven sections, MathJax on entry, child route and history",
+    "carbon: native Search and result navigation",
+    "carbon: 320px / 200% text Search and drawer"
+  ],
+  "axe": [
+    {
+      "where": "examples/ light 1366",
+      "violations": []
+    },
+    {
+      "where": "examples/ light 390",
+      "violations": []
+    },
+    {
+      "where": "examples/ light 320",
+      "violations": []
+    },
+    {
+      "where": "guide/ light 1366",
+      "violations": []
+    },
+    {
+      "where": "guide/ light 390",
+      "violations": []
+    },
+    {
+      "where": "guide/ light 320",
+      "violations": []
+    },
+    {
+      "where": "theory/ light 1366",
+      "violations": []
+    },
+    {
+      "where": "theory/ light 390",
+      "violations": []
+    },
+    {
+      "where": "theory/ light 320",
+      "violations": []
+    },
+    {
+      "where": "Search light",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-906-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-906-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-906-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-898-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-898-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-898-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-905-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-905-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-905-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-808-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-808-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-808-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-844-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-844-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "div:nth-child(11)",
+                  "#P0-0-results-844-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "where": "Native API table light 320",
+      "violations": [
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".doc-function.doc-object.doc:nth-child(3) > .doc-contents.doc > .md-typeset__scrollwrap:nth-child(6)"
+              ],
+              "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "where": "examples/ carbon 1366",
+      "violations": []
+    },
+    {
+      "where": "examples/ carbon 390",
+      "violations": []
+    },
+    {
+      "where": "examples/ carbon 320",
+      "violations": []
+    },
+    {
+      "where": "guide/ carbon 1366",
+      "violations": []
+    },
+    {
+      "where": "guide/ carbon 390",
+      "violations": []
+    },
+    {
+      "where": "guide/ carbon 320",
+      "violations": []
+    },
+    {
+      "where": "theory/ carbon 1366",
+      "violations": []
+    },
+    {
+      "where": "theory/ carbon 390",
+      "violations": []
+    },
+    {
+      "where": "theory/ carbon 320",
+      "violations": []
+    },
+    {
+      "where": "Search carbon",
+      "violations": []
+    },
+    {
+      "where": "Native API table carbon 320",
+      "violations": [
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".doc-function.doc-object.doc:nth-child(3) > .doc-contents.doc > .md-typeset__scrollwrap:nth-child(6)"
+              ],
+              "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "unchangedPixels": [
+    {
+      "route": "",
+      "mode": "light",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "project/",
+      "mode": "light",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "reference/",
+      "mode": "light",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "development/",
+      "mode": "light",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "guide/forward/",
+      "mode": "light",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "theory/power-diagrams/",
+      "mode": "light",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "",
+      "mode": "light",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "project/",
+      "mode": "light",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "reference/",
+      "mode": "light",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "development/",
+      "mode": "light",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "guide/forward/",
+      "mode": "light",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "theory/power-diagrams/",
+      "mode": "light",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "",
+      "mode": "dark",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "project/",
+      "mode": "dark",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "reference/",
+      "mode": "dark",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "development/",
+      "mode": "dark",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "guide/forward/",
+      "mode": "dark",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "theory/power-diagrams/",
+      "mode": "dark",
+      "width": 1366,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "",
+      "mode": "dark",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "project/",
+      "mode": "dark",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "reference/",
+      "mode": "dark",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "development/",
+      "mode": "dark",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "guide/forward/",
+      "mode": "dark",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "route": "theory/power-diagrams/",
+      "mode": "dark",
+      "width": 320,
+      "changed": 0,
+      "maxDelta": 0,
+      "withinRasterTolerance": true
+    }
+  ],
+  "failures": []
+}
