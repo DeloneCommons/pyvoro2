@@ -1,0 +1,303 @@
+{
+  "browser": "155.0.8059.79",
+  "project": [
+    {
+      "theme": "light",
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "theme": "light",
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "theme": "light",
+      "viewport": 320,
+      "document": 305
+    },
+    {
+      "theme": "carbon",
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "theme": "carbon",
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "theme": "carbon",
+      "viewport": 320,
+      "document": 305
+    }
+  ],
+  "specimen": [],
+  "reflow": [
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 320,
+      "document": 305
+    },
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 320,
+      "document": 305
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 320,
+      "document": 305
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 320,
+      "document": 305
+    }
+  ],
+  "keyboard": [
+    {
+      "theme": "light",
+      "articleLinksReached": 13,
+      "focus": "3px solid"
+    },
+    {
+      "theme": "light",
+      "nativePalette": "Tab and arrow keys"
+    },
+    {
+      "theme": "carbon",
+      "articleLinksReached": 13,
+      "focus": "3px solid"
+    },
+    {
+      "theme": "carbon",
+      "nativePalette": "Tab and arrow keys"
+    }
+  ],
+  "functional": [
+    "light: native Auto/Light/Dark, persistence, live OS change",
+    "light: instant routes through all sections + Home + history",
+    "light: native Search result navigation",
+    "light: 320px / 200% text Search and drawer navigation",
+    "carbon: native Auto/Light/Dark, persistence, live OS change",
+    "carbon: instant routes through all sections + Home + history",
+    "carbon: native Search result navigation",
+    "carbon: 320px / 200% text Search and drawer navigation"
+  ],
+  "unchangedPixels": [],
+  "axe": [
+    {
+      "where": "Project light 1366",
+      "violations": []
+    },
+    {
+      "where": "Project light 390",
+      "violations": []
+    },
+    {
+      "where": "Project light 320",
+      "violations": []
+    },
+    {
+      "where": "Search light",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-889-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-889-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-889-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-881-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-881-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-881-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-888-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-888-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-888-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-791-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-791-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-791-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "where": "Project carbon 1366",
+      "violations": []
+    },
+    {
+      "where": "Project carbon 390",
+      "violations": []
+    },
+    {
+      "where": "Project carbon 320",
+      "violations": []
+    },
+    {
+      "where": "Search carbon",
+      "violations": []
+    }
+  ],
+  "failures": []
+}

@@ -1,0 +1,122 @@
+{
+  "contrast": [
+    {
+      "theme": "light",
+      "selector": ".pv-overview > p",
+      "foreground": "rgb(35, 59, 60)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 11.92
+    },
+    {
+      "theme": "light",
+      "selector": ".pv-overview a",
+      "foreground": "rgb(36, 102, 106)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 6.6
+    },
+    {
+      "theme": "light",
+      "selector": ".pv-overview-links p:nth-child(2)",
+      "foreground": "rgb(83, 99, 101)",
+      "background": "rgb(255, 255, 255)",
+      "ratio": 6.29
+    },
+    {
+      "theme": "light",
+      "selector": ".pv-overview-card",
+      "foreground": "rgb(35, 59, 60)",
+      "background": "rgb(244, 246, 243)",
+      "ratio": 10.96
+    },
+    {
+      "theme": "light",
+      "selector": ".pv-overview-label",
+      "foreground": "rgb(36, 102, 106)",
+      "background": "rgb(244, 246, 243)",
+      "ratio": 6.07
+    },
+    {
+      "theme": "light",
+      "selector": ".pv-overview-card a",
+      "foreground": "rgb(36, 102, 106)",
+      "background": "rgb(244, 246, 243)",
+      "ratio": 6.07
+    },
+    {
+      "theme": "dark",
+      "selector": ".pv-overview > p",
+      "foreground": "rgb(224, 227, 223)",
+      "background": "rgb(36, 39, 40)",
+      "ratio": 11.62
+    },
+    {
+      "theme": "dark",
+      "selector": ".pv-overview a",
+      "foreground": "rgb(145, 189, 181)",
+      "background": "rgb(36, 39, 40)",
+      "ratio": 7.27
+    },
+    {
+      "theme": "dark",
+      "selector": ".pv-overview-links p:nth-child(2)",
+      "foreground": "rgb(180, 189, 185)",
+      "background": "rgb(36, 39, 40)",
+      "ratio": 7.82
+    },
+    {
+      "theme": "dark",
+      "selector": ".pv-overview-card",
+      "foreground": "rgb(224, 227, 223)",
+      "background": "rgb(45, 49, 50)",
+      "ratio": 10.16
+    },
+    {
+      "theme": "dark",
+      "selector": ".pv-overview-label",
+      "foreground": "rgb(145, 189, 181)",
+      "background": "rgb(45, 49, 50)",
+      "ratio": 6.36
+    },
+    {
+      "theme": "dark",
+      "selector": ".pv-overview-card a",
+      "foreground": "rgb(145, 189, 181)",
+      "background": "rgb(45, 49, 50)",
+      "ratio": 6.36
+    }
+  ],
+  "nativeApi": [
+    {
+      "theme": "light",
+      "violations": [
+        {
+          "id": "scrollable-region-focusable",
+          "nodes": [
+            {
+              "target": [
+                ".doc-function.doc-object.doc:nth-child(3) > .doc-contents.doc > .md-typeset__scrollwrap:nth-child(6)"
+              ],
+              "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "theme": "dark",
+      "violations": [
+        {
+          "id": "scrollable-region-focusable",
+          "nodes": [
+            {
+              "target": [
+                ".doc-function.doc-object.doc:nth-child(3) > .doc-contents.doc > .md-typeset__scrollwrap:nth-child(6)"
+              ],
+              "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

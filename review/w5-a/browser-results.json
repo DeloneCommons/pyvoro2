@@ -1,0 +1,863 @@
+{
+  "browser": "155.0.8059.79",
+  "project": [
+    {
+      "theme": "light",
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "theme": "light",
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "theme": "light",
+      "viewport": 320,
+      "document": 305
+    },
+    {
+      "theme": "carbon",
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "theme": "carbon",
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "theme": "carbon",
+      "viewport": 320,
+      "document": 305
+    }
+  ],
+  "specimen": [
+    {
+      "theme": "light",
+      "width": 1366,
+      "images": 4,
+      "positions": [
+        {
+          "tx": 331.5,
+          "ty": 1310,
+          "fx": 812.5,
+          "fy": 1236.953125
+        },
+        {
+          "tx": 812.5,
+          "ty": 1632.0625,
+          "fx": 331.5,
+          "fy": 1577.015625
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "images": 4,
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 1793.515625,
+          "fx": 16,
+          "fy": 2007.859375
+        },
+        {
+          "tx": 16,
+          "ty": 2304.796875,
+          "fx": 16,
+          "fy": 2545.53125
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "images": 4,
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 1905.6875,
+          "fx": 16,
+          "fy": 2172.8125
+        },
+        {
+          "tx": 16,
+          "ty": 2430.375,
+          "fx": 16,
+          "fy": 2750.28125
+        }
+      ]
+    },
+    {
+      "theme": "carbon",
+      "width": 1366,
+      "images": 4,
+      "positions": [
+        {
+          "tx": 331.5,
+          "ty": 1310,
+          "fx": 812.5,
+          "fy": 1236.953125
+        },
+        {
+          "tx": 812.5,
+          "ty": 1632.0625,
+          "fx": 331.5,
+          "fy": 1577.015625
+        }
+      ]
+    },
+    {
+      "theme": "carbon",
+      "width": 390,
+      "images": 4,
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 1793.515625,
+          "fx": 16,
+          "fy": 2007.859375
+        },
+        {
+          "tx": 16,
+          "ty": 2304.796875,
+          "fx": 16,
+          "fy": 2545.53125
+        }
+      ]
+    },
+    {
+      "theme": "carbon",
+      "width": 320,
+      "images": 4,
+      "positions": [
+        {
+          "tx": 16,
+          "ty": 1905.6875,
+          "fx": 16,
+          "fy": 2172.8125
+        },
+        {
+          "tx": 16,
+          "ty": 2430.375,
+          "fx": 16,
+          "fy": 2750.28125
+        }
+      ]
+    }
+  ],
+  "reflow": [
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 1.5,
+      "viewport": 320,
+      "document": 305
+    },
+    {
+      "page": "Project",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 320,
+      "document": 305
+    },
+    {
+      "page": "Specimen",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "page": "Specimen",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "page": "Specimen",
+      "theme": "light",
+      "factor": 2,
+      "viewport": 320,
+      "document": 305
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 1.5,
+      "viewport": 320,
+      "document": 305
+    },
+    {
+      "page": "Project",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 320,
+      "document": 305
+    },
+    {
+      "page": "Specimen",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 1366,
+      "document": 1351
+    },
+    {
+      "page": "Specimen",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 390,
+      "document": 375
+    },
+    {
+      "page": "Specimen",
+      "theme": "carbon",
+      "factor": 2,
+      "viewport": 320,
+      "document": 305
+    }
+  ],
+  "keyboard": [
+    {
+      "theme": "light",
+      "articleLinksReached": 14,
+      "focus": "3px solid"
+    },
+    {
+      "theme": "light",
+      "nativePalette": "Tab and arrow keys"
+    },
+    {
+      "theme": "carbon",
+      "articleLinksReached": 14,
+      "focus": "3px solid"
+    },
+    {
+      "theme": "carbon",
+      "nativePalette": "Tab and arrow keys"
+    }
+  ],
+  "functional": [
+    "light: native Auto/Light/Dark, persistence, live OS change",
+    "light: instant routes through all sections + Home + history",
+    "light: native Search result navigation",
+    "light: 320px / 200% text Search and drawer navigation",
+    "carbon: native Auto/Light/Dark, persistence, live OS change",
+    "carbon: instant routes through all sections + Home + history",
+    "carbon: native Search result navigation",
+    "carbon: 320px / 200% text Search and drawer navigation"
+  ],
+  "unchangedPixels": [
+    {
+      "theme": "light",
+      "width": 1366,
+      "route": "",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "route": "guide/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "route": "examples/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "route": "theory/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "route": "reference/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "route": "development/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 1366,
+      "route": "project/license/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "route": "",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "route": "guide/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "route": "examples/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "route": "theory/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "route": "reference/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "route": "development/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "route": "project/license/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "route": "",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "route": "guide/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "route": "examples/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "route": "theory/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "route": "reference/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "route": "development/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "light",
+      "width": 320,
+      "route": "project/license/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "route": "",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "route": "guide/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "route": "examples/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "route": "theory/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "route": "reference/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "route": "development/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 1366,
+      "route": "project/license/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "route": "",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "route": "guide/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "route": "examples/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "route": "theory/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "route": "reference/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "route": "development/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "route": "project/license/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "route": "",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "route": "guide/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "route": "examples/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "route": "theory/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "route": "reference/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "route": "development/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "route": "project/license/",
+      "identical": true,
+      "pixelsChanged": 0,
+      "maxChannelDelta": 0,
+      "withinRasterTolerance": true
+    }
+  ],
+  "axe": [
+    {
+      "where": "Project light 1366",
+      "violations": []
+    },
+    {
+      "where": "Project light 390",
+      "violations": []
+    },
+    {
+      "where": "Project light 320",
+      "violations": []
+    },
+    {
+      "where": "Search light",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-889-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-889-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-889-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-881-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-881-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-881-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-888-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-888-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-888-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-791-path > li:nth-child(1)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-791-path > li:nth-child(2)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                [
+                  "body > div:nth-child(11)",
+                  "#P0-0-results-791-path > li:nth-child(3)"
+                ]
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.36 (foreground color: #8c8c8c, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "where": "Specimen light 1366",
+      "violations": []
+    },
+    {
+      "where": "Specimen light 390",
+      "violations": []
+    },
+    {
+      "where": "Specimen light 320",
+      "violations": []
+    },
+    {
+      "where": "Project carbon 1366",
+      "violations": []
+    },
+    {
+      "where": "Project carbon 390",
+      "violations": []
+    },
+    {
+      "where": "Project carbon 320",
+      "violations": []
+    },
+    {
+      "where": "Search carbon",
+      "violations": []
+    },
+    {
+      "where": "Specimen carbon 1366",
+      "violations": []
+    },
+    {
+      "where": "Specimen carbon 390",
+      "violations": []
+    },
+    {
+      "where": "Specimen carbon 320",
+      "violations": []
+    }
+  ],
+  "failures": []
+}
