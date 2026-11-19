@@ -120,3 +120,32 @@
 .pv-overview-links p:not(:first-child):not(:last-child) {
   color: var(--overview-muted);
 }
+
+/* Notebook descriptions vary in length: align source links within each row.
+   Opt-in keeps the accepted Project status cards unchanged. */
+.pv-overview-grid--catalogue .pv-overview-card {
+  display: flex;
+  flex-direction: column;
+}
+.md-typeset .pv-overview-grid--catalogue .pv-overview-card > p:last-child {
+  margin-top: auto;
+  padding-top: .8em;
+}
+.md-typeset .pv-overview-grid--catalogue .pv-overview-card > p:nth-last-child(2) {
+  margin-bottom: 0;
+}
+/* Four task groups read as two balanced pairs, not three plus an orphan. */
+.pv-overview-links--tasks {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+.md-typeset .pv-overview-links--tasks h3 { margin-top: 0; }
+
+/* A compact two-line native equation keeps one accessible mathematical
+   expression at 320px with doubled text. Remove the theme's negative math
+   gutters inside this figure so its contents stay within the editorial row. */
+.pv-overview-equation { font-size: .75rem; }
+.md-typeset .pv-overview-equation .arithmatex,
+.md-typeset .pv-overview-equation .arithmatex > mjx-container {
+  margin-inline: 0;
+  padding-inline: 0;
+}

@@ -1,0 +1,68 @@
+{
+  "examples": {
+    "retained": [
+      "../development/notebook-workflow.md",
+      "../guide/inverse/index.md",
+      "../guide/periodic-contacts.md#building-a-periodic-graph-in-practice",
+      "../guide/planar.md",
+      "../guide/planar.md#planar-plotting",
+      "../notebooks/01_basic_compute.md",
+      "../notebooks/02_periodic_graph.md",
+      "../notebooks/03_locate_and_ghost.md",
+      "../notebooks/04_powerfit.md",
+      "../notebooks/05_visualization.md",
+      "../notebooks/06_powerfit_reports.md",
+      "../notebooks/07_powerfit_infeasibility.md",
+      "../notebooks/08_powerfit_active_path.md",
+      "https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/01_basic_compute.ipynb",
+      "https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/02_periodic_graph.ipynb",
+      "https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/03_locate_and_ghost.ipynb",
+      "https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/04_powerfit.ipynb",
+      "https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/05_visualization.ipynb",
+      "https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/06_powerfit_reports.ipynb",
+      "https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/07_powerfit_infeasibility.ipynb",
+      "https://github.com/DeloneCommons/pyvoro2/blob/main/notebooks/08_powerfit_active_path.ipynb"
+    ],
+    "removed": [],
+    "added": [
+      "../guide/choosing-api.md#feature-and-lifecycle-status",
+      "../guide/index.md"
+    ]
+  },
+  "guide": {
+    "retained": [
+      "../examples/index.md",
+      "../reference/index.md",
+      "../theory/index.md",
+      "capabilities.md",
+      "choosing-api.md",
+      "domains.md",
+      "domains.md#box-finite-non-periodic",
+      "forward/index.md",
+      "forward/index.md#geometric-output-and-normalization",
+      "inverse/index.md",
+      "operations.md#1-compute-tessellate-all-sites",
+      "periodic-contacts.md",
+      "planar.md",
+      "planar.md#planar-plotting",
+      "visualization.md"
+    ],
+    "removed": [],
+    "added": [
+      "inverse/index.md#from-a-fit-to-geometry",
+      "inverse/separator-fitting.md",
+      "periodic-contacts.md#diagnostics-catching-subtle-issues-early",
+      "planar.md#planar-normalization"
+    ]
+  },
+  "theory": {
+    "retained": [
+      "../guide/concepts.md",
+      "../project/roadmap.md",
+      "power-diagrams.md",
+      "separator-inverse.md"
+    ],
+    "removed": [],
+    "added": []
+  }
+}
