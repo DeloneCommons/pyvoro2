@@ -9,11 +9,10 @@ milestones.
 
 ## Current plans
 
-The approved current workstream is the operational reboot under
-[issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120) and
-[ADR 0027](../decisions/0027-v0.9-reboot-from-v0.8.md): PR1 operational bootstrap,
-then PR2 curated historical knowledge migration. This is not a new geometric
-implementation plan or release qualification. No future release scope is fixed.
+The operational reboot under [issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120)
+and [ADR 0027](../decisions/0027-v0.9-reboot-from-v0.8.md) has completed its
+bootstrap, historical knowledge migration and branch cutover. Subsequent work
+remains v0.8-based; no future release scope or qualification has been fixed.
 
 Published v0.8.0 is the source baseline. The completed
 [v0.8 technical-maintenance plan](archive/v0.8.md),
@@ -36,6 +35,12 @@ and maintainer approval.
 
 ## Draft workstreams
 
+- [Functional research and implementation sequencing](functional-sequencing.md)
+  — agreed investigation/dependency order: global geometry research first,
+  essential periodic contracts before implementation, independent query and
+  inverse tracks in parallel. **Not** an activated v0.9 release scope.
+  [ADR 0028](../decisions/0028-upstream-voro-vendor-policy.md) governs the
+  transitional Voro++ patch-triage policy.
 - [Documentation refresh](documentation-refresh.md) — **Draft** workstream with agreed initial DOC-W1–W4 (README, Zensical, navigation, landing page), an evolving intermediate backlog, and reserved DOC-W99 for the final audit. It is not an activated v0.9 release plan or gate. The [maintainer-review notebook](https://github.com/DeloneCommons/pyvoro2/tree/dev/notes/maintainer-review) holds research and candidate details.
 
 ## Plan lifecycle
