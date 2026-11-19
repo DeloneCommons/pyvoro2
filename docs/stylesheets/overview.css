@@ -1,0 +1,119 @@
+/* Section overviews: opt in with .pv-overview inside the native article.
+   No body/chrome selectors or JavaScript; instant navigation needs no setup.
+   Carbon (including cold Auto) inherits the existing themes.css tokens. */
+.pv-overview {
+  --overview-ink: var(--pv-ink, #233b3c);
+  --overview-muted: var(--pv-muted, #536365);
+  --overview-accent: var(--pv-accent, #24666a);
+  --overview-rule: var(--pv-rule, #c9d2ce);
+  --overview-surface: var(--pv-surface, #f4f6f3);
+  color: var(--overview-ink);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.md-typeset .pv-overview h1 {
+  margin-bottom: .7em;
+  color: var(--overview-ink);
+  font: 400 clamp(1.9rem, 4vw, 2.6rem)/1.12 Georgia, 'Times New Roman', serif;
+  letter-spacing: -.035em;
+}
+.md-typeset .pv-overview h2 {
+  margin: 1.8em 0 .9em;
+  padding-top: .9em;
+  border-top: 1px solid var(--overview-rule);
+  color: var(--overview-ink);
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -.02em;
+}
+.pv-overview > p { max-width: 74ch; }
+.pv-overview-lead {
+  max-width: 62ch;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+.pv-overview a {
+  color: var(--overview-accent);
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+.pv-overview a:hover { text-decoration-thickness: 2px; }
+.pv-overview a:focus-visible {
+  outline: 3px solid var(--overview-accent);
+  outline-offset: 3px;
+  border-radius: 1px;
+}
+/* Two-column catalogue or status pair; stacks according to article width,
+   not viewport, so the native sidebar and enlarged text retain their space. */
+.pv-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+}
+.md-typeset .pv-overview-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--overview-rule);
+  background: var(--overview-surface);
+}
+.md-typeset .pv-overview-card > :first-child { margin-top: 0; }
+.md-typeset .pv-overview-card > :last-child { margin-bottom: 0; }
+.md-typeset .pv-overview-label {
+  color: var(--overview-accent);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .025em;
+}
+.md-typeset .pv-overview-card h3 {
+  margin: .8em 0 .5em;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+/* Media stays in flow, at its original aspect ratio. Omitting the figure is
+   the complete text-first card, with no reserved slot or placeholder. */
+.md-typeset .pv-overview figure {
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+.pv-overview figure img { width: 100%; height: auto; }
+.md-typeset .pv-overview figcaption {
+  max-width: none;
+  margin: .6rem 0 0;
+  color: var(--overview-muted);
+  font-size: .7rem;
+  line-height: 1.5;
+  text-align: left;
+}
+/* Put text first in source order. Only the wide-screen visual placement
+   alternates; narrow screens and assistive technology keep text then figure. */
+.pv-overview-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 1.2rem;
+  margin-block: 1.5rem;
+}
+.pv-overview-row > * { min-width: 0; }
+.md-typeset .pv-overview-row > div > :first-child { margin-top: 0; }
+.md-typeset .pv-overview-row > div > :last-child { margin-bottom: 0; }
+.pv-overview { container: overview / inline-size; }
+@container overview (min-width: 34rem) {
+  .pv-overview-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pv-overview-row--reverse > figure { grid-column: 1; grid-row: 1; }
+  .pv-overview-row--reverse > div { grid-column: 2; grid-row: 1; }
+}
+/* One level of supporting links. These are quiet groups, not more cards. */
+.pv-overview-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: 1.2rem;
+}
+.pv-overview-links > div { min-width: 0; }
+.md-typeset .pv-overview-links p { margin: 0 0 .7em; }
+.pv-overview-links p:not(:first-child):not(:last-child) {
+  color: var(--overview-muted);
+}
