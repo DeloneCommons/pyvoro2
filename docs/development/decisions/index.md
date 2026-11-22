@@ -36,6 +36,7 @@ Each record has a status:
 
 - [0027 — Restart v0.9 development from published v0.8.0](0027-v0.9-reboot-from-v0.8.md)
 - [0028 — Transitional maintenance of vendored Voro++](0028-upstream-voro-vendor-policy.md)
+- [0029 — Image-qualified geometry and optional global complex](0029-image-qualified-geometry-and-optional-global-complex.md)
 
 Numbers 0018–0026 belong to the protected historical v0.9 attempt and are not
 adopted here. ADR 0027 supersedes ADR 0017's future sequence without reviving

@@ -1,6 +1,6 @@
 # Functional research and implementation sequencing
 
-- **Status:** Draft — maintainer agreed the dependency order; implementation
+- **Status:** Draft — G0 geometry layering selected in ADR 0029; implementation
   scopes and release gates are **not yet approved**
 - **Plan revision:** 0.1
 - **Target release:** Not fixed; candidate work for the v0.8-based v0.9
@@ -20,8 +20,10 @@ topology**, then implement its real prerequisites. Independently useful
 forward/query work and algebraic inverse work can advance in parallel.
 
 This plan establishes **research order and dependency gates**, not an approved
-algorithm, feature list, release timeline, public contract or permission to
-rewrite numerical/native code. [ADR 0027](../decisions/0027-v0.9-reboot-from-v0.8.md)
+implementation, feature list, release timeline, public contract or permission
+to rewrite numerical/native code. The G0 architecture direction is selected in
+[ADR 0029](../decisions/0029-image-qualified-geometry-and-optional-global-complex.md);
+[ADR 0027](../decisions/0027-v0.9-reboot-from-v0.8.md)
 continues to govern the reboot, and the
 [review register](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/review-register.md)
 remains the source of per-capability decisions.
@@ -56,11 +58,11 @@ a future global-complex algorithm has an unconditional correctness guarantee.
 
 | Track | Priority and purpose | Dependency / decision gate |
 |---|---|---|
-| **G0 — geometry architecture research** (R-O01, P-01a) | **Start first.** Compare incidence-first contact/topology reconstruction with direct semantic Laguerre-halfspace construction. Identify exact mathematical contracts and a feasible minimal layer boundary. | No preceding feature implementation; independent analysis and prototypes first. |
+| **G0 — geometry architecture research** (R-O01, P-01a) | **Completed research; direction accepted in ADR 0029.** Independent incidence-first and source-semantic prototypes establish a restricted layering and its limits. | Exit evidence archived in [#149](https://github.com/DeloneCommons/pyvoro2/issues/149); no production feature approved by G0. |
 | **F1 — essential periodic/identity contracts** (R-L01, R-L02a, R-L03a, R-T02a, R-M01b) | Specify source/primary frames, lattice transforms, integer image shifts, physical ties, preserved original operands, genuine wall versus unresolved identity and output ownership. | Shape after initial G0 requirements are clear; approve each API/semantic change separately. |
 | **F2 — independent forward/query extensions** (R-Q01, R-G01a/b, R-G02a, R-M01a) | Weight-first `locate`/`ghost_cells`, independent ghost batches, initialized IDs, query-owner and ghost-image metadata. | Can start alongside G0; synchronize any shared image/frame contracts with F1. No need to wait for G1b. |
-| **G1a — derived image-qualified adjacency** | Implement the independently validated realized-contact layer or improve existing functions only after choosing the G0 strategy. | G0 decision and required subset of F1; local cell computation never depends on success here. |
-| **G1b — optional global periodic complex** | Global vertex/edge/face identities, incidence, lattice winding and explicit limitations; no invented missing facets or zero shifts. | G0 decision, F1 prerequisites and a trustworthy G1a interface; separate acceptance. |
+| **G1a — derived image-qualified adjacency** | Separately scope observed-face contact matching and image qualification, independent of global-complex construction; preserve source-contact proof as a distinct stronger assertion. | Selected G0 direction and required subset of F1; local cell computation never depends on success here. |
+| **G1b — optional global periodic complex** | Restricted face-first assembly of validated observed convex cells, vertex/edge/face incidence, lattice winding and explicit limitations; no invented missing facets or zero shifts. | G0 direction, F1 prerequisites and a trustworthy G1a interface; separate implementation acceptance. |
 | **I0 — inverse correctness first** (R-I05, R-I06) | Reproduce historical final-state, hard-feasibility, affine-residual and numeric-diagnostic failures on the *current* v0.8-based source, repair only confirmed defects with independent oracles. | May proceed alongside G0/F1/F2; necessary before expanding unstable result semantics. |
 | **I1 — algebraic inverse model/API** (R-I01–R-I03) | Independently review observation, mismatch, hard-bound and penalty spaces; row bounds/applicability and shape-parameter candidates, with source-row identity and zero-strength semantics. | Can design alongside G0 and after I0 baseline review. Each model/API change needs a separate contract and tests. |
 | **I2 — realization-aware facade** (R-I04) | Design a normal high-level workflow over fitting, actual contacts/images, final-state and outer termination while retaining appropriate advanced/experimental controls. | Requires reliable G1a contact semantics and validated inverse state; does **not** require full G1b. |
@@ -97,11 +99,13 @@ pre-accepted proofs. Specify whether a result is exact, tolerance-dependent,
 incomplete, unavailable, or an unsupported configuration; preserve local
 geometry in all those outcomes.
 
-The **G0 exit gate** is an independently reviewed research recommendation
-and precise interface requirements for local cells, contacts and globalization.
-It is acceptable to conclude that only G1a is currently feasible. There is no
-automatic permission to add new public classes, demand global certification
-on every `compute()`, or discard baseline diagnostics.
+The **G0 exit gate** was met by independently reviewed research and the
+[archived evidence in issue #149](https://github.com/DeloneCommons/pyvoro2/issues/149#issuecomment-7079961449).
+[ADR 0029](../decisions/0029-image-qualified-geometry-and-optional-global-complex.md) selects the restricted layered
+direction: local cells, independent image-qualified observed contacts (G1a),
+optional face-first observed-complex assembly (G1b), and separate source
+checks. This does not authorize new public classes, global certification on
+every `compute()`, or removal of baseline diagnostics.
 
 ## F1/F2 — minimum foundation, not a blanket prerequisite list
 
@@ -150,14 +154,15 @@ a stable API does **not** promise universal active-set convergence.
 
 ## Next explicit decisions
 
-1. Scope and approve a **G0 research issue** with independent mathematical
-   counterexamples and prototype/evaluation expectations.
-2. Separately confirm transitional Voro++ policy in ADR 0028; triage specific
-   R-O02b/R-O03 cases on upstream `dev` instead of treating them as a universal
-   pre-C++ gate.
-3. Translate G0 requirements into individually approved F1 tasks and research
-   decision(s) for G1a/G1b. Split F2 and I0/I1 into useful independent issues
-   as contracts are settled.
+1. **G0 completed:** preserve the [#149 evidence archive](https://github.com/DeloneCommons/pyvoro2/issues/149#issuecomment-7079961449) and apply [ADR 0029](../decisions/0029-image-qualified-geometry-and-optional-global-complex.md) as the architectural direction.
+2. **F1 next:** specify and separately approve only the periodic frame, image,
+   source-operand, wall/unknown, occurrence and snapshot contracts required by
+   G1a. Evaluate historical WP2–WP4 and basis reduction as evidence, not as
+   automatically reinstated code or mandatory certification infrastructure.
+3. Scope and review G1a implementation independently; defer restricted G1b
+   implementation until G1a's contracts and representative integration are
+   credible. F2, I0/I1 and per-defect Voro++ triage may proceed in parallel
+   under ADR 0028 where applicable.
 4. **Only after feasibility and downstream needs are clearer**, choose the
    actual v0.9 release scope, milestone, qualifications and deferred work.
 
@@ -175,3 +180,4 @@ post-1.0 research possibilities, not gates for this plan.
 | Date | Change |
 |---|---|
 | 2026-11-19 | Agreed research-first geometry ordering, parallel independent forward/inverse tracks, and the separate transitional Voro++ decision. |
+| 2026-11-22 | G0 research audited and archived in issue #149; ADR 0029 selects the layer boundary, preserving separate F1/G1a/G1b implementation gates. |
