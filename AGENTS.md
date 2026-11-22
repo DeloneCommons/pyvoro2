@@ -12,7 +12,9 @@
   authorized changes. A proposal or historical implementation is not approval.
 - Preserve v0.8 behavior unless the task explicitly changes it. Historical
   ADRs 0018–0026 and the former v0.9 release sequence do not govern the reboot.
-  Future geometry architecture and release scope remain undecided.
+  [ADR 0029](docs/development/decisions/0029-image-qualified-geometry-and-optional-global-complex.md)
+  selects the geometry-layering direction; concrete production APIs,
+  implementation scopes and release outcomes remain undecided.
 - Escalate unresolved architectural/public-API choices, new mandatory
   dependencies, or scope contradictions; do not hide them in implementation.
 

@@ -95,7 +95,9 @@ During the reboot, distinguish published v0.8 behavior, the superseded
 historical v0.9 attempt, the approved operational transition, research
 candidates, and separately approved implementation. Follow
 [ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md): historical ADRs 0018–0026
-are not adopted; future architecture and release scope are undecided.
+are not adopted. [ADR 0029](decisions/0029-image-qualified-geometry-and-optional-global-complex.md)
+selects the G0 geometry-layering direction, not concrete production APIs or
+implementation scope; release commitments remain undecided.
 Prescribed measures and mixed inversion have no approved API, architectural
 relationship, implementation, release target, or pre-1.0 inclusion. Do not
 turn their old version assignments into new promises.
