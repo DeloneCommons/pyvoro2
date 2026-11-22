@@ -36,8 +36,8 @@ and maintainer approval.
 ## Draft workstreams
 
 - [Functional research and implementation sequencing](functional-sequencing.md)
-  — agreed investigation/dependency order: global geometry research first,
-  essential periodic contracts before implementation, independent query and
+  — Draft 0.2: G0 research complete; future P0 and bounded F1-A/B/C foundation
+  before G1a, with separate admission to optional G1b; independent query and
   inverse tracks in parallel. **Not** an activated v0.9 release scope.
   [ADR 0028](../decisions/0028-upstream-voro-vendor-policy.md) governs the
   transitional Voro++ patch-triage policy.
