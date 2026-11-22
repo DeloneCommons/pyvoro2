@@ -139,7 +139,18 @@ Live `dev` was checked before work and was
 source inspected and executed below is that revision. The adjacent
 [isolated replay](f1_periodic_characterization.py) emits lossless hexadecimal
 float inputs/observations, rational oracle values, route, checks, revision,
-environment and native module paths. No bug is asserted as desired behavior.
+environment and module paths. No bug is asserted as desired behavior.
+
+The replay resolves its checkout root from its own file location and obtains
+Git HEAD there, independently of the process working directory. Before running
+cases and before emitting JSON, it checks every loaded `pyvoro2` Python module
+against its expected file in that checkout's `src/pyvoro2` tree. The report's
+`source_provenance` records the root, resolved Python module paths and whether
+the working tree is dirty. A different working directory is supported with
+the correct editable checkout installed; no import-path override is applied.
+With `--native`, actual extension paths are recorded and may legitimately be
+outside `src/`. These checks establish Python source location, **not native
+binary/source identity**; native build provenance remains independently unproven.
 
 ```bash
 python notes/maintainer-review/contracts/f1_periodic_characterization.py > p0.json
@@ -148,9 +159,11 @@ python notes/maintainer-review/contracts/f1_periodic_characterization.py --nativ
 
 Both commands intentionally **exit 1 on this baseline** for reported
 discrepancies; they are outside mandatory pytest discovery, with no xfails or
-CI changes. An unexpected execution exception is distinct from a completed
-JSON report. Default skips native execution; `--native` requires both compiled
-modules and does not silently skip. Promotion owner is the maintainer accepting
+CI changes. Setup/provenance failures instead **exit 2**, with an explicit
+stderr diagnostic and no characterization JSON. A completed report exits zero
+only if its discrepancy checks all pass. Default skips native execution;
+`--native` requires both compiled modules and does not silently skip.
+Promotion owner is the maintainer accepting
 F1-A: move corrected source/remap cases into mandatory A3 regressions and frame
 controls into A2 tests after approving their contracts. Historical targets in
 the script remain explicitly candidates, not adopted epsilon policy.
@@ -160,7 +173,8 @@ invariants, allowing A's original tiny x seam to snap to zero.
 
 | Case and exact input | Independent oracle / requirement | Actual observation and route |
 | --- | --- | --- |
-| #60: unit periods, sites `(2^-41,1/4,1/4)`, `(1/2,1/4,1/4)` | `d=1/2-2^-41` lies strictly between zero and half a period, so shift zero is uniquely nearest among all integers; competing squared gap `1-2d=2^-40`. | Public `resolve_separator_observations` returns shift `(-1,0,0)`, delta `(-1/2,0,0)`. Directly run, Python source; snapping precedes exact CVP. No fitting/CVP change. |
+| #60 orthorhombic: `OrthorhombicCell(((0,1),)*3)`, sites `(2^-41,1/4,1/4)`, `(1/2,1/4,1/4)` | `d=1/2-2^-41` lies strictly between zero and half a period, so shift zero is uniquely nearest among all integers; competing squared gap `1-2d=2^-40`. | Public `resolve_separator_observations` returns shift `(-1,0,0)`, delta `(-1/2,0,0)`. Directly run, Python source; snapping precedes exact CVP. No fitting/CVP change. |
+| #60 triclinic API: `PeriodicCell(I)`, same exact original sites | Independently assessed against source shift zero, `d=1/2-2^-41`, gap `2^-40`, without using the orthorhombic result as an oracle. | Separately recorded public separator call returns shift `(-1,0,0)`, delta `(-1/2,0,0)`. Direct Python run; the same source-semantic defect is observed, not accepted as correct. |
 | #65: rows `(1,0,0),(-1/2,1,0),(0,0,1)`; point `(3/16,-2^-55,3/8)` | Allow existing default y snapping to zero; solve `q @ A = (3/16,0,3/8)-reported` by independent Fraction Gaussian elimination. A legitimate lattice translation requires integral `q`. | Public and detached snapshot return `(0,0,3/8)`, shift zero; `q=(3/16,0,0)` is nonintegral. Direct compiled standard dispatch also receives/stores/reports x=0; structured source stays original. Loss of `3/16` is separate from permitted tiny y snapping. |
 | #67 A: rows `(1,0,0),(1/4,1,0),(0,0,1)`; point `(-2^-55,-2^-55,3/8)` | Numerical backend half-open range and preservation of tangential residual; historical candidate `(0,0,3/8)`, shift zero. | Public/snapshot `eps=0` return `(1,0,3/8)`, shift `(-1,0,0)`: excluded endpoint. Default and `1e-12` pass this historical target. Direct Python runs include translations `(0,0,0),(2,-1,3),(-2,1,-3)`. |
 | #67 B: rows `(1,0,0),(-1/2,1,0),(0,2^-54,1)`; point `(3/16,-2^-55,-2^-55)` | Same backend requirements; historical candidate `(3/16,0,0)`, shift zero. | `eps=0`: `(11/16,1,0)`, shift `(-1,-1,0)`, fails range **but preserves x=3/16 after exact shift transport**; default/`1e-12`: `(0,0,0)`, loses x residual. Direct public/snapshot Python runs, same translated controls. |
@@ -234,11 +248,12 @@ maintainer acceptance.
 Validation commands (venv executables; production tree unchanged):
 
 - `python -m pytest -q`: **2780 passed, 2 skipped**, 6 environment warnings,
-  54.77 s. Skips are the optional independent `pyvoro` cross-checks; warnings
+  55.02 s on the remediation rerun. Skips are the optional independent `pyvoro`
+  cross-checks; warnings
   concern unwritable IPython state using temporary storage.
 - `python notes/maintainer-review/contracts/f1_periodic_characterization.py --native`:
-  complete JSON, **47 route records, 26 with discrepancies**, expected exit 1.
-  The default pure-Python run completes with 44 records, 25 with discrepancies,
+  complete JSON, **48 route records, 27 with discrepancies**, expected exit 1.
+  The default pure-Python run completes with 45 records, 26 with discrepancies,
   expected exit 1, explicitly skipping native execution.
 - `python -m flake8 src tests tools benchmarks examples notes/maintainer-review/contracts/f1_periodic_characterization.py`:
   pass; `python tools/export_notebooks.py --check`: pass.
@@ -246,6 +261,25 @@ Validation commands (venv executables; production tree unchanged):
   Markdown files checked separately and resolve; `git diff --check`: pass.
   Initial obsolete `mkdocs build --strict`/`tools/gen_readme.py --check`
   attempts were inapplicable: current dev uses Zensical and no README generator.
+
+Focused M1/M2 remediation was based on reviewed PR HEAD
+`6c7204b8468a18eae226edf1f51796970828849a`; only this note and the replay changed.
+`python -m pytest -q /workspace/work/test_p0_remediation.py` ran a local
+five-case harness: **5 passed**. It independently checked checkout revision
+and Python module paths, execution inside a foreign Git checkout, rejection
+of an unrelated copied installation and of one mixed-origin internal module
+(both exit 2, stderr only), both #60 routes against the exact oracle, and
+unchanged pre-existing numerical records. The harness is scratch validation,
+not new repository infrastructure. Direct commands also run:
+
+- From `/workspace/pyvoro2`, `python notes/maintainer-review/contracts/f1_periodic_characterization.py --native > /workspace/work/p0-remediation-native.json`:
+  expected exit 1, counts above, 53 Python source paths checked, both external
+  editable extension paths recorded.
+- From `/workspace/work`, `python /workspace/pyvoro2/notes/maintainer-review/contracts/f1_periodic_characterization.py > /workspace/work/p0-remediation-other-cwd.json`:
+  expected exit 1, correct checkout revision and source paths, native skipped.
+
+Both pre-commit reports accurately mark the worktree dirty; this is source
+location evidence, not an assertion that every file equals committed HEAD.
 
 No complete native requalification, installed-wheel/distribution check,
 notebook execution or remote CI result is claimed. Independent PR review and

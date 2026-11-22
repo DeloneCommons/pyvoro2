@@ -1,23 +1,69 @@
-"""Isolated P0 replay for #153; exit 1 means a reported contract discrepancy.
+"""Isolated P0 replay: exit 1 for discrepancies, 2 for setup/provenance failure.
 
-Run from the repository root after editable installation. No production fixes,
+Run from any directory after installing this checkout editable. No production fixes,
 permanent xfails, or additional runtime dependencies. See the adjacent note for
 authority, interpretation, and promotion ownership. --native also runs Voro++.
 """
 
 import argparse
 from fractions import Fraction as F
+from importlib.machinery import EXTENSION_SUFFIXES
 import json
+from pathlib import Path
 import platform
 import subprocess
 import sys
 
-import numpy as np
+try:
+    import numpy as np
 
-from pyvoro2 import OrthorhombicCell, PeriodicCell, compute
-from pyvoro2._internal.spatial.domain_geometry import DomainGeometry3D
-from pyvoro2.inverse.separator.constraints import resolve_separator_observations
-from pyvoro2.planar import RectangularCell
+    from pyvoro2 import OrthorhombicCell, PeriodicCell, compute
+    from pyvoro2._internal.spatial.domain_geometry import DomainGeometry3D
+    from pyvoro2.inverse.separator.constraints import resolve_separator_observations
+    from pyvoro2.planar import RectangularCell
+except ImportError as error:
+    print(f'P0 setup/provenance failure: {error}', file=sys.stderr)
+    sys.exit(2)
+
+
+class ReplaySetupError(RuntimeError):
+    """The checkout or imported Python sources cannot establish provenance."""
+
+
+def source_provenance():
+    """Check loaded Python sources against the checkout containing this script."""
+    try:
+        root = Path(__file__).resolve(strict=True).parents[3]
+        source = root / 'src/pyvoro2'
+
+        def git(*args):
+            return subprocess.check_output(
+                ['git', '-C', str(root), *args], text=True,
+                stderr=subprocess.PIPE).strip()
+
+        if Path(git('rev-parse', '--show-toplevel')).resolve() != root:
+            raise ValueError(f'script location is not the checkout root: {root}')
+        paths = {}
+        for name, module in sorted(sys.modules.copy().items()):
+            if name != 'pyvoro2' and not name.startswith('pyvoro2.'):
+                continue
+            actual = Path(module.__file__).resolve(strict=True)
+            if name in ('pyvoro2._core', 'pyvoro2._core2d') and any(
+                    str(actual).endswith(suffix) for suffix in EXTENSION_SUFFIXES):
+                continue  # Editable native binaries may live outside src/.
+            expected = source.joinpath(*name.split('.')[1:])
+            expected = (expected / '__init__.py' if hasattr(module, '__path__')
+                        else expected.with_suffix('.py'))
+            if actual != expected.resolve(strict=True):
+                raise ValueError(f'{name} imported from {actual}; expected {expected}')
+            paths[name] = str(actual)
+        return dict(repository_root=str(root), expected_python_root=str(source),
+                    python_modules=paths, python_sources_match_checkout=True,
+                    worktree_dirty=bool(git('status', '--porcelain')),
+                    revision=git('rev-parse', 'HEAD'))
+    except (AttributeError, OSError, TypeError, ValueError,
+            subprocess.CalledProcessError) as error:
+        raise ReplaySetupError(str(error)) from error
 
 
 def exact(value):
@@ -69,17 +115,17 @@ def record(rows, case, route, inputs, observed, checks, oracle):
 
 def source_and_remap(rows):
     points = np.array([[2.0**-41, 1/4, 1/4], [1/2, 1/4, 1/4]])
-    domain = OrthorhombicCell(((0, 1),) * 3)
-    obs = resolve_separator_observations(points, [(0, 1, 1/2)], domain=domain)
     displacement = F(1, 2) - F(1, 2**41)
     # Since 0 < d < 1/2, zero is uniquely closest among ALL integers.
     gap = (displacement - 1)**2 - displacement**2
     assert gap == F(1, 2**40)
-    record(rows, '#60', 'Python separator consumer', points,
-           dict(shift=obs.shifts, delta=obs.delta),
-           dict(source_shift=np.array_equal(obs.shifts, [[0, 0, 0]]),
-                source_delta=F(float(obs.delta[0, 0])) == displacement),
-           dict(unique_shift=[0, 0, 0], dx=displacement, squared_gap=gap))
+    for domain in (OrthorhombicCell(((0, 1),) * 3), PeriodicCell(np.eye(3))):
+        obs = resolve_separator_observations(points, [(0, 1, 1/2)], domain=domain)
+        record(rows, '#60', f'Python separator consumer ({type(domain).__name__})',
+               points, dict(shift=obs.shifts, delta=obs.delta),
+               dict(source_shift=np.array_equal(obs.shifts, [[0, 0, 0]]),
+                    source_delta=F(float(obs.delta[0, 0])) == displacement),
+               dict(unique_shift=[0, 0, 0], dx=displacement, squared_gap=gap))
 
     basis = np.array([[1., 0., 0.], [-1/2, 1., 0.], [0., 0., 1.]])
     point = np.array([[3/16, -2.0**-55, 3/8]])
@@ -264,25 +310,34 @@ def native_controls(rows, cell, point):
                     unit_measure=result.cell_measures[0] == 1.),
                'single-site unit box: genuine wall labels, unit measure, '
                'owned source array')
-    return [_core.__file__, _core2d.__file__]
+    return [str(Path(module.__file__).resolve()) for module in (_core, _core2d)]
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--native', action='store_true')
     args = parser.parse_args()
+    source_provenance()  # Refuse mismatched imports before running the cases.
     rows = []
     cell, point = source_and_remap(rows)
     endpoints(rows)
     frames(rows)
     modules = native_controls(rows, cell, point) if args.native else []
-    report = dict(revision=subprocess.check_output(
-        ['git', 'rev-parse', 'HEAD'], text=True).strip(),
+    provenance = source_provenance()  # Include/check any lazily imported sources.
+    report = dict(
+        revision=provenance.pop('revision'), source_provenance=provenance,
         python=sys.version, platform=platform.platform(), numpy=np.__version__,
-        native_modules=modules, native_skipped=not args.native, cases=rows)
+        native_modules=modules, native_skipped=not args.native, cases=rows,
+        native_build_provenance=('Paths only; binary/source identity '
+                                 'is not established.'),
+    )
     print(json.dumps(report, indent=2))
     return int(any(not all(row['checks'].values()) for row in rows))
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (ReplaySetupError, ImportError) as error:
+        print(f'P0 setup/provenance failure: {error}', file=sys.stderr)
+        sys.exit(2)
