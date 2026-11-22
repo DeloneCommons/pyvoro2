@@ -18,10 +18,10 @@ the **v0.8 implementation retained by the reboot**.
 transition from published v0.8.0. The factual implementation below remains the
 baseline. Historical v0.9 designs and ADRs 0018–0026 are not adopted, and
 the geometry-layering direction is selected by
-[ADR 0029](decisions/0029-image-qualified-geometry-and-optional-global-complex.md), while concrete APIs, implementation
-scope and release commitments remain undecided. PR2 owns the curated
-historical inventory. Earlier future-facing prescriptions do not fix
-the architecture of possible new inverse models.
+[ADR 0029](decisions/0029-image-qualified-geometry-and-optional-global-complex.md).
+Concrete APIs, implementation scope and release commitments remain undecided.
+PR2 owns the curated historical inventory. Earlier future-facing prescriptions
+do not fix the architecture of possible new inverse models.
 
 ## Architectural principles
 

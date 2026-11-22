@@ -8,7 +8,7 @@
 - **Related:** [ADR 0027](0027-v0.9-reboot-from-v0.8.md),
   [ADR 0028](0028-upstream-voro-vendor-policy.md),
   [functional sequencing](../plans/functional-sequencing.md),
-  [maintainer review register](../../../notes/maintainer-review/review-register.md)
+  [maintainer review register](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/review-register.md)
 
 ## Context and evidence
 
