@@ -71,7 +71,7 @@ a future global-complex algorithm has an unconditional correctness guarantee.
 | **F1-C — integration, evidence and G1-ready foundation** (R-L02a, R-L03b, R-T02a, R-M01b) | C1 complete nearest-image integration; C2 duplicate safety/insertion evidence; C3 occurrence/snapshot contracts; C4 mandatory translation-recovery analysis and disposition. | Applicable A/B interfaces; C3 preparation may use frozen interfaces. B/C integration and F1→G1a evidence reviews remain required. |
 | **F2 — independent forward/query extensions** (R-Q01, R-G01a/b, R-G02a, R-M01a) | Weight-first `locate`/`ghost_cells`, independent ghost batches, initialized IDs, query-owner and ghost-image metadata. | Can start alongside G0; synchronize any shared image/frame contracts with F1. No need to wait for G1b. |
 | **G1a — derived image-qualified adjacency** | Separately implement image-qualified contacts from observed local face/edge evidence, with bounded/complete matching for the admitted claim or honest refusal. | F1 integration/admission review, including explicit C4 disposition; separately approve precise 3D scope and independently review the 2D adapter. Local cells remain independently usable. |
-| **G1b — optional global periodic complex** | Separately authorized restricted face-first observed-complex assembly with oriented incidence/winding; no invented missing facets or zero shifts. | Separate G1a→G1b admission review of face cycles, reciprocal polygons, transport and V/E/F/C attachments; contacts alone do not establish these. |
+| **G1b — optional global periodic complex** | Candidate restricted face-first observed-complex assembly with oriented incidence/winding; no invented missing facets or zero shifts. | Requires a separate G1a→G1b admission review and explicit implementation approval; assess face cycles, reciprocal polygons, transport and V/E/F/C attachments. Contacts alone do not establish these. |
 | **I0 — inverse correctness first** (R-I05, R-I06) | Reproduce historical final-state, hard-feasibility, affine-residual and numeric-diagnostic failures on the *current* v0.8-based source, repair only confirmed defects with independent oracles. | May proceed alongside G0/F1/F2; necessary before expanding unstable result semantics. |
 | **I1 — algebraic inverse model/API** (R-I01–R-I03) | Independently review observation, mismatch, hard-bound and penalty spaces; row bounds/applicability and shape-parameter candidates, with source-row identity and zero-strength semantics. | Can design alongside G0 and after I0 baseline review. Each model/API change needs a separate contract and tests. |
 | **I2 — realization-aware facade** (R-I04) | Design a normal high-level workflow over fitting, actual contacts/images, final-state and outer termination while retaining appropriate advanced/experimental controls. | Requires reliable G1a contact semantics and validated inverse state; does **not** require full G1b. |
@@ -252,9 +252,9 @@ The separate **G1a→G1b admission review** must establish simple strictly conve
 face cycles, unique complete reciprocal polygon correspondence, coherent
 integer transport and oriented V/E/F/C attachments; verified contacts alone
 do not establish these. Include G0-P1's star/self-intersection control and the
-$2^{-52}$ omitted-source-facet negative control. G1b remains separately
-authorized optional restricted face-first observed-complex assembly with
-incidence/winding. A correct observed quotient is not complete source power
+$2^{-52}$ omitted-source-facet negative control. G1b remains an optional restricted face-first observed-complex capability,
+subject to a separate G1a→G1b admission review and explicit implementation
+approval; its intended scope includes incidence and winding. A correct observed quotient is not complete source power
 geometry; source diagnostics remain separate and optional.
 
 F2's weight-first `locate` and `ghost_cells` are valuable public API
