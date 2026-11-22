@@ -252,10 +252,11 @@ The separate **G1a→G1b admission review** must establish simple strictly conve
 face cycles, unique complete reciprocal polygon correspondence, coherent
 integer transport and oriented V/E/F/C attachments; verified contacts alone
 do not establish these. Include G0-P1's star/self-intersection control and the
-$2^{-52}$ omitted-source-facet negative control. G1b remains an optional restricted face-first observed-complex capability,
-subject to a separate G1a→G1b admission review and explicit implementation
-approval; its intended scope includes incidence and winding. A correct observed quotient is not complete source power
-geometry; source diagnostics remain separate and optional.
+$2^{-52}$ omitted-source-facet negative control. G1b remains an optional
+restricted face-first observed-complex capability, subject to a separate
+G1a→G1b admission review and explicit implementation approval. Its intended
+scope includes incidence and winding. A correct observed quotient is not
+complete source power geometry; source diagnostics remain separate and optional.
 
 F2's weight-first `locate` and `ghost_cells` are valuable public API
 improvements but do not mathematically define the global complex. Ghost state,
