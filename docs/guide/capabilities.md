@@ -34,11 +34,16 @@ algorithm remain separate result layers.
 
 ## Wrapper restrictions and stabilization candidates
 
-Some current restrictions are properties of the v0.8 Python wrapper rather
-than mathematical impossibilities or permanent backend limits. Examples include
-radius-only power input for `locate(...)` and `ghost_cells(...)`, orientation
-restrictions on triclinic user bases, and public-output/search conditions used
-by periodic boundary image reconstruction.
+Some restrictions reflect the present Python/native interfaces rather than
+mathematical impossibilities or permanent backend limits. For example, power
+`locate(...)` and `ghost_cells(...)` still use radius-based input. Under
+[ADR 0030](../development/decisions/0030-exact-user-lattice-and-native-admission.md),
+`PeriodicCell` construction accepts finite, exactly nonsingular binary64 row
+lattices of either handedness, but the native adapter still requires
+right-handedness and its existing numerical admission safeguards. Native
+operations on left-handed user lattices are therefore not yet supported.
+Periodic boundary-image reconstruction also retains its existing output/search
+limitations.
 
 In particular, certified nearest/minimum-image resolution for separator
 observations does not make every boundary-image reconstruction path certified.

@@ -92,18 +92,19 @@ future release sequence without reviving ADR 0006's earlier sequence.
 `0.9.0.dev0` alone does not promote any API or approve numerical changes.
 Future stabilization scope and release targets require separate approval.
 
-## A1 user-coordinate surface under review
+## A1 user-coordinate surface (accepted contract; provisional API)
 
-Issue [#155](https://github.com/DeloneCommons/pyvoro2/issues/155) authorizes the
-focused implementation PR, with final contract acceptance reserved for explicit
-maintainer approval. The four new 3D `PeriodicCell` methods are **Provisional**:
+Issue [#155](https://github.com/DeloneCommons/pyvoro2/issues/155) and reviewed
+[PR #156](https://github.com/DeloneCommons/pyvoro2/pull/156) established the
+accepted F1-A1 contract. The four 3D `PeriodicCell` methods remain
+**Provisional** under the API lifecycle policy:
 `cart_to_fractional(points)`, `fractional_to_cart(fractional)`,
 `wrap_fractional(fractional, *, return_shifts=False)` and
 `wrap_cart(points, *, return_shifts=False)`.
 
 Their exact user-basis decisions, rounded owned views and operation-level range
 failures are specified in the [domain reference](../reference/domains.md) and
-[proposed ADR 0030](decisions/0030-exact-user-lattice-and-native-admission.md).
+[accepted ADR 0030](decisions/0030-exact-user-lattice-and-native-admission.md).
 Construction now admits exactly nonsingular finite binary64 rows of either
 handedness; the old numerical rejection/warning policy moves to native use.
 This deliberate compatibility change does not broaden native or private

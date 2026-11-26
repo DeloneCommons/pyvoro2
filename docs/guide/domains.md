@@ -177,7 +177,7 @@ private periodic-image kernel still restricts signed diagonal and left-handed
 bases; downstream duplicate/inverse/matching operations do not acquire universal
 signed-lattice support from these helpers. A1 leaves the existing numerical
 frame, coupled backend remapping, visualization and source-consumer behavior
-unchanged. The [proposed A1 decision](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
+unchanged. The [accepted ADR 0030](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
 records the narrow compatibility change and its review boundary.
 
 ## Backend-primary remapping helpers

@@ -19,7 +19,9 @@ transition from published v0.8.0. The factual implementation below remains the
 baseline. Historical v0.9 designs and ADRs 0018–0026 are not adopted, and
 the geometry-layering direction is selected by
 [ADR 0029](decisions/0029-image-qualified-geometry-and-optional-global-complex.md).
-Concrete APIs, implementation scope and release commitments remain undecided.
+Concrete geometry-layer APIs, implementation scope and release commitments remain
+undecided. The independently reviewed F1-A1 user-lattice contract was accepted
+in [ADR 0030](decisions/0030-exact-user-lattice-and-native-admission.md).
 PR2 owns the curated historical inventory. Earlier future-facing prescriptions
 do not fix the architecture of possible new inverse models.
 
@@ -271,7 +273,7 @@ origins are owned nested tuples of built-in floats, while periodic flags are
 owned tuples of built-in Booleans. Retained numerical inputs are owned
 C-contiguous read-only arrays. This protects a frozen/value object from caller
 mutation without deep-freezing raw nested tessellation records or
-solver-created result graphs. `PeriodicCell` additionally requires a
+solver-created result graphs. In the published v0.8 baseline, `PeriodicCell` additionally required a
 right-handed basis at construction. Remapping proves every returned lattice
 shift representable as signed int64 before conversion. Normalization treats
 mutable raw cell records as a fresh public boundary, validates all consumed
@@ -281,6 +283,14 @@ constructing topology or applying annotations. This keeps normalization
 independent of NumPy warning and floating-point error settings while leaving
 the raw records themselves mutable. ADR 0011 fixes this R3-B contract and its
 boundary from R4–R9.
+
+For the current `dev` implementation, [ADR 0030](decisions/0030-exact-user-lattice-and-native-admission.md)
+narrowly supersedes the constructor-level handedness and numerical admission:
+`PeriodicCell` now accepts both handedness signs for finite binary64 rows with
+exactly nonzero determinant, and exposes four provisional exact user-coordinate
+helpers. The existing right-handedness and numerical checks remain required
+when preparing a Voro++ native frame. This does not revise the historical v0.8
+account above or qualify the current Gram–Schmidt frame.
 
 ### Certified periodic minimum-image geometry
 

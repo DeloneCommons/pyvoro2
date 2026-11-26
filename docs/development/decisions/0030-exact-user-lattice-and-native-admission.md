@@ -1,9 +1,11 @@
 # 0030 — Exact user lattice with separate native admission
 
-- **Status:** Proposed — acceptance requires explicit maintainer approval of the A1 PR
+- **Status:** Accepted — maintainer-approved after independent A1 review
 - **Date:** 2026-11-26
 - **Issue:** [F1-A1 #155](https://github.com/DeloneCommons/pyvoro2/issues/155)
-- **Proposed narrow supersession:** ADR 0011's `PeriodicCell` construction
+- **Accepted implementation:** [PR #156](https://github.com/DeloneCommons/pyvoro2/pull/156),
+  squash-merged to `dev` as [`c51e27b`](https://github.com/DeloneCommons/pyvoro2/commit/c51e27b08650476c4f2cda7005afe0249d26196d)
+- **Narrow supersession:** ADR 0011's `PeriodicCell` construction
   handedness and numerical-admission placement only
 - **Related:** [ADR 0011](0011-strict-input-and-ownership-contract.md),
   [ADR 0010](0010-native-construction-preconditions.md),
@@ -14,14 +16,15 @@
 
 ## Context
 
-ADR 0011 requires a positive floating determinant, right-handed rows and
-constructor-level numerical conditioning thresholds. That historical decision
-remains intact. Issue #155 authorizes a focused implementation for review:
-mathematical user-lattice validity must be distinguished from the narrower
-admission policy of the current Voro++ adapter. P0's known frame and remapping
+ADR 0011 required a positive floating determinant, right-handed rows and
+constructor-level numerical conditioning thresholds. Its historical record
+remains intact; this decision supersedes only that constructor-level admission
+rule on the current development line. Issue #155 authorized the implementation:
+mathematical user-lattice validity is distinct from the narrower admission
+policy of the current Voro++ adapter. P0's known frame and remapping
 defects remain targets of A2/A3; A1 does not qualify or replace those algorithms.
 
-## Proposed decision
+## Decision
 
 1. Preserve canonical owned finite binary64 rows and origin with row convention
    `x = o + f @ A`. Mathematical validity is exactly `det(A) != 0`, either sign.
@@ -57,14 +60,14 @@ defects remain targets of A2/A3; A1 does not qualify or replace those algorithms
 Signed, near-singular and extreme-scale lattices can construct and use pure
 helpers where the requested views are representable. Existing backend helpers
 retain their numerical meanings and reject unsupported native use before
-unsafe dispatch. The private periodic-image kernel has an independent positive-diagonal/right-handed admission boundary; this proposal does not change
+unsafe dispatch. The private periodic-image kernel has an independent positive-diagonal/right-handed admission boundary; this decision does not change
 its decisions, tie rules or resource budgets. Even an admitted native frame
 can encounter that consumer's existing controlled refusal.
 
 The current Gram–Schmidt frame, remap algorithms and #60/#65/#67 P0 observations
 are unchanged. This decision does not authorize A2 QR/parity work, A3 remap or
 source-consumer repairs, B1 reduction, matching changes, broader 2D domains,
-native/vendor changes or any release/merge acceptance. The historical v0.8
+native/vendor changes or any release commitment. The historical v0.8
 inventory and ADR 0011 are not rewritten to imply prior approval.
 
 ## Alternatives considered
@@ -76,11 +79,12 @@ inventory and ADR 0011 are not rewritten to imply prior approval.
 - Use floating inverses/floors or clamp rounded endpoints: changes discrete
   shifts near seams and under cancellation; conflicts with the exact contract.
 
-## Evidence required for acceptance
+## Acceptance evidence
 
-Independent Fraction/int determinant, solve, floor and reconstruction tests;
-nearest-even seam/range/cancellation/ownership cases; all native route refusals;
-compiled ordinary/power volume and owner controls; unchanged P0 replay; broad
-2D/3D/API regression, strict documentation build and remote CI results reported
-separately. Independent mathematical and native-safety review and explicit
-maintainer approval remain required.
+Acceptance followed independent Fraction/integer determinant, solve, floor and
+reconstruction tests; nearest-even seam/range/cancellation/ownership cases;
+native route refusals; compiled standard/power volume and owner controls;
+unchanged P0 replay; broader 2D/3D/API regressions, strict documentation build
+and the required remote CI, including native sanitizers. See [PR #156](https://github.com/DeloneCommons/pyvoro2/pull/156)
+and its reviewed final HEAD for the evidence and remediation history. This
+acceptance covers A1, not A2 frame qualification or A3 remapping.
