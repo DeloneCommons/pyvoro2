@@ -38,6 +38,8 @@ Each record has a status:
 - [0028 — Transitional maintenance of vendored Voro++](0028-upstream-voro-vendor-policy.md)
 - [0029 — Image-qualified geometry and optional global complex](0029-image-qualified-geometry-and-optional-global-complex.md)
 
+- [0030 — Exact user lattice with separate native admission (proposed)](0030-exact-user-lattice-and-native-admission.md)
+
 Numbers 0018–0026 belong to the protected historical v0.9 attempt and are not
 adopted here. ADR 0027 supersedes ADR 0017's future sequence without reviving
 ADR 0006's earlier sequence; it also governs the status of future inverse

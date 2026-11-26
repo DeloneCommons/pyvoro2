@@ -156,6 +156,7 @@ nav:
           - Current reboot decision (ADR 0027): development/decisions/0027-v0.9-reboot-from-v0.8.md
           - Transitional Voro++ policy (ADR 0028): development/decisions/0028-upstream-voro-vendor-policy.md
           - Image-qualified geometry (ADR 0029): development/decisions/0029-image-qualified-geometry-and-optional-global-complex.md
+          - Exact user lattice (proposed ADR 0030): development/decisions/0030-exact-user-lattice-and-native-admission.md
           - Scope, API and release baseline:
               - ADR 0001 — Project scope and layering: development/decisions/0001-project-scope-and-layering.md
               - ADR 0002 — Weights, radii and gauge: development/decisions/0002-weights-radii-and-gauge.md

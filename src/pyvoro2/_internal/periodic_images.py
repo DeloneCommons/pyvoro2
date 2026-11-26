@@ -19,6 +19,7 @@ from typing import Iterator, Sequence
 
 import numpy as np
 
+from .exact_user_basis import _determinant_3x3
 from .inputs import coerce_finite_matrix, coerce_point_array
 from .validation import (
     INT64_MAX,
@@ -180,15 +181,6 @@ def _dyadic_parts(value: float) -> tuple[int, int]:
     if denominator != 1 << exponent:
         raise _BasisPreparationError('binary64 denominator is not a power of two')
     return numerator, exponent
-
-
-def _determinant_3x3(matrix: Sequence[Sequence[Fraction]]) -> Fraction:
-    a, b, c = matrix
-    return (
-        a[0] * (b[1] * c[2] - b[2] * c[1])
-        - a[1] * (b[0] * c[2] - b[2] * c[0])
-        + a[2] * (b[0] * c[1] - b[1] * c[0])
-    )
 
 
 def _inverse_fraction_matrix(

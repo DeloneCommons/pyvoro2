@@ -1388,8 +1388,7 @@ def test_r5_sc_001_warning_conditioned_cell_candidates_remain_complete() -> None
         [[1.0, 0.0, 0.0], [1.0, 1e-11, 0.0], [0.0, 0.0, 1.0]],
         dtype=np.float64,
     )
-    with pytest.warns(RuntimeWarning, match='very ill-conditioned'):
-        cell = pyvoro2.PeriodicCell(lattice)
+    cell = pyvoro2.PeriodicCell(lattice)
     geometry = geometry3d(cell)
     lattice = np.asarray(cell.vectors, dtype=np.float64)
     points = np.array([[0.0, 0.0, 0.0], [0.0, 2.5e-12, 0.0]])

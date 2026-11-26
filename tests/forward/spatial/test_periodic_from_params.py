@@ -35,3 +35,16 @@ def test_periodiccell_from_params_internal_identity():
     internal = cell.cart_to_internal(pts)
     back = cell.internal_to_cart(internal)
     assert np.allclose(back, pts)
+
+
+def test_from_params_keeps_positive_diagonals_but_defers_native_admission():
+    import pytest
+    from pyvoro2.domains import PeriodicCell
+
+    for params in ((-1, 0, -1, 0, 0, 1), (1, 0, 1, 0, 0, 0)):
+        with pytest.raises(ValueError, match='positive'):
+            PeriodicCell.from_params(*params)
+    cell = PeriodicCell.from_params(1, 0, 1, 0, 0, 1e-16)
+    assert cell.cart_to_fractional([[0, 0, 0]]).tolist() == [[0., 0., 0.]]
+    with pytest.raises(ValueError, match='native.*degenerate'):
+        cell.to_internal_params()

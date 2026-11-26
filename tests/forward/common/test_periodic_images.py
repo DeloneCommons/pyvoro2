@@ -564,8 +564,7 @@ def test_warning_level_ill_conditioned_cell_still_certifies_exactly() -> None:
     pi = np.zeros(3)
     pj = np.array([0.0, 2.5e-12, 0.0])
 
-    with pytest.warns(RuntimeWarning, match='very ill-conditioned'):
-        cell = PeriodicCell(lattice)
+    cell = PeriodicCell(lattice)
     canonical_lattice = np.asarray(cell.vectors, dtype=np.float64)
     expected = _exact_exhaustive_oracle(
         pi,
