@@ -16,6 +16,7 @@ import warnings
 
 import numpy as np
 
+from ._internal import exact_user_basis
 from ._internal.inputs import (
     checked_int64_add,
     coerce_finite_matrix,
@@ -255,8 +256,13 @@ class OrthorhombicCell:
 class PeriodicCell:
     """Fully periodic triclinic cell for 3D crystals.
 
-    The user provides three lattice vectors in Cartesian coordinates. Internally,
-    pyvoro2 converts them into the Voro++ periodic container representation:
+    The supplied finite binary64 rows A define the user lattice exactly by
+    x = origin + f @ A. Either handedness is accepted when det(A) is exactly
+    nonzero; rows and origin are preserved. The four provisional user-coordinate
+    methods make exact decisions and return rounded float64 views without Voro++.
+
+    Native operations separately require the existing right-handed numerical
+    admission policy before converting to the Voro++ representation:
         a = (bx, 0, 0)
         b = (bxy, by, 0)
         c = (bxz, byz, bz)
@@ -268,7 +274,8 @@ class PeriodicCell:
         origin: Origin of the unit cell in Cartesian coordinates.
 
     Raises:
-        ValueError: If vectors are malformed or degenerate.
+        ValueError: If vectors/origin are malformed or the rows are exactly
+            singular. Native-admission and coordinate-view errors occur on use.
     """
 
     vectors: tuple[
@@ -286,58 +293,63 @@ class PeriodicCell:
         )
         org = coerce_finite_vector(self.origin, name='origin', n=3)
 
-        # Basic non-degeneracy checks.
-        with np.errstate(over='ignore', invalid='ignore'):
-            norms = np.linalg.norm(vec, axis=1)
-        if not np.all(np.isfinite(norms)) or np.any(norms <= 0.0):
-            raise ValueError('cell vectors must have positive finite lengths')
-
-        det = float(np.linalg.det(vec))
-        if not np.isfinite(det):
-            raise ValueError('cell vectors produce a non-finite determinant')
-        if det <= 0.0:
-            raise ValueError(
-                'cell vectors must be right-handed with determinant > 0'
-            )
-
-        # Near-degeneracy detection:
-        #   - relvol ~ 0 indicates near-coplanar / almost-degenerate cells.
-        #   - a huge condition number indicates numerical instability for
-        #     matrix inversions and image bookkeeping.
-        s = np.linalg.svd(vec, compute_uv=False)
-        if not np.all(np.isfinite(s)) or np.any(s <= 0.0):
-            raise ValueError('cell vectors are singular or ill-defined')
-        smax = float(np.max(s))
-        smin = float(np.min(s))
-        cond = float(smax / smin) if smin > 0 else float('inf')
-
-        relvol = float(abs(det) / float(norms[0] * norms[1] * norms[2]))
-
-        # Raise for truly near-coplanar / nearly singular cells.
-        if relvol < 1e-12 or cond > 1e15:
-            raise ValueError(
-                'cell vectors are nearly degenerate (poorly conditioned). '
-                f'relvol={relvol:.3g}, cond={cond:.3g}. '
-                'Use a well-conditioned 3D cell (non-coplanar vectors) or '
-                'rescale/re-parameterize your lattice.'
-            )
-
-        # Warn for very ill-conditioned (but not nearly singular) cells.
-        # This can happen for extreme aspect-ratio boxes/slabs.
-        if cond > 1e10:
-            warnings.warn(
-                'PeriodicCell lattice vectors are very ill-conditioned '
-                f'(cond≈{cond:.3g}). Numerical accuracy and periodic image '
-                'bookkeeping may be unstable; consider rescaling or using a '
-                'better-conditioned basis.',
-                RuntimeWarning,
-                stacklevel=2,
-            )
-
         vectors = tuple(tuple(float(value) for value in row) for row in vec)
         origin = tuple(float(value) for value in org)
+        if exact_user_basis.determinant_sign(vectors) == 0:
+            raise ValueError('cell vectors are exactly singular')
         object.__setattr__(self, 'vectors', vectors)
         object.__setattr__(self, 'origin', origin)
+
+    def cart_to_fractional(self, points: np.ndarray) -> np.ndarray:
+        """Round the exact user-basis solve ``(points - origin) @ inverse(A)``.
+
+        Provisional. Accept finite real (n, 3) binary64 inputs and return a new
+        owned float64 array. Subtraction and solving precede all rounding.
+        A non-finite result view raises ValueError at this operation.
+        """
+        pts = coerce_point_array(points, name='points', dim=3)
+        return exact_user_basis.cart_to_fractional(pts, self.vectors, self.origin)
+
+    def fractional_to_cart(self, fractional: np.ndarray) -> np.ndarray:
+        """Round the exact affine expression ``origin + fractional @ A``.
+
+        Provisional. Inputs have shape (n, 3); the returned float64 array is
+        owned and rounds each exact binary64-input expression to nearest-even.
+        A non-finite result view raises ValueError at this operation.
+        """
+        f = coerce_point_array(fractional, name='fractional', dim=3)
+        return exact_user_basis.fractional_to_cart(f, self.vectors, self.origin)
+
+    def wrap_fractional(
+        self, fractional: np.ndarray, *, return_shifts: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+        """Return a rounded view of ``fractional - floor(fractional)``.
+
+        Provisional. Exact floors use the canonical binary64 input. An interior
+        remainder may round to 1.0; no snapping or shift correction is applied.
+        Optional shifts are owned int64 (n, 3), checked before casting. Without
+        returned shifts there is no int64 restriction. Inputs have shape (n, 3).
+        """
+        expose = require_bool(return_shifts, name='return_shifts')
+        f = coerce_point_array(fractional, name='fractional', dim=3)
+        return exact_user_basis.wrap_fractional(f, expose)
+
+    def wrap_cart(
+        self, points: np.ndarray, *, return_shifts: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+        """Wrap into the original user parallelepiped with exact decisions.
+
+        Provisional. Solve f = (x-o) @ inverse(A) exactly, then take s = floor(f)
+        and round x - s @ A to nearest-even. This does not compose the rounded
+        converters and does not use native remapping or an epsilon. Coordinates
+        are owned float64 (n, 3); optional shifts are owned int64 (n, 3).
+        Non-finite views or requested out-of-range shifts raise ValueError.
+        Unreturned shifts have no int64 restriction. Rounded views need not be
+        idempotent under wrapping.
+        """
+        expose = require_bool(return_shifts, name='return_shifts')
+        pts = coerce_point_array(points, name='points', dim=3)
+        return exact_user_basis.wrap_cart(pts, self.vectors, self.origin, expose)
 
     @classmethod
     def from_params(
@@ -392,6 +404,7 @@ class PeriodicCell:
 
     def _rotation_to_internal(self) -> np.ndarray:
         """Return the 3x3 rotation that maps Cartesian -> internal basis."""
+        _require_native_periodic_basis(self.vectors)
         a, b, _c = np.asarray(self.vectors, dtype=float)
         e1 = a / np.linalg.norm(a)
         b_perp = b - np.dot(b, e1) * e1
@@ -417,9 +430,11 @@ class PeriodicCell:
         bxz = float(c[0])
         byz = float(c[1])
         bz = float(c[2])
+        if not all(np.isfinite(v) for v in (bx, bxy, by, bxz, byz, bz)):
+            raise ValueError('native cell parameters must be finite')
         if bx <= 0 or by <= 0 or bz <= 0:
             raise ValueError(
-                'internal cell parameters must be positive (check handedness)'
+                'native cell diagonal parameters must be positive'
             )
         return bx, bxy, by, bxz, byz, bz
 
@@ -427,9 +442,9 @@ class PeriodicCell:
         """Transform Cartesian points into the internal coordinate system."""
         r = self._rotation_to_internal()
         origin = np.asarray(self.origin, dtype=float)
-        pts = coerce_point_array(points, name='points', dim=3) - origin[None, :]
+        pts = coerce_point_array(points, name='points', dim=3)
         with np.errstate(over='ignore', invalid='ignore'):
-            result = (r @ pts.T).T
+            result = (r @ (pts - origin[None, :]).T).T
         if not np.all(np.isfinite(result)):
             raise ValueError('points produce non-finite internal coordinates')
         return result
@@ -484,8 +499,8 @@ class PeriodicCell:
 
         Notes:
             - This method is provided as an explicit helper.
-            - The main `compute(...)` API does **not** pre-wrap points for
-              periodic domains; Voro++ remaps points internally.
+            - Forward operations pre-wrap generators through a detached native
+              snapshot. This numerical backend remap is not exact user wrapping.
 
         Args:
             points_internal: Points in the internal coordinate system,
@@ -706,3 +721,46 @@ def _require_finite_remap_coordinates(*coordinates: np.ndarray) -> None:
 
     if not all(np.all(np.isfinite(values)) for values in coordinates):
         raise ValueError('remapped points must contain only finite values')
+
+
+def _require_native_periodic_basis(vectors) -> None:
+    """Retain the pre-A1 numerical policy at each native-frame entry point.
+
+    Rejection concerns the current adapter, never mathematical singularity.
+    This deliberately does not qualify or replace the Gram-Schmidt frame (A2).
+    """
+    canonical = tuple(tuple(float(value) for value in row) for row in vectors)
+    if exact_user_basis.determinant_sign(canonical) <= 0:
+        raise ValueError('PeriodicCell native adapter requires right-handed vectors')
+    vec = np.asarray(canonical, dtype=np.float64)
+    with np.errstate(over='ignore', under='ignore', invalid='ignore', divide='ignore'):
+        norms = np.linalg.norm(vec, axis=1)
+        if not np.all(np.isfinite(norms)) or np.any(norms <= 0.0):
+            raise ValueError(
+                'PeriodicCell native adapter needs positive finite lengths')
+        det = float(np.linalg.det(vec))
+        if not np.isfinite(det) or det <= 0.0:
+            raise ValueError('PeriodicCell native adapter needs a positive finite '
+                             'floating determinant')
+        try:
+            s = np.linalg.svd(vec, compute_uv=False)
+        except np.linalg.LinAlgError:
+            raise ValueError('PeriodicCell native conditioning check failed') from None
+        if not np.all(np.isfinite(s)) or np.any(s <= 0.0):
+            raise ValueError('PeriodicCell native conditioning check is ill-defined')
+        cond = float(np.max(s) / np.min(s))
+        norm_product = float(norms[0] * norms[1] * norms[2])
+        if not np.isfinite(norm_product) or norm_product <= 0.0:
+            raise ValueError('PeriodicCell native adapter needs a positive finite '
+                             'vector-length product for relative volume')
+        relvol = float(abs(det) / norm_product)
+    if not np.isfinite(relvol) or relvol < 1e-12 or cond > 1e15:
+        raise ValueError('PeriodicCell native adapter: nearly degenerate '
+                         f'(poorly conditioned). relvol={relvol:.3g}, cond={cond:.3g}')
+    if cond > 1e10:
+        warnings.warn(
+            'PeriodicCell lattice vectors are very ill-conditioned '
+            f'(cond≈{cond:.3g}) for the native adapter. Numerical accuracy and '
+            'periodic image bookkeeping may be unstable; consider rescaling '
+            'or using a better-conditioned basis.', RuntimeWarning, stacklevel=3,
+        )

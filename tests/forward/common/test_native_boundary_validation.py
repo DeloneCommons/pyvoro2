@@ -561,20 +561,12 @@ def test_periodic_shapes_are_owned_after_construction(
     assert len(core.calls) == 1
 
 
-def test_warning_level_periodic_cell_warns_only_at_explicit_construction(
+def test_warning_level_periodic_cell_warns_once_at_native_use(
     monkeypatch,
 ) -> None:
-    with pytest.warns(
-        RuntimeWarning,
-        match='PeriodicCell lattice vectors are very ill-conditioned',
-    ):
-        domain = pyvoro2.PeriodicCell(
-            vectors=(
-                (1.0, 0.0, 0.0),
-                (0.0, 1.0, 0.0),
-                (0.0, 0.0, 1e-11),
-            )
-        )
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        domain = _warning_level_periodic_cell()
 
     core = RecordingCore()
     _install_core(monkeypatch, 3, core)
@@ -591,12 +583,12 @@ def test_warning_level_periodic_cell_warns_only_at_explicit_construction(
         if 'PeriodicCell lattice vectors are very ill-conditioned'
         in str(warning.message)
     ]
-    assert replayed == []
+    assert len(replayed) == 1
     assert core.calls[0][0] == 'compute_periodic_standard'
 
 
 @pytest.mark.parametrize('blocks', [None, (1, 1, 1)])
-def test_warning_level_compute_reuses_one_snapshot_under_warning_as_error(
+def test_warning_level_compute_reuses_one_snapshot_and_warns_once(
     monkeypatch,
     blocks: tuple[int, int, int] | None,
 ) -> None:
@@ -616,17 +608,17 @@ def test_warning_level_compute_reuses_one_snapshot_under_warning_as_error(
         'native_periodic_snapshot',
         counted_snapshot,
     )
-    with warnings.catch_warnings():
-        warnings.simplefilter('error')
+    with pytest.warns(RuntimeWarning, match='native adapter') as caught:
         points = np.array([[0.1, 0.1, 0.0], [0.6, 0.6, 0.0]])
         _invoke(3, 'compute', domain=domain, blocks=blocks, points=points)
 
+    assert len(caught) == 1
     assert snapshot_calls == 1
     assert core.calls[0][0] == 'compute_periodic_standard'
 
 
 @pytest.mark.parametrize('operation', ['locate', 'ghost_cells'])
-def test_warning_level_query_operations_reach_native_under_warning_as_error(
+def test_warning_level_query_operations_warn_at_native_use(
     monkeypatch,
     operation: str,
 ) -> None:
@@ -634,11 +626,11 @@ def test_warning_level_query_operations_reach_native_under_warning_as_error(
     core = RecordingCore()
     _install_core(monkeypatch, 3, core)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter('error')
+    with pytest.warns(RuntimeWarning, match='native adapter') as caught:
         points = np.array([[0.1, 0.1, 0.0], [0.6, 0.6, 0.0]])
         _invoke(3, operation, domain=domain, points=points)
 
+    assert len(caught) == 1
     prefix = 'locate' if operation == 'locate' else 'ghost'
     assert core.calls[0][0] == f'{prefix}_periodic_standard'
 

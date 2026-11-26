@@ -93,9 +93,20 @@ All domain constructors require finite real bounds, vectors, and origins.
 Bounds, vectors, origins, and periodic flags are copied into canonical nested
 Python tuples, so later mutation of a caller list or array cannot change the
 domain. Periodic flags must be actual Python or NumPy Booleans. A
-`PeriodicCell` basis must be right-handed (`determinant > 0`); pyvoro2 does not
-silently reorder or flip vectors. The existing near-degeneracy rejection and
-ill-conditioning warning thresholds still apply.
+`PeriodicCell` accepts either handedness when the determinant of the validated
+binary64 rows is **exactly nonzero**. It preserves the supplied row order,
+signs, values and origin. Floating determinant overflow/underflow and poor
+conditioning do not invalidate this user lattice.
+
+Native use has a separate, narrower boundary: the current adapter still requires
+right-handed rows, positive finite numerical lengths and determinant, relative
+volume at least `1e-12`, and condition number at most `1e15`. It warns with
+`RuntimeWarning` above `1e10` **when preparing the native frame**, rather than
+at construction. Native parameters, containment, duplicate, arithmetic and
+allocation guards still apply. `compute`, `locate`, `ghost_cells`, detached
+snapshots and the existing internal-coordinate/remapping methods all retain
+these restrictions. They can raise an operation-level `ValueError` for a valid
+user lattice; successful construction does not promise native execution.
 
 `Box.from_points(...)` validates a non-empty finite point matrix before taking
 minimums or maximums. Padding must be finite and non-negative. Zero padding is
@@ -114,7 +125,62 @@ construct the same cell directly:
 cell = PeriodicCell.from_params(bx, bxy, by, bxz, byz, bz)
 ```
 
-## Coordinate wrapping helpers
+The diagonal lengths `bx`, `by`, `bz` must still be strictly positive;
+shear parameters may have either sign. Numerical native admission is deferred
+to use, just as for the row constructor.
+
+### Exact user-coordinate helpers (provisional)
+
+With the original ordered rows `A` and origin `o`, use:
+
+```python
+f = cell.cart_to_fractional(points)       # exact (x-o) @ inverse(A), rounded
+x = cell.fractional_to_cart(fractional)   # exact o + f @ A, rounded
+r, s = cell.wrap_fractional(fractional, return_shifts=True)
+w, s = cell.wrap_cart(points, return_shifts=True)
+```
+
+All inputs must be finite real arrays of shape **(n, 3)**, including `(0, 3)`.
+There is no one-point vector shortcut or broadcasting. Boolean, complex,
+string and nonfinite coordinates are rejected. Each operation interprets the
+validated binary64 values exactly, including values rounded during input
+coercion. Returned coordinate arrays are new owned float64 arrays, rounded
+componentwise to nearest-even.
+
+Fractional wrapping computes exact `s = floor(f)` and `r = f - s`.
+Cartesian wrapping solves exact `f = (x-o) @ inverse(A)`, takes that exact
+floor, then rounds exact `w = x - s @ A`. Shifts refer to the original user
+basis. The Cartesian operation does not compose separately rounded converters.
+No epsilon, native frame, Voro++ extension or native admission is needed.
+
+An exact fractional remainder lies in `[0, 1)`, but its float view can be
+`1.0`. For example, wrapping `[-2**-55, 0, 0]` fractionally returns
+`[1.0, 0, 0]` with shift `[-1, 0, 0]`. Similarly, for `A=I`,
+`o=[2**-55, 0, 0]`, `x=[1, 0, 0]`, the rounded fractional coordinate is one
+while the exact Cartesian wrapping shift is zero. Views are not snapped,
+clamped or rewrapped. Float-view idempotence and equivalence to composing the
+public helpers are not unconditional contracts.
+
+Exact reconstruction gives `f = r + s` and `x = w + s @ A` before view
+rounding. Reconstruction from returned views includes that rounding error;
+ordinary NumPy arithmetic introduces its own additional error.
+
+`return_shifts` must be a Python/NumPy Boolean. When true, shifts are new owned
+int64 arrays, range-checked before casting. When false (the default), shifts
+remain arbitrary-size integers internally: for `A=I`, `x=[2**63, 0, 0]`
+wraps to zero, but requesting its shift raises `ValueError`. A required
+nonfinite float view also raises `ValueError` for that operation, without
+invalidating the lattice or partially modifying inputs.
+
+Other consumers have independent admission policies. In particular the current
+private periodic-image kernel still restricts signed diagonal and left-handed
+bases; downstream duplicate/inverse/matching operations do not acquire universal
+signed-lattice support from these helpers. A1 leaves the existing numerical
+frame, coupled backend remapping, visualization and source-consumer behavior
+unchanged. The [proposed A1 decision](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
+records the narrow compatibility change and its review boundary.
+
+## Backend-primary remapping helpers
 
 Both periodic domain classes provide remapping utilities that appear in several workflows:
 
@@ -137,7 +203,8 @@ For `OrthorhombicCell`, “the primary cell” is unambiguous.
 
 For `PeriodicCell`, Voro++ works in a *lower-triangular internal representation*
 (`bx, bxy, by, bxz, byz, bz`). The method `PeriodicCell.remap_cart(...)` is
-defined to match that convention exactly.
+defined by that numerical backend convention, including its existing snapping
+rules. It is distinct from the exact-decision `wrap_cart` above.
 
 This means that wrapping via `remap_cart` does not always coincide with wrapping
 into the **geometric parallelepiped** spanned by the user vectors.

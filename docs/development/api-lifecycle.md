@@ -89,8 +89,26 @@ namespace.
 The reboot retains the implemented v0.8 lifecycle categories.
 [ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) supersedes ADR 0017's
 future release sequence without reviving ADR 0006's earlier sequence.
-`0.9.0.dev0` does not promote any API or imply new numerical behavior.
+`0.9.0.dev0` alone does not promote any API or approve numerical changes.
 Future stabilization scope and release targets require separate approval.
+
+## A1 user-coordinate surface under review
+
+Issue [#155](https://github.com/DeloneCommons/pyvoro2/issues/155) authorizes the
+focused implementation PR, with final contract acceptance reserved for explicit
+maintainer approval. The four new 3D `PeriodicCell` methods are **Provisional**:
+`cart_to_fractional(points)`, `fractional_to_cart(fractional)`,
+`wrap_fractional(fractional, *, return_shifts=False)` and
+`wrap_cart(points, *, return_shifts=False)`.
+
+Their exact user-basis decisions, rounded owned views and operation-level range
+failures are specified in the [domain reference](../reference/domains.md) and
+[proposed ADR 0030](decisions/0030-exact-user-lattice-and-native-admission.md).
+Construction now admits exactly nonsingular finite binary64 rows of either
+handedness; the old numerical rejection/warning policy moves to native use.
+This deliberate compatibility change does not broaden native or private
+periodic-image admission. The v0.8 inventory remains a historical baseline;
+this section records the added surface without rewriting that inventory.
 
 ## What counts as a breaking change
 

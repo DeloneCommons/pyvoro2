@@ -7,7 +7,9 @@ from typing import Sequence
 
 import numpy as np
 
-from ...domains import Box, OrthorhombicCell, PeriodicCell
+from ...domains import (
+    Box, OrthorhombicCell, PeriodicCell, _require_native_periodic_basis,
+)
 from ..inputs import (
     coerce_finite_matrix,
     coerce_finite_vector,
@@ -60,9 +62,11 @@ class _NativePeriodicSnapshot:
             n=3,
         )
 
-        # Match PeriodicCell's Cartesian-to-internal basis construction, but do
-        # it on validated detached values without replaying constructor
-        # conditioning policy or warnings.
+        # Admission belongs to native use, including detached raw snapshots.
+        # Check before the unchanged Gram-Schmidt frame or any image consumer.
+        _require_native_periodic_basis(vectors_array)
+
+        # Match PeriodicCell's existing Cartesian-to-internal construction.
         a, b, _c = vectors_array
         with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
             norm_a = float(np.linalg.norm(a))
