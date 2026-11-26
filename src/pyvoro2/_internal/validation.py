@@ -216,7 +216,7 @@ def require_bool_mask(
 def _is_real_numeric(value: object) -> bool:
     return (
         isinstance(value, (Real, np.integer, np.floating))
-        and not isinstance(value, (bool, np.bool_))
+        and not isinstance(value, (bool, np.bool_, np.datetime64, np.timedelta64))
     )
 
 
@@ -296,6 +296,19 @@ def require_real_in_interval(
 
 
 def _as_original_array(values: Any, *, name: str) -> np.ndarray:
+    # Temporal ndarrays can turn into Python integers on object conversion,
+    # including arrays nested in sequences. Check their dtype before that loss.
+    pending = [values]
+    seen = set()
+    while pending:
+        value = pending.pop()
+        if isinstance(value, np.ndarray):
+            if value.dtype.kind in 'mM':
+                raise ValueError(f'{name} must contain only real numeric values')
+        elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+            if id(value) not in seen:
+                seen.add(id(value))
+                pending.extend(value)
     try:
         # Object conversion preserves the element categories of mixed Python
         # sequences. A normal NumPy coercion could otherwise turn ``[False,
@@ -324,7 +337,11 @@ def _real_float64_array(arr: np.ndarray, *, name: str) -> np.ndarray:
 
     _require_real_array_kind(arr, name=name)
     try:
-        result = np.asarray(arr, dtype=np.float64)
+        # Canonicalization may round to a subnormal, zero or infinity. The
+        # finite-input wrapper decides whether the converted value is allowed;
+        # derived-real consumers deliberately retain nonfinite intermediates.
+        with np.errstate(over='ignore', under='ignore', invalid='ignore'):
+            result = np.asarray(arr, dtype=np.float64)
     except (OverflowError, TypeError, ValueError):
         raise ValueError(
             f'{name} must contain real numeric values representable as float64'
