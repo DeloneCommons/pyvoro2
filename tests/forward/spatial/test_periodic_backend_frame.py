@@ -128,9 +128,21 @@ def test_frame_failure_is_controlled_and_never_dispatches(
         elif fault == 'volume_overflow':
             r *= 1e150
         monkeypatch.setattr(np.linalg, 'qr', lambda *args, **kwargs: (q, r))
+    expected_failure = {
+        'qr_failure': 'native frame QR failed',
+        'svd_failure': 'native conditioning check failed',
+        'q_nan': 'native frame QR factors must be finite',
+        'r_inf': 'native frame QR factors must be finite',
+        'rank_loss': 'native frame QR has a zero diagonal',
+        'parity': 'native frame parity',
+        'orthogonality': 'native frame orthogonality',
+        'backward': 'native frame backward consistency',
+        'volume_underflow': 'native frame volume',
+        'volume_overflow': 'native frame volume',
+    }[fault]
     with warnings.catch_warnings():
         warnings.simplefilter('error')
-        with pytest.raises(ValueError, match='native'):
+        with pytest.raises(ValueError, match=expected_failure):
             if operation == 'params':
                 cell.to_internal_params()
             elif operation == 'snapshot':

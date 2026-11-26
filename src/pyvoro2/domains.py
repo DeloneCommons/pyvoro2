@@ -260,13 +260,15 @@ class PeriodicCell:
     nonzero; rows and origin are preserved. The four provisional user-coordinate
     methods make exact decisions and return rounded float64 views without Voro++.
 
-    Native operations separately require the existing right-handed numerical
-    admission policy before converting to the Voro++ representation:
+    Native operations support either handedness through a qualified orthogonal
+    QR frame, subject to separate numerical and native admission safeguards.
+    The positive-diagonal Voro++ representation is:
         a = (bx, 0, 0)
         b = (bxy, by, 0)
         c = (bxz, byz, bz)
 
-    and transforms points into that coordinate system before tessellation.
+    Points are transformed into that coordinate system before tessellation;
+    reflection-aware reporting preserves Cartesian face and adjacency winding.
 
     Args:
         vectors: Three lattice vectors (a, b, c), each length-3.
