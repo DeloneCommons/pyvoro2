@@ -1,4 +1,4 @@
-"""Native admission remains narrower than exact user-lattice validity in A1."""
+"""Native admission remains narrower than exact user-lattice validity."""
 import warnings
 
 import numpy as np
@@ -9,8 +9,7 @@ import pyvoro2.api as api
 from pyvoro2._internal.spatial.domain_geometry import _NativePeriodicSnapshot
 
 
-REJECTED = [np.diag([-1., 1., 1.]), np.diag([-1., -1., -1.]),
-            np.diag([1., 1., 1e-16]),
+REJECTED = [np.diag([1., 1., 1e-16]),
             [[1., 0, 0], [0, 1, 0], [1e-12, 1e-12, 1e-25]],
             np.eye(3) * 1e-110, np.eye(3) * 1e110]
 
@@ -89,15 +88,12 @@ def test_svd_failure_is_native_refusal_only(monkeypatch):
         cell.to_internal_params()
 
 
-def test_signed_diagonal_keeps_independent_image_consumer_boundary():
-    from pyvoro2._internal.duplicate_scanning import DuplicateScanResourceError
+def test_signed_diagonal_now_passes_independent_image_consumer():
     cell = pv.PeriodicCell(np.diag([-1., -1., 1.]))
     assert cell.to_internal_params() == (1., 0., 1., 0., 0., 1.)
     assert cell.wrap_cart([[.25, .25, .25]]).tolist() == [[-.75, -.75, .25]]
-    # This existing private image consumer restricts signed diagonal bases even
-    # though the right-handed native frame itself is admitted. No CVP rewrite.
-    with pytest.raises(DuplicateScanResourceError, match='positive'):
-        pv.compute([[.25, .25, .25]], domain=cell)
+    result = pv.compute([[.25, .25, .25]], domain=cell)
+    assert result.cell_measures[0] == pytest.approx(1.)
 
 
 def test_conditioning_warning_as_error_stops_before_dispatch(monkeypatch):

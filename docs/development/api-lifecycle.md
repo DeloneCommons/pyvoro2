@@ -111,6 +111,18 @@ This deliberate compatibility change does not broaden native or private
 periodic-image admission. The v0.8 inventory remains a historical baseline;
 this section records the added surface without rewriting that inventory.
 
+## A2 native frame and signed 3D admission
+
+Issue [#159](https://github.com/DeloneCommons/pyvoro2/issues/159) extends the
+native `PeriodicCell` adapter and the fully periodic 3D exact image kernel to
+both handedness signs. It replaces the frame with qualified QR and preserves
+directed Cartesian face/adjacency reporting under reflections. Existing public
+signatures, image coefficients and the exact A1 methods retain their meaning;
+planar and partial-periodic admission is unchanged. Numerical/native refusal
+conditions remain independent of exact user-lattice validity. The narrow
+[ADR 0031](decisions/0031-qualified-native-periodic-qr-frame.md) is Proposed
+pending independent review; ADR 0030 remains the accepted historical A1 contract.
+
 ## What counts as a breaking change
 
 Examples include:

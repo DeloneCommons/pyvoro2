@@ -67,6 +67,12 @@ Box bounds must be finite and strictly ordered, and periodic parameters must
 produce finite, safe native constructor arithmetic. Invalid values raise
 `ValueError` before native construction.
 
+Fully periodic 3D `PeriodicCell` operations accept either source handedness
+when [frame qualification and numerical admission](domains.md) succeed.
+Reflection reporting preserves face and cyclic vertex-adjacency orientation,
+including faces-only and adjacency-only output. Numerical frame failure is an
+operation-level `ValueError`, not a declaration of mathematical singularity.
+
 The three native grid controls have strict meanings:
 
 - `init_mem` is the positive initial per-block particle capacity. It must be
@@ -133,9 +139,12 @@ with binary64 squared-radius arithmetic, so very large absolute `radii**2`
 values or genuine weight ranges relative to squared coordinate/domain scales
 can lose geometric resolution. There is no universal safe cutoff: the onset
 depends on scale, geometry, platform, and compiler, and periodic power
-tessellations are a particularly sensitive regime. pyvoro2 does not silently
-weaken validation or alter the requested power geometry in this unsupported
-regime.
+tessellations are a particularly sensitive regime. Historical problematic
+examples around radii `1e8` are evidence, not a universal safe/unsafe threshold;
+real weight contrasts and floating-point representation also matter. See the
+[R-O03 investigation register](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/review-register.md).
+The periodic QR frame improves numerical stability but does not repair this
+backend limitation or introduce a radius cutoff or automatic workaround.
 
 Power-mode `compute(...)` requires exactly one of `weights=` or the existing
 `radii=` representation. Radii have length units and should not be interpreted

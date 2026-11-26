@@ -12,11 +12,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import warnings
-
 import numpy as np
 
 from ._internal import exact_user_basis
+from ._internal.native_periodic_frame import prepare_native_periodic_frame
 from ._internal.inputs import (
     checked_int64_add,
     coerce_finite_matrix,
@@ -403,40 +402,16 @@ class PeriodicCell:
         return cls(vectors=(a, b, c), origin=origin)
 
     def _rotation_to_internal(self) -> np.ndarray:
-        """Return the 3x3 rotation that maps Cartesian -> internal basis."""
-        _require_native_periodic_basis(self.vectors)
-        a, b, _c = np.asarray(self.vectors, dtype=float)
-        e1 = a / np.linalg.norm(a)
-        b_perp = b - np.dot(b, e1) * e1
-        nb = np.linalg.norm(b_perp)
-        if nb == 0:
-            raise ValueError('vectors a and b are colinear')
-        e2 = b_perp / nb
-        e3 = np.cross(e1, e2)
-        r = np.vstack([e1, e2, e3])
-        return r
+        """Return the orthogonal Cartesian-to-native frame, possibly improper."""
+        return prepare_native_periodic_frame(self.vectors).rotation_to_internal
 
     def to_internal_params(self) -> tuple[float, float, float, float, float, float]:
-        """Convert lattice vectors into Voro++ periodic cell parameters.
+        """Return (bx, bxy, by, bxz, byz, bz) from the qualified QR factor.
 
-        Returns:
-            Tuple of (bx, bxy, by, bxz, byz, bz).
+        Native diagonal lengths are positive for either source handedness.
+        The numerical frame does not certify exact source/native equivalence.
         """
-        r = self._rotation_to_internal()
-        a, b, c = (r @ np.asarray(self.vectors, dtype=float).T).T
-        bx = float(a[0])
-        bxy = float(b[0])
-        by = float(b[1])
-        bxz = float(c[0])
-        byz = float(c[1])
-        bz = float(c[2])
-        if not all(np.isfinite(v) for v in (bx, bxy, by, bxz, byz, bz)):
-            raise ValueError('native cell parameters must be finite')
-        if bx <= 0 or by <= 0 or bz <= 0:
-            raise ValueError(
-                'native cell diagonal parameters must be positive'
-            )
-        return bx, bxy, by, bxz, byz, bz
+        return prepare_native_periodic_frame(self.vectors).params
 
     def cart_to_internal(self, points: np.ndarray) -> np.ndarray:
         """Transform Cartesian points into the internal coordinate system."""
@@ -721,46 +696,3 @@ def _require_finite_remap_coordinates(*coordinates: np.ndarray) -> None:
 
     if not all(np.all(np.isfinite(values)) for values in coordinates):
         raise ValueError('remapped points must contain only finite values')
-
-
-def _require_native_periodic_basis(vectors) -> None:
-    """Retain the pre-A1 numerical policy at each native-frame entry point.
-
-    Rejection concerns the current adapter, never mathematical singularity.
-    This deliberately does not qualify or replace the Gram-Schmidt frame (A2).
-    """
-    canonical = tuple(tuple(float(value) for value in row) for row in vectors)
-    if exact_user_basis.determinant_sign(canonical) <= 0:
-        raise ValueError('PeriodicCell native adapter requires right-handed vectors')
-    vec = np.asarray(canonical, dtype=np.float64)
-    with np.errstate(over='ignore', under='ignore', invalid='ignore', divide='ignore'):
-        norms = np.linalg.norm(vec, axis=1)
-        if not np.all(np.isfinite(norms)) or np.any(norms <= 0.0):
-            raise ValueError(
-                'PeriodicCell native adapter needs positive finite lengths')
-        det = float(np.linalg.det(vec))
-        if not np.isfinite(det) or det <= 0.0:
-            raise ValueError('PeriodicCell native adapter needs a positive finite '
-                             'floating determinant')
-        try:
-            s = np.linalg.svd(vec, compute_uv=False)
-        except np.linalg.LinAlgError:
-            raise ValueError('PeriodicCell native conditioning check failed') from None
-        if not np.all(np.isfinite(s)) or np.any(s <= 0.0):
-            raise ValueError('PeriodicCell native conditioning check is ill-defined')
-        cond = float(np.max(s) / np.min(s))
-        norm_product = float(norms[0] * norms[1] * norms[2])
-        if not np.isfinite(norm_product) or norm_product <= 0.0:
-            raise ValueError('PeriodicCell native adapter needs a positive finite '
-                             'vector-length product for relative volume')
-        relvol = float(abs(det) / norm_product)
-    if not np.isfinite(relvol) or relvol < 1e-12 or cond > 1e15:
-        raise ValueError('PeriodicCell native adapter: nearly degenerate '
-                         f'(poorly conditioned). relvol={relvol:.3g}, cond={cond:.3g}')
-    if cond > 1e10:
-        warnings.warn(
-            'PeriodicCell lattice vectors are very ill-conditioned '
-            f'(cond≈{cond:.3g}) for the native adapter. Numerical accuracy and '
-            'periodic image bookkeeping may be unstable; consider rescaling '
-            'or using a better-conditioned basis.', RuntimeWarning, stacklevel=3,
-        )

@@ -24,7 +24,7 @@ from ._internal.generator_preparation import (
     prepare_temporary_generators,
     validate_compute_internal_ids,
 )
-from ._internal.spatial.domain_geometry import geometry3d
+from ._internal.spatial.domain_geometry import _NativePeriodicSnapshot, geometry3d
 from ._internal.spatial.face_shifts import _add_periodic_face_shifts_inplace
 from ._internal.power_input import ResolvedPowerInput, resolve_power_input
 from ._internal.validation import (
@@ -230,6 +230,31 @@ def _finish_compute_output(
         boundaries_available=boundaries_available,
         periodic_shifts_available=periodic_shifts_available,
     )
+
+
+def _transport_periodic_cells_to_cart_inplace(
+    cells: list[dict[str, Any]], snapshot: _NativePeriodicSnapshot,
+) -> None:
+    """Report native cells after any native-coordinate face-shift inference.
+
+    Voro++ face cycles are inward under the existing Cartesian convention.
+    An improper orthogonal transform reverses cross products, so reverse each
+    exposed face cycle and each vertex's cyclic adjacency once. Keep all IDs,
+    face/neighbor/image pairings, vertex indices and unsigned volumes intact.
+    """
+    for cell in cells:
+        vertices = np.asarray(cell.get('vertices', []), dtype=np.float64)
+        if vertices.size:
+            cell['vertices'] = snapshot.internal_to_cart(vertices).tolist()
+        site = np.asarray(cell.get('site', []), dtype=np.float64)
+        if site.size == 3:
+            cell['site'] = snapshot.internal_to_cart(site.reshape(1, 3))[0].tolist()
+        if snapshot.parity < 0:
+            for face in cell.get('faces', []):
+                if 'vertices' in face:
+                    face['vertices'] = list(reversed(face['vertices']))
+            if 'adjacency' in cell:
+                cell['adjacency'] = [list(reversed(row)) for row in cell['adjacency']]
 
 
 def compute(
@@ -714,18 +739,7 @@ def compute(
     if ids_user is not None:
         _remap_ids_inplace(cells, ids_user)
 
-    # Transform vertices back to Cartesian if requested
-    if return_vertices_value:
-        for c in cells:
-            verts = np.asarray(c.get('vertices', []), dtype=np.float64)
-            if verts.size:
-                c['vertices'] = cell.internal_to_cart(verts).tolist()
-
-    # Transform site positions back to Cartesian for periodic cells
-    for c in cells:
-        site_i = np.asarray(c.get('site', []), dtype=np.float64)
-        if site_i.size == 3:
-            c['site'] = cell.internal_to_cart(site_i.reshape(1, 3)).reshape(3).tolist()
+    _transport_periodic_cells_to_cart_inplace(cells, cell)
 
     diag = None
     do_diag = return_diagnostics_value or tessellation_check != 'none'
@@ -1281,19 +1295,7 @@ def ghost_cells(
         else:
             raise ValueError(f'unknown mode: {mode}')
 
-        # Convert vertices/site back to Cartesian for PeriodicCell.
-        if return_vertices_value:
-            for c in cells:
-                verts = np.asarray(c.get('vertices', []), dtype=np.float64)
-                if verts.size:
-                    c['vertices'] = cell.internal_to_cart(verts).tolist()
-
-        for c in cells:
-            site_i = np.asarray(c.get('site', []), dtype=np.float64)
-            if site_i.size == 3:
-                c['site'] = (
-                    cell.internal_to_cart(site_i.reshape(1, 3)).reshape(3).tolist()
-                )
+        _transport_periodic_cells_to_cart_inplace(cells, cell)
 
     # Remap generator IDs on faces to user IDs if requested.
     if ids_user is not None:

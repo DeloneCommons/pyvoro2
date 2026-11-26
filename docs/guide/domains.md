@@ -98,9 +98,12 @@ binary64 rows is **exactly nonzero**. It preserves the supplied row order,
 signs, values and origin. Floating determinant overflow/underflow and poor
 conditioning do not invalidate this user lattice.
 
-Native use has a separate, narrower boundary: the current adapter still requires
-right-handed rows, positive finite numerical lengths and determinant, relative
-volume at least `1e-12`, and condition number at most `1e15`. It warns with
+Native use has a separate, narrower boundary. Both handedness signs are
+supported through a qualified orthogonal QR frame, with positive native diagonal
+lengths. Numerical row lengths and their product must be finite and positive,
+and the floating determinant must be finite, nonzero and agree with the exact
+source sign. Relative volume must be at least `1e-12`, and condition number at
+most `1e15`. It warns with
 `RuntimeWarning` above `1e10` **when preparing the native frame**, rather than
 at construction. Native parameters, containment, duplicate, arithmetic and
 allocation guards still apply. `compute`, `locate`, `ghost_cells`, detached
@@ -172,13 +175,22 @@ wraps to zero, but requesting its shift raises `ValueError`. A required
 nonfinite float view also raises `ValueError` for that operation, without
 invalidating the lattice or partially modifying inputs.
 
-Other consumers have independent admission policies. In particular the current
-private periodic-image kernel still restricts signed diagonal and left-handed
-bases; downstream duplicate/inverse/matching operations do not acquire universal
-signed-lattice support from these helpers. A1 leaves the existing numerical
-frame, coupled backend remapping, visualization and source-consumer behavior
-unchanged. The [accepted ADR 0030](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
-records the narrow compatibility change and its review boundary.
+The exact periodic-image kernel supports both signs and signed diagonal rows
+for fully periodic 3D source bases, including mandatory duplicate scans.
+Planar and partially periodic restrictions are unchanged. Native coordinates
+use `y=(x-o) @ Q` and report back with `x=o+y @ Q.T`, where QR of `A.T`
+produces a positive-diagonal lower-triangular `L`. Left-handed input uses a
+reflection; reported face cycles and cyclic vertex adjacency preserve the
+established Cartesian orientation.
+
+Frame qualification checks numerical orthogonality and row-relative backward
+error. It does not bound every short-direction relative error or guarantee a
+native tessellation. The same integer tuple `s` labels source and native images,
+but `L ≈ A @ Q` does not certify exact equality of their Cartesian translations
+or native insertion provenance. Existing source snapping, coupled remapping
+and endpoint/subnormal limitations remain separate A3 work. See the
+[accepted A1 contract](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
+and [Proposed A2 decision](../development/decisions/0031-qualified-native-periodic-qr-frame.md).
 
 ## Backend-primary remapping helpers
 

@@ -251,8 +251,15 @@ def _prepare_basis(
         for column in range(dimension)
         if row != column
     )
-    if orthogonal and any(fractions[axis][axis] <= 0 for axis in range(dimension)):
+    signed_full_3d = dimension == 3 and all(periodic_axes)
+    if orthogonal and any(
+        fractions[axis][axis] == 0 if signed_full_3d
+        else fractions[axis][axis] <= 0
+        for axis in range(dimension)
+    ):
         raise _BasisPreparationError(
+            'canonical orthogonal lattice lengths must be nonzero'
+            if signed_full_3d else
             'canonical orthogonal lattice lengths must be strictly positive'
         )
 
@@ -266,9 +273,9 @@ def _prepare_basis(
                 'non-orthogonal certification is supported only for fully '
                 'periodic three-dimensional lattices'
             )
-        if _determinant_3x3(fractions) <= 0:
+        if _determinant_3x3(fractions) == 0:
             raise _BasisPreparationError(
-                'canonical triclinic lattice must be exactly right-handed'
+                'canonical triclinic lattice must be exactly nonsingular'
             )
 
     # Fully periodic 3D bucket layouts need the same exact inverse whether the
@@ -542,6 +549,8 @@ def _solve_orthogonal_row(
             continue
         length = lattice[axis][axis]
         numerator = -displacement[axis]
+        # Python // floors for either divisor sign; -((-n)//L) is ceil(n/L).
+        # Preserve signed user coefficients instead of replacing L by abs(L).
         lower = numerator // length
         upper = -((-numerator) // length)
         choices.append((lower,) if lower == upper else (lower, upper))

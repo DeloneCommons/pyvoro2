@@ -51,6 +51,15 @@ provenance outside the repository and is not the editable provenance check.
 See [CONTRIBUTING.md](https://github.com/DeloneCommons/pyvoro2/blob/dev/CONTRIBUTING.md)
 for toolchains, generated files, and the repository test map.
 
+## Numerical development
+
+Prefer principled algorithmic corrections validated independently over numerical
+special cases. Investigate and record limitations with reproducible evidence and
+explain their applicability bounds to users. Serious silent geometric errors
+require separately reviewed correction, justified refusal or mitigation;
+documentation or a warning alone does not establish correct geometry. Do not
+hide discrepancies with unreviewed thresholds, snapping, rescaling or repairs.
+
 ## CI and handoff
 
 Routine CI runs on PRs targeting `dev` or `main`, pushes to those branches,

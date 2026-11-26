@@ -39,9 +39,10 @@ mathematical impossibilities or permanent backend limits. For example, power
 `locate(...)` and `ghost_cells(...)` still use radius-based input. Under
 [ADR 0030](../development/decisions/0030-exact-user-lattice-and-native-admission.md),
 `PeriodicCell` construction accepts finite, exactly nonsingular binary64 row
-lattices of either handedness, but the native adapter still requires
-right-handedness and its existing numerical admission safeguards. Native
-operations on left-handed user lattices are therefore not yet supported.
+lattices of either handedness. The native adapter now supports both signs
+through qualified QR and reflection-safe reporting, subject to its numerical
+and native admission safeguards. This is distinct from exact user-lattice
+validity; see the [domain guide](domains.md).
 Periodic boundary-image reconstruction also retains its existing output/search
 limitations.
 
