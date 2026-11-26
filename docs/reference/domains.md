@@ -5,9 +5,10 @@ Exact nonsingularity of either handedness is the construction criterion;
 native execution and backend conversion methods apply separate numerical
 admission checks. See the [3D domain guide](../guide/domains.md).
 
-The new user-coordinate methods are **Provisional** under the
-[proposed A1 decision](../development/decisions/0030-exact-user-lattice-and-native-admission.md),
-pending explicit maintainer acceptance of the implementation PR:
+The new user-coordinate methods remain **Provisional** under the API lifecycle
+policy; their contract was accepted in
+[ADR 0030](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
+and implemented in reviewed [PR #156](https://github.com/DeloneCommons/pyvoro2/pull/156):
 
 ```python
 PeriodicCell.cart_to_fractional(points)
