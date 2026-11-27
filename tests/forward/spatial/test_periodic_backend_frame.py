@@ -168,16 +168,27 @@ def test_frame_and_snapshot_own_readonly_arrays_and_keep_nan_owner_sentinel():
     assert np.isnan(frame.internal_to_cart([[np.nan] * 3])).all()
 
 
-def test_sign_normalization_changes_raw_improper_q_as_a_pair():
-    a = np.array([[1., 1., 0], [-1., 1., 0], [0, 0, 2.]])
-    q0, r0 = np.linalg.qr(a.T)
+def test_sign_normalization_changes_raw_improper_q_as_a_pair(monkeypatch):
+    a = np.array([[2., 0., 0.], [.25, 3., 0.], [-.5, .75, 4.]])
+    # Choose a valid raw pair independently of LAPACK's QR sign convention.
+    q0 = np.diag([-1., 1., 1.])
+    r0 = q0.T @ a.T
+    np.testing.assert_array_equal(q0.T @ q0, np.eye(3))
+    np.testing.assert_array_equal(a.T, q0 @ r0)
+    np.testing.assert_array_equal(r0, np.triu(r0))
+    assert np.all(np.diag(r0) != 0)
     assert np.linalg.det(q0) < 0 < float(determinant(a))
-    frame = snapshot(a)
-    assert np.linalg.det(frame.rotation_to_internal) > 0
-    np.testing.assert_allclose(
-        a.T, frame.rotation_to_internal.T @ lower(frame.params).T,
-        rtol=0, atol=1e-15)
     assert np.any(np.diag(r0) < 0)
+    monkeypatch.setattr(np.linalg, 'qr', lambda a: (q0.copy(), r0.copy()))
+    frame = snapshot(a)
+    assert frame.parity == 1
+    assert np.linalg.det(frame.rotation_to_internal) > 0
+    np.testing.assert_array_equal(frame.rotation_to_internal, np.eye(3))
+    assert frame.params == (2., .25, 3., -.5, .75, 4.)
+    assert np.all(np.diag(lower(frame.params)) > 0)
+    np.testing.assert_array_equal(lower(frame.params).T, a.T)
+    np.testing.assert_array_equal(
+        a.T, frame.rotation_to_internal.T @ lower(frame.params).T)
 
 
 def test_parameters_come_from_paired_factor_without_recomputing_source(
