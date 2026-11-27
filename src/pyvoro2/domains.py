@@ -137,8 +137,9 @@ class OrthorhombicCell:
         [min, max). For non-periodic axes, coordinates are left unchanged.
         The period is the represented binary64 ``max - min``. Quotients and
         affine subtraction use exact binary64 operands; only the final
-        coordinate is rounded. A rounded upper endpoint advances the chart to
-        the lower endpoint even with ``eps=0``.
+        coordinate is rounded. A value reaching exact ``min + D`` advances the
+        chart to min even with ``eps=0``. This chart endpoint can differ from
+        max; an emitted value equal to max can instead require refusal.
 
         Args:
             points: Array of shape (n, 3).

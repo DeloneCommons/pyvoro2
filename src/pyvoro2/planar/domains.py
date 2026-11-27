@@ -85,7 +85,9 @@ class RectangularCell:
         inactive coordinates are copied with zero shifts. Quotients, affine
         subtraction and snap comparisons use exact represented operands. Only
         the final coordinate is rounded, then required to lie in ``[lo, hi)``.
-        Rounded upper endpoints advance to lo even with ``eps=0``.
+        A rounded value reaching exact ``lo + D`` advances to lo even with
+        ``eps=0``. This chart endpoint can differ from hi, so a rounded value
+        equal to hi can instead require refusal.
 
         Epsilon defaults to 1e-12 times the maximum active period, with no
         absolute floor. Explicit eps must be finite and nonnegative. Exact
