@@ -23,19 +23,24 @@ The previous v0.9 attempt is preserved at
 adopted automatically. Historical Checkpoint C remains pending/unaccepted;
 pre-Phase-D recovery and WP12/WP13 remain unfinished.
 
-Future geometry architecture and release scope are undecided. ADR 0017's
+[ADR 0029](../development/decisions/0029-image-qualified-geometry-and-optional-global-complex.md)
+selects the layered geometry direction; remaining production scope and release
+scope are undecided. ADR 0017's
 v0.9, 1.0, v1.1, and v1.2 sequence is superseded, and ADR 0006's earlier
 sequence is not reactivated. Historical rationale remains in
 [ADR 0017](../development/decisions/0017-v0.9-functional-stabilization-before-1.0.md).
 Research candidates below do not authorize implementation.
 
 The [functional sequencing draft](../development/plans/functional-sequencing.md)
-records a **research-first dependency order**: evaluate global periodic
-geometry (R-O01) before finalizing its necessary foundational image/coordinate
-contracts; pursue independent forward/query and algebraic inverse improvements
-in parallel; distinguish realized contacts from the full global complex.
-This prioritization is **not** a release commitment or acceptance of a new
-globalization algorithm. [ADR 0028](../development/decisions/0028-upstream-voro-vendor-policy.md)
+records the completed G0/P0 research and accepted exact user-lattice and
+qualified native-frame work in [ADR 0030](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
+and [ADR 0031](../development/decisions/0031-qualified-native-periodic-qr-frame.md).
+It prioritizes focused source/remapping correctness, consumer-driven periodic
+geometry prerequisites, and independent forward/query and algebraic inverse
+work. Image-qualified observed contacts remain distinct from optional global
+assembly. This prioritization is **not** a release commitment or approval of
+a production globalization algorithm.
+[ADR 0028](../development/decisions/0028-upstream-voro-vendor-policy.md)
 defines temporary, per-defect maintenance of the vendored Voro++ while upstream
 `dev` evolves; it does not authorize blanket patching or immediate migration.
 

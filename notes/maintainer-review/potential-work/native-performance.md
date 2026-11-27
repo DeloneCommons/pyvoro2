@@ -1,6 +1,6 @@
 # Native query performance and reusable contexts
 
-**Status:** priorities selected for **research triage only**, not implementation or a release: P-03a reusable read-only context **`deferred`** (low priority, likely post-v1.0); P-03b 2D ghost batch **`selected for research`** (medium–high priority, v0.9–v1.0 candidate after profiling); P-03c structured-grid locate **`selected for research`** (low priority, no version). Any native changes must follow the R-O02b/R-O03 pre-C++ upstream investigation/report gate.
+**Status:** priorities selected for **research triage only**, not implementation or a release: P-03a reusable read-only context **`deferred`** (low priority, likely post-v1.0); P-03b 2D ghost batch **`selected for research`** (medium–high priority, v0.9–v1.0 candidate after profiling); P-03c structured-grid locate **`selected for research`** (low priority, no version). Vendor patches follow the per-defect triage and separate approval in [ADR 0028](../../../docs/development/decisions/0028-upstream-voro-vendor-policy.md); unrelated binding work does not depend on resolving R-O02b/R-O03.
 
 ## Existing behavior before proposing optimizations
 
@@ -50,4 +50,4 @@ Distinguish **few queries** (construction may dominate), **many known queries** 
 
 A separate [geometry-output preset idea](geometry-output-presets.md) addresses API ergonomics, not native point-location search.
 
-**No benchmark result, algorithmic win, implementation or milestone is claimed by this note.** Any actual native changes require separately approved work after the upstream R-O02b/R-O03 prerequisites.
+**No benchmark result, algorithmic win, implementation or milestone is claimed by this note.** Any actual native changes require separately approved work. Apply ADR 0028's per-defect policy to vendor changes; no blanket upstream prerequisite applies to unrelated binding work.

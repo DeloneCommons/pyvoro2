@@ -1,12 +1,12 @@
 # F1 periodic foundation — candidate contracts and P0 evidence
 
-**Proposed / pending maintainer approval.** This is the bounded
+**Historical P0 research deliverable; candidate contracts were not collectively approved.** This is the bounded
 [P0 deliverable (#153)](https://github.com/DeloneCommons/pyvoro2/issues/153),
 subordinate to accepted ADRs [0027](../../../docs/development/decisions/0027-v0.9-reboot-from-v0.8.md),
 [0028](../../../docs/development/decisions/0028-upstream-voro-vendor-policy.md),
 and [0029](../../../docs/development/decisions/0029-image-qualified-geometry-and-optional-global-complex.md).
-The v0.8 behavior remains in force. The
-[sequencing draft v0.2](../../../docs/development/plans/functional-sequencing.md)
+At the time of this study, v0.8 behavior remained in force. The then-current
+[sequencing draft](../../../docs/development/plans/functional-sequencing.md)
 and this note approve no API, algorithm, native patch, or F1/G1 implementation.
 Historical WP2–4 ([#54](https://github.com/DeloneCommons/pyvoro2/issues/54),
 [#56](https://github.com/DeloneCommons/pyvoro2/issues/56),
@@ -14,7 +14,17 @@ Historical WP2–4 ([#54](https://github.com/DeloneCommons/pyvoro2/issues/54),
 are evidence only; see the [requirements](../../../docs/development/reboot/requirements-inventory.md)
 and [evidence index E02–E04](../../../docs/development/reboot/evidence-index.md#e02).
 
-## Coordinate authorities: proposed distinctions, current inventory
+**2026-11-27 update:** P0 was delivered in [PR #154](https://github.com/DeloneCommons/pyvoro2/pull/154).
+Subsequent accepted [ADR 0030](../../../docs/development/decisions/0030-exact-user-lattice-and-native-admission.md)
+and [ADR 0031](../../../docs/development/decisions/0031-qualified-native-periodic-qr-frame.md)
+establish A1 and A2, including the narrow R1 correction. The A2 replay recovered
+seven of the original discrepancy records; 18 remain. The observations, candidate
+semantics, fixtures, validation record and replay below are retained as original
+baseline evidence, not descriptions of the current tree. Consult the current
+[sequencing draft](../../../docs/development/plans/functional-sequencing.md) for
+remaining proposed work; numerical contracts still require focused approval.
+
+## Coordinate authorities: proposed distinctions, P0 baseline inventory
 
 Use row vectors: `x = o + f @ A`, image displacement `s_user @ A`.
 Original user rows/order, origin, and original binary64 Cartesian operands
@@ -201,7 +211,7 @@ bounded output-aliasing seam was directly run. Unresolved-label zero assignment
 is a static source finding, not imported native evidence. All historical #67
 fixtures/targets were inspected in its PR diff; current observations are fresh.
 
-## Bounded handoff and pending decisions
+## Original P0 handoff and decisions pending at that baseline
 
 | Proposed contract / current behavior | Exact affected references; evidence / existing coverage | Compatibility risk / gate |
 | --- | --- | --- |
