@@ -30,5 +30,15 @@ and `ValueError` failures remain separate from exact source validity. See
 [the A2 decision](../development/decisions/0031-qualified-native-periodic-qr-frame.md)
 for qualification gates and the source/native approximation boundary.
 
+Backend-primary remapping uses exact dyadic quotient/affine decisions and final
+rounded coordinates. Rectangular axes use the represented `float(hi-lo)` period;
+native triangular axes commit complete rows in z/y/x order. Rounded upper
+endpoints advance the numerical chart even at `eps=0`. Exact `2*eps < D` is
+required on each active axis, including empty input. Final shifts must fit
+int64 even when not returned. Overlapping snap neighborhoods or an incompatible
+rectangular representative raise `ValueError`; admissible anisotropic frames
+can therefore refuse default remapping. See the [remapping guide](../guide/domains.md#backend-primary-remapping-helpers)
+for examples, fixed-point scope and the distinct A1 contract.
+
 ::: pyvoro2.domains
 :::

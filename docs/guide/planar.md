@@ -33,8 +33,11 @@ periodicity into built-in-Boolean tuples. Public flags require Python or NumPy
 Boolean scalars; IDs and counts require exact non-Boolean integers; and
 explicit tolerances must be finite in their documented positive or
 non-negative range. `Box.from_points` rejects empty/non-finite inputs before
-reduction. Rectangular remapping validates finite points and `eps` and checks
-signed-int64 shift range before conversion.
+reduction. Rectangular remapping uses represented binary64 periods and exact
+affine reduction, requiring nonoverlapping epsilon neighborhoods and contained
+numerical representatives. Final shifts are int64-checked even when unreturned.
+See [backend-primary remapping](domains.md#backend-primary-remapping-helpers)
+for zero-epsilon endpoint behavior, refusal conditions and repeated remapping.
 
 Every inserted planar generator must lie in `[lo, hi)` on non-periodic axes;
 periodic axes are remapped first. Generator pairs at squared distance at most

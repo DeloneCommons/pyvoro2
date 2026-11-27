@@ -15,6 +15,16 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Backend-primary remapping now requires exact `2*eps < D` on every active
+  periodic axis, including empty batches, retaining existing scale-relative
+  defaults. Some native-admissible anisotropic cells now refuse default
+  remapping; helpers exposing epsilon permit smaller explicit values.
+  Rectangular remapping uses the existing represented `float(hi-lo)` period
+  and explicitly refuses incompatible numerical representatives outside the
+  declared half-open bounds. Final int64 shifts are checked after exact wide
+  arithmetic, including calls that do not return shifts (F1-A3-R; Proposed
+  ADR 0032).
+
 - Fully periodic 3D native operations now support numerically admissible user
   lattices of either handedness through one qualified, sign-normalized QR
   frame. This fixes the gross near-parallel Gram–Schmidt nonisometry and
@@ -57,13 +67,22 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Share one exact-dyadic reduction path across planar/spatial rectangular and
+  native triangular remapping. Preserve remainders from large quotients and
+  shear translations, finalize coupled z/y/x coordinates once, and advance
+  rounded upper endpoints even with zero epsilon. Negative subnormals now
+  produce valid numerical primary representatives. Public composite
+  `PeriodicCell.remap_cart` prepares one frame and issues at most one
+  conditioning warning per call. A1 exact wrapping, A2 QR, source-connector
+  semantics and pre-projection arithmetic remain unchanged (F1-A3-R).
+
 - Preserve genuine x/y remainders introduced by coupled native-primary
   remapping: upper snapping now requires a two-sided epsilon neighborhood.
   This prevents valid QR rounding from silently changing source geometry in
   ordinary periodic compute, locate and ghost operations (PR #160, Pro R1).
   This maintainer-authorized narrow A3 prerequisite retains QR qualification,
-  epsilon defaults, zero-epsilon behavior and safety checks; broader A3
-  snapping/endpoint/subnormal limitations remain deferred.
+  epsilon defaults, zero-epsilon behavior and safety checks at that revision;
+  F1-A3-R above subsequently replaces the remapping arithmetic.
 
 ## [0.8.0] - 2026-08-17
 

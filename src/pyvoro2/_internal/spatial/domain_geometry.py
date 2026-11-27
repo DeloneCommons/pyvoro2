@@ -9,6 +9,7 @@ import numpy as np
 
 from ...domains import Box, OrthorhombicCell, PeriodicCell
 from ..native_periodic_frame import prepare_native_periodic_frame
+from .. import native_remap
 from ..inputs import (
     coerce_finite_matrix,
     coerce_finite_vector,
@@ -112,14 +113,12 @@ class _NativePeriodicSnapshot:
         return_shifts: bool = False,
         eps: float | None = None,
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
-        """Reuse the established lower-triangular periodic remap algorithm."""
-
-        return PeriodicCell.remap_internal(
-            self,  # type: ignore[arg-type]
-            points_internal,
-            return_shifts=return_shifts,
-            eps=eps,
-        )
+        """Remap with the shared numerical chart and this snapshot's frame."""
+        pts, expose, epsilon = native_remap.validate_remap_inputs(
+            points_internal, dim=3, return_shifts=return_shifts, eps=eps,
+            name='points_internal')
+        primary, shifts = native_remap.remap_triangular(pts, self.params, epsilon)
+        return native_remap.materialize_remap(primary, shifts, expose)
 
     def remap_cart(
         self,

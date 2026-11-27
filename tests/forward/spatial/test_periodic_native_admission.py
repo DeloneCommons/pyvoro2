@@ -14,6 +14,31 @@ REJECTED = [np.diag([1., 1., 1e-16]),
             np.eye(3) * 1e-110, np.eye(3) * 1e110]
 
 
+@pytest.mark.parametrize('operation', ['compute', 'locate', 'ghost_cells'])
+@pytest.mark.parametrize('mode', ['standard', 'power'])
+def test_overlapping_default_snap_bands_refuse_before_dispatch(
+    monkeypatch, operation, mode,
+):
+    class ForbiddenCore:
+        def __getattr__(self, name):
+            raise AssertionError(f'unsafe native dispatch: {name}')
+
+    monkeypatch.setattr(api, '_core', ForbiddenCore())
+    monkeypatch.setattr(api, '_CORE_IMPORT_ERROR', None)
+    cell = pv.PeriodicCell(np.diag([1., 1., 1e-13]))
+    options = dict(domain=cell, mode=mode, blocks=(1, 1, 1))
+    if mode == 'power':
+        options['radii'] = [0.]
+        if operation == 'ghost_cells':
+            options['ghost_radius'] = 0.
+    args = ([[.25, .25, 0.]],)
+    if operation != 'compute':
+        args += ([[.5, .5, 0.]],)
+    with pytest.warns(RuntimeWarning, match='native adapter'):
+        with pytest.raises(ValueError, match='2.*eps|neighborhood'):
+            getattr(pv, operation)(*args, **options)
+
+
 @pytest.mark.parametrize('basis', REJECTED)
 @pytest.mark.parametrize('method', ['to_internal_params', 'cart_to_internal',
                                     'internal_to_cart', 'remap_internal',

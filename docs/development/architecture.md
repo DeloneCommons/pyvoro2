@@ -303,6 +303,16 @@ See [accepted ADR 0031](decisions/0031-qualified-native-periodic-qr-frame.md) fo
 formulas, gates and review status. Neither the approximate frame relation nor
 preserved integer image labels establishes exact source/native equivalence.
 
+`_internal.native_remap` shares exact dyadic scalar reduction across rectangular
+2D/3D and one-pass triangular z/y/x remapping. Public and detached wrappers use
+the same arithmetic; the snapshot is no longer passed as a public method's
+`self`. Wide Python coefficients are checked only at final int64 materialization,
+including unreturned legacy shifts. Public composite Cartesian remapping also
+reuses one qualified frame. [Proposed ADR 0032](decisions/0032-native-primary-remapping.md)
+records the numerical chart, represented rectangular period, nonoverlapping
+epsilon neighborhoods and narrow supersession of ADR 0011's intermediate range
+checks. A1 exact user operations, A2 QR and internal NaN reporting remain distinct.
+
 ### Certified periodic minimum-image geometry
 
 The dimension-neutral private module `_internal.periodic_images` is the one

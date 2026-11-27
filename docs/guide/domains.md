@@ -187,10 +187,9 @@ Frame qualification checks numerical orthogonality and row-relative backward
 error. It does not bound every short-direction relative error or guarantee a
 native tessellation. The same integer tuple `s` labels source and native images,
 but `L ≈ A @ Q` does not certify exact equality of their Cartesian translations
-or native insertion provenance. A narrow A3 prerequisite bounds coupled x/y
-upper snaps to their epsilon neighborhood, preserving larger overshoots for
-ordinary lattice reduction. Broader source snapping, remapping and
-endpoint/subnormal limitations remain separate A3 work. See the
+or native insertion provenance. Numerical primary remapping below preserves
+coupled tangential remainders; source-connector snapping and phase lost before
+native projection remain separate work. See the
 [accepted A1 contract](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
 and [accepted A2 decision](../development/decisions/0031-qualified-native-periodic-qr-frame.md).
 
@@ -202,11 +201,50 @@ Both periodic domain classes provide remapping utilities that appear in several 
 
 They wrap coordinates into the primary cell and optionally return the integer lattice shift.
 
-Point arrays and an explicit `eps` are validated before flooring. `eps` must
+Point arrays and an explicit `eps` are validated before arithmetic. `eps` must
 be finite and non-negative, and `return_shifts` must be a Python or NumPy
-Boolean. A remap whose lattice-shift quotient cannot fit signed int64 raises
-`ValueError` before integer conversion; the established shift-sign convention
-is unchanged.
+Boolean. Quotient decisions, affine subtraction and snapping comparisons use
+exact values of canonical binary64 operands; only the final coordinates are
+rounded. Intermediate coefficients remain arbitrary-size integers. **Final**
+shifts must fit signed int64, even with `return_shifts=False`, or the remap
+raises `ValueError`. Outputs are owned arrays and inputs are unchanged.
+
+`OrthorhombicCell` and planar `RectangularCell` use the represented period
+`D = float(hi-lo)` on each periodic axis. They round the complete affine value
+`lo + remainder`, then require the result in the declared interval `[lo,hi)`.
+Inactive axes are unchanged. For bounds `[-0.1,0.2]`, x=0.4 maps to
+`0.09999999999999998` with shift 1. A represented period incompatible with a
+contained numerical representative raises `ValueError`: for `[2**-54,1]`,
+x=1 refuses with `eps=0`, but maps to the lower endpoint with shift 1 at
+`eps=1e-12`. The chart gap at x=-1 in `[-2**60,-1]` also refuses at zero epsilon.
+
+Triangular remapping finalizes z, y, x once, propagating each committed full
+lattice-row translation before evaluating the next coordinate. A rounded
+remainder equal to the upper endpoint advances to zero with an incremented
+coefficient **even at `eps=0`**. For period 2, negative minimum subnormal input
+therefore emits zero and shift zero; positive minimum subnormal input is
+preserved at zero epsilon. This is a numerical chart choice: A1 exact wrapping
+retains its literal floor and may return a rounded upper endpoint instead.
+
+Positive epsilon snaps a value strictly less than eps above the lower endpoint
+to that endpoint, and a value at most eps below the represented upper endpoint
+to the next chart's lower endpoint. The default remains `1e-12` times the maximum
+active rectangular length or native diagonal, without an absolute floor.
+Exact **`2*eps < D`** must hold on every active axis, including empty batches.
+Touching or overlapping snap neighborhoods raise `ValueError`. Some highly
+anisotropic frames, such as `diag(1,1,1e-13)`, still pass native frame admission
+but now refuse default remapping. Helpers exposing `eps` permit a smaller
+explicit value; forward operations retain the default and can refuse before
+native dispatch. The frame admission thresholds have not changed.
+
+An accepted rectangular or native-internal remap is a fixed point under
+repetition with unchanged epsilon: identical coordinates and zero extra shifts.
+This does not promise a fixed point after a Cartesian QR round trip or for A1
+rounded views. The convention `input ≈ primary + shifts @ lattice` includes
+final-coordinate rounding and intentional snapping, without a universal
+absolute reconstruction tolerance. Public `PeriodicCell.remap_cart` uses one
+qualified frame per call. It retains ordinary Cartesian projection arithmetic;
+remapping cannot restore phase already lost when projecting remote source lifts.
 
 These helpers are used internally (for example, in visualization wrapping and in periodic graph work),
 but they are also useful when you want to align your own data to the primary cell.

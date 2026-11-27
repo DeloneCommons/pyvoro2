@@ -6,11 +6,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..domains import _default_snap_eps
-from .._internal.inputs import coerce_point_array, floor_to_int64
+from .._internal import native_remap
+from .._internal.inputs import coerce_point_array
 from .._internal.validation import (
-    INT64_MAX,
-    require_bool,
     require_bool_tuple,
     require_nonnegative_finite_real,
     require_ordered_bounds,
@@ -81,69 +79,30 @@ class RectangularCell:
         return_shifts: bool = False,
         eps: float | None = None,
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
-        """Remap Cartesian points into the primary rectangular domain."""
+        """Remap finite (n, 2) Cartesian points into the numerical primary cell.
 
-        return_shifts_value = require_bool(
-            return_shifts,
-            name='return_shifts',
-        )
-        pts = coerce_point_array(points, name='points', dim=2)
+        Active axes use the represented binary64 period ``D = hi - lo``;
+        inactive coordinates are copied with zero shifts. Quotients, affine
+        subtraction and snap comparisons use exact represented operands. Only
+        the final coordinate is rounded, then required to lie in ``[lo, hi)``.
+        Rounded upper endpoints advance to lo even with ``eps=0``.
 
-        (xmin, xmax), (ymin, ymax) = self.bounds
-        lx = float(xmax - xmin)
-        ly = float(ymax - ymin)
+        Epsilon defaults to 1e-12 times the maximum active period, with no
+        absolute floor. Explicit eps must be finite and nonnegative. Exact
+        ``2*eps < D`` is required on each active axis, including empty batches;
+        overlapping/touching neighborhoods raise ValueError. An incompatible
+        represented-period chart also raises ValueError.
 
-        if eps is None:
-            lp = 0.0
-            if self.periodic[0]:
-                lp = max(lp, lx)
-            if self.periodic[1]:
-                lp = max(lp, ly)
-            eps_val = _default_snap_eps(lp)
-        else:
-            eps_val = require_nonnegative_finite_real(eps, name='eps')
+        Outputs are owned float64 coordinates and, if return_shifts is True,
+        owned int64 shifts with ``input ~= primary + shifts @ lattice``.
+        Final shifts must fit int64 even when not returned; intermediate
+        arithmetic stays wide. Reconstruction includes coordinate rounding and
+        intentional snapping. Repeating an accepted remap with unchanged eps
+        preserves coordinates and adds zero shifts. Caller inputs are unchanged.
+        """
 
-        x = pts[:, 0].astype(float, copy=True)
-        y = pts[:, 1].astype(float, copy=True)
-        shifts = np.zeros((pts.shape[0], 2), dtype=np.int64)
-
-        for axis, (lo, hi, length, is_periodic) in enumerate(
-            (
-                (xmin, xmax, lx, self.periodic[0]),
-                (ymin, ymax, ly, self.periodic[1]),
-            )
-        ):
-            if not is_periodic:
-                continue
-            coord = x if axis == 0 else y
-            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-                quotient = (coord - lo) / length
-            s = floor_to_int64(quotient, name=f'points axis {axis} shift')
-            with np.errstate(over='ignore', invalid='ignore'):
-                coord -= s * length
-            if not np.all(np.isfinite(coord)):
-                raise ValueError('remapped points must contain only finite values')
-            shifts[:, axis] = s
-
-            if eps_val > 0.0:
-                m0 = np.abs(coord - lo) < eps_val
-                if np.any(m0):
-                    coord[m0] = lo
-                m1 = coord >= (hi - eps_val)
-                if np.any(m1):
-                    if np.any(shifts[m1, axis] == INT64_MAX):
-                        raise ValueError(
-                            'remap shifts must be representable as signed int64'
-                        )
-                    coord[m1] = lo
-                    shifts[m1, axis] += 1
-
-            if axis == 0:
-                x = coord
-            else:
-                y = coord
-
-        out = np.stack([x, y], axis=1).astype(np.float64)
-        if return_shifts_value:
-            return out, shifts
-        return out
+        pts, expose, epsilon = native_remap.validate_remap_inputs(
+            points, dim=2, return_shifts=return_shifts, eps=eps)
+        primary, shifts = native_remap.remap_rectangular(
+            pts, self.bounds, self.periodic, epsilon)
+        return native_remap.materialize_remap(primary, shifts, expose)
