@@ -20,8 +20,10 @@ and release decisions.
 [Issue #120](https://github.com/DeloneCommons/pyvoro2/issues/120) records the
 completed branch cutover, PR1 operational bootstrap, and PR2 historical knowledge
 migration. [ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) governs the
-reboot. Future geometry architecture and release scope remain undecided; old
-release sequences and historical ADRs 0018–0026 do not authorize new work.
+reboot. [ADR 0029](decisions/0029-image-qualified-geometry-and-optional-global-complex.md)
+selects the geometry-layering direction; implementation and release scope
+require separate decisions. Old release sequences and historical ADRs
+0018–0026 do not authorize new work.
 
 The general release-plan lifecycle below applies when a new plan is approved.
 References to `dev` now mean the reboot integration branch, not the frozen
