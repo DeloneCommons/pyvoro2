@@ -22,8 +22,7 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   Rectangular remapping uses the existing represented `float(hi-lo)` period
   and explicitly refuses incompatible numerical representatives outside the
   declared half-open bounds. Final int64 shifts are checked after exact wide
-  arithmetic, including calls that do not return shifts (F1-A3-R; Proposed
-  ADR 0032).
+  arithmetic, including calls that do not return shifts (F1-A3-R; ADR 0032).
 
 - Fully periodic 3D native operations now support numerically admissible user
   lattices of either handedness through one qualified, sign-normalized QR
