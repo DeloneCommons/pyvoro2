@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 
 from pyvoro2._internal.inputs import (
-    checked_int64_add,
     owned_readonly_array,
     require_internal_id_range,
     require_planar_ghost_site_id_range,
@@ -342,21 +341,3 @@ def test_owned_readonly_array_detaches_from_caller_storage() -> None:
     assert owned.tolist() == [1.0, 2.0]
     assert owned.flags.owndata
     assert not owned.flags.writeable
-
-
-def test_checked_int64_add_rejects_overflow_before_arithmetic() -> None:
-    maximum = np.iinfo(np.int64).max
-    minimum = np.iinfo(np.int64).min
-
-    with pytest.raises(ValueError, match='sum.*signed int64'):
-        checked_int64_add(
-            np.array([maximum], dtype=np.int64),
-            np.array([1], dtype=np.int64),
-            name='sum',
-        )
-    with pytest.raises(ValueError, match='sum.*signed int64'):
-        checked_int64_add(
-            np.array([minimum], dtype=np.int64),
-            np.array([-1], dtype=np.int64),
-            name='sum',
-        )

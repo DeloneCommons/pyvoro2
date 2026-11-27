@@ -15,6 +15,39 @@ from pyvoro2._internal.spatial.domain_geometry import _NativePeriodicSnapshot
 GATE = 60 * 2**-53
 
 
+@pytest.mark.parametrize('return_shifts', [False, True])
+def test_composite_remap_prepares_one_frame_and_warns_once(monkeypatch, return_shifts):
+    cell = pv.PeriodicCell(np.diag([1., 1., 1e-11]), origin=(.25, -.5, 1.))
+    original_qr = np.linalg.qr
+    calls = []
+
+    def counted_qr(*args, **kwargs):
+        calls.append(1)
+        return original_qr(*args, **kwargs)
+
+    monkeypatch.setattr(np.linalg, 'qr', counted_qr)
+    with pytest.warns(RuntimeWarning, match='native adapter') as caught:
+        result = cell.remap_cart([[1.5, -.25, 1.]], return_shifts=return_shifts)
+    assert len(calls) == len(caught) == 1
+    actual = result[0] if return_shifts else result
+    np.testing.assert_array_equal(actual, [[.5, -.25, 1.]])
+    if return_shifts:
+        np.testing.assert_array_equal(result[1], [[1, 0, 0]])
+
+
+def test_composite_remap_warning_as_error_stops_before_qr(monkeypatch):
+    cell = pv.PeriodicCell(np.diag([1., 1., 1e-11]))
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('QR ran after conditioning warning')
+
+    monkeypatch.setattr(np.linalg, 'qr', forbidden)
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        with pytest.raises(RuntimeWarning, match='native adapter'):
+            cell.remap_cart([[0., 0., 0.]])
+
+
 def determinant(a):
     return sum((-1)**sum(p[i] > p[j] for i in range(3) for j in range(i + 1, 3))
                * math.prod(F(float(a[i][p[i]])) for i in range(3))

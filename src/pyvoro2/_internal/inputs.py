@@ -265,26 +265,6 @@ def owned_readonly_array(
     return result
 
 
-def floor_to_int64(values: np.ndarray, *, name: str) -> np.ndarray:
-    """Floor finite float64 values after proving signed-int64 representability."""
-
-    arr = np.asarray(values, dtype=np.float64)
-    if not np.all(np.isfinite(arr)):
-        raise ValueError(f'{name} must contain only finite values before flooring')
-    with np.errstate(over='ignore', invalid='ignore'):
-        floored = np.floor(arr)
-    upper_exclusive = float(2**63)
-    if (
-        not np.all(np.isfinite(floored))
-        or np.any(floored < float(INT64_MIN))
-        or np.any(floored >= upper_exclusive)
-    ):
-        raise ValueError(
-            f'{name} floor result must be representable as signed int64'
-        )
-    return floored.astype(np.int64)
-
-
 def round_to_int64(values: np.ndarray, *, name: str) -> np.ndarray:
     """Round finite float64 values after proving signed-int64 representability."""
 
@@ -303,31 +283,6 @@ def round_to_int64(values: np.ndarray, *, name: str) -> np.ndarray:
             f'{name} rounded result must be representable as signed int64'
         )
     return rounded.astype(np.int64)
-
-
-def checked_int64_add(
-    left: np.ndarray,
-    right: np.ndarray,
-    *,
-    name: str,
-) -> np.ndarray:
-    """Add aligned int64 arrays after checking for destination overflow."""
-
-    lhs = np.asarray(left, dtype=np.int64)
-    rhs = np.asarray(right, dtype=np.int64)
-    if lhs.shape != rhs.shape:
-        raise ValueError(f'{name} operands must have the same shape')
-    positive = rhs > 0
-    negative = rhs < 0
-    if np.any(positive):
-        limit = INT64_MAX - rhs[positive]
-        if np.any(lhs[positive] > limit):
-            raise ValueError(f'{name} must be representable as signed int64')
-    if np.any(negative):
-        limit = INT64_MIN - rhs[negative]
-        if np.any(lhs[negative] < limit):
-            raise ValueError(f'{name} must be representable as signed int64')
-    return lhs + rhs
 
 
 def validate_forward_mode(mode: object) -> str:

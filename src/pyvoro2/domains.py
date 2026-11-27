@@ -14,17 +14,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ._internal import exact_user_basis
+from ._internal import exact_user_basis, native_remap
 from ._internal.native_periodic_frame import prepare_native_periodic_frame
 from ._internal.inputs import (
-    checked_int64_add,
     coerce_finite_matrix,
     coerce_finite_vector,
     coerce_point_array,
-    floor_to_int64,
 )
 from ._internal.validation import (
-    INT64_MAX,
     require_bool,
     require_bool_tuple,
     require_finite_real,
@@ -32,22 +29,6 @@ from ._internal.validation import (
     require_ordered_bounds,
     require_positive_finite_real,
 )
-
-
-def _default_snap_eps(L: float, *, rel: float = 1e-12) -> float:
-    """Return a scale-relative snapping epsilon for remapping.
-
-    The returned value scales with ``L`` and has **no** hard absolute floor.
-    A small machine-epsilon-based lower bound keeps it from becoming
-    numerically ineffective for typical floating-point ranges.
-    """
-
-    Lf = float(L)
-    if not np.isfinite(Lf) or Lf <= 0.0:
-        return 0.0
-    epsf = float(np.finfo(float).eps)
-    # Keep everything scale-relative: both terms are proportional to L.
-    return float(max(rel * Lf, 64.0 * epsf * Lf))
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,6 +135,11 @@ class OrthorhombicCell:
 
         For each periodic axis, points are wrapped into the half-open interval
         [min, max). For non-periodic axes, coordinates are left unchanged.
+        The period is the represented binary64 ``max - min``. Quotients and
+        affine subtraction use exact binary64 operands; only the final
+        coordinate is rounded. A value reaching exact ``min + D`` advances the
+        chart to min even with ``eps=0``. This chart endpoint can differ from
+        max; an emitted value equal to max can instead require refusal.
 
         Args:
             points: Array of shape (n, 3).
@@ -165,6 +151,8 @@ class OrthorhombicCell:
                 where a/b/c are the cell lattice vectors.
             eps: Optional snapping tolerance. If None, defaults to
                 1e-12 * L where L is the maximum periodic axis length.
+                Must be finite, nonnegative and satisfy exact ``2*eps < D``
+                for every active represented period D, even for empty input.
 
         Returns:
             If return_shifts is False:
@@ -172,83 +160,23 @@ class OrthorhombicCell:
             If return_shifts is True:
                 (remapped_points, shifts) where shifts has shape (n, 3)
                 and contains integer (nx, ny, nz).
+
+        Raises:
+            ValueError: If snapping neighborhoods touch/overlap, a numerical
+                representative cannot satisfy the declared interval, or final
+                shifts do not fit int64 (also when return_shifts is False).
+
+        Notes:
+            Outputs are owned float64 coordinates and optional int64 shifts.
+            Repeating this remap with unchanged epsilon preserves coordinates
+            and adds zero shifts. Reconstruction includes final rounding and
+            intentional snapping error, with no universal absolute error bound.
         """
-        return_shifts_value = require_bool(
-            return_shifts,
-            name='return_shifts',
-        )
-        pts = coerce_point_array(points, name='points', dim=3)
-
-        (xmin, xmax), (ymin, ymax), (zmin, zmax) = self.bounds
-        Lx = float(xmax - xmin)
-        Ly = float(ymax - ymin)
-        Lz = float(zmax - zmin)
-
-        if eps is None:
-            # Use the maximum length among periodic axes (no hard floor).
-            Lp = 0.0
-            if bool(self.periodic[0]):
-                Lp = max(Lp, Lx)
-            if bool(self.periodic[1]):
-                Lp = max(Lp, Ly)
-            if bool(self.periodic[2]):
-                Lp = max(Lp, Lz)
-            eps_val = _default_snap_eps(Lp)
-        else:
-            eps_val = require_nonnegative_finite_real(eps, name='eps')
-
-        x = pts[:, 0].astype(float, copy=True)
-        y = pts[:, 1].astype(float, copy=True)
-        z = pts[:, 2].astype(float, copy=True)
-
-        shifts = np.zeros((pts.shape[0], 3), dtype=np.int64)
-
-        for axis, (lo, hi, L, is_per) in enumerate(
-            (
-                (xmin, xmax, Lx, self.periodic[0]),
-                (ymin, ymax, Ly, self.periodic[1]),
-                (zmin, zmax, Lz, self.periodic[2]),
-            )
-        ):
-            if not is_per:
-                continue
-            coord = x if axis == 0 else y if axis == 1 else z
-            # Wrap into [lo, hi) using floor.
-            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-                quotient = (coord - lo) / L
-            s = floor_to_int64(quotient, name=f'points axis {axis} shift')
-            with np.errstate(over='ignore', invalid='ignore'):
-                coord -= s * L
-            if not np.all(np.isfinite(coord)):
-                raise ValueError('remapped points must contain only finite values')
-            shifts[:, axis] = s
-
-            if eps_val > 0.0:
-                # Snap near the lower boundary to lo.
-                m0 = np.abs(coord - lo) < eps_val
-                if np.any(m0):
-                    coord[m0] = lo
-                # Snap near the upper boundary to lo with shift increment.
-                m1 = coord >= (hi - eps_val)
-                if np.any(m1):
-                    if np.any(shifts[m1, axis] == INT64_MAX):
-                        raise ValueError(
-                            'remap shifts must be representable as signed int64'
-                        )
-                    coord[m1] = lo
-                    shifts[m1, axis] += 1
-
-            if axis == 0:
-                x = coord
-            elif axis == 1:
-                y = coord
-            else:
-                z = coord
-
-        out = np.stack([x, y, z], axis=1).astype(np.float64)
-        if return_shifts_value:
-            return out, shifts
-        return out
+        pts, expose, epsilon = native_remap.validate_remap_inputs(
+            points, dim=3, return_shifts=return_shifts, eps=eps)
+        primary, shifts = native_remap.remap_rectangular(
+            pts, self.bounds, self.periodic, epsilon)
+        return native_remap.materialize_remap(primary, shifts, expose)
 
 
 @dataclass(frozen=True, slots=True)
@@ -461,23 +389,30 @@ class PeriodicCell:
         x/y/z when the cell is sheared (bxy/bxz/byz != 0). In particular,
         wrapping in z shifts x and y, and wrapping in y shifts x.
 
-        This routine performs a lattice-consistent remap equivalent to applying
-        integer translations along c, then b, then a. It enforces a half-open
-        convention for the primary cell:
+        Exact dyadic affine arithmetic applies committed integer translations
+        along c, then b, then a, finalizing each axis once. Each translation
+        includes the complete row before the next axis is evaluated. Only the
+        emitted coordinates are rounded to binary64, in the half-open domain:
 
             x in [0, bx), y in [0, by), z in [0, bz)
 
-        To make the mapping deterministic at boundaries (and stable under
-        repeated remapping), an epsilon snapping rule is applied:
-
-            - values within `eps` of 0 are set to 0
-            - values within `eps` of the upper boundary are wrapped to 0 and the
-              corresponding lattice shift is incremented
+        A rounded remainder equal to its period emits zero and increments the
+        coefficient, even with ``eps=0``. Otherwise, for positive epsilon,
+        a rounded remainder strictly below eps snaps to zero; a remainder at
+        most eps below the period snaps to zero and increments the coefficient.
+        Comparisons use exact represented operands. No physical tangential
+        remainder is discarded during coupled translations.
 
         Notes:
             - This method is provided as an explicit helper.
             - Forward operations pre-wrap generators through a detached native
               snapshot. This numerical backend remap is not exact user wrapping.
+            - Repeating an accepted internal remap with unchanged epsilon
+              preserves coordinates and adds zero shifts. This does not promise
+              a fixed point after a Cartesian QR round trip.
+            - ``p_input ~= p_remapped + shifts @ L`` includes final-coordinate
+              rounding and intentional snapping, without a scale-independent
+              reconstruction tolerance or exact source/native equivalence.
 
         Args:
             points_internal: Points in the internal coordinate system,
@@ -486,6 +421,10 @@ class PeriodicCell:
                 (na, nb, nc) applied to each point.
             eps: Snapping tolerance in internal distance units. If None,
                 defaults to 1e-12 * L where L = max(bx, by, bz).
+                Must be finite, nonnegative and satisfy exact ``2*eps < D``
+                for each native diagonal D, including empty batches. Some
+                admissible anisotropic frames therefore refuse the default;
+                this helper permits a smaller explicit epsilon.
 
         Returns:
             If return_shifts is False:
@@ -493,156 +432,19 @@ class PeriodicCell:
             If return_shifts is True:
                 (remapped_points, shifts) where shifts has shape (n, 3)
                 and contains integer (na, nb, nc).
+
+        Raises:
+            ValueError: If native admission fails, snap neighborhoods touch or
+                overlap, or final shifts cannot fit int64. Intermediate
+                coefficients stay exact and wide; final range is required even
+                when return_shifts is False. Caller inputs are never mutated.
         """
-        return_shifts_value = require_bool(
-            return_shifts,
-            name='return_shifts',
-        )
-        pts = coerce_point_array(
-            points_internal,
-            name='points_internal',
-            dim=3,
-        )
-        explicit_eps = (
-            None
-            if eps is None
-            else require_nonnegative_finite_real(eps, name='eps')
-        )
-        bx, bxy, by, bxz, byz, bz = self.to_internal_params()
-
-        x = pts[:, 0].astype(float, copy=True)
-        y = pts[:, 1].astype(float, copy=True)
-        z = pts[:, 2].astype(float, copy=True)
-
-        if explicit_eps is None:
-            eps_val = _default_snap_eps(max(bx, by, bz))
-        else:
-            eps_val = explicit_eps
-
-        na = np.zeros_like(x, dtype=np.int64)
-        nb = np.zeros_like(x, dtype=np.int64)
-        nc = np.zeros_like(x, dtype=np.int64)
-
-        # Iterate several times: remap -> (optional) snap upper boundary.
-        # In normal cases, this converges in 1 iteration. Extra iterations
-        # handle points that land extremely close to periodic boundaries
-        # and would otherwise flip images due to floating-point round-off.
-        for _ in range(3):
-            # Remap into [0,b) using lower-triangular lattice steps.
-            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-                dc_quotient = z / bz
-            dc = floor_to_int64(dc_quotient, name='points_internal c shift')
-            with np.errstate(over='ignore', invalid='ignore'):
-                z -= dc * bz
-                y -= dc * byz
-                x -= dc * bxz
-            _require_finite_remap_coordinates(x, y, z)
-
-            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-                db_quotient = y / by
-            db = floor_to_int64(db_quotient, name='points_internal b shift')
-            with np.errstate(over='ignore', invalid='ignore'):
-                y -= db * by
-                x -= db * bxy
-            _require_finite_remap_coordinates(x, y, z)
-
-            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-                da_quotient = x / bx
-            da = floor_to_int64(da_quotient, name='points_internal a shift')
-            with np.errstate(over='ignore', invalid='ignore'):
-                x -= da * bx
-            _require_finite_remap_coordinates(x, y, z)
-
-            na = checked_int64_add(na, da, name='remap a shifts')
-            nb = checked_int64_add(nb, db, name='remap b shifts')
-            nc = checked_int64_add(nc, dc, name='remap c shifts')
-
-            if eps_val == 0.0:
-                break
-
-            # Snap tiny values to 0 (does not change shifts).
-            x[np.abs(x) < eps_val] = 0.0
-            y[np.abs(y) < eps_val] = 0.0
-            z[np.abs(z) < eps_val] = 0.0
-
-            # Snap near upper boundaries to 0 with the corresponding shift increment.
-            changed = False
-
-            mz = z >= (bz - eps_val)
-            if np.any(mz):
-                z[mz] = 0.0
-                y[mz] -= byz
-                x[mz] -= bxz
-                increment = np.zeros_like(nc)
-                increment[mz] = 1
-                nc = checked_int64_add(nc, increment, name='remap c shifts')
-                changed = True
-
-            # A preceding snap can introduce a genuine overshoot. Preserve
-            # its remainder for ordinary lattice reduction on the next pass.
-            my = (y >= (by - eps_val)) & (y <= (by + eps_val))
-            if np.any(my):
-                y[my] = 0.0
-                x[my] -= bxy
-                increment = np.zeros_like(nb)
-                increment[my] = 1
-                nb = checked_int64_add(nb, increment, name='remap b shifts')
-                changed = True
-
-            mx = (x >= (bx - eps_val)) & (x <= (bx + eps_val))
-            if np.any(mx):
-                x[mx] = 0.0
-                increment = np.zeros_like(na)
-                increment[mx] = 1
-                na = checked_int64_add(na, increment, name='remap a shifts')
-                changed = True
-
-            _require_finite_remap_coordinates(x, y, z)
-
-            if not changed:
-                break
-
-        # Final remap to guarantee we are inside the primary cell after any snapping.
-        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-            dc_quotient = z / bz
-        dc = floor_to_int64(dc_quotient, name='points_internal c shift')
-        with np.errstate(over='ignore', invalid='ignore'):
-            z -= dc * bz
-            y -= dc * byz
-            x -= dc * bxz
-        _require_finite_remap_coordinates(x, y, z)
-
-        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-            db_quotient = y / by
-        db = floor_to_int64(db_quotient, name='points_internal b shift')
-        with np.errstate(over='ignore', invalid='ignore'):
-            y -= db * by
-            x -= db * bxy
-        _require_finite_remap_coordinates(x, y, z)
-
-        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-            da_quotient = x / bx
-        da = floor_to_int64(da_quotient, name='points_internal a shift')
-        with np.errstate(over='ignore', invalid='ignore'):
-            x -= da * bx
-        _require_finite_remap_coordinates(x, y, z)
-
-        na = checked_int64_add(na, da, name='remap a shifts')
-        nb = checked_int64_add(nb, db, name='remap b shifts')
-        nc = checked_int64_add(nc, dc, name='remap c shifts')
-
-        # Snap tiny values to 0 again for cleanliness.
-        if eps_val > 0.0:
-            x[np.abs(x) < eps_val] = 0.0
-            y[np.abs(y) < eps_val] = 0.0
-            z[np.abs(z) < eps_val] = 0.0
-
-        remapped = np.stack([x, y, z], axis=1)
-
-        if not return_shifts_value:
-            return remapped
-        shifts = np.stack([na, nb, nc], axis=1).astype(np.int64)
-        return remapped, shifts
+        pts, expose, epsilon = native_remap.validate_remap_inputs(
+            points_internal, dim=3, return_shifts=return_shifts, eps=eps,
+            name='points_internal')
+        primary, shifts = native_remap.remap_triangular(
+            pts, self.to_internal_params(), epsilon)
+        return native_remap.materialize_remap(primary, shifts, expose)
 
     def wrap_internal(self, points_internal: np.ndarray) -> np.ndarray:
         """Alias for :meth:`remap_internal`.
@@ -661,8 +463,13 @@ class PeriodicCell:
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Remap Cartesian points into the primary cell.
 
-        This is a convenience wrapper around :meth:`cart_to_internal`,
-        :meth:`remap_internal`, and :meth:`internal_to_cart`.
+        Uses one qualified native frame for Cartesian projection, numerical
+        primary remapping and reporting. See :meth:`remap_internal` for snapping
+        and final int64 range rules, including when shifts are not requested.
+        This differs from exact user-parallelepiped :meth:`wrap_cart`.
+        Projection retains ordinary binary64 arithmetic; remote source lifts
+        can lose phase before remapping, and Cartesian round trips need not be
+        fixed points.
 
         Args:
             points: Cartesian coordinates, shape (n, 3).
@@ -670,33 +477,19 @@ class PeriodicCell:
                 (na, nb, nc) applied to each point.
             eps: Snapping tolerance passed through to :meth:`remap_internal`.
         """
-        return_shifts_value = require_bool(
-            return_shifts,
-            name='return_shifts',
-        )
-        eps_value = (
-            None
-            if eps is None
-            else require_nonnegative_finite_real(eps, name='eps')
-        )
-        pts_i = self.cart_to_internal(points)
-        if return_shifts_value:
-            pts_i2, shifts = self.remap_internal(
-                pts_i,
-                return_shifts=True,
-                eps=eps_value,
-            )
-            return self.internal_to_cart(pts_i2), shifts
-        pts_i2 = self.remap_internal(
-            pts_i,
-            return_shifts=False,
-            eps=eps_value,
-        )
-        return self.internal_to_cart(pts_i2)
-
-
-def _require_finite_remap_coordinates(*coordinates: np.ndarray) -> None:
-    """Reject non-finite shear arithmetic before another floor operation."""
-
-    if not all(np.all(np.isfinite(values)) for values in coordinates):
-        raise ValueError('remapped points must contain only finite values')
+        pts, expose, epsilon = native_remap.validate_remap_inputs(
+            points, dim=3, return_shifts=return_shifts, eps=eps)
+        frame = prepare_native_periodic_frame(self.vectors)
+        r = frame.rotation_to_internal
+        origin = np.asarray(self.origin, dtype=float)
+        # Retain the standalone projection arithmetic, using this one frame.
+        with np.errstate(over='ignore', invalid='ignore'):
+            internal = (r @ (pts - origin[None, :]).T).T
+        if not np.all(np.isfinite(internal)):
+            raise ValueError('points produce non-finite internal coordinates')
+        primary, shifts = native_remap.remap_triangular(internal, frame.params, epsilon)
+        with np.errstate(over='ignore', invalid='ignore'):
+            result = (r.T @ primary.T).T + origin[None, :]
+        if not np.all(np.isfinite(result)):
+            raise ValueError('points_internal produce non-finite coordinates')
+        return native_remap.materialize_remap(result, shifts, expose)
