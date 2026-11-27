@@ -299,7 +299,7 @@ snapshot for native parameters, coordinate conversion and reporting. The common
 reporting helper reverses present face and vertex-adjacency cycles under a
 reflection, after native-coordinate face-shift inference, preserving the native
 inward winding convention. Locate transforms owner positions without cycles.
-See [Proposed ADR 0031](decisions/0031-qualified-native-periodic-qr-frame.md) for
+See [accepted ADR 0031](decisions/0031-qualified-native-periodic-qr-frame.md) for
 formulas, gates and review status. Neither the approximate frame relation nor
 preserved integer image labels establishes exact source/native equivalence.
 

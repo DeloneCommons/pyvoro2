@@ -192,7 +192,7 @@ upper snaps to their epsilon neighborhood, preserving larger overshoots for
 ordinary lattice reduction. Broader source snapping, remapping and
 endpoint/subnormal limitations remain separate A3 work. See the
 [accepted A1 contract](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
-and [Proposed A2 decision](../development/decisions/0031-qualified-native-periodic-qr-frame.md).
+and [accepted A2 decision](../development/decisions/0031-qualified-native-periodic-qr-frame.md).
 
 ## Backend-primary remapping helpers
 

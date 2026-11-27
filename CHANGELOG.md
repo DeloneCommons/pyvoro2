@@ -21,7 +21,7 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   preserves Cartesian face/adjacency winding under reflections. The exact
   image and duplicate-safety kernel admits signed full-periodic 3D bases;
   planar/partial-periodic admission and A1 source semantics remain unchanged
-  (A2, #159; Proposed ADR 0031).
+  (A2, #159; ADR 0031).
 
 - `PeriodicCell` construction accepts exactly nonsingular finite binary64
   row lattices of either handedness, preserving rows and origin. The existing
