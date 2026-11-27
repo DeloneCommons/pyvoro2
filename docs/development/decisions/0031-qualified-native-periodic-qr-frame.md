@@ -1,8 +1,11 @@
 # 0031 — Qualified native periodic QR frame with both handedness signs
 
-- **Status:** Proposed — implementation authorized by #159; acceptance pending independent review
+- **Status:** Accepted — maintainer-approved after independent Pro acceptance and R1 closure review
 - **Date:** 2026-11-27
 - **Issue:** [F1-A2 #159](https://github.com/DeloneCommons/pyvoro2/issues/159)
+- **Accepted implementation:** [PR #160](https://github.com/DeloneCommons/pyvoro2/pull/160),
+  squash-merged to `dev` as [`34530026`](https://github.com/DeloneCommons/pyvoro2/commit/34530026fc989ae3049e2bca91c0595c49c668ae)
+- **Final-head validation:** [six required PR CI checks](https://github.com/DeloneCommons/pyvoro2/actions/runs/46024906825) succeeded on reviewed HEAD `d2cc27e223788e68c94ab5348ba1166319ab5e09`
 - **Narrow supersession:** ADR 0030's retained native right-handedness condition only
 - **Related:** [ADR 0030](0030-exact-user-lattice-and-native-admission.md),
   [ADR 0012](0012-certified-periodic-image-geometry.md),
@@ -120,4 +123,6 @@ analytic frame/image oracles, compiled right/left pairs, signed duplicate
 buckets, numerical fault injection, ownership/lifetime, deterministic dyadic
 coupled-snap reconstruction, source-analytic R1 compute/locate/ghost witnesses,
 and individual P0 reconciliation under the authorized exception above.
-This Proposed record does not mark A2 or a release Accepted.
+Independent full Pro review and focused R1 closure accepted this A2 implementation.
+This Accepted record does not accept broader F1 integration, the remaining A3
+work, the future G1 contracts or a release.
