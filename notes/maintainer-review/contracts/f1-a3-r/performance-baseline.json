@@ -1,0 +1,151 @@
+{
+  "provenance": {
+    "revision": "9f8fbc137aab7dc307c261d9c541f973896505ac",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "numpy": "2.3.5",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python_source": "/workspace/pyvoro2/src/pyvoro2/__init__.py",
+    "native": [
+      {
+        "path": "/workspace/work/f1-a3-r/venv/lib/python3.12/site-packages/pyvoro2/_core.cpython-312-x86_64-linux-gnu.so",
+        "sha256": "22e898a36b44e95547738b15721497817cb679042e9606400feed9f57744d976"
+      },
+      {
+        "path": "/workspace/work/f1-a3-r/venv/lib/python3.12/site-packages/pyvoro2/_core2d.cpython-312-x86_64-linux-gnu.so",
+        "sha256": "65c84701f10388f7c1e1023a0bae8ef60fa61a4ac774b933980e011d24ea947c"
+      }
+    ],
+    "native_source_tree": "100644 blob b999a159a333f543230a1098f40be3f361d63605\tCMakeLists.txt\n040000 tree ecc745e3f3070c2bc9e5862783aca1b82d307184\tcpp\n040000 tree 61a56ea2c6f677570feb76baf9c4a4e87367c3c1\tvendor\n"
+  },
+  "seed": "20261127+n",
+  "measurements": [
+    {
+      "kind": "rectangular",
+      "n": 1000,
+      "timings": {
+        "public_remap": {
+          "median_seconds": 0.002266608200000064,
+          "samples_seconds": [
+            0.0023565564000023187,
+            0.002012990599996556,
+            0.0031080452000082914,
+            0.002266608200000064,
+            0.00163494380000202
+          ]
+        },
+        "full_preparation": {
+          "median_seconds": 0.024406144000010954,
+          "samples_seconds": [
+            0.024483497999995052,
+            0.024260830999992322,
+            0.024406144000010954
+          ]
+        },
+        "compute": {
+          "median_seconds": 0.05169396200000165,
+          "samples_seconds": [
+            0.05212966400000596,
+            0.05112797900000032,
+            0.05169396200000165
+          ]
+        }
+      }
+    },
+    {
+      "kind": "triclinic",
+      "n": 1000,
+      "timings": {
+        "public_remap": {
+          "median_seconds": 0.005633178200002931,
+          "samples_seconds": [
+            0.005633178200002931,
+            0.005552138799998829,
+            0.005634814799998366,
+            0.005830436799999461,
+            0.005619832600007158
+          ]
+        },
+        "full_preparation": {
+          "median_seconds": 0.029596988000037072,
+          "samples_seconds": [
+            0.029596988000037072,
+            0.029801427999984753,
+            0.02947936500004289
+          ]
+        },
+        "compute": {
+          "median_seconds": 0.0635418289999734,
+          "samples_seconds": [
+            0.0635418289999734,
+            0.06318380400000478,
+            0.06356153799998765
+          ]
+        }
+      }
+    },
+    {
+      "kind": "rectangular",
+      "n": 4000,
+      "timings": {
+        "public_remap": {
+          "median_seconds": 0.0063053321999973376,
+          "samples_seconds": [
+            0.0063053321999973376,
+            0.006505728399997679,
+            0.006297418599990579,
+            0.006264360000000124,
+            0.006348171199999797
+          ]
+        },
+        "full_preparation": {
+          "median_seconds": 0.10396759700000757,
+          "samples_seconds": [
+            0.10797994299997526,
+            0.10396759700000757,
+            0.10201858499999616
+          ]
+        },
+        "compute": {
+          "median_seconds": 0.2123089680000021,
+          "samples_seconds": [
+            0.21122465500002363,
+            0.22160214199999473,
+            0.2123089680000021
+          ]
+        }
+      }
+    },
+    {
+      "kind": "triclinic",
+      "n": 4000,
+      "timings": {
+        "public_remap": {
+          "median_seconds": 0.02045917739999368,
+          "samples_seconds": [
+            0.02072584200000165,
+            0.020632349000004525,
+            0.020205003399996712,
+            0.02045917739999368,
+            0.020279554999990523
+          ]
+        },
+        "full_preparation": {
+          "median_seconds": 0.12116186399998696,
+          "samples_seconds": [
+            0.1199531190000016,
+            0.12162664700002779,
+            0.12116186399998696
+          ]
+        },
+        "compute": {
+          "median_seconds": 0.25724776200002,
+          "samples_seconds": [
+            0.25724776200002,
+            0.2694459730000176,
+            0.25340862500002004
+          ]
+        }
+      }
+    }
+  ]
+}

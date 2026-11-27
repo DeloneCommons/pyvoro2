@@ -1,0 +1,3860 @@
+{
+  "revision": "9f8fbc137aab7dc307c261d9c541f973896505ac",
+  "source_provenance": {
+    "repository_root": "/workspace/pyvoro2",
+    "expected_python_root": "/workspace/pyvoro2/src/pyvoro2",
+    "python_modules": {
+      "pyvoro2": "/workspace/pyvoro2/src/pyvoro2/__init__.py",
+      "pyvoro2.__about__": "/workspace/pyvoro2/src/pyvoro2/__about__.py",
+      "pyvoro2._internal": "/workspace/pyvoro2/src/pyvoro2/_internal/__init__.py",
+      "pyvoro2._internal.cell_output": "/workspace/pyvoro2/src/pyvoro2/_internal/cell_output.py",
+      "pyvoro2._internal.duplicate_scanning": "/workspace/pyvoro2/src/pyvoro2/_internal/duplicate_scanning.py",
+      "pyvoro2._internal.exact_user_basis": "/workspace/pyvoro2/src/pyvoro2/_internal/exact_user_basis.py",
+      "pyvoro2._internal.generator_preparation": "/workspace/pyvoro2/src/pyvoro2/_internal/generator_preparation.py",
+      "pyvoro2._internal.inputs": "/workspace/pyvoro2/src/pyvoro2/_internal/inputs.py",
+      "pyvoro2._internal.native_periodic_frame": "/workspace/pyvoro2/src/pyvoro2/_internal/native_periodic_frame.py",
+      "pyvoro2._internal.normalization": "/workspace/pyvoro2/src/pyvoro2/_internal/normalization.py",
+      "pyvoro2._internal.periodic_images": "/workspace/pyvoro2/src/pyvoro2/_internal/periodic_images.py",
+      "pyvoro2._internal.planar": "/workspace/pyvoro2/src/pyvoro2/_internal/planar/__init__.py",
+      "pyvoro2._internal.planar.domain_geometry": "/workspace/pyvoro2/src/pyvoro2/_internal/planar/domain_geometry.py",
+      "pyvoro2._internal.planar.edge_shifts": "/workspace/pyvoro2/src/pyvoro2/_internal/planar/edge_shifts.py",
+      "pyvoro2._internal.power_input": "/workspace/pyvoro2/src/pyvoro2/_internal/power_input.py",
+      "pyvoro2._internal.spatial": "/workspace/pyvoro2/src/pyvoro2/_internal/spatial/__init__.py",
+      "pyvoro2._internal.spatial.domain_geometry": "/workspace/pyvoro2/src/pyvoro2/_internal/spatial/domain_geometry.py",
+      "pyvoro2._internal.spatial.domain_utils": "/workspace/pyvoro2/src/pyvoro2/_internal/spatial/domain_utils.py",
+      "pyvoro2._internal.spatial.face_shifts": "/workspace/pyvoro2/src/pyvoro2/_internal/spatial/face_shifts.py",
+      "pyvoro2._internal.tessellation_diagnostics": "/workspace/pyvoro2/src/pyvoro2/_internal/tessellation_diagnostics.py",
+      "pyvoro2._internal.validation": "/workspace/pyvoro2/src/pyvoro2/_internal/validation.py",
+      "pyvoro2._internal.weight_transforms": "/workspace/pyvoro2/src/pyvoro2/_internal/weight_transforms.py",
+      "pyvoro2.api": "/workspace/pyvoro2/src/pyvoro2/api.py",
+      "pyvoro2.diagnostics": "/workspace/pyvoro2/src/pyvoro2/diagnostics.py",
+      "pyvoro2.domains": "/workspace/pyvoro2/src/pyvoro2/domains.py",
+      "pyvoro2.duplicates": "/workspace/pyvoro2/src/pyvoro2/duplicates.py",
+      "pyvoro2.edge_properties": "/workspace/pyvoro2/src/pyvoro2/edge_properties.py",
+      "pyvoro2.face_properties": "/workspace/pyvoro2/src/pyvoro2/face_properties.py",
+      "pyvoro2.inverse": "/workspace/pyvoro2/src/pyvoro2/inverse/__init__.py",
+      "pyvoro2.inverse.separator": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/__init__.py",
+      "pyvoro2.inverse.separator._identity": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/_identity.py",
+      "pyvoro2.inverse.separator._numerics": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/_numerics.py",
+      "pyvoro2.inverse.separator._objective": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/_objective.py",
+      "pyvoro2.inverse.separator._quadratic": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/_quadratic.py",
+      "pyvoro2.inverse.separator._scalar_prox": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/_scalar_prox.py",
+      "pyvoro2.inverse.separator.active": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/active.py",
+      "pyvoro2.inverse.separator.constraints": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/constraints.py",
+      "pyvoro2.inverse.separator.model": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/model.py",
+      "pyvoro2.inverse.separator.operators": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/operators.py",
+      "pyvoro2.inverse.separator.problem": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/problem.py",
+      "pyvoro2.inverse.separator.realize": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/realize.py",
+      "pyvoro2.inverse.separator.report": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/report.py",
+      "pyvoro2.inverse.separator.solver": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/solver.py",
+      "pyvoro2.inverse.separator.types": "/workspace/pyvoro2/src/pyvoro2/inverse/separator/types.py",
+      "pyvoro2.normalize": "/workspace/pyvoro2/src/pyvoro2/normalize.py",
+      "pyvoro2.planar": "/workspace/pyvoro2/src/pyvoro2/planar/__init__.py",
+      "pyvoro2.planar.api": "/workspace/pyvoro2/src/pyvoro2/planar/api.py",
+      "pyvoro2.planar.diagnostics": "/workspace/pyvoro2/src/pyvoro2/planar/diagnostics.py",
+      "pyvoro2.planar.domains": "/workspace/pyvoro2/src/pyvoro2/planar/domains.py",
+      "pyvoro2.planar.duplicates": "/workspace/pyvoro2/src/pyvoro2/planar/duplicates.py",
+      "pyvoro2.planar.normalize": "/workspace/pyvoro2/src/pyvoro2/planar/normalize.py",
+      "pyvoro2.planar.validation": "/workspace/pyvoro2/src/pyvoro2/planar/validation.py",
+      "pyvoro2.result": "/workspace/pyvoro2/src/pyvoro2/result.py",
+      "pyvoro2.validation": "/workspace/pyvoro2/src/pyvoro2/validation.py",
+      "pyvoro2.viz2d": "/workspace/pyvoro2/src/pyvoro2/viz2d.py"
+    },
+    "python_sources_match_checkout": true,
+    "worktree_dirty": true
+  },
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "numpy": "2.3.5",
+  "native_modules": [
+    "/workspace/work/f1-a3-r/venv/lib/python3.12/site-packages/pyvoro2/_core.cpython-312-x86_64-linux-gnu.so",
+    "/workspace/work/f1-a3-r/venv/lib/python3.12/site-packages/pyvoro2/_core2d.cpython-312-x86_64-linux-gnu.so"
+  ],
+  "native_skipped": false,
+  "cases": [
+    {
+      "case": "#60",
+      "route": "Python separator consumer (OrthorhombicCell)",
+      "inputs": [
+        [
+          "0x1.0000000000000p-41",
+          "0x1.0000000000000p-2",
+          "0x1.0000000000000p-2"
+        ],
+        [
+          "0x1.0000000000000p-1",
+          "0x1.0000000000000p-2",
+          "0x1.0000000000000p-2"
+        ]
+      ],
+      "observed": {
+        "shift": [
+          [
+            -1,
+            0,
+            0
+          ]
+        ],
+        "delta": [
+          [
+            "-0x1.0000000000000p-1",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ]
+      },
+      "oracle": {
+        "unique_shift": [
+          0,
+          0,
+          0
+        ],
+        "dx": "1099511627775/2199023255552",
+        "squared_gap": "1/1099511627776"
+      },
+      "checks": {
+        "source_shift": false,
+        "source_delta": false
+      }
+    },
+    {
+      "case": "#60",
+      "route": "Python separator consumer (PeriodicCell)",
+      "inputs": [
+        [
+          "0x1.0000000000000p-41",
+          "0x1.0000000000000p-2",
+          "0x1.0000000000000p-2"
+        ],
+        [
+          "0x1.0000000000000p-1",
+          "0x1.0000000000000p-2",
+          "0x1.0000000000000p-2"
+        ]
+      ],
+      "observed": {
+        "shift": [
+          [
+            -1,
+            0,
+            0
+          ]
+        ],
+        "delta": [
+          [
+            "-0x1.0000000000000p-1",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ]
+      },
+      "oracle": {
+        "unique_shift": [
+          0,
+          0,
+          0
+        ],
+        "dx": "1099511627775/2199023255552",
+        "squared_gap": "1/1099511627776"
+      },
+      "checks": {
+        "source_shift": false,
+        "source_delta": false
+      }
+    },
+    {
+      "case": "#65",
+      "route": "public (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "point": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-55",
+            "0x1.8000000000000p-2"
+          ]
+        ]
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ]
+        ],
+        "shift": [
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        "translation_coefficients": [
+          "0",
+          "0",
+          "0"
+        ]
+      },
+      "oracle": {
+        "allowed_snapped_point": [
+          "0x1.8000000000000p-3",
+          "0x0.0p+0",
+          "0x1.8000000000000p-2"
+        ],
+        "exact_source_y": "-1/36028797018963968"
+      },
+      "checks": {
+        "no_physical_residual_loss": true
+      }
+    },
+    {
+      "case": "#65",
+      "route": "detached snapshot (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "point": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-55",
+            "0x1.8000000000000p-2"
+          ]
+        ]
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ]
+        ],
+        "shift": [
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        "translation_coefficients": [
+          "0",
+          "0",
+          "0"
+        ]
+      },
+      "oracle": {
+        "allowed_snapped_point": [
+          "0x1.8000000000000p-3",
+          "0x0.0p+0",
+          "0x1.8000000000000p-2"
+        ],
+        "exact_source_y": "-1/36028797018963968"
+      },
+      "checks": {
+        "no_physical_residual_loss": true
+      }
+    },
+    {
+      "case": "#67 A-y-to-x",
+      "route": "public (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x1.c000000000000p+0",
+            "-0x1.0000000000000p+0",
+            "0x1.b000000000000p+1"
+          ],
+          [
+            "-0x1.c000000000000p+0",
+            "0x1.0000000000000p+0",
+            "-0x1.5000000000000p+1"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ]
+        ],
+        "shifts": [
+          [
+            -1,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "1/36028797018963968",
+          "0",
+          "0"
+        ],
+        "historical_target_match": false,
+        "historical_shift_match": false
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.8000000000000p-2"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": false,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 A-y-to-x",
+      "route": "public (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x1.c000000000000p+0",
+            "-0x1.0000000000000p+0",
+            "0x1.b000000000000p+1"
+          ],
+          [
+            "-0x1.c000000000000p+0",
+            "0x1.0000000000000p+0",
+            "-0x1.5000000000000p+1"
+          ]
+        ],
+        "eps": null
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "1/36028797018963968",
+          "0",
+          "0"
+        ],
+        "historical_target_match": true,
+        "historical_shift_match": true
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.8000000000000p-2"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 A-y-to-x",
+      "route": "public (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x1.c000000000000p+0",
+            "-0x1.0000000000000p+0",
+            "0x1.b000000000000p+1"
+          ],
+          [
+            "-0x1.c000000000000p+0",
+            "0x1.0000000000000p+0",
+            "-0x1.5000000000000p+1"
+          ]
+        ],
+        "eps": "0x1.19799812dea11p-40"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "1/36028797018963968",
+          "0",
+          "0"
+        ],
+        "historical_target_match": true,
+        "historical_shift_match": true
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.8000000000000p-2"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 A-y-to-x",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x1.c000000000000p+0",
+            "-0x1.0000000000000p+0",
+            "0x1.b000000000000p+1"
+          ],
+          [
+            "-0x1.c000000000000p+0",
+            "0x1.0000000000000p+0",
+            "-0x1.5000000000000p+1"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ]
+        ],
+        "shifts": [
+          [
+            -1,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "1/36028797018963968",
+          "0",
+          "0"
+        ],
+        "historical_target_match": false,
+        "historical_shift_match": false
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.8000000000000p-2"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": false,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 A-y-to-x",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x1.c000000000000p+0",
+            "-0x1.0000000000000p+0",
+            "0x1.b000000000000p+1"
+          ],
+          [
+            "-0x1.c000000000000p+0",
+            "0x1.0000000000000p+0",
+            "-0x1.5000000000000p+1"
+          ]
+        ],
+        "eps": null
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "1/36028797018963968",
+          "0",
+          "0"
+        ],
+        "historical_target_match": true,
+        "historical_shift_match": true
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.8000000000000p-2"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 A-y-to-x",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x1.c000000000000p+0",
+            "-0x1.0000000000000p+0",
+            "0x1.b000000000000p+1"
+          ],
+          [
+            "-0x1.c000000000000p+0",
+            "0x1.0000000000000p+0",
+            "-0x1.5000000000000p+1"
+          ]
+        ],
+        "eps": "0x1.19799812dea11p-40"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "1/36028797018963968",
+          "0",
+          "0"
+        ],
+        "historical_target_match": true,
+        "historical_shift_match": true
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.8000000000000p-2"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 B-z-to-y-to-x",
+      "route": "public (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p-54",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55"
+          ],
+          [
+            "0x1.5800000000000p+1",
+            "-0x1.ffffffffffffep-1",
+            "0x1.8000000000000p+1"
+          ],
+          [
+            "-0x1.2800000000000p+1",
+            "0x1.ffffffffffffep-1",
+            "-0x1.8000000000000p+1"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.6000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            -1,
+            -1,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "0",
+          "0",
+          "0"
+        ],
+        "historical_target_match": false,
+        "historical_shift_match": false
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x1.8000000000000p-3",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": false,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 B-z-to-y-to-x",
+      "route": "public (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p-54",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55"
+          ],
+          [
+            "0x1.5800000000000p+1",
+            "-0x1.ffffffffffffep-1",
+            "0x1.8000000000000p+1"
+          ],
+          [
+            "-0x1.2800000000000p+1",
+            "0x1.ffffffffffffep-1",
+            "-0x1.8000000000000p+1"
+          ]
+        ],
+        "eps": null
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "0",
+          "0",
+          "0"
+        ],
+        "historical_target_match": true,
+        "historical_shift_match": true
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x1.8000000000000p-3",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 B-z-to-y-to-x",
+      "route": "public (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p-54",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55"
+          ],
+          [
+            "0x1.5800000000000p+1",
+            "-0x1.ffffffffffffep-1",
+            "0x1.8000000000000p+1"
+          ],
+          [
+            "-0x1.2800000000000p+1",
+            "0x1.ffffffffffffep-1",
+            "-0x1.8000000000000p+1"
+          ]
+        ],
+        "eps": "0x1.19799812dea11p-40"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "0",
+          "0",
+          "0"
+        ],
+        "historical_target_match": true,
+        "historical_shift_match": true
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x1.8000000000000p-3",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 B-z-to-y-to-x",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p-54",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55"
+          ],
+          [
+            "0x1.5800000000000p+1",
+            "-0x1.ffffffffffffep-1",
+            "0x1.8000000000000p+1"
+          ],
+          [
+            "-0x1.2800000000000p+1",
+            "0x1.ffffffffffffep-1",
+            "-0x1.8000000000000p+1"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.6000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            -1,
+            -1,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "0",
+          "0",
+          "0"
+        ],
+        "historical_target_match": false,
+        "historical_shift_match": false
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x1.8000000000000p-3",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": false,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 B-z-to-y-to-x",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p-54",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55"
+          ],
+          [
+            "0x1.5800000000000p+1",
+            "-0x1.ffffffffffffep-1",
+            "0x1.8000000000000p+1"
+          ],
+          [
+            "-0x1.2800000000000p+1",
+            "0x1.ffffffffffffep-1",
+            "-0x1.8000000000000p+1"
+          ]
+        ],
+        "eps": null
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "0",
+          "0",
+          "0"
+        ],
+        "historical_target_match": true,
+        "historical_shift_match": true
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x1.8000000000000p-3",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 B-z-to-y-to-x",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p-54",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "points": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-55",
+            "-0x1.0000000000000p-55"
+          ],
+          [
+            "0x1.5800000000000p+1",
+            "-0x1.ffffffffffffep-1",
+            "0x1.8000000000000p+1"
+          ],
+          [
+            "-0x1.2800000000000p+1",
+            "0x1.ffffffffffffep-1",
+            "-0x1.8000000000000p+1"
+          ]
+        ],
+        "eps": "0x1.19799812dea11p-40"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ],
+        "exact_x_reconstruction_errors": [
+          "0",
+          "0",
+          "0"
+        ],
+        "historical_target_match": true,
+        "historical_shift_match": true
+      },
+      "oracle": {
+        "historical_backend_target": [
+          "0x1.8000000000000p-3",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            -1,
+            3
+          ],
+          [
+            -2,
+            1,
+            -3
+          ]
+        ]
+      },
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "case": "#67 seams",
+      "route": "planar (Python)",
+      "inputs": {
+        "length": "0x1.0000000000000p+0",
+        "points": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1"
+          ],
+          [
+            "0x1.0000000000000p+0",
+            "0x1.0000000000000p+0"
+          ],
+          [
+            "0x1.0000000000001p+0",
+            "0x1.0000000000001p+0"
+          ],
+          [
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.0000000000000p+0",
+            "0x1.0000000000000p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-52",
+            "0x1.0000000000000p-52"
+          ],
+          [
+            "0x1.c000000000000p-1",
+            "0x1.c000000000000p-1"
+          ]
+        ],
+        "shifts": [
+          [
+            -1,
+            -1
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            -1,
+            -1
+          ]
+        ]
+      },
+      "oracle": "backend half-open range; preserve positive interior; floor(-1/8/L)=-1",
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 seams",
+      "route": "orthorhombic (Python)",
+      "inputs": {
+        "length": "0x1.0000000000000p+0",
+        "points": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1"
+          ],
+          [
+            "0x1.0000000000000p+0",
+            "0x1.0000000000000p+0",
+            "0x1.0000000000000p+0"
+          ],
+          [
+            "0x1.0000000000001p+0",
+            "0x1.0000000000001p+0",
+            "0x1.0000000000001p+0"
+          ],
+          [
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.0000000000000p+0",
+            "0x1.0000000000000p+0",
+            "0x1.0000000000000p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-52",
+            "0x1.0000000000000p-52",
+            "0x1.0000000000000p-52"
+          ],
+          [
+            "0x1.c000000000000p-1",
+            "0x1.c000000000000p-1",
+            "0x1.c000000000000p-1"
+          ]
+        ],
+        "shifts": [
+          [
+            -1,
+            -1,
+            -1
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            -1,
+            -1,
+            -1
+          ]
+        ]
+      },
+      "oracle": "backend half-open range; preserve positive interior; floor(-1/8/L)=-1",
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 seams",
+      "route": "triclinic (Python)",
+      "inputs": {
+        "length": "0x1.0000000000000p+0",
+        "points": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1"
+          ],
+          [
+            "0x1.0000000000000p+0",
+            "0x1.0000000000000p+0",
+            "0x1.0000000000000p+0"
+          ],
+          [
+            "0x1.0000000000001p+0",
+            "0x1.0000000000001p+0",
+            "0x1.0000000000001p+0"
+          ],
+          [
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-52",
+            "0x1.0000000000000p-52",
+            "0x1.0000000000000p-52"
+          ],
+          [
+            "0x1.c000000000000p-1",
+            "0x1.c000000000000p-1",
+            "0x1.c000000000000p-1"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            -1,
+            -1,
+            -1
+          ]
+        ]
+      },
+      "oracle": "backend half-open range; preserve positive interior; floor(-1/8/L)=-1",
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 seams",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "length": "0x1.0000000000000p+0",
+        "points": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1"
+          ],
+          [
+            "0x1.0000000000000p+0",
+            "0x1.0000000000000p+0",
+            "0x1.0000000000000p+0"
+          ],
+          [
+            "0x1.0000000000001p+0",
+            "0x1.0000000000001p+0",
+            "0x1.0000000000001p+0"
+          ],
+          [
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1",
+            "0x1.fffffffffffffp-1"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-52",
+            "0x1.0000000000000p-52",
+            "0x1.0000000000000p-52"
+          ],
+          [
+            "0x1.c000000000000p-1",
+            "0x1.c000000000000p-1",
+            "0x1.c000000000000p-1"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            -1,
+            -1,
+            -1
+          ]
+        ]
+      },
+      "oracle": "backend half-open range; preserve positive interior; floor(-1/8/L)=-1",
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 seams",
+      "route": "planar (Python)",
+      "inputs": {
+        "length": "0x1.0000000000000p+1",
+        "points": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0"
+          ],
+          [
+            "0x1.0000000000000p+1",
+            "0x1.0000000000000p+1"
+          ],
+          [
+            "0x1.0000000000001p+1",
+            "0x1.0000000000001p+1"
+          ],
+          [
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-51",
+            "0x1.0000000000000p-51"
+          ],
+          [
+            "0x1.e000000000000p+0",
+            "0x1.e000000000000p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            -1,
+            -1
+          ]
+        ]
+      },
+      "oracle": "backend half-open range; preserve positive interior; floor(-1/8/L)=-1",
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 seams",
+      "route": "orthorhombic (Python)",
+      "inputs": {
+        "length": "0x1.0000000000000p+1",
+        "points": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0"
+          ],
+          [
+            "0x1.0000000000000p+1",
+            "0x1.0000000000000p+1",
+            "0x1.0000000000000p+1"
+          ],
+          [
+            "0x1.0000000000001p+1",
+            "0x1.0000000000001p+1",
+            "0x1.0000000000001p+1"
+          ],
+          [
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-51",
+            "0x1.0000000000000p-51",
+            "0x1.0000000000000p-51"
+          ],
+          [
+            "0x1.e000000000000p+0",
+            "0x1.e000000000000p+0",
+            "0x1.e000000000000p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            -1,
+            -1,
+            -1
+          ]
+        ]
+      },
+      "oracle": "backend half-open range; preserve positive interior; floor(-1/8/L)=-1",
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 seams",
+      "route": "triclinic (Python)",
+      "inputs": {
+        "length": "0x1.0000000000000p+1",
+        "points": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0"
+          ],
+          [
+            "0x1.0000000000000p+1",
+            "0x1.0000000000000p+1",
+            "0x1.0000000000000p+1"
+          ],
+          [
+            "0x1.0000000000001p+1",
+            "0x1.0000000000001p+1",
+            "0x1.0000000000001p+1"
+          ],
+          [
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-51",
+            "0x1.0000000000000p-51",
+            "0x1.0000000000000p-51"
+          ],
+          [
+            "0x1.e000000000000p+0",
+            "0x1.e000000000000p+0",
+            "0x1.e000000000000p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            -1,
+            -1,
+            -1
+          ]
+        ]
+      },
+      "oracle": "backend half-open range; preserve positive interior; floor(-1/8/L)=-1",
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 seams",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "length": "0x1.0000000000000p+1",
+        "points": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0"
+          ],
+          [
+            "0x1.0000000000000p+1",
+            "0x1.0000000000000p+1",
+            "0x1.0000000000000p+1"
+          ],
+          [
+            "0x1.0000000000001p+1",
+            "0x1.0000000000001p+1",
+            "0x1.0000000000001p+1"
+          ],
+          [
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3",
+            "-0x1.0000000000000p-3"
+          ]
+        ],
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0",
+            "0x1.fffffffffffffp+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-51",
+            "0x1.0000000000000p-51",
+            "0x1.0000000000000p-51"
+          ],
+          [
+            "0x1.e000000000000p+0",
+            "0x1.e000000000000p+0",
+            "0x1.e000000000000p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            -1,
+            -1,
+            -1
+          ]
+        ]
+      },
+      "oracle": "backend half-open range; preserve positive interior; floor(-1/8/L)=-1",
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 coupled underflow",
+      "route": "public (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+1",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1"
+          ]
+        ],
+        "points": [
+          [
+            "-0x0.0000000000001p-1022",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "-0x1.0000000000000p-3",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "axis": 0,
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "-0x0.0000000000001p-1022",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.e000000000000p+0",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            -1,
+            0,
+            0
+          ]
+        ]
+      },
+      "oracle": {
+        "historical_underflow_target": [
+          [
+            "0x0.0p+0",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "ordinary_negative_shift": -1
+      },
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 coupled underflow",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+1",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1"
+          ]
+        ],
+        "points": [
+          [
+            "-0x0.0000000000001p-1022",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "-0x1.0000000000000p-3",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "axis": 0,
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "-0x0.0000000000001p-1022",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.e000000000000p+0",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            -1,
+            0,
+            0
+          ]
+        ]
+      },
+      "oracle": {
+        "historical_underflow_target": [
+          [
+            "0x0.0p+0",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x0.0000000000001p-1022",
+            "0x1.8000000000000p-2",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "ordinary_negative_shift": -1
+      },
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 coupled underflow",
+      "route": "public (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+1",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1"
+          ]
+        ],
+        "points": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x0.0000000000001p-1022",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0000000000001p-1022",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-3",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "axis": 1,
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x0.0000000000001p-1022",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0000000000001p-1022",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.b000000000000p+0",
+            "0x1.e000000000000p+0",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            -1,
+            -1,
+            0
+          ]
+        ]
+      },
+      "oracle": {
+        "historical_underflow_target": [
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0000000000001p-1022",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "ordinary_negative_shift": -1
+      },
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 coupled underflow",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+1",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1"
+          ]
+        ],
+        "points": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x0.0000000000001p-1022",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0000000000001p-1022",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-3",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "axis": 1,
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x0.0000000000001p-1022",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0000000000001p-1022",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.b000000000000p+0",
+            "0x1.e000000000000p+0",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            -1,
+            -1,
+            0
+          ]
+        ]
+      },
+      "oracle": {
+        "historical_underflow_target": [
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x1.4000000000000p-1"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0000000000001p-1022",
+            "0x1.4000000000000p-1"
+          ]
+        ],
+        "ordinary_negative_shift": -1
+      },
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 coupled underflow",
+      "route": "public (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+1",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1"
+          ]
+        ],
+        "points": [
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "-0x1.0000000000000p-3"
+          ]
+        ],
+        "axis": 2,
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.f000000000000p+0",
+            "0x1.e000000000000p+0",
+            "0x1.e000000000000p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            -1,
+            -1,
+            -1
+          ]
+        ]
+      },
+      "oracle": {
+        "historical_underflow_target": [
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "0x0.0000000000001p-1022"
+          ]
+        ],
+        "ordinary_negative_shift": -1
+      },
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "#67 coupled underflow",
+      "route": "snapshot (Python)",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+1",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.0000000000000p-2",
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+1"
+          ]
+        ],
+        "points": [
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "-0x1.0000000000000p-3"
+          ]
+        ],
+        "axis": 2,
+        "eps": "0x0.0p+0"
+      },
+      "observed": {
+        "wrapped": [
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "-0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "0x0.0000000000001p-1022"
+          ],
+          [
+            "0x1.f000000000000p+0",
+            "0x1.e000000000000p+0",
+            "0x1.e000000000000p+0"
+          ]
+        ],
+        "shifts": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            -1,
+            -1,
+            -1
+          ]
+        ]
+      },
+      "oracle": {
+        "historical_underflow_target": [
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "0x0.0p+0"
+          ],
+          [
+            "0x1.8000000000000p-3",
+            "0x1.8000000000000p-2",
+            "0x0.0000000000001p-1022"
+          ]
+        ],
+        "ordinary_negative_shift": -1
+      },
+      "checks": {
+        "half_open": false,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "case": "frame near_parallel",
+      "route": "public (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x1.0000000000000p+0",
+          "0x1.0000000400000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+0"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x1.0000000000000p-51",
+        "parameter_volume": "20282410410770106249128755754939/21778071482940061661655974875633165533184",
+        "relative_volume_error": "0x1.55d3f4c6bc82fp-25"
+      },
+      "oracle": {
+        "source_exact_det": "1/1073741824"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame near_parallel",
+      "route": "snapshot (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x1.0000000000000p+0",
+          "0x1.0000000400000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+0"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x1.0000000000000p-51",
+        "parameter_volume": "20282410410770106249128755754939/21778071482940061661655974875633165533184",
+        "relative_volume_error": "0x1.55d3f4c6bc82fp-25"
+      },
+      "oracle": {
+        "source_exact_det": "1/1073741824"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame near_parallel",
+      "route": "QR control (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x1.0000000000000p+0",
+          "0x1.0000000400000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+0"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x1.0000000000000p-51",
+        "parameter_volume": "20282410410770106249128755754939/21778071482940061661655974875633165533184",
+        "relative_volume_error": "0x1.55d3f4c6bc82fp-25"
+      },
+      "oracle": {
+        "source_exact_det": "1/1073741824"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame identity",
+      "route": "public (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+0"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x0.0p+0",
+        "parameter_volume": "1",
+        "relative_volume_error": "0x0.0p+0"
+      },
+      "oracle": {
+        "source_exact_det": "1"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame identity",
+      "route": "snapshot (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+0"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x0.0p+0",
+        "parameter_volume": "1",
+        "relative_volume_error": "0x0.0p+0"
+      },
+      "oracle": {
+        "source_exact_det": "1"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame identity",
+      "route": "QR control (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+0"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x0.0p+0",
+        "parameter_volume": "1",
+        "relative_volume_error": "0x0.0p+0"
+      },
+      "oracle": {
+        "source_exact_det": "1"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame right_handed",
+      "route": "public (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "-0x1.0000000000000p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+1"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x1.0000000000000p-51",
+        "parameter_volume": "10141204801825835006177419180439/2535301200456458802993406410752",
+        "relative_volume_error": "0x1.765753908cd20p-56"
+      },
+      "oracle": {
+        "source_exact_det": "4"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame right_handed",
+      "route": "snapshot (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "-0x1.0000000000000p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+1"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x1.0000000000000p-51",
+        "parameter_volume": "10141204801825835006177419180439/2535301200456458802993406410752",
+        "relative_volume_error": "0x1.765753908cd20p-56"
+      },
+      "oracle": {
+        "source_exact_det": "4"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame right_handed",
+      "route": "QR control (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "-0x1.0000000000000p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+1"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x1.0000000000000p-51",
+        "parameter_volume": "10141204801825835006177419180439/2535301200456458802993406410752",
+        "relative_volume_error": "0x1.765753908cd20p-56"
+      },
+      "oracle": {
+        "source_exact_det": "4"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame anisotropic",
+      "route": "public (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p-16",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+16"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x0.0p+0",
+        "parameter_volume": "1",
+        "relative_volume_error": "0x0.0p+0"
+      },
+      "oracle": {
+        "source_exact_det": "1"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame anisotropic",
+      "route": "snapshot (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p-16",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+16"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x0.0p+0",
+        "parameter_volume": "1",
+        "relative_volume_error": "0x0.0p+0"
+      },
+      "oracle": {
+        "source_exact_det": "1"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame anisotropic",
+      "route": "QR control (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p-16",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+16"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x0.0p+0",
+        "parameter_volume": "1",
+        "relative_volume_error": "0x0.0p+0"
+      },
+      "oracle": {
+        "source_exact_det": "1"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame cubic_shear",
+      "route": "public (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x1.0000000000000p+3",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+0"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x0.0p+0",
+        "parameter_volume": "1",
+        "relative_volume_error": "0x0.0p+0"
+      },
+      "oracle": {
+        "source_exact_det": "1"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame cubic_shear",
+      "route": "snapshot (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x1.0000000000000p+3",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+0"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x0.0p+0",
+        "parameter_volume": "1",
+        "relative_volume_error": "0x0.0p+0"
+      },
+      "oracle": {
+        "source_exact_det": "1"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "frame cubic_shear",
+      "route": "QR control (Python/NumPy)",
+      "inputs": [
+        [
+          "0x1.0000000000000p+0",
+          "0x0.0p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x1.0000000000000p+3",
+          "0x1.0000000000000p+0",
+          "0x0.0p+0"
+        ],
+        [
+          "0x0.0p+0",
+          "0x0.0p+0",
+          "0x1.0000000000000p+0"
+        ]
+      ],
+      "observed": {
+        "orthogonality_max": "0x0.0p+0",
+        "parameter_volume": "1",
+        "relative_volume_error": "0x0.0p+0"
+      },
+      "oracle": {
+        "source_exact_det": "1"
+      },
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "case": "#65 native",
+      "route": "compiled 3D standard",
+      "inputs": {
+        "A": [
+          [
+            "0x1.0000000000000p+0",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "-0x1.0000000000000p-1",
+            "0x1.0000000000000p+0",
+            "0x0.0p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "point": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-55",
+            "0x1.8000000000000p-2"
+          ]
+        ]
+      },
+      "observed": {
+        "submitted": [
+          [
+            "0x1.8000000000000p-3",
+            "0x0.0p+0",
+            "0x1.8000000000000p-2"
+          ]
+        ],
+        "preparation_shift": [
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        "stored_site": [
+          "0x1.8000000000000p-3",
+          "0x0.0p+0",
+          "0x1.8000000000000p-2"
+        ],
+        "reported_site": [
+          "0x1.8000000000000p-3",
+          "0x0.0p+0",
+          "0x1.8000000000000p-2"
+        ],
+        "result_source": [
+          [
+            "0x1.8000000000000p-3",
+            "-0x1.0000000000000p-55",
+            "0x1.8000000000000p-2"
+          ]
+        ]
+      },
+      "oracle": "x=3/16 survives y snapping; site match is not insertion disposition",
+      "checks": {
+        "physical_x": true
+      }
+    },
+    {
+      "case": "walls and lifetime",
+      "route": "compiled 3D standard",
+      "inputs": {
+        "bounds": [
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "source": [
+          [
+            "0x1.0000000000000p-1",
+            "0x1.0000000000000p-1",
+            "0x1.0000000000000p-1"
+          ]
+        ]
+      },
+      "observed": {
+        "labels": [
+          -5,
+          -2,
+          -3,
+          -1,
+          -4,
+          -6
+        ],
+        "sites": [
+          [
+            "0x1.0000000000000p-1",
+            "0x1.0000000000000p-1",
+            "0x1.0000000000000p-1"
+          ]
+        ],
+        "mutable_raw_site": [
+          "0x1.c000000000000p-1",
+          "0x1.0000000000000p-1",
+          "0x1.0000000000000p-1"
+        ]
+      },
+      "oracle": "single-site unit box: genuine wall labels, unit measure, owned source array",
+      "checks": {
+        "walls": true,
+        "owned_source": true,
+        "unit_measure": true
+      }
+    },
+    {
+      "case": "walls and lifetime",
+      "route": "compiled 2D standard",
+      "inputs": {
+        "bounds": [
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ],
+          [
+            "0x0.0p+0",
+            "0x1.0000000000000p+0"
+          ]
+        ],
+        "source": [
+          [
+            "0x1.0000000000000p-1",
+            "0x1.0000000000000p-1"
+          ]
+        ]
+      },
+      "observed": {
+        "labels": [
+          -3,
+          -2,
+          -4,
+          -1
+        ],
+        "sites": [
+          [
+            "0x1.0000000000000p-1",
+            "0x1.0000000000000p-1"
+          ]
+        ],
+        "mutable_raw_site": [
+          "0x1.c000000000000p-1",
+          "0x1.0000000000000p-1"
+        ]
+      },
+      "oracle": "single-site unit box: genuine wall labels, unit measure, owned source array",
+      "checks": {
+        "walls": true,
+        "owned_source": true,
+        "unit_measure": true
+      }
+    }
+  ],
+  "native_build_provenance": "Paths only; binary/source identity is not established."
+}
