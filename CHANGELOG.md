@@ -66,6 +66,18 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Separator connectors now use original source coordinates and original-basis
+  image shifts. Inference preserves the certified source problem; explicit
+  affine displacements round once, avoiding endpoint and large-shift rounding
+  losses. Re-resolve cached remapped-reference observations from their original
+  points/raw observations, interpreting explicit shifts in the source reference.
+- Realization diagnostics transport raw contact labels and measure keys through
+  same-operation native anchors into an effective source-indexed convention.
+  Translated sites match coherently; missing or incompatible observed-reference
+  evidence raises `ValueError` before classification or active-state publication.
+  Raw cell labels and ordinary compute remain unchanged. This does not certify
+  source/native geometry equivalence or contact completeness (F1-A3-S).
+
 - Share one exact-dyadic reduction path across planar/spatial rectangular and
   native triangular remapping. Preserve remainders from large quotients and
   shear translations, finalize coupled z/y/x coordinates once, and advance

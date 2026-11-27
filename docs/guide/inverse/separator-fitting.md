@@ -193,7 +193,17 @@ observations = inverse.resolve_separator_observations(
 ```
 
 Each raw tuple is `(i, j, value[, shift])`, where `shift=(na, nb, nc)` is the
-integer lattice image applied to site `j`.
+integer lattice image applied to the **original source site** `j`, in the
+original user row basis `A`. Planar shifts have two components. The connector
+is `delta = RN(p_j - p_i + shift @ A)`: binary64 source operands are interpreted
+exactly and the complete affine expression is rounded once per component.
+Source points are not snapped or remapped for this calculation, and source-only
+resolution does not require native-frame admission. Domain-free and nonperiodic
+zero-shift rows retain ordinary source subtraction.
+
+`distance2` is computed from this canonical rounded `delta`, `distance` from
+`distance2`, and target conversions from `distance`. The exact squared-distance
+key used to choose a nearest image is not substituted for `distance2`.
 
 An explicit shift names that image and is used unchanged, even if another
 image is nearer. If a periodic observation omits the shift and
@@ -225,6 +235,13 @@ an exact no-domain source; supplying a non-`None` domain establishes or verifies
 that exact representation. The observation object's owned IDs remain
 authoritative. Realization and active-set operations always verify the full
 source they use.
+
+Observations resolved under the previous remapped-reference convention may
+fail source verification. Resolve them again from their original points and raw
+observations. Explicit coefficients must be interpreted in the source reference
+above; old primary-relative coefficients are not silently translated. Copying,
+replacement, subsetting and same-version pickle preserve inferred status and
+exact source association, but do not migrate old geometry.
 
 Every valid object has source-independent row IDs and an ordered
 observation-set fingerprint. Row identity includes the complete canonical row
@@ -846,6 +863,30 @@ print(geometry.boundary_measure, geometry.tessellation_diagnostics)
 ```
 
 The fit result never computes or owns a tessellation automatically.
+
+Periodic matching uses a source-indexed label convention for the **observed
+numerical contact family**. With unit period and source x coordinates
+`(1/8, 3 + 3/8)`, the requested forward nearest shift is `-3`. The prepared
+sites are at `(1/8, 3/8)` and their corresponding raw contact has shift zero;
+the matcher reports that contact as `-3`. Raw cells returned by `return_cells`
+keep their existing anchor-relative `adjacent_shift` values. Diagnostic shifts,
+including unaccounted-pair shifts, can therefore differ from raw cell labels.
+
+The matcher captures submitted coordinates, preparation coefficients, the actual
+native lattice and genuine stored anchors from the same compute invocation.
+It checks relative anchor correspondence exactly before translating labels and
+measure keys. If an observed comparison lacks a required periodic label or
+genuine anchor, or correspondence is nonintegral or incompatible with an
+inactive axis, it raises `ValueError` with pair/reason details. Absence of a
+boundary or a genuinely empty endpoint needs no invented anchor. The active-set
+consumer propagates this failure before making decisions from that comparison
+or publishing a final accepted result.
+
+The existing face/edge attribution algorithms and their wall/unknown-label
+limitations still apply. Consistent labels do not prove source/native Cartesian
+or weight equivalence, observed-boundary completeness, or the existence of every
+source facet. Ordinary forward `compute` remains independent of this optional
+correspondence check.
 
 ## Optional: refine the active set
 

@@ -463,12 +463,13 @@ def _exact_triclinic_bucket_layout(
 def _aligned_integer_geometry(
     pi: np.ndarray,
     pj: np.ndarray,
-    basis: _BasisData,
+    integer_rows: tuple[tuple[int, ...], ...],
+    denominator_exponent: int,
 ) -> tuple[tuple[int, ...], tuple[tuple[int, ...], ...], int]:
     pi_parts = tuple(_dyadic_parts(float(value)) for value in pi)
     pj_parts = tuple(_dyadic_parts(float(value)) for value in pj)
     exponent = max(
-        basis.denominator_exponent,
+        denominator_exponent,
         *(item[1] for item in pi_parts),
         *(item[1] for item in pj_parts),
     )
@@ -478,14 +479,14 @@ def _aligned_integer_geometry(
         ) - (
             pi_parts[axis][0] << (exponent - pi_parts[axis][1])
         )
-        for axis in range(basis.dimension)
+        for axis in range(len(integer_rows))
     )
     lattice = tuple(
         tuple(
-            value << (exponent - basis.denominator_exponent)
+            value << (exponent - denominator_exponent)
             for value in row
         )
-        for row in basis.integer_rows
+        for row in integer_rows
     )
     return displacement, lattice, exponent
 
@@ -788,6 +789,39 @@ def _dyadic_float(numerator: int, exponent: int) -> float:
     return float(Fraction(numerator, 1 << exponent))
 
 
+def fixed_shift_displacements(
+    pi: np.ndarray,
+    pj: np.ndarray,
+    shifts: np.ndarray,
+    *,
+    lattice_vectors: Sequence[Sequence[float]] | np.ndarray,
+) -> np.ndarray:
+    """Round complete ``pj - pi + shift @ A`` rows once.
+
+    The caller supplies canonical finite endpoints, lattice and validated
+    integer shifts. No image search, inverse or native admission is needed,
+    and intermediate endpoints/translations need not have binary64 views.
+    """
+    parts = tuple(tuple(_dyadic_parts(v) for v in row)
+                  for row in lattice_vectors)
+    exponent = max(e for row in parts for _, e in row)
+    rows = tuple(tuple(n << (exponent - e) for n, e in row) for row in parts)
+    result = np.empty(pi.shape, dtype=np.float64)
+    for index, (left, right, shift) in enumerate(zip(pi, pj, shifts)):
+        displacement, lattice, scale = _aligned_integer_geometry(
+            left, right, rows, exponent)
+        values = _candidate_displacement(
+            displacement, lattice, tuple(int(s) for s in shift))
+        try:
+            result[index] = [_dyadic_float(v, scale) for v in values]
+        except OverflowError:
+            raise ValueError(
+                f'fixed-shift connector row {index} needs a finite binary64 view'
+            ) from None
+    result.setflags(write=False)
+    return result
+
+
 def _validate_tie_orientation(
     values: Sequence[int] | np.ndarray,
     *,
@@ -877,7 +911,8 @@ def minimum_image_displacements(
         displacement, lattice_integers, exponent = _aligned_integer_geometry(
             pi_array[pair_index],
             pj_array[pair_index],
-            basis,
+            basis.integer_rows,
+            basis.denominator_exponent,
         )
         if basis.orthogonal:
             row: _RowSolution | _TriclinicPlan = _solve_orthogonal_row(

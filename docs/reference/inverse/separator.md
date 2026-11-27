@@ -43,6 +43,47 @@ rtol=8*np.finfo(np.float64).eps, atol=0.0)` and are replaced by the recomputed
 binary64 values. This is constructor consistency tolerance, not source
 equivalence.
 
+## Source connectors and realized image labels
+
+Explicit and inferred shifts use original source coordinates and original user
+row-basis coefficients. For periodic rows, `delta` is the nearest-even binary64
+view of the complete exact-operand expression `p_j - p_i + s @ A`. Explicit
+nonnearest images are retained; inferred rows consume the existing certified
+nearest-image choice and displacement. Neither path remaps sources or requires
+native admission. Nonperiodic/domain-free zero-shift rows use ordinary source
+subtraction. `distance2` derives from rounded `delta`, not the exact search
+distance key; distance and target conversions then follow the direct-constructor
+contract above.
+
+`match_realized_pairs` compares the existing numerical contacts in an effective
+source-indexed reference. For the same native operation, let `v_i` be submitted
+coordinates, `K_i` preparation coefficients, `L` the represented native lattice,
+and `a_i` genuine stored anchors. Define `E_i = v_i + K_i @ L` algebraically.
+If exact relative correspondence establishes
+`(v_j-v_i)-(a_j-a_i) = h @ L`, a raw contact label becomes
+`s_effective = c_raw - K_j + K_i - h`. Coefficients remain Python integers in
+diagnostic tuples; no additional int64 restriction is imposed there.
+
+Transport precedes forward/reverse unions, requested/other-image classification,
+measure selection and unaccounted-pair reporting. Returned raw cell dictionaries
+retain their anchor-relative `adjacent_shift`, so their labels can differ from
+`realized_shifts`. Unavailable anchors, missing required periodic labels,
+nonintegral relative correspondence and inactive-axis mismatches raise controlled
+`ValueError` with pair/reason detail; they do not produce a negative or other-image
+classification. Nonperiodic contacts retain legitimate zero labels. Unobserved
+pairs and genuinely empty endpoints do not require fabricated readback.
+
+This exact coefficient transport does not certify native insertion history,
+source/native Cartesian or weight equivalence, face/edge attribution, or contact
+completeness. Existing attribution and wall/unknown-label limitations remain.
+Public compute signatures, raw schemas, diagnostic/report fields and source
+association rules are unchanged. Ordinary compute does not capture this evidence.
+
+Previously cached observations derived from remapped coordinates may be rejected.
+Re-resolve original points and raw observations, interpreting explicit shifts in
+the documented source reference. There is no automatic reinterpretation or
+cross-version migration of old coefficients or geometry.
+
 ## Observation and source identity
 
 Every valid observation set has deterministic source-independent row IDs and

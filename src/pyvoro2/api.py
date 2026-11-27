@@ -8,6 +8,8 @@ import warnings
 
 import numpy as np
 
+from ._internal.realization_reference import RealizationReference, capture_reference
+
 from .domains import Box, OrthorhombicCell, PeriodicCell
 from ._internal.spatial.domain_utils import domain_length_scale
 from ._internal.inputs import (
@@ -71,7 +73,9 @@ def _require_core():
     return _core
 
 
-def _warn_if_scale_suspicious(*, pts: np.ndarray, length_scale: float) -> None:
+def _warn_if_scale_suspicious(
+    *, pts: np.ndarray, length_scale: float, stacklevel: int = 3,
+) -> None:
     """Warn if the coordinate scale is likely to be numerically problematic.
 
     Voro++ uses fixed absolute tolerances internally. pyvoro2 rejects every
@@ -101,7 +105,7 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, length_scale: float) -> None:
             'rescaling your coordinates (e.g. multiply by a constant) before '
             'calling pyvoro2.'.format(L),
             RuntimeWarning,
-            stacklevel=3,
+            stacklevel=stacklevel,
         )
     elif L > 1e9:
         warnings.warn(
@@ -109,7 +113,7 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, length_scale: float) -> None:
             'Floating-point precision may be poor at this scale; consider '
             'rescaling your coordinates.'.format(L),
             RuntimeWarning,
-            stacklevel=3,
+            stacklevel=stacklevel,
         )
 
 
@@ -408,7 +412,83 @@ def compute(
     The public duplicate options control only additional diagnostics above this
     backend-safety floor.
     """
+
+    result, _ = _compute(
+        points,
+        domain=domain,
+        ids=ids,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold,
+        duplicate_wrap=duplicate_wrap,
+        duplicate_max_pairs=duplicate_max_pairs,
+        block_size=block_size,
+        blocks=blocks,
+        init_mem=init_mem,
+        mode=mode,
+        weights=weights,
+        radii=radii,
+        return_vertices=return_vertices,
+        return_adjacency=return_adjacency,
+        return_faces=return_faces,
+        return_face_shifts=return_face_shifts,
+        face_shift_search=face_shift_search,
+        include_empty=include_empty,
+        validate_face_shifts=validate_face_shifts,
+        repair_face_shifts=repair_face_shifts,
+        face_shift_tol=face_shift_tol,
+        return_diagnostics=return_diagnostics,
+        output=output,
+        tessellation_check=tessellation_check,
+        tessellation_require_reciprocity=tessellation_require_reciprocity,
+        tessellation_volume_tol_rel=tessellation_volume_tol_rel,
+        tessellation_volume_tol_abs=tessellation_volume_tol_abs,
+        tessellation_plane_offset_tol=tessellation_plane_offset_tol,
+        tessellation_plane_angle_tol=tessellation_plane_angle_tol,
+    )
+    return result
+
+
+def _compute_for_matching(points, **kwargs):
+    """Compute once and retain only the private realization reference."""
+    return _compute(points, _capture_reference=True, **kwargs)
+
+
+def _compute(
+    points: Sequence[Sequence[float]] | np.ndarray,
+    *,
+    domain: Box | OrthorhombicCell | PeriodicCell,
+    ids: Sequence[int] | None = None,
+    duplicate_check: Literal['off', 'warn', 'raise'] = 'off',
+    duplicate_threshold: float = 1e-5,
+    duplicate_wrap: bool = True,
+    duplicate_max_pairs: int = 10,
+    block_size: float | None = None,
+    blocks: tuple[int, int, int] | None = None,
+    init_mem: int = 8,
+    mode: Literal['standard', 'power'] = 'standard',
+    weights: Sequence[float] | np.ndarray | None = None,
+    radii: Sequence[float] | np.ndarray | None = None,
+    return_vertices: bool = True,
+    return_adjacency: bool = True,
+    return_faces: bool = True,
+    return_face_shifts: bool = False,
+    face_shift_search: int = 2,
+    include_empty: bool = False,
+    validate_face_shifts: bool = True,
+    repair_face_shifts: bool = False,
+    face_shift_tol: float | None = None,
+    return_diagnostics: bool = False,
+    output: Literal['result', 'cells'] = 'result',
+    tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'none',
+    tessellation_require_reciprocity: bool | None = None,
+    tessellation_volume_tol_rel: float = 1e-8,
+    tessellation_volume_tol_abs: float = 1e-12,
+    tessellation_plane_offset_tol: float | None = None,
+    tessellation_plane_angle_tol: float | None = None,
+    _capture_reference: bool = False,
+) -> tuple[Any, RealizationReference | None]:
     resolved_output = _validate_output(output)
+    reference = None
     mode = validate_forward_mode(mode)  # type: ignore[assignment]
     duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
         duplicate_check
@@ -533,7 +613,7 @@ def compute(
         if native_cell is not None
         else domain_length_scale(domain)
     )
-    _warn_if_scale_suspicious(pts=pts, length_scale=native_scale)
+    _warn_if_scale_suspicious(pts=pts, length_scale=native_scale, stacklevel=4)
     nx, ny, nz = geom.resolve_block_counts(
         n_sites=n,
         blocks=blocks_value,
@@ -595,6 +675,12 @@ def compute(
 
         validate_compute_internal_ids(cells, n=n, mode=mode)
 
+        if _capture_reference:
+            reference = capture_reference(
+                prepared, cells,
+                lattice=np.diag([hi - lo for lo, hi in bounds]),
+            )
+
         if include_empty_value:
             sites_for_empty = prepared.primary_points_cart
             _add_empty_cells_inplace(cells, n=n, sites=sites_for_empty, opts=opts)
@@ -652,9 +738,9 @@ def compute(
                     )
                     if tessellation_check == 'raise':
                         raise TessellationError(msg, diag)
-                    warnings.warn(msg, stacklevel=2)
+                    warnings.warn(msg, stacklevel=3)
 
-        return _finish_compute_output(
+        result = _finish_compute_output(
             output=resolved_output,
             return_diagnostics=return_diagnostics_value,
             dimension=3,
@@ -668,6 +754,7 @@ def compute(
             boundaries_available=return_faces_value,
             periodic_shifts_available=return_face_shifts_value,
         )
+        return result, reference
 
     # --- PeriodicCell (triclinic) ---
     #
@@ -711,6 +798,12 @@ def compute(
         raise ValueError(f'unknown mode: {mode}')
 
     validate_compute_internal_ids(cells, n=n, mode=mode)
+
+    if _capture_reference:
+        reference = capture_reference(
+            prepared, cells,
+            lattice=((bx, 0., 0.), (bxy, by, 0.), (bxz, byz, bz)),
+        )
 
     # Determine periodic-image shifts for face neighbors (optional)
     if include_empty_value:
@@ -774,9 +867,9 @@ def compute(
                 )
                 if tessellation_check == 'raise':
                     raise TessellationError(msg, diag)
-                warnings.warn(msg, stacklevel=2)
+                warnings.warn(msg, stacklevel=3)
 
-    return _finish_compute_output(
+    result = _finish_compute_output(
         output=resolved_output,
         return_diagnostics=return_diagnostics_value,
         dimension=3,
@@ -790,6 +883,7 @@ def compute(
         boundaries_available=return_faces_value,
         periodic_shifts_available=return_face_shifts_value,
     )
+    return result, reference
 
 
 def locate(

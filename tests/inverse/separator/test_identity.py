@@ -1111,7 +1111,25 @@ def test_bound_inferred_triclinic_replace_reuses_minimum_image_geometry() -> Non
         domain=cell,
     )
 
-    assert tuple(int(value) for value in observations.shifts[0]) == (0, -1, -1)
+    # Independent source-binary64 oracle. A candidate of length < 1 exists;
+    # the triangular z/y/x inequalities then restrict every better candidate
+    # to {-1, 0}^3. Exact comparison of those eight candidates gives (-1,-1,-1).
+    from fractions import Fraction
+    from itertools import product
+
+    candidates = []
+    for shift in product((-1, 0), repeat=3):
+        delta = tuple(
+            Fraction(float(points[1, axis])) - Fraction(float(points[0, axis]))
+            + sum(s * Fraction(row[axis]) for s, row in zip(shift, cell.vectors))
+            for axis in range(3)
+        )
+        candidates.append((sum(v*v for v in delta), shift, delta))
+    _, expected_shift, exact_delta = min(candidates)
+    assert expected_shift == (-1, -1, -1)
+    assert tuple(int(value) for value in observations.shifts[0]) == expected_shift
+    np.testing.assert_array_equal(
+        observations.delta[0], [float(v) for v in exact_delta])
     assert not bool(observations.explicit_shift[0])
     assert tuple(float(value).hex() for value in observations.delta[0]) == (
         '-0x1.428f5c28f5c26p-2',
@@ -1119,8 +1137,9 @@ def test_bound_inferred_triclinic_replace_reuses_minimum_image_geometry() -> Non
         '-0x1.3333333333334p-1',
     )
 
-    # Revalidating an inferred row must rerun certified minimum-image
-    # geometry. Treating the retained shift as explicit changes y by one ULP.
+    # Revalidation preserves inference and its certified source-image choice.
+    # Explicit affine evaluation now agrees numerically for the selected image;
+    # the inferred flag still records how the observation was specified.
     rebuilt = replace(observations)
     np.testing.assert_array_equal(rebuilt.delta, observations.delta)
     assert _row_only_report(rebuilt)['source'] == (

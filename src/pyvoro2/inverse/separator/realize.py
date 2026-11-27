@@ -11,6 +11,7 @@ import warnings
 import numpy as np
 
 from ..._internal.inputs import coerce_point_array
+from ..._internal.realization_reference import RealizationReference
 from ..._internal.validation import (
     require_bool,
     require_string_choice,
@@ -22,13 +23,13 @@ from .constraints import (
     SeparatorObservations,
 )
 from ..._internal.spatial.domain_geometry import geometry3d
-from ...api import compute as compute3d
+from ...api import _compute_for_matching as compute3d
 from ...diagnostics import TessellationDiagnostics as TessellationDiagnostics3D
 from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ...edge_properties import annotate_edge_properties
 from ...face_properties import annotate_face_properties
 from ..._internal.planar.domain_geometry import geometry2d
-from ...planar.api import compute as compute2d
+from ...planar.api import _compute_for_matching as compute2d
 from ...planar.diagnostics import (
     TessellationDiagnostics as TessellationDiagnostics2D,
     TessellationError as TessellationError2D,
@@ -369,10 +370,15 @@ def match_realized_pairs(
 ) -> RealizedPairDiagnostics:
     """Determine which resolved pair constraints correspond to realized boundaries.
 
-    The matching is purely geometric: each requested ordered pair ``(i, j, shift)``
-    is checked against the set of realized cell boundaries in the power
-    tessellation, including explicit periodic image shifts. Supply exactly one
-    of mathematical ``weights`` (preferred) or backend-compatible ``radii``.
+    Each source-indexed ``(i, j, shift)`` is compared with the existing observed
+    numerical boundaries. Same-operation preparation and stored native anchors
+    transport image labels to a common effective reference; this does not
+    certify source/native Cartesian equality or contact completeness. Returned
+    raw cells retain their anchor-relative ``adjacent_shift`` labels, which may
+    differ from diagnostic shifts. Missing required labels/anchors or nonintegral
+    relative correspondence raise ``ValueError`` before classification. Supply
+    exactly one of mathematical ``weights`` (preferred) or backend-compatible
+    ``radii``.
     """
 
     tessellation_check = require_string_choice(
@@ -411,7 +417,7 @@ def match_realized_pairs(
     _bind_full_source(constraints, pts, domain)
     dim = int(pts.shape[1])
     if dim == 2:
-        cells, tessellation_diagnostics, periodic = _compute_planar_cells(
+        cells, tessellation_diagnostics, periodic, reference = _compute_planar_cells(
             pts,
             domain=domain,
             weights=weights,
@@ -426,7 +432,7 @@ def match_realized_pairs(
         measure_field = 'length'
         shift_dim = 2
     elif dim == 3:
-        cells, tessellation_diagnostics, periodic = _compute_3d_cells(
+        cells, tessellation_diagnostics, periodic, reference = _compute_3d_cells(
             pts,
             domain=domain,
             weights=weights,
@@ -451,6 +457,8 @@ def match_realized_pairs(
         shift_dim=shift_dim,
         return_boundary_measure=return_boundary_measure_value,
         measure_field=measure_field,
+        periodic=periodic,
+        reference=reference,
     )
 
     m = constraints.n_constraints
@@ -541,7 +549,10 @@ def _compute_3d_cells(
     return_boundary_measure: bool,
     return_tessellation_diagnostics: bool,
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'],
-) -> tuple[list[dict[str, Any]], TessellationDiagnostics3D | None, bool]:
+) -> tuple[
+    list[dict[str, Any]], TessellationDiagnostics3D | None, bool,
+    RealizationReference | None,
+]:
     if not isinstance(domain, (Box3D, OrthorhombicCell, PeriodicCell)):
         raise ValueError(
             '3D points require a 3D domain: Box, OrthorhombicCell, or '
@@ -549,7 +560,7 @@ def _compute_3d_cells(
         )
 
     periodic = geometry3d(domain).has_any_periodic_axis
-    compute_result = compute3d(
+    compute_result, reference = compute3d(
         points,
         domain=domain,
         mode='power',
@@ -572,7 +583,7 @@ def _compute_3d_cells(
 
     if return_boundary_measure:
         annotate_face_properties(cells, domain)
-    return cells, tessellation_diagnostics, bool(periodic)
+    return cells, tessellation_diagnostics, bool(periodic), reference
 
 
 def _compute_planar_cells(
@@ -584,7 +595,10 @@ def _compute_planar_cells(
     return_boundary_measure: bool,
     return_tessellation_diagnostics: bool,
     tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'],
-) -> tuple[list[dict[str, Any]], TessellationDiagnostics2D | None, bool]:
+) -> tuple[
+    list[dict[str, Any]], TessellationDiagnostics2D | None, bool,
+    RealizationReference | None,
+]:
     if not isinstance(domain, (Box2D, RectangularCell)):
         raise ValueError(
             '2D points require a planar domain: pyvoro2.planar.Box or '
@@ -592,7 +606,7 @@ def _compute_planar_cells(
         )
 
     periodic = geometry2d(domain).has_any_periodic_axis
-    cells = compute2d(
+    cells, reference = compute2d(
         points,
         domain=domain,
         mode='power',
@@ -637,7 +651,7 @@ def _compute_planar_cells(
 
     if not return_tessellation_diagnostics:
         tessellation_diagnostics = None
-    return cells, tessellation_diagnostics, bool(periodic)
+    return cells, tessellation_diagnostics, bool(periodic), reference
 
 
 def _canonical_pair_and_shift(
@@ -727,6 +741,8 @@ def _collect_boundary_maps(
     shift_dim: int,
     return_boundary_measure: bool,
     measure_field: str,
+    periodic: bool,
+    reference: RealizationReference | None,
 ) -> tuple[
     dict[int, bool],
     dict[tuple[int, int], set[ShiftTuple]],
@@ -735,6 +751,7 @@ def _collect_boundary_maps(
     empty_by_id: dict[int, bool] = {}
     shifts_by_pair: dict[tuple[int, int], set[ShiftTuple]] = {}
     measure_by_pair_shift: dict[MeasureKey, float] = {}
+    offsets: dict[PairKey, ShiftTuple] = {}
 
     zero_shift = tuple(0 for _ in range(shift_dim))
     for cell in cells:
@@ -746,7 +763,22 @@ def _collect_boundary_maps(
             cj = int(boundary.get('adjacent_cell', -1))
             if cj < 0:
                 continue
-            shift = tuple(int(v) for v in boundary.get('adjacent_shift', zero_shift))
+            if periodic:
+                if 'adjacent_shift' not in boundary:
+                    raise ValueError(
+                        f'observed pair ({ci}, {cj}): missing periodic adjacent_shift')
+                if reference is None:
+                    raise ValueError(
+                        f'observed pair ({ci}, {cj}): missing native reference')
+                if (ci, cj) not in offsets:
+                    offset = reference.shift_offset(ci, cj)
+                    offsets[(ci, cj)] = offset
+                    offsets[(cj, ci)] = tuple(-v for v in offset)
+                shift = reference.convert_shift(
+                    ci, cj, boundary['adjacent_shift'], offset=offsets[(ci, cj)])
+            else:
+                shift = tuple(int(v) for v in boundary.get(
+                    'adjacent_shift', zero_shift))
             shifts_by_pair.setdefault((ci, cj), set()).add(shift)
             if return_boundary_measure:
                 measure_by_pair_shift[(ci, cj, shift)] = float(
