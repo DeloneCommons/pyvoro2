@@ -30,7 +30,8 @@ implementation, feature list, release timeline, public contract or permission
 to rewrite numerical/native code. Prefer the smallest useful scientific
 contract and shared implementation. Extreme counterexamples can test a general
 algorithm without making every finite input executable; judge added complexity
-and runtime cost against demonstrated failures and representative workloads. The G0 architecture direction is selected in
+and runtime cost against demonstrated failures and representative workloads.
+The G0 architecture direction is selected in
 [ADR 0029](../decisions/0029-image-qualified-geometry-and-optional-global-complex.md);
 [ADR 0027](../decisions/0027-v0.9-reboot-from-v0.8.md)
 continues to govern the reboot, and the
@@ -96,9 +97,9 @@ F2, I0/I1 and per-defect upstream/native triage remain independent; I2 needs
 G1a and validated inverse state, **not** G1b. These are decision and dependency
 labels, not an attempt to restore the historical WP1–WP13 release schedule.
 
-## G0 — completed geometry architecture research
+## G0 — required research deliverable before choosing geometry implementation
 
-The research brief required a focused comparison of at least:
+**Completed research.** The brief required a focused comparison of at least:
 
 - **Incidence-first:** establish boundary identity/correspondence and periodic
   image transport before merging nearby vertex coordinates. Explain how
@@ -112,13 +113,13 @@ The research brief required a focused comparison of at least:
   useful general contract at acceptable cost.
 
 The brief also required representative finite/orthorhombic/triclinic geometries,
-ordinary/power cases, multiple images, self-images, ambiguous point correspondence, nearly
-degenerate edges/faces and nonzero winding. Use historical
+ordinary/power cases, multiple images, self-images, ambiguous point
+correspondence, nearly degenerate edges/faces and nonzero winding. Historical
 [requirements R-O01](../reboot/requirements-inventory.md#r-o01) and
-[evidence E06, E09 and E10](../reboot/evidence-index.md) as input, not as
-pre-accepted proofs. Specify whether a result is exact, tolerance-dependent,
-incomplete, unavailable, or an unsupported configuration; preserve local
-geometry in all those outcomes.
+[evidence E06, E09 and E10](../reboot/evidence-index.md) were research inputs,
+not pre-accepted proofs. The brief required distinguishing exact,
+tolerance-dependent, incomplete, unavailable and unsupported results, while
+preserving local geometry.
 
 The **G0 exit gate** was met by independently reviewed research and the
 [archived evidence in issue #149](https://github.com/DeloneCommons/pyvoro2/issues/149#issuecomment-7079961449).
@@ -175,15 +176,17 @@ missing evidence means unavailable, never guessed arithmetic or a zero image.
   [#159](https://github.com/DeloneCommons/pyvoro2/issues/159) /
   [PR #160](https://github.com/DeloneCommons/pyvoro2/pull/160). Shared qualified
   QR, signed fully periodic 3D support and reflection-safe reporting. Its
-  narrow R1 remap correction recovered seven P0 observations; neither general
-  remapping nor source/preparation integration was accepted by A2.
+  narrow R1 remap correction resolved seven of the 25 pre-remediation A2
+  discrepancy records; neither general remapping nor source/preparation
+  integration was accepted by A2.
 - **A3-R — shared numerical remapping:** replace duplicated rectangular
   arithmetic and repeated coupled triangular reduction with a small shared
   algorithm; retain full-row translations, well-defined half-open numerical
   views, bounded snapping and final checked shifts. Prepare one frame per
   public composite remap instead of the current three preparations.
 - **A3-S — source connectors and realization reference:** evaluate inferred
-  and explicit connectors using original source operands. Ship this with the
+  and explicit connectors using original source operands; evaluate the complete
+  fixed-shift affine expression before rounding. Ship this with the
   necessary same-operation numerical image-label translation in the existing
   matcher, including consistent reverse labels and measure keys. Unavailable
   correspondence must not become a positive/negative match or drive an
@@ -208,6 +211,8 @@ identified three additional constraints on a proportionate solution:
   with explicit containment/refusal rules. Rounded-upper endpoint chart
   selection (including zero epsilon), nonoverlapping snap bands and final
   integer range checks are proposed R policies to approve in its issue.
+  A nonoverlapping-band rule can refuse strongly anisotropic cells even
+  when the frame passes A2 admission; make that compatibility effect explicit.
   A1's literal exact floors and rounded views remain unchanged.
 - For unit-period source sites x = (1/8, 3 + 3/8), the nearest source image
   uses shift -3 whereas the corresponding raw contact has shift 0 after
@@ -217,11 +222,14 @@ identified three additional constraints on a proportionate solution:
   correcting the resolver alone is unsafe, but full P is not a prerequisite.
   See [connector construction](https://github.com/DeloneCommons/pyvoro2/blob/5649e1b8ac770d809014d7e963f5e05b3e7bd19b/src/pyvoro2/inverse/separator/constraints.py)
   and [realization matching](https://github.com/DeloneCommons/pyvoro2/blob/5649e1b8ac770d809014d7e963f5e05b3e7bd19b/src/pyvoro2/inverse/separator/realize.py).
-- On the ordinary unimodular R1 basis in ADR 0031, an exactly represented
-  translation of the middle generator by $2^{50}$ copies of its first
-  lattice row caused order-one geometry errors before native remapping.
-  Exact reduction of already rounded native coordinates cannot undo the
-  lost local phase. P addresses this mechanism without changing QR or
+- On the ordinary unimodular R1 basis with rows `(0,-1,-1)`, `(1,0,0)`,
+  `(-1,-1,0)`, origin `(1.25,-0.5,0.125)` and source points at that origin
+  plus `(x,1/2,1/2)` for x = 1/4, 1/2, 3/4, an exactly represented
+  translation of only the middle generator by $2^{50}$ copies of the first
+  row corrupted the geometry. Expected ID-associated standard volumes
+  `(3/8,1/4,3/8)` became approximately `(0.265639,0.336407,0.397953)` in
+  the native control. Exact reduction of the already rounded native input
+  cannot undo the pre-remap loss of local phase. P addresses this mechanism without changing QR or
   requiring B1. Compact integer prototypes showed modest additional
   preparation cost relative to complete compute on two 4,000-point
   workloads; this is bounded research evidence, not a speed promise.
@@ -288,8 +296,8 @@ and correctness are separately approved; never mask invariant failures.
   tests. Before F1→G1a admission, record one reviewed disposition: implement in
   F1-C; satisfy the actual consumer through a G1a-specific alternative; or defer
   code with concrete evidence that the selected G1a contract does not require
-  it. Reassess additional G1b consumers only if that capability is selected. This evaluation cannot be omitted or moved to
-  an unexamined backlog. Full exact compatibility-box search distinguishes
+  it. Reassess additional G1b consumers only if that capability is selected.
+  This evaluation cannot be omitted or moved to an unexamined backlog. Full exact compatibility-box search distinguishes
   zero/one/many/incomplete; uniqueness within a supplied box does **not** certify
   the native producer's error bound. No universal epsilon or automatic native
   attribution is approved. **C4 decision is mandatory; C4 code is conditional.**
@@ -392,7 +400,7 @@ a stable API does **not** promise universal active-set convergence.
    A3-P's inserted-point stabilization in the preferred integration order.
    Review the integrated A3 scope without claiming all F2 queries are qualified.
 3. Independently prioritize F2 ghost-state correctness and the bounded
-   locate-query safety decision, and investigate confirmed I0 defects.
+   locate-query safety decision, and reproduce and address confirmed I0 defects.
    Scope further F2 and I1 API work by useful contracts.
 4. Choose concrete G1a consumers and prerequisites. Decide B1 against named
    search workloads; C1 physical ties do not require a reducer. Select

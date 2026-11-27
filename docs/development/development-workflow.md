@@ -21,8 +21,8 @@ and release decisions.
 completed branch cutover, PR1 operational bootstrap, and PR2 historical knowledge
 migration. [ADR 0027](decisions/0027-v0.9-reboot-from-v0.8.md) governs the
 reboot. [ADR 0029](decisions/0029-image-qualified-geometry-and-optional-global-complex.md)
-selects the geometry-layering direction; remaining implementation and release
-scope remain separately undecided. Old release sequences and historical ADRs
+selects the geometry-layering direction; implementation and release scope
+require separate decisions. Old release sequences and historical ADRs
 0018–0026 do not authorize new work.
 
 The general release-plan lifecycle below applies when a new plan is approved.
