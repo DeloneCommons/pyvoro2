@@ -357,7 +357,8 @@ rounding. Native preparation is not a source-geometry prerequisite. Canonical
 separator distances continue to derive from the rounded connector.
 
 Spatial and planar `compute` share private workers with a narrow matching entry.
-Only that entry captures `_internal.realization_reference` evidence from the
+Only periodic calls through that entry capture `_internal.realization_reference`
+evidence from the
 actual invocation: submitted coordinates, nominal preparation coefficients,
 represented native lattice, stored native anchors and their presence mask.
 Capture precedes synthetic empty records, external IDs and Cartesian reporting.

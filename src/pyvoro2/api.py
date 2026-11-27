@@ -602,6 +602,7 @@ def _compute(
         duplicate_wrap=duplicate_wrap_value,
         duplicate_max_pairs=duplicate_max_pairs_value,
         periodic_snapshot=native_cell,
+        warning_stacklevel=5,
     )
     pts = prepared.input_points_cart
     pts_native = prepared.native_points
@@ -675,7 +676,7 @@ def _compute(
 
         validate_compute_internal_ids(cells, n=n, mode=mode)
 
-        if _capture_reference:
+        if _capture_reference and is_periodic:
             reference = capture_reference(
                 prepared, cells,
                 lattice=np.diag([hi - lo for lo, hi in bounds]),

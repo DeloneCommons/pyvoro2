@@ -47,7 +47,8 @@ unnecessary for this task.
    represented native lattice `L`, genuine stored anchors `a` and their presence,
    and the periodic mask. Associate anchors by validated internal ID before
    synthetic empty insertion, ID replacement or Cartesian reporting. Public
-   signatures/results stay unchanged and ordinary compute does no capture work.
+   signatures/results stay unchanged. Ordinary compute and nonperiodic matching
+   do no capture work; public warning attribution remains at the caller.
    This narrowly replaces ADR 0013's statement that inverse consumers call the
    public wrapper: both now share the same worker and all its safety checks.
 4. Define the effective numerical family algebraically as `E_i = v_i + K_i @ L`.

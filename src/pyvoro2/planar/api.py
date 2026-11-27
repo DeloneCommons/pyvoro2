@@ -525,6 +525,7 @@ def _compute(
         duplicate_threshold=duplicate_threshold_value,
         duplicate_wrap=duplicate_wrap_value,
         duplicate_max_pairs=duplicate_max_pairs_value,
+        warning_stacklevel=5,
     )
     pts = prepared.input_points_cart
     pts_native = prepared.native_points
@@ -611,7 +612,7 @@ def _compute(
         raise ValueError(f'unknown mode: {mode}')
     validate_compute_internal_ids(cells, n=n, mode=mode)
 
-    if _capture_reference:
+    if _capture_reference and periodic:
         reference = capture_reference(
             prepared, cells,
             lattice=np.diag([hi - lo for lo, hi in bounds]),

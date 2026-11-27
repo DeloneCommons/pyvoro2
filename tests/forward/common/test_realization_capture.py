@@ -7,6 +7,58 @@ import numpy as np
 import pytest
 
 
+@pytest.mark.parametrize('dim', [2, 3])
+def test_public_compute_duplicate_warning_points_to_caller(dim):
+    import pyvoro2 as spatial
+    import pyvoro2.planar as planar
+
+    api = planar if dim == 2 else spatial
+    points = np.full((2, dim), .25)
+    points[1, 0] = .2505
+    with pytest.warns(RuntimeWarning, match='user threshold') as caught:
+        call_line = inspect.currentframe().f_lineno + 1
+        api.compute(points, domain=api.Box(((0., 1.),) * dim),
+                    duplicate_check='warn', duplicate_threshold=.001)
+    assert caught[0].filename == __file__
+    assert caught[0].lineno == call_line
+
+
+@pytest.mark.parametrize('dim', [2, 3])
+@pytest.mark.parametrize('box', [False, True])
+def test_nonperiodic_matching_needs_no_reference_capture(monkeypatch, dim, box):
+    import pyvoro2.api as spatial
+    import pyvoro2.planar.api as planar
+    from pyvoro2 import Box, OrthorhombicCell
+    from pyvoro2.planar import Box as PlanarBox, RectangularCell
+    from pyvoro2.inverse.separator import (
+        match_realized_pairs, resolve_separator_observations,
+    )
+
+    api = planar if dim == 2 else spatial
+    domain_class = ((PlanarBox if dim == 2 else Box) if box else
+                    (RectangularCell if dim == 2 else OrthorhombicCell))
+    kwargs = {} if box else {'periodic': (False,) * dim}
+    domain = domain_class(((0., 1.),) * dim, **kwargs)
+    points = np.full((2, dim), .25)
+    points[:, 0] = [.25, .75]
+
+    def forbidden_capture(*args, **kwargs):
+        pytest.fail('nonperiodic matching must not capture periodic evidence')
+
+    monkeypatch.setattr(api, 'capture_reference', forbidden_capture)
+    cells, reference = api._compute_for_matching(
+        points, domain=domain, output='cells')
+    assert len(cells) == 2
+    assert reference is None
+    obs = resolve_separator_observations(points, [(0, 1, .5)], domain=domain)
+    result = match_realized_pairs(
+        points, domain=domain, constraints=obs, weights=[0., 0.],
+        return_boundary_measure=True)
+    assert result.realized_same_shift.tolist() == [True]
+    assert result.realized_other_shift.tolist() == [False]
+    assert result.boundary_measure.tolist() == [1.]
+
+
 @pytest.mark.parametrize('kind', ['planar', 'orthorhombic', 'triclinic'])
 @pytest.mark.parametrize('mode', ['standard', 'power'])
 def test_matching_capture_uses_one_preparation_and_native_call(monkeypatch, kind, mode):
