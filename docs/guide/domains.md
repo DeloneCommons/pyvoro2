@@ -187,8 +187,10 @@ Frame qualification checks numerical orthogonality and row-relative backward
 error. It does not bound every short-direction relative error or guarantee a
 native tessellation. The same integer tuple `s` labels source and native images,
 but `L ≈ A @ Q` does not certify exact equality of their Cartesian translations
-or native insertion provenance. Existing source snapping, coupled remapping
-and endpoint/subnormal limitations remain separate A3 work. See the
+or native insertion provenance. A narrow A3 prerequisite bounds coupled x/y
+upper snaps to their epsilon neighborhood, preserving larger overshoots for
+ordinary lattice reduction. Broader source snapping, remapping and
+endpoint/subnormal limitations remain separate A3 work. See the
 [accepted A1 contract](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
 and [Proposed A2 decision](../development/decisions/0031-qualified-native-periodic-qr-frame.md).
 

@@ -63,6 +63,32 @@ reversal, coefficient-space ties, completeness, budgets and range failures.
 Planar and partial-periodic admission stays unchanged. Mandatory source-exact
 duplicate scans continue to use `A`, never the numerical triangular factor.
 
+### Narrow R1 remapping prerequisite
+
+The independent Pro audit of PR #160 found that valid QR rounding can activate
+a destructive pre-existing coupled upper snap. For the unimodular rows
+`(0,-1,-1)`, `(1,0,0)`, `(-1,-1,0)`, a tiny negative native z residual triggers
+ordinary reduction and snapping; the ensuing y overshoot contains a genuine
+quarter-unit remainder. A lower-bound-only snap discards that remainder.
+Three ordinary source sites then receive wrong ID-associated volumes, even
+though the resulting cells pass tessellation diagnostics.
+
+The maintainer explicitly authorized this narrow A3 prerequisite inside A2:
+bound the y and x upper-snap predicates on both sides, `b-eps <= v <= b+eps`.
+Larger coupled overshoots retain their remainder and undergo the existing
+ordinary lattice reduction. QR, its `60u` gates, epsilon defaults, `eps=0`,
+half-open conventions, source-row shifts and native safety remain unchanged.
+This is an exception to the original A3 exclusion and unchanged-nonframe P0
+requirement, necessary for accepting A2; it is not general A3 implementation.
+
+The unmodified P0 replay changes exactly seven of 48 records: the #65 public,
+snapshot and compiled records retain `x=3/16`; the four #67 B-z-to-y-to-x
+public/snapshot records with default or explicit `eps=1e-12` also retain that
+tangential remainder. Their original oracles now pass. The other 41 records,
+including #60, all `eps=0` cases and all frame records, are unchanged. Eighteen
+records still report discrepancies; source snapping, zero-epsilon endpoints,
+subnormal behavior and broader remapping correctness remain deferred to A3.
+
 ## Consequences and limits
 
 The source lattice, origin, row order, four exact A1 operations and positive
@@ -73,7 +99,8 @@ insertion provenance or source-complete geometry.
 
 QR removes the P0 gross frame defect; it does not guarantee small relative
 error in every short translation (including the `2^-38` witness) or a correct
-native tessellation. A3 source snapping/coupled remapping/endpoints, B1 reduction,
+native tessellation. Beyond the narrow R1 prerequisite above, A3 source
+snapping/coupled remapping/endpoints, B1 reduction,
 C1 physical ties, C4 translation recovery, G1 contacts/complexes and F2 query
 interfaces remain separate. No source rebasing, automatic rescaling, vendor
 patch, dependency, persistent context or radius cutoff is introduced. The
@@ -90,5 +117,7 @@ cutoffs are not justified by a backward-error qualification.
 Acceptance requires independent mathematical, orientation and native-safety
 review of the implementation and final-HEAD CI. Tests include rational and
 analytic frame/image oracles, compiled right/left pairs, signed duplicate
-buckets, numerical fault injection, ownership/lifetime, and unchanged P0 A3
-records. This Proposed record does not mark A2 or a release Accepted.
+buckets, numerical fault injection, ownership/lifetime, deterministic dyadic
+coupled-snap reconstruction, source-analytic R1 compute/locate/ghost witnesses,
+and individual P0 reconciliation under the authorized exception above.
+This Proposed record does not mark A2 or a release Accepted.

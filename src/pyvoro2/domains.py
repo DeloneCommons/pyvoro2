@@ -578,7 +578,9 @@ class PeriodicCell:
                 nc = checked_int64_add(nc, increment, name='remap c shifts')
                 changed = True
 
-            my = y >= (by - eps_val)
+            # A preceding snap can introduce a genuine overshoot. Preserve
+            # its remainder for ordinary lattice reduction on the next pass.
+            my = (y >= (by - eps_val)) & (y <= (by + eps_val))
             if np.any(my):
                 y[my] = 0.0
                 x[my] -= bxy
@@ -587,7 +589,7 @@ class PeriodicCell:
                 nb = checked_int64_add(nb, increment, name='remap b shifts')
                 changed = True
 
-            mx = x >= (bx - eps_val)
+            mx = (x >= (bx - eps_val)) & (x <= (bx + eps_val))
             if np.any(mx):
                 x[mx] = 0.0
                 increment = np.zeros_like(na)
