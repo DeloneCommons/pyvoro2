@@ -308,7 +308,7 @@ preserved integer image labels establishes exact source/native equivalence.
 the same arithmetic; the snapshot is no longer passed as a public method's
 `self`. Wide Python coefficients are checked only at final int64 materialization,
 including unreturned legacy shifts. Public composite Cartesian remapping also
-reuses one qualified frame. [Proposed ADR 0032](decisions/0032-native-primary-remapping.md)
+reuses one qualified frame. [Accepted ADR 0032](decisions/0032-native-primary-remapping.md)
 records the numerical chart, represented rectangular period, nonoverlapping
 epsilon neighborhoods and narrow supersession of ADR 0011's intermediate range
 checks. A1 exact user operations, A2 QR and internal NaN reporting remain distinct.

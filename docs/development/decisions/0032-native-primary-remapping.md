@@ -1,12 +1,16 @@
 # 0032 — Exact arithmetic for numerical native-primary remapping
 
-- **Status:** Proposed — implementation contract supplied for F1-A3-R;
-  decision acceptance awaits maintainer review
+- **Status:** Accepted — maintainer-approved for A3-R integration;
+  independent integrated R/S acceptance review remains pending
 - **Date:** 2026-11-27
 - **Scope:** shared rectangular and triangular remapping and immediate wrappers
-- **Narrow supersession proposed:** ADR 0011's requirement that every remapping
+- **Narrow supersession:** ADR 0011's requirement that every remapping
   quotient and accumulated shift fit int64 before arithmetic; its remaining
   strict input, ownership and safety contract is preserved
+- **Implementation:** [PR #163](https://github.com/DeloneCommons/pyvoro2/pull/163),
+  squash `c23ba170d4b51ba80355c5bfc3ecd681b9ef73b9`
+- **Reviewed HEAD:** `49d294163be6f40b5e77079ce246ecf3687f9953`;
+  [six required CI jobs successful](https://github.com/DeloneCommons/pyvoro2/actions/runs/46071756274)
 - **Related:** [ADR 0011](0011-strict-input-and-ownership-contract.md),
   [ADR 0013](0013-central-generator-preparation-and-backend-safety.md),
   [A1](0030-exact-user-lattice-and-native-admission.md),
@@ -21,8 +25,8 @@ also duplicates final reduction. The A2 R1 correction preserves important
 tangential residuals but does not resolve quotient, endpoint or underflow errors.
 
 The F1-A3-R assignment selects a numerical primary chart, distinct from A1's
-literal exact-floor user wrapping. This record captures that narrow policy for
-review; it does not activate a release or amend the historical A1/A2 decisions.
+literal exact-floor user wrapping. This record captures that narrow accepted policy;
+it does not activate a release or amend the historical A1/A2 decisions.
 
 ## Decision
 
@@ -106,5 +110,10 @@ Review requires independent Fraction/analytic regressions, preservation of R1
 scientific controls, record-level unmodified P0 replay, measured preparation
 cost and existing validation. The two P0 #60 source discrepancies remain A3-S.
 A3-S/P, uninserted locate recovery, F2 ghost state/query work, B1/C1 and G1 remain
-separate. Maintainer acceptance and observed PR CI are later gates, not claims
-made by this Proposed record.
+separate. The maintainer accepted A3-R after preliminary technical review and
+successful required PR CI, with 18 to 2 P0 discrepancy records and preserved
+A2 R1 predicates. The [implementation evidence](https://github.com/DeloneCommons/pyvoro2/blob/49d294163be6f40b5e77079ce246ecf3687f9953/notes/maintainer-review/contracts/f1-a3-r/README.md)
+retains its original pre-acceptance status and provenance. Independent Pro
+acceptance is intentionally combined with A3-S; this decision is not a claim
+of completed integrated F1-A qualification, native certification or release
+readiness.
