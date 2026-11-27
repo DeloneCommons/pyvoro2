@@ -15,13 +15,21 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Changed
 
+- Fully periodic 3D native operations now support numerically admissible user
+  lattices of either handedness through one qualified, sign-normalized QR
+  frame. This fixes the gross near-parallel Gram–Schmidt nonisometry and
+  preserves Cartesian face/adjacency winding under reflections. The exact
+  image and duplicate-safety kernel admits signed full-periodic 3D bases;
+  planar/partial-periodic admission and A1 source semantics remain unchanged
+  (A2, #159; Proposed ADR 0031).
+
 - `PeriodicCell` construction accepts exactly nonsingular finite binary64
   row lattices of either handedness, preserving rows and origin. The existing
-  right-handedness, floating geometry and conditioning safeguards now apply
-  on native/backend use; ill-conditioning warnings move from construction
+  floating geometry and conditioning safeguards now apply on native/backend
+  use; ill-conditioning warnings move from construction
   to native-frame preparation. `from_params` retains positive diagonals.
-  Native-frame, backend-remapping and private image-consumer limitations remain;
-  the narrow superseding ADR 0030 and A1 contracts await maintainer PR acceptance.
+  ADR 0030 records the accepted A1 contract; numerical native execution remains
+  separate from exact user-lattice validity.
 
 - Organize documentation into seven sections with geometry-first and inverse
   entry paths, an annotated Examples catalogue, and one shared result reference.
@@ -46,6 +54,16 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 - Supersede the former release sequence in ADR 0027. Historical v0.9 designs
   remain unadopted; prescribed-measure and mixed inversion are research
   candidates without committed implementation or release targets.
+
+### Fixed
+
+- Preserve genuine x/y remainders introduced by coupled native-primary
+  remapping: upper snapping now requires a two-sided epsilon neighborhood.
+  This prevents valid QR rounding from silently changing source geometry in
+  ordinary periodic compute, locate and ghost operations (PR #160, Pro R1).
+  This maintainer-authorized narrow A3 prerequisite retains QR qualification,
+  epsilon defaults, zero-epsilon behavior and safety checks; broader A3
+  snapping/endpoint/subnormal limitations remain deferred.
 
 ## [0.8.0] - 2026-08-17
 

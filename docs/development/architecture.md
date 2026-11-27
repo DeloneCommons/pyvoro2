@@ -288,9 +288,20 @@ For the current `dev` implementation, [ADR 0030](decisions/0030-exact-user-latti
 narrowly supersedes the constructor-level handedness and numerical admission:
 `PeriodicCell` now accepts both handedness signs for finite binary64 rows with
 exactly nonzero determinant, and exposes four provisional exact user-coordinate
-helpers. The existing right-handedness and numerical checks remain required
-when preparing a Voro++ native frame. This does not revise the historical v0.8
-account above or qualify the current Gram–Schmidt frame.
+helpers. A2 (#159) extends native use to both signs without relaxing the other
+numerical admission checks; the historical v0.8 account remains unchanged.
+
+`_internal.native_periodic_frame` owns one sign-normalized nonpivoted QR of
+`A.T`, qualified for finite positive triangular parameters, exact-source parity,
+orthogonality and row-relative backward consistency. Public backend helpers
+and detached spatial snapshots share it. Each forward operation reuses its
+snapshot for native parameters, coordinate conversion and reporting. The common
+reporting helper reverses present face and vertex-adjacency cycles under a
+reflection, after native-coordinate face-shift inference, preserving the native
+inward winding convention. Locate transforms owner positions without cycles.
+See [Proposed ADR 0031](decisions/0031-qualified-native-periodic-qr-frame.md) for
+formulas, gates and review status. Neither the approximate frame relation nor
+preserved integer image labels establishes exact source/native equivalence.
 
 ### Certified periodic minimum-image geometry
 
@@ -308,7 +319,10 @@ coordinates and basis to exact dyadic integers, prepare an exact rational
 basis inverse, derive a finite coefficient box from an incumbent norm bound,
 and exact-compare every integer candidate in that box. Successful private
 results include exact distance keys and deterministic work metadata. A bounded
-seed can tighten the box, but it has no correctness authority.
+seed can tighten the box, but it has no correctness authority. Fully periodic
+3D source bases admit either exact nonzero determinant sign and all eight signed
+nonzero diagonal patterns. Planar and partially periodic diagonal validation
+still requires positive lengths. Coefficient-space tie semantics are unchanged.
 
 Separator inference derives an orientation token from the resolved internal
 site indices within the fixed resolved problem. External ID values remain

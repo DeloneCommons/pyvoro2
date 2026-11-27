@@ -7,9 +7,8 @@ from typing import Sequence
 
 import numpy as np
 
-from ...domains import (
-    Box, OrthorhombicCell, PeriodicCell, _require_native_periodic_basis,
-)
+from ...domains import Box, OrthorhombicCell, PeriodicCell
+from ..native_periodic_frame import prepare_native_periodic_frame
 from ..inputs import (
     coerce_finite_matrix,
     coerce_finite_vector,
@@ -26,7 +25,6 @@ from ..validation import (
     INT64_MIN,
     require_index_array,
     require_ordered_bounds,
-    require_positive_finite_real,
 )
 
 Domain3D = Box | OrthorhombicCell | PeriodicCell
@@ -41,6 +39,8 @@ class _NativePeriodicSnapshot:
     rotation_to_internal: np.ndarray
     params: tuple[float, float, float, float, float, float]
     length_scale: float
+    parity: int
+    volume: float
 
     @classmethod
     def from_raw(
@@ -62,71 +62,19 @@ class _NativePeriodicSnapshot:
             n=3,
         )
 
-        # Admission belongs to native use, including detached raw snapshots.
-        # Check before the unchanged Gram-Schmidt frame or any image consumer.
-        _require_native_periodic_basis(vectors_array)
-
-        # Match PeriodicCell's existing Cartesian-to-internal construction.
-        a, b, _c = vectors_array
-        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
-            norm_a = float(np.linalg.norm(a))
-        if not np.isfinite(norm_a) or norm_a <= 0.0:
-            raise ValueError(
-                'PeriodicCell.vectors must define a finite non-zero first vector'
-            )
-        e1 = a / norm_a
-        b_perp = b - np.dot(b, e1) * e1
-        with np.errstate(over='ignore', invalid='ignore'):
-            norm_b_perp = float(np.linalg.norm(b_perp))
-        if not np.isfinite(norm_b_perp) or norm_b_perp <= 0.0:
-            raise ValueError(
-                'PeriodicCell.vectors must define non-colinear first and '
-                'second vectors'
-            )
-        e2 = b_perp / norm_b_perp
-        e3 = np.cross(e1, e2)
-        rotation = np.vstack([e1, e2, e3])
-
-        transformed = (rotation @ vectors_array.T).T
-        a_internal, b_internal, c_internal = transformed
-        params_array = coerce_finite_vector(
-            np.array(
-                [
-                    a_internal[0],
-                    b_internal[0],
-                    b_internal[1],
-                    c_internal[0],
-                    c_internal[1],
-                    c_internal[2],
-                ],
-                dtype=np.float64,
-            ),
-            name='periodic cell parameters',
-            n=6,
-        )
-        for index, label in ((0, 'bx'), (2, 'by'), (5, 'bz')):
-            require_positive_finite_real(
-                params_array[index],
-                name=f'periodic cell parameter {label}',
-            )
-
-        with np.errstate(over='ignore', invalid='ignore'):
-            vector_lengths = np.linalg.norm(vectors_array, axis=1)
-        length_scale = float(np.max(vector_lengths))
-
+        frame = prepare_native_periodic_frame(vectors_array)
         vectors_snapshot = np.array(vectors_array, copy=True, order='C')
         origin_snapshot = np.array(origin_array, copy=True, order='C')
-        rotation_snapshot = np.array(rotation, copy=True, order='C')
-        for array in (vectors_snapshot, origin_snapshot, rotation_snapshot):
+        for array in (vectors_snapshot, origin_snapshot):
             array.setflags(write=False)
-
-        params = tuple(float(value) for value in params_array)
         return cls(
             vectors=vectors_snapshot,
             origin=origin_snapshot,
-            rotation_to_internal=rotation_snapshot,
-            params=params,  # type: ignore[arg-type]
-            length_scale=length_scale,
+            rotation_to_internal=frame.rotation_to_internal,
+            params=frame.params,
+            length_scale=frame.length_scale,
+            parity=frame.parity,
+            volume=frame.volume,
         )
 
     def to_internal_params(
@@ -141,10 +89,10 @@ class _NativePeriodicSnapshot:
         """Return native diagonal lengths and their primary-cell volume."""
 
         bx, _bxy, by, _bxz, _byz, bz = self.params
-        return (bx, by, bz), float(bx * by * bz)
+        return (bx, by, bz), self.volume
 
     def cart_to_internal(self, points: np.ndarray) -> np.ndarray:
-        """Transform Cartesian points using the prepared rotation and origin."""
+        """Transform Cartesian points using the prepared orthogonal frame and origin."""
 
         pts = np.asarray(points, dtype=np.float64) - self.origin[None, :]
         return (self.rotation_to_internal @ pts.T).T
