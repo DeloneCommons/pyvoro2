@@ -910,6 +910,11 @@ def locate(
     Persistent generators use half-open containment and mandatory duplicate
     safety. Query points are not inserted and retain the existing query
     semantics, including queries outside a non-periodic domain.
+    The complete batch is checked before native construction for safe query
+    remapping, worklist indices and integer owner-image corrections. Unsupported
+    arithmetic raises ``ValueError`` naming the query row and operation, also
+    for ID-only calls. Queries are not snapped or prepared as generators;
+    admission does not guarantee accuracy for arbitrary remote queries.
 
     Args:
         points: Generator coordinates, shape (n, 3).

@@ -18,6 +18,9 @@ namespace native = pyvoro2::native_preconditions;
 
 namespace {
 
+static_assert(wl_fgrid_2d == 8 && wl_hgrid_2d == 4 && wl_seq_length_2d == 64,
+              "review locate admission when changing the native worklist");
+
 struct OutputOpts {
   bool vertices;
   bool adjacency;
@@ -268,6 +271,7 @@ PYBIND11_MODULE(_core2d, m) {
          py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
         native::preflight_box<2>(points, ids, nullptr, bounds, blocks,
                                  periodic, init_mem, 2, &queries);
+        native::preflight_locate_box<2>(queries, bounds, blocks, periodic);
         const auto n = points.shape(0);
 
         auto p = points.unchecked<2>();
@@ -332,6 +336,7 @@ PYBIND11_MODULE(_core2d, m) {
          py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
         native::preflight_box<2>(points, ids, &radii, bounds, blocks,
                                  periodic, init_mem, 3, &queries);
+        native::preflight_locate_box<2>(queries, bounds, blocks, periodic);
         const auto n = points.shape(0);
 
         auto p = points.unchecked<2>();

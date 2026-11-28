@@ -333,6 +333,9 @@ PERIODIC_CONSTRUCTOR_PATHS = tuple(
 PLANAR_BOX_CONSTRUCTOR_PATHS = tuple(
     path for path in BOX_CONSTRUCTOR_PATHS if path.dim == 2
 )
+LOCATE_PATHS = tuple(
+    path for path in NATIVE_CONSTRUCTOR_PATHS if path.operation == 'locate'
+)
 
 
 def _native_args(
@@ -2415,3 +2418,270 @@ def test_native_uncertifiable_keys_and_shifts_fail_structurally() -> None:
         _core._test_periodic_safety_certificate(
             (1e-310, 0.0, 1e-310, 0.0, 0.0, 1e-310)
         )
+
+
+def test_locate_admission_arithmetic_witnesses_without_native_find():
+    # Python integers and exact binary64 rationals are independent of the guard.
+    minimum = -CPP_INT_MAX - 1
+    q = -CPP_INT_MAX
+    step = int(q) - 1
+    shift = step // 3
+    assert step == minimum
+    assert shift * 3 == minimum - 1
+
+    q = Fraction(CPP_INT_MAX) + Fraction(7, 8)
+    assert int(q) == CPP_INT_MAX
+    residual = q - int(q)
+    local_owner = min((Fraction(1, 8) + k for k in (-1, 0, 1)),
+                      key=lambda p: (p - residual)**2)
+    assert local_owner == Fraction(9, 8)
+    assert int(q) + 1 > CPP_INT_MAX
+
+    lo = float(2**52)
+    q = lo - .5
+    scaled = (q - lo) * 8
+    step = int(scaled) - 1
+    shift = step // 8
+    block = step - shift * 8
+    assert (scaled, step, shift, block) == (-4, -5, -1, 3)
+    exact_remap = Fraction(q) - shift
+    assert exact_remap == Fraction(2**52) + Fraction(1, 2)
+    remap = float(exact_remap)  # nearest-even rounds onto lo
+    frac_pos = remap - lo - Fraction(block, 8)
+    assert remap == lo and frac_pos == -Fraction(3, 8)
+    assert int(frac_pos * 8 * 8) == -24
+
+
+@pytest.mark.parametrize('path', LOCATE_PATHS, ids=lambda p: p.label)
+@pytest.mark.parametrize('witness', ['step', 'product', 'owner', 'worklist'])
+@pytest.mark.parametrize('bad_row', [0, 1])
+def test_locate_admission_refuses_unsafe_batch(path, witness, bad_row):
+    if witness == 'worklist' and path.geometry == 'periodic':
+        pytest.skip('offset-box cancellation witness is rectangular')
+    bounds = [(0., 1.)] * path.dim
+    blocks = [1] * path.dim
+    params = [1., 0., 1., 0., 0., 1.]
+    points = np.full((1, path.dim), .5)
+    points[0, 0] = .125
+    queries = np.full((2, path.dim), .5)
+    if witness == 'step':
+        queries[bad_row, 0] = float(2**40)
+        operation = 'step_int'
+    elif witness == 'product':
+        bounds[0] = (0., 3.)
+        params[0] = 3.
+        blocks[0] = 3
+        queries[bad_row, 0] = -float(CPP_INT_MAX)
+        operation = r'shift\*n'
+    elif witness == 'owner':
+        queries[bad_row, 0] = CPP_INT_MAX + .875
+        operation = 'owner correction'
+    else:
+        bounds[0] = (float(2**52), float(2**52 + 1))
+        points[0, 0] = float(2**52)
+        queries[:, 0] = float(2**52)
+        queries[bad_row, 0] -= .5
+        blocks[0] = 8
+        operation = 'worklist'
+    before = queries.copy()
+    with pytest.raises(ValueError, match=rf'queries\[{bad_row}\].*{operation}'):
+        getattr(path.module, path.name)(*_native_args(
+            path, points=points, bounds=bounds, cell_params=params,
+            blocks=blocks, periodic=(True,) * path.dim, queries=queries))
+    np.testing.assert_array_equal(queries, before)
+
+
+@pytest.mark.parametrize('path', LOCATE_PATHS, ids=lambda p: p.label)
+@pytest.mark.parametrize('value', [-2.**31, 2.**31, -2.**31 + .125,
+                                   2.**31 - .125])
+def test_locate_admission_refuses_integer_boundary(path, value):
+    q = np.full((1, path.dim), .5)
+    q[0, 0] = value
+    with pytest.raises(ValueError, match=r'queries\[0\].*axis 0'):
+        getattr(path.module, path.name)(*_native_args(
+            path, queries=q, periodic=(True,) * path.dim))
+
+
+@pytest.mark.parametrize('path', LOCATE_PATHS, ids=lambda p: p.label)
+@pytest.mark.parametrize('value', [-2.**31 + 2.125, 2.**31 - 1.125])
+def test_locate_admission_accepts_integer_neighbors(path, value):
+    q = np.full((1, path.dim), .5)
+    q[0, 0] = value
+    p = np.full((1, path.dim), .5)
+    p[0, 0] = .125
+    found, ids, positions = getattr(path.module, path.name)(*_native_args(
+        path, points=p, queries=q, periodic=(True,) * path.dim))
+    assert found.tolist() == [True] and ids.tolist() == [0]
+    # Nearest image of .125, with a unique quarter-unit displacement at .875.
+    expected = float(Fraction(value) + (Fraction(1, 4)
+                     if Fraction(value) % 1 == Fraction(7, 8) else 0))
+    assert positions[0, 0] == expected
+
+
+@pytest.mark.parametrize('path', LOCATE_PATHS, ids=lambda p: p.label)
+def test_locate_admission_nonperiodic_branch_order(path):
+    if path.geometry == 'periodic':
+        pytest.skip('nonperiodic early return exists only for boxes')
+    q = np.full((1, path.dim), 2.**40)
+    q[0, 0] = -1.
+    found, ids, positions = getattr(path.module, path.name)(*_native_args(
+        path, queries=q))
+    assert found.tolist() == [False] and ids.tolist() == [-1]
+    assert np.isnan(positions).all()
+    q[0, :2] = [2.**40, -1.]
+    with pytest.raises(ValueError, match=r'queries\[0\].*axis 0.*step_int'):
+        getattr(path.module, path.name)(*_native_args(path, queries=q))
+
+
+@pytest.mark.parametrize('mode', ['standard', 'power'])
+@pytest.mark.parametrize('shear', ['z_to_y', 'y_to_x', 'z_to_x'])
+def test_locate_admission_refuses_coupled_shear(mode, shear):
+    path = next(p for p in LOCATE_PATHS
+                if p.geometry == 'periodic' and p.mode == mode)
+    params = [1., 0., 1., 0., 0., 1.]
+    source_axis, coefficient, failed_axis = {
+        'z_to_y': (2, 4, 1), 'y_to_x': (1, 1, 0), 'z_to_x': (2, 3, 0),
+    }[shear]
+    params[coefficient] = 4.
+    q = np.full((1, 3), .5)
+    q[0, source_axis] = 2.**30 + .5
+    # Initial coordinates each step safely. Reduction creates -2**32 + .5.
+    assert Fraction(.5) - 4 * 2**30 < -2**31
+    message = rf'queries\[0\].*axis {failed_axis}.*step_int'
+    with pytest.raises(ValueError, match=message):
+        getattr(path.module, path.name)(*_native_args(
+            path, cell_params=params, queries=q))
+
+
+@pytest.mark.parametrize('path', LOCATE_PATHS, ids=lambda p: p.label)
+def test_locate_admission_preserves_masks_and_uneven_blocks(path):
+    p = np.full((2, path.dim), .5)
+    p[:, 0] = [.125, .625]
+    q = p.copy()
+    q[:, 0] += .0625
+    masks = (product([False, True], repeat=path.dim)
+             if path.geometry == 'box' else [(True,) * path.dim])
+    for mask in masks:
+        shift = np.array([2, -1, 3][:path.dim]) * mask
+        found, ids, positions = getattr(path.module, path.name)(*_native_args(
+            path, points=p, radii=np.array([.125, .25]), queries=q + shift,
+            blocks=(3, 2, 4)[:path.dim], periodic=mask))
+        # The competitors are at least 7/16 away, vs 1/16 for the owner;
+        # the squared-radius difference is only 3/64 in power mode.
+        assert Fraction(7, 16)**2 - Fraction(1, 16)**2 > Fraction(3, 64)
+        assert found.tolist() == [True, True] and ids.tolist() == [0, 1]
+        np.testing.assert_array_equal(positions, p + shift)
+
+
+@pytest.mark.parametrize('path', LOCATE_PATHS, ids=lambda p: p.label)
+@pytest.mark.parametrize('empty_sites,empty_queries',
+                         [(False, True), (True, False), (True, True)])
+def test_locate_admission_preserves_empty_inputs(path, empty_sites, empty_queries):
+    p = np.empty((0, path.dim)) if empty_sites else np.full((1, path.dim), .5)
+    q = np.empty((0, path.dim)) if empty_queries else np.full((1, path.dim), .5)
+    found, ids, positions = getattr(path.module, path.name)(*_native_args(
+        path, points=p, queries=q, blocks=(3, 2, 4)[:path.dim],
+        periodic=(True,) * path.dim))
+    assert found.shape == ids.shape == (len(q),)
+    assert positions.shape == (len(q), path.dim)
+    assert not found.any() and (ids == -1).all() and np.isnan(positions).all()
+    if empty_queries:
+        with pytest.raises(ValueError, match='blocks'):
+            getattr(path.module, path.name)(*_native_args(
+                path, points=p, queries=q, blocks=(0,) * path.dim))
+
+
+@pytest.mark.parametrize('mode', ['standard', 'power'])
+def test_locate_admission_empty_queries_do_not_need_worklist_geometry(mode):
+    # Subtracting huge origins may make find-specific interval reasoning
+    # inconclusive, but an empty batch must retain the old constructor contract.
+    for dim, module in [(2, _core2d), (3, _core)]:
+        path = next(p for p in LOCATE_PATHS if p.module is module
+                    and p.mode == mode and p.geometry == 'box')
+        bounds = ((float(2**52), float(2**52 + 1)),) + ((0., 1.),) * (dim - 1)
+        p = np.full((1, dim), .5)
+        p[0, 0] = 2.**52
+        result = getattr(module, path.name)(*_native_args(
+            path, points=p, queries=np.empty((0, dim)), bounds=bounds,
+            periodic=(True,) * dim, blocks=(8,) + (1,) * (dim - 1)))
+        assert all(len(a) == 0 for a in result)
+
+
+@pytest.mark.parametrize('path', [p for p in LOCATE_PATHS if p.mode == 'power'],
+                         ids=lambda p: p.label)
+def test_locate_admission_refusal_is_independent_of_radius_magnitude(path):
+    q = np.full((1, path.dim), .5)
+    q[0, 0] = CPP_INT_MAX + .875
+    with pytest.raises(ValueError, match=r'queries\[0\].*owner correction'):
+        getattr(path.module, path.name)(*_native_args(
+            path, points=np.full((1, path.dim), .125),
+            queries=q, radii=np.array([np.finfo(float).max]),
+            periodic=(True,) * path.dim))
+
+
+@pytest.mark.parametrize('path', LOCATE_PATHS, ids=lambda p: p.label)
+def test_locate_admission_preserves_truncation_and_negative_exact_seams(path):
+    p = np.full((1, path.dim), .5)
+    p[0, 0] = .125
+    q = np.full((2, path.dim), .5)
+    q[:, 0] = [.3, -1.]
+    assert .3 - .1 * 3 < 0
+    assert int((.3 - .1 * 3) * 10 * 8) == 0
+    found, ids, positions = getattr(path.module, path.name)(*_native_args(
+        path, points=p, queries=q, blocks=(10,) + (1,) * (path.dim - 1),
+        periodic=(True,) * path.dim))
+    assert found.tolist() == [True, True] and ids.tolist() == [0, 0]
+    np.testing.assert_array_equal(positions[:, 0], [.125, -.875])
+
+
+@pytest.mark.parametrize('path', [p for p in LOCATE_PATHS if p.geometry == 'box'],
+                         ids=lambda p: p.label)
+@pytest.mark.parametrize('witness', ['owner', 'worklist'])
+def test_locate_admission_skips_unreachable_find_checks(path, witness):
+    bounds = [(0., 1.)] * path.dim
+    blocks = [1] * path.dim
+    p = np.full((1, path.dim), .5)
+    q = p.copy()
+    q[0, 1] = -1.  # y returns outside after the safe x remapping
+    q[0, 0] = CPP_INT_MAX + .875
+    if witness == 'worklist':
+        bounds[0] = (2.**52, 2.**52 + 1)
+        blocks[0] = 8
+        p[0, 0] = 2.**52
+        q[0, 0] = 2.**52 - .5
+    found, ids, positions = getattr(path.module, path.name)(*_native_args(
+        path, points=p, queries=q, bounds=bounds, blocks=blocks,
+        periodic=(True,) + (False,) * (path.dim - 1)))
+    assert found.tolist() == [False] and ids.tolist() == [-1]
+    assert np.isnan(positions).all()
+
+
+@pytest.mark.parametrize('path', LOCATE_PATHS, ids=lambda p: p.label)
+def test_locate_admission_allows_int_min_step_when_product_fits(path):
+    # Same initially valid INT_MIN step as witness 1, but divisor 2 makes
+    # shift*n exactly INT_MIN; there is no reason to reject the initial step.
+    p = np.full((1, path.dim), .5)
+    p[0, 0] = .125
+    q = p.copy()
+    q[0, 0] = -float(CPP_INT_MAX)
+    found, ids, positions = getattr(path.module, path.name)(*_native_args(
+        path, points=p, queries=q,
+        bounds=((0., 2.),) + ((0., 1.),) * (path.dim - 1),
+        cell_params=(2., 0., 1., 0., 0., 1.),
+        blocks=(2,) + (1,) * (path.dim - 1), periodic=(True,) * path.dim))
+    assert found.tolist() == [True] and ids.tolist() == [0]
+    assert positions[0, 0] == -CPP_INT_MAX - 1 + .125
+
+
+@pytest.mark.parametrize('path', [p for p in LOCATE_PATHS if p.geometry == 'box'],
+                         ids=lambda p: p.label)
+@pytest.mark.parametrize('x', [1., np.nextafter(1., np.inf)])
+def test_locate_admission_exact_upper_exit_precedes_later_axis(path, x):
+    # In a unit, one-block axis every reached x operation is exact. The native
+    # outside return must occur before the extreme y coordinate is evaluated.
+    q = np.full((1, path.dim), 2.**40)
+    q[0, 0] = x
+    found, ids, positions = getattr(path.module, path.name)(*_native_args(
+        path, queries=q))
+    assert found.tolist() == [False] and ids.tolist() == [-1]
+    assert np.isnan(positions).all()

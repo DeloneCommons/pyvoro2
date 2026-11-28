@@ -18,6 +18,9 @@ namespace native = pyvoro2::native_preconditions;
 
 namespace {
 
+static_assert(wl_fgrid == 8 && wl_hgrid == 4 && wl_seq_length == 64,
+              "review locate admission when changing the native worklist");
+
 struct OutputOpts {
   bool vertices;
   bool adjacency;
@@ -524,6 +527,7 @@ m.def(
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
       native::preflight_box<3>(points, ids, nullptr, bounds, blocks, periodic,
                                init_mem, 3, &queries);
+      native::preflight_locate_box<3>(queries, bounds, blocks, periodic);
       const auto n = points.shape(0);
 
       auto p = points.unchecked<2>();
@@ -592,6 +596,7 @@ m.def(
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
       native::preflight_box<3>(points, ids, &radii, bounds, blocks, periodic,
                                init_mem, 4, &queries);
+      native::preflight_locate_box<3>(queries, bounds, blocks, periodic);
       const auto n = points.shape(0);
 
       auto p = points.unchecked<2>();
@@ -658,8 +663,9 @@ m.def(
        std::array<int, 3> blocks,
        int init_mem,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-      native::preflight_periodic_3d(points, ids, nullptr, cell_params, blocks,
-                                    init_mem, 3, &queries);
+      const auto resources = native::preflight_periodic_3d(
+          points, ids, nullptr, cell_params, blocks, init_mem, 3, &queries);
+      native::preflight_locate_periodic_3d(queries, cell_params, blocks, resources);
       const auto n = points.shape(0);
 
       auto p = points.unchecked<2>();
@@ -721,8 +727,9 @@ m.def(
        std::array<int, 3> blocks,
        int init_mem,
        py::array_t<double, py::array::c_style | py::array::forcecast> queries) {
-      native::preflight_periodic_3d(points, ids, &radii, cell_params, blocks,
-                                    init_mem, 4, &queries);
+      const auto resources = native::preflight_periodic_3d(
+          points, ids, &radii, cell_params, blocks, init_mem, 4, &queries);
+      native::preflight_locate_periodic_3d(queries, cell_params, blocks, resources);
       const auto n = points.shape(0);
 
       auto p = points.unchecked<2>();

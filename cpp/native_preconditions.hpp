@@ -1728,7 +1728,7 @@ inline Periodic3DResourceEstimate estimate_periodic_3d_resources(
   };
 }
 
-inline void preflight_periodic_3d(
+inline Periodic3DResourceEstimate preflight_periodic_3d(
     const py::array& points,
     const py::array& ids,
     const py::array* radii,
@@ -1783,6 +1783,245 @@ inline void preflight_periodic_3d(
       estimate_periodic_3d_resources(params, blocks, init_mem,
                                      particle_stride);
   resources.known_eager_allocation.enforce_limit();
+  return resources;
+}
+
+// Locate-only admission. This does not prepare/modify inserted generators or
+// queries. See container{,_prd}.cc, container_2d.cc and v_compute{,_2d}.cc.
+// The existing outward binary64 primitives enclose BOTH the exact operation and
+// its rounded result (including subnormals). Composing them in source order
+// therefore covers stored doubles, excess intermediate precision and contracted
+// multiply/subtract expressions without changing vendor compilation/numerics.
+// This requires source association, as in the normal project compiler flags;
+// custom reassociation/reciprocal-math options are unsupported. Aggregate
+// fast-math modes are rejected above; the interval environment is checked
+// before use. In particular, do not substitute geometry validation's wide span
+// or n/length for the native reciprocal 1/((hi-lo)/n).
+struct LocateRemapRange {
+  Binary64Interval position;
+  int block_lower, block_upper;
+  int shift_lower, shift_upper;
+};
+
+struct LocateAxisAdmission {
+  std::string name;
+  int n;
+  Binary64Interval origin, period, width, reciprocal;
+
+  using Operation = bool (*)(const Binary64Interval&, const Binary64Interval&,
+                             Binary64Interval&);
+  Binary64Interval evaluate(Operation op, Binary64Interval lhs,
+                            Binary64Interval rhs, const char* stage) const {
+    // These identities are exact for both stored and excess-precision values.
+    // Widening them can invent an inside branch at a nonperiodic upper seam
+    // and incorrectly inspect a later coordinate after the native early exit.
+    if ((op == binary64_multiply || op == binary64_divide) &&
+        rhs.lower == 1 && rhs.upper == 1) return lhs;
+    if (op == binary64_multiply && lhs.lower == 1 && lhs.upper == 1) return rhs;
+    // Equal represented singleton operands subtract exactly, even with excess
+    // precision. Retain this identity at large-origin lower bounds; widening
+    // zero would invent a negative step and a spurious periodic remap there.
+    if (op == binary64_subtract && lhs.lower == lhs.upper &&
+        lhs.lower == rhs.lower && lhs.upper == rhs.upper) {
+      return binary64_singleton(0);
+    }
+    Binary64Interval result{};
+    if (!op(lhs, rhs, result)) {
+      fail(name, std::string(stage) + " cannot establish finite native arithmetic");
+    }
+    return result;
+  }
+
+  LocateAxisAdmission(double lo, double hi, int blocks, py::ssize_t row,
+                      std::size_t axis)
+      : name("locate queries[" + std::to_string(row) + "] axis " +
+             std::to_string(axis)), n(blocks), origin(binary64_singleton(lo)) {
+    period = evaluate(binary64_subtract, binary64_singleton(hi), origin,
+                      "period subtraction");
+    width = evaluate(binary64_divide, period, binary64_singleton(n),
+                     "block width");
+    reciprocal = evaluate(binary64_divide, binary64_singleton(1), width,
+                          "block reciprocal");
+  }
+
+  int integer(std::int64_t value, const char* stage) const {
+    if (value < std::numeric_limits<int>::min() ||
+        value > std::numeric_limits<int>::max()) {
+      fail(name, std::string(stage) + " exceeds the C++ int range");
+    }
+    return static_cast<int>(value);
+  }
+
+  Binary64Interval translate(Binary64Interval value, const LocateRemapRange& r,
+                             Binary64Interval coefficient) const {
+    const Binary64Interval shifts{static_cast<double>(r.shift_lower),
+                                  static_cast<double>(r.shift_upper)};
+    return evaluate(binary64_subtract, value,
+                    evaluate(binary64_multiply, shifts, coefficient,
+                             "remap/shear product"), "remap/shear subtraction");
+  }
+
+  std::vector<LocateRemapRange> remap(Binary64Interval query,
+                                     bool periodic) const {
+    // int64 holds every product of two native ints on supported platforms.
+    static_assert(2 * std::numeric_limits<int>::digits <
+                  std::numeric_limits<std::int64_t>::digits);
+    const auto scaled = evaluate(
+        binary64_multiply,
+        evaluate(binary64_subtract, query, origin, "step_int subtraction"),
+        reciprocal, "step_int scaling");
+    if (!(scaled.lower > static_cast<double>(std::numeric_limits<int>::min()) &&
+          scaled.upper < static_cast<double>(std::numeric_limits<int>::max()) + 1)) {
+      fail(name, "step_int cannot establish the open C++ int range");
+    }
+    // Native step_int is monotone, but is NOT floor at negative integers.
+    const auto step = [](double a) { return a < 0 ? int(a) - 1 : int(a); };
+    int lower = step(scaled.lower), upper = step(scaled.upper);
+    if (!periodic) {
+      if (upper < 0 || lower >= n) return {};  // all paths return before find
+      return {{query, std::max(0, lower), std::min(n - 1, upper), 0, 0}};
+    }
+    const auto divide = [this](int a) { return a >= 0 ? a / n : -1 + (a + 1) / n; };
+    const int first = divide(lower), last = divide(upper);
+    // Separate endpoint quotients to preserve seam correlation: an upper
+    // endpoint in the preceding block is safe. Any interior quotients are
+    // enclosed together, so this has at most three cases, not a search budget.
+    std::vector<std::array<int, 2>> groups{{first, first}};
+    if (std::int64_t(last) - first > 1) groups.push_back({first + 1, last - 1});
+    if (last != first) groups.push_back({last, last});
+    std::vector<LocateRemapRange> result;
+    for (const auto& group : groups) {
+      const int product_lower = integer(std::int64_t(group[0]) * n, "shift*n");
+      const int product_upper = integer(std::int64_t(group[1]) * n, "shift*n");
+      LocateRemapRange r{query, 0, n - 1, group[0], group[1]};
+      if (group[0] == group[1]) {
+        r.block_lower = integer(std::max(std::int64_t(lower),
+                                        std::int64_t(product_lower)) - product_lower,
+                                "c-shift*n");
+        r.block_upper = integer(
+            std::min(std::int64_t(upper), std::int64_t(product_upper) + n - 1)
+                - product_upper, "c-shift*n");
+      }
+      // For an interior quotient range the exact remainders are in [0,n-1];
+      // each signed product was checked before the native subtraction.
+      if (group[0] != 0 || group[1] != 0) r.position = translate(query, r, period);
+      result.push_back(r);
+    }
+    return result;
+  }
+
+  void worklist(const LocateRemapRange& r) const {
+    const Binary64Interval block{static_cast<double>(r.block_lower),
+                                 static_cast<double>(r.block_upper)};
+    const auto frac = evaluate(
+        binary64_subtract,
+        evaluate(binary64_subtract, r.position, origin, "frac_pos subtraction"),
+        evaluate(binary64_multiply, width, block, "frac_pos product"), "frac_pos");
+    const auto scaled = evaluate(binary64_multiply,
+        evaluate(binary64_multiply, frac, reciprocal, "worklist scaling"),
+        binary64_singleton(8), "worklist scaling");
+    // Both worklists use fgrid=8, hgrid=4, sequence length=64. Truncation
+    // admits (-1,0), unlike floor. Nonnegative int indices reflect via 7-i
+    // (also int-safe) and clamp into [0,3]. The flattened index is at most
+    // 63 (3D) / 15 (2D), hence every offset into the 64-entry lists is valid.
+    // Large positive residuals are index-safe, not certified accurate owners.
+    if (!(scaled.lower > -1 &&
+          scaled.upper < static_cast<double>(std::numeric_limits<int>::max()) + 1)) {
+      fail(name, "worklist index cannot establish safe truncation/reflection");
+    }
+  }
+
+  void owner(const LocateRemapRange& r) const {
+    // Search-mask displacement lies in [-n,n]. Local c in [0,n-1] gives
+    // step_div(c+displacement,n) in {-1,0,1}, including power/ID-only calls.
+    integer(std::int64_t(r.block_lower) - n, "owner block displacement");
+    integer(std::int64_t(r.block_upper) + n, "owner block displacement");
+    integer(std::int64_t(r.shift_lower) - 1, "owner correction");
+    integer(std::int64_t(r.shift_upper) + 1, "owner correction");
+  }
+};
+
+template <std::size_t Dim>
+inline void preflight_locate_box(
+    const py::array& queries,
+    const std::array<std::array<double, 2>, Dim>& bounds,
+    const std::array<int, Dim>& blocks,
+    const std::array<bool, Dim>& periodic) {
+  // The binding first runs preflight_box: shapes, finite input, dimensions,
+  // masks, allocation and insertion safety remain authoritative, even empty.
+  if (queries.shape(0) == 0) return;
+  require_binary64_interval_environment();
+  const auto* q = static_cast<const double*>(queries.data());
+  for (py::ssize_t row = 0; row < queries.shape(0); ++row) {
+    std::vector<LocateAxisAdmission> axes;
+    std::array<std::vector<LocateRemapRange>, Dim> ranges;
+    bool outside = false;
+    // Native x -> y -> z early returns: do not inspect unreachable axes or
+    // require worklist/owner margins until every reached remap has succeeded.
+    for (std::size_t d = 0; d < Dim; ++d) {
+      axes.emplace_back(bounds[d][0], bounds[d][1], blocks[d], row, d);
+      ranges[d] = axes.back().remap(binary64_singleton(q[row * Dim + d]),
+                                     periodic[d]);
+      if (ranges[d].empty()) { outside = true; break; }
+    }
+    if (outside) continue;
+    // Constructor mask products bound all nonnegative flattened search terms.
+    // initialize_search's disp is sum((c-n)*stride) over periodic axes, <=0;
+    // its source-ordered subtraction and region_index additions stay between
+    // minus that bound and the mask product. The additional ci+ei comparison
+    // reaches 3*n-1 before wrapping; check it explicitly.
+    for (std::size_t d = 0; d < Dim; ++d) {
+      if (periodic[d]) axes[d].integer(3 * std::int64_t(blocks[d]) - 1,
+                                     "search block comparison");
+      for (const auto& r : ranges[d]) {
+        axes[d].worklist(r);
+        if (periodic[d]) axes[d].owner(r);
+      }
+    }
+  }
+}
+
+inline void preflight_locate_periodic_3d(
+    const py::array& queries, const std::array<double, 6>& params,
+    const std::array<int, 3>& blocks, const Periodic3DResourceEstimate& resources) {
+  if (queries.shape(0) == 0) return;
+  require_binary64_interval_environment();
+  const auto* q = static_cast<const double*>(queries.data());
+  for (py::ssize_t row = 0; row < queries.shape(0); ++row) {
+    const LocateAxisAdmission x(0, params[0], blocks[0], row, 0);
+    const LocateAxisAdmission y(0, params[2], blocks[1], row, 1);
+    const LocateAxisAdmission z(0, params[5], blocks[2], row, 2);
+    // The coupled native reduction is z -> y -> x. Never check only the
+    // three original coordinates: later steps see the shear subtractions.
+    for (const auto& rz : z.remap(binary64_singleton(q[3 * row + 2]), true)) {
+      z.worklist(rz);
+      const auto qy = y.translate(binary64_singleton(q[3 * row + 1]), rz,
+                                  binary64_singleton(params[4]));
+      const auto qx = x.translate(binary64_singleton(q[3 * row]), rz,
+                                  binary64_singleton(params[3]));
+      for (const auto& ry : y.remap(qy, true)) {
+        y.worklist(ry);
+        const auto qxx = x.translate(qx, ry, binary64_singleton(params[1]));
+        for (const auto& rx : x.remap(qxx, true)) {
+          x.worklist(rx);
+          x.owner(rx);  // y/z owners already use native image particles
+          // Existing constructor bounds enclose ey/ez/oy; monotonic positive
+          // arithmetic bounds each intermediate and the flattened block.
+          const auto name = x.name + " extended block index";
+          const int cj = checked_int_add(ry.block_upper, resources.ey_bound, name);
+          const int ck = checked_int_add(rz.block_upper, resources.ez_bound, name);
+          const int yz = checked_int_add(
+              cj, checked_int_multiply(resources.oy, ck, name), name);
+          checked_int_add(rx.block_upper,
+                          checked_int_multiply(blocks[0], yz, name), name);
+          // region_index: qi in [-nx,2*nx-1], iv in {-1,0,1}; qj/qk
+          // stay in [0,oy/oz). Checked constructor mask/extended products
+          // cover the remaining search indices. Lazy image creation's
+          // inherited shear arithmetic is outside this query-admission claim.
+        }
+      }
+    }
+  }
 }
 
 }  // namespace pyvoro2::native_preconditions

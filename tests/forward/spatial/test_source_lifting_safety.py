@@ -58,10 +58,11 @@ def test_large_origin_keeps_prepared_and_actual_native_safety(
         np.testing.assert_array_equal(calls[0], native)
 
 
+@pytest.mark.parametrize('mode', ['standard', 'power'])
 @pytest.mark.parametrize('positive', [False, True])
 @pytest.mark.parametrize('positions', [False, True])
 def test_uninserted_seam_queries_keep_direct_projection(
-    monkeypatch, positive, positions,
+    monkeypatch, positive, positions, mode,
 ):
     points = np.array([[.25, .5, .5], [.75, .5, .5]])
     xs = [-2.**-55]
@@ -77,16 +78,18 @@ def test_uninserted_seam_queries_keep_direct_projection(
         assert distances[0] != distances[1]
         owners.append([11, 17][distances.index(min(distances))])
     assert owners == ([17, 11] if positive else [17])
-    actual = api._require_core().locate_periodic_standard
+    binding = f'locate_periodic_{mode}'
+    actual = getattr(api._require_core(), binding)
     calls = []
 
     def capture(*args):
         calls.append(args[-1].copy())
         return actual(*args)
 
-    monkeypatch.setattr(api._require_core(), 'locate_periodic_standard', capture)
+    monkeypatch.setattr(api._require_core(), binding, capture)
     result = pv.locate(points, queries, domain=pv.PeriodicCell(np.eye(3)),
-                       ids=[11, 17], return_owner_position=positions)
+                       ids=[11, 17], return_owner_position=positions, mode=mode,
+                       **({'radii': [.125, .125]} if mode == 'power' else {}))
     np.testing.assert_array_equal(calls[0], queries)
     assert result['found'].tolist() == [True] * len(xs)
     assert result['owner_id'].tolist() == owners

@@ -751,6 +751,11 @@ def locate(
     Generator points use the same half-open containment and mandatory duplicate
     safety as :func:`compute`; locate queries themselves are not inserted and
     retain their existing query semantics.
+    The complete batch is checked before native construction for safe query
+    remapping, worklist indices and integer owner-image corrections. Unsupported
+    arithmetic raises ``ValueError`` naming the query row and operation, also
+    for ID-only calls. Queries are not snapped or prepared as generators;
+    admission does not guarantee accuracy for arbitrary remote queries.
     """
 
     mode = validate_forward_mode(mode)  # type: ignore[assignment]

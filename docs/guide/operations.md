@@ -231,10 +231,23 @@ particular, `PeriodicCell` queries are projected directly into the native frame;
 they do not use the stable source-lifting preparation described in the
 [domain guide](domains.md#backend-primary-remapping-helpers).
 
-The current 2D and 3D wrappers check query shape and finiteness, but do not yet
-guard every native query-dependent integer conversion and index calculation.
-Very distant finite queries can therefore reach unsafe native stepping
-arithmetic. Finiteness alone is not an admission guarantee for such queries.
+All six spatial/planar standard/power locate bindings conservatively check the
+complete query batch before constructing the native container. Admission covers
+query remapping (including coupled triclinic shears), signed quotient products,
+block/search indices, worklist truncation/reflection and integer owner-image
+corrections. An unsupported query raises `ValueError` identifying its zero-based
+row, axis and failed operation. Finiteness alone is not an admission guarantee:
+even a representable initial block index can fail a later product or correction,
+and cancellation at large origins can invalidate a worklist index.
+
+Preflight does not snap, wrap or otherwise alter queries; admitted queries
+follow the existing native remapping and search. Ordinary seam owners, external IDs, native periodic-image
+positions and missing-owner sentinels are preserved. ID-only calls have the same
+admission boundary because the backend still assembles owner positions. A safe
+nonperiodic outside return ends that query's route; unsafe arithmetic encountered
+before that return still raises. Empty query batches retain constructor checks
+without hypothetical find-specific refusals.
+
 Keep queries near the domain at a numerically suitable scale; do not use this
 interface for arbitrary remote coordinates. For a finite box, classify clearly
 outside queries in the application before dispatch when their magnitudes are
@@ -245,8 +258,12 @@ For periodic queries, generate local coordinates directly when the application
 can do so without losing the intended location. Applying generator
 `remap_cart` as a generic workaround changes the query convention: its snapping
 can change ownership near a separator. It also does not supply a validated
-remote owner-position reconstruction. Safe query rejection and any subsequent
-remote-query recovery are separate work in the
+remote owner-position reconstruction. Admission is a bounded arithmetic safety
+check, not an ownership-accuracy certificate for large residuals, recovery of
+phase lost during projection, or certification of inherited lazy triclinic
+image creation and extreme-power arithmetic. Conservative refusal is possible
+when rounding bounds cannot establish safety. Remote-query recovery remains
+separate work in the
 [functional plan](../development/plans/functional-sequencing.md#current-priority-after-f1-a).
 
 ## 3) `ghost_cells(...)`: compute probe (ghost) cells

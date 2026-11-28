@@ -66,6 +66,14 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Guard uninserted `locate` queries before native construction on all six
+  spatial/planar standard/power routes (F2-A1, #169). Check the complete batch
+  for unsafe remapping, quotient products, worklist indices and integer
+  owner-image corrections, raising `ValueError` with the query row and failed
+  operation. Admitted queries retain the existing numerical path, seam behavior,
+  IDs and native owner positions. This conservative admission does not recover
+  remote queries or certify inherited triclinic image or extreme-power numerics.
+
 - Stabilize `PeriodicCell` Cartesian remapping and inserted generators by
   removing exact source-lattice lifts before a once-rounded local projection.
   Admitted exactly represented translations preserve native submissions with
