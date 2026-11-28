@@ -1,0 +1,422 @@
+{
+  "base": {
+    "provenance": {
+      "revision": "07a619b0a723ff860ea577a07489d0c21fefb01b",
+      "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+      "numpy": "2.3.5",
+      "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+      "source": "/workspace/pyvoro2/src/pyvoro2/__init__.py",
+      "native": [
+        {
+          "path": "/workspace/work/f1-a3-p/venv/lib/python3.12/site-packages/pyvoro2/_core.cpython-312-x86_64-linux-gnu.so",
+          "sha256": "22e898a36b44e95547738b15721497817cb679042e9606400feed9f57744d976"
+        },
+        {
+          "path": "/workspace/work/f1-a3-p/venv/lib/python3.12/site-packages/pyvoro2/_core2d.cpython-312-x86_64-linux-gnu.so",
+          "sha256": "65c84701f10388f7c1e1023a0bae8ef60fa61a4ac774b933980e011d24ea947c"
+        }
+      ],
+      "native_inputs": "100644 blob b999a159a333f543230a1098f40be3f361d63605\tCMakeLists.txt\n040000 tree ecc745e3f3070c2bc9e5862783aca1b82d307184\tcpp\n100644 blob ce1745ca8dd4d284eb3f9bced44e2998194cb00c\tpyproject.toml\n040000 tree 61a56ea2c6f677570feb76baf9c4a4e87367c3c1\tvendor\n"
+    },
+    "seed": "166+n",
+    "warmups": 1,
+    "repeats": 3,
+    "number": 1,
+    "measurements": [
+      {
+        "n": 1000,
+        "domain": "rectangular",
+        "cohort": "ordinary",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.030401667000035104,
+              0.029881469000031302,
+              0.03004605200004562
+            ],
+            "median_seconds": 0.03004605200004562
+          },
+          "compute": {
+            "seconds": [
+              0.07148416100000077,
+              0.05719303099999706,
+              0.05712554100000489
+            ],
+            "median_seconds": 0.05719303099999706
+          }
+        }
+      },
+      {
+        "n": 1000,
+        "domain": "rectangular",
+        "cohort": "translated",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.029663846999994803,
+              0.029709324000009474,
+              0.029699470000025485
+            ],
+            "median_seconds": 0.029699470000025485
+          },
+          "compute": {
+            "seconds": [
+              0.05636579899999106,
+              0.05678100199997971,
+              0.0564945990000183
+            ],
+            "median_seconds": 0.0564945990000183
+          }
+        }
+      },
+      {
+        "n": 1000,
+        "domain": "oblique",
+        "cohort": "ordinary",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.035844515999997384,
+              0.0356810960000189,
+              0.03555399699996542
+            ],
+            "median_seconds": 0.0356810960000189
+          },
+          "compute": {
+            "seconds": [
+              0.07299808699997357,
+              0.07284827500001256,
+              0.07363478700000314
+            ],
+            "median_seconds": 0.07299808699997357
+          }
+        }
+      },
+      {
+        "n": 1000,
+        "domain": "oblique",
+        "cohort": "translated",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.03589972800000396,
+              0.036804285000016534,
+              0.036492302999988624
+            ],
+            "median_seconds": 0.036492302999988624
+          },
+          "compute": {
+            "seconds": [
+              0.07280497099998229,
+              0.07323736099999678,
+              0.0731892270000003
+            ],
+            "median_seconds": 0.0731892270000003
+          }
+        }
+      },
+      {
+        "n": 4000,
+        "domain": "rectangular",
+        "cohort": "ordinary",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.11845071699997334,
+              0.11828738599996313,
+              0.11824022600001172
+            ],
+            "median_seconds": 0.11828738599996313
+          },
+          "compute": {
+            "seconds": [
+              0.22748787399996218,
+              0.22631089200001497,
+              0.2256652770000187
+            ],
+            "median_seconds": 0.22631089200001497
+          }
+        }
+      },
+      {
+        "n": 4000,
+        "domain": "rectangular",
+        "cohort": "translated",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.1186764810000227,
+              0.11877286000003551,
+              0.11917344099998672
+            ],
+            "median_seconds": 0.11877286000003551
+          },
+          "compute": {
+            "seconds": [
+              0.22945510800002467,
+              0.2293744590000415,
+              0.2297187869999675
+            ],
+            "median_seconds": 0.22945510800002467
+          }
+        }
+      },
+      {
+        "n": 4000,
+        "domain": "oblique",
+        "cohort": "ordinary",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.14127325900000187,
+              0.14242003399999703,
+              0.14186898999997766
+            ],
+            "median_seconds": 0.14186898999997766
+          },
+          "compute": {
+            "seconds": [
+              0.2823589019999986,
+              0.28026160299998537,
+              0.28023014600000806
+            ],
+            "median_seconds": 0.28026160299998537
+          }
+        }
+      },
+      {
+        "n": 4000,
+        "domain": "oblique",
+        "cohort": "translated",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.14528987200003485,
+              0.14628021599997965,
+              0.14532525499998883
+            ],
+            "median_seconds": 0.14532525499998883
+          },
+          "compute": {
+            "seconds": [
+              0.28644670999995014,
+              0.2787124640000229,
+              0.2794540799999936
+            ],
+            "median_seconds": 0.2794540799999936
+          }
+        }
+      }
+    ]
+  },
+  "candidate": {
+    "provenance": {
+      "revision": "42cc4776f6e5a4231079264ada0e6d5249b6548c",
+      "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+      "numpy": "2.3.5",
+      "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+      "source": "/workspace/pyvoro2/src/pyvoro2/__init__.py",
+      "native": [
+        {
+          "path": "/workspace/work/f1-a3-p/venv/lib/python3.12/site-packages/pyvoro2/_core.cpython-312-x86_64-linux-gnu.so",
+          "sha256": "22e898a36b44e95547738b15721497817cb679042e9606400feed9f57744d976"
+        },
+        {
+          "path": "/workspace/work/f1-a3-p/venv/lib/python3.12/site-packages/pyvoro2/_core2d.cpython-312-x86_64-linux-gnu.so",
+          "sha256": "65c84701f10388f7c1e1023a0bae8ef60fa61a4ac774b933980e011d24ea947c"
+        }
+      ],
+      "native_inputs": "100644 blob b999a159a333f543230a1098f40be3f361d63605\tCMakeLists.txt\n040000 tree ecc745e3f3070c2bc9e5862783aca1b82d307184\tcpp\n100644 blob ce1745ca8dd4d284eb3f9bced44e2998194cb00c\tpyproject.toml\n040000 tree 61a56ea2c6f677570feb76baf9c4a4e87367c3c1\tvendor\n"
+    },
+    "seed": "166+n",
+    "warmups": 1,
+    "repeats": 3,
+    "number": 1,
+    "measurements": [
+      {
+        "n": 1000,
+        "domain": "rectangular",
+        "cohort": "ordinary",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.030072548999896753,
+              0.029947745999834297,
+              0.02982536599984087
+            ],
+            "median_seconds": 0.029947745999834297
+          },
+          "compute": {
+            "seconds": [
+              0.0601990789998581,
+              0.05995559100006176,
+              0.05994130999988556
+            ],
+            "median_seconds": 0.05995559100006176
+          }
+        }
+      },
+      {
+        "n": 1000,
+        "domain": "rectangular",
+        "cohort": "translated",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.029911763999962204,
+              0.02970310600017001,
+              0.029840767999985474
+            ],
+            "median_seconds": 0.029840767999985474
+          },
+          "compute": {
+            "seconds": [
+              0.06035776099997747,
+              0.06042419000004884,
+              0.0599136499999986
+            ],
+            "median_seconds": 0.06035776099997747
+          }
+        }
+      },
+      {
+        "n": 1000,
+        "domain": "oblique",
+        "cohort": "ordinary",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.041029308999895875,
+              0.04050925299998198,
+              0.040992027999891434
+            ],
+            "median_seconds": 0.040992027999891434
+          },
+          "compute": {
+            "seconds": [
+              0.08147680000001856,
+              0.0813726469998528,
+              0.09437169900002118
+            ],
+            "median_seconds": 0.08147680000001856
+          }
+        }
+      },
+      {
+        "n": 1000,
+        "domain": "oblique",
+        "cohort": "translated",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.04048994799995853,
+              0.040929777000201284,
+              0.0409770659998685
+            ],
+            "median_seconds": 0.040929777000201284
+          },
+          "compute": {
+            "seconds": [
+              0.08175123299997722,
+              0.08177019100003236,
+              0.08245508999993945
+            ],
+            "median_seconds": 0.08177019100003236
+          }
+        }
+      },
+      {
+        "n": 4000,
+        "domain": "rectangular",
+        "cohort": "ordinary",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.11885052699994958,
+              0.11899292699990838,
+              0.12031224099996507
+            ],
+            "median_seconds": 0.11899292699990838
+          },
+          "compute": {
+            "seconds": [
+              0.2503471239999726,
+              0.2473498220001602,
+              0.2431097219998719
+            ],
+            "median_seconds": 0.2473498220001602
+          }
+        }
+      },
+      {
+        "n": 4000,
+        "domain": "rectangular",
+        "cohort": "translated",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.11960413800011338,
+              0.12002444600011586,
+              0.11978537400000278
+            ],
+            "median_seconds": 0.11978537400000278
+          },
+          "compute": {
+            "seconds": [
+              0.2453250549999666,
+              0.24346586699994077,
+              0.24276803900011146
+            ],
+            "median_seconds": 0.24346586699994077
+          }
+        }
+      },
+      {
+        "n": 4000,
+        "domain": "oblique",
+        "cohort": "ordinary",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.1764107530000274,
+              0.20390113100006602,
+              0.16676255899983516
+            ],
+            "median_seconds": 0.1764107530000274
+          },
+          "compute": {
+            "seconds": [
+              0.32286536199990223,
+              0.3300753070000155,
+              0.3149660720000611
+            ],
+            "median_seconds": 0.32286536199990223
+          }
+        }
+      },
+      {
+        "n": 4000,
+        "domain": "oblique",
+        "cohort": "translated",
+        "timings": {
+          "preparation": {
+            "seconds": [
+              0.16594060200009153,
+              0.16761933199995838,
+              0.16253063599992856
+            ],
+            "median_seconds": 0.16594060200009153
+          },
+          "compute": {
+            "seconds": [
+              0.3145707709998078,
+              0.31962690900013513,
+              0.3145246629999292
+            ],
+            "median_seconds": 0.3145707709998078
+          }
+        }
+      }
+    ]
+  }
+}

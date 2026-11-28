@@ -1,0 +1,644 @@
+{
+  "base": "07a619b0a723ff860ea577a07489d0c21fefb01b",
+  "candidate": "42cc4776f6e5a4231079264ada0e6d5249b6548c",
+  "script_sha256": "f0b989c718895a98d275ff70b2edc5a78f3d4da882779975dc7fa025cee4c51e",
+  "cases": [
+    {
+      "index": 0,
+      "case": "#60",
+      "route": "Python separator consumer (OrthorhombicCell)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "source_shift": true,
+        "source_delta": true
+      }
+    },
+    {
+      "index": 1,
+      "case": "#60",
+      "route": "Python separator consumer (PeriodicCell)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "source_shift": true,
+        "source_delta": true
+      }
+    },
+    {
+      "index": 2,
+      "case": "#65",
+      "route": "public (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "no_physical_residual_loss": true
+      }
+    },
+    {
+      "index": 3,
+      "case": "#65",
+      "route": "detached snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "no_physical_residual_loss": true
+      }
+    },
+    {
+      "index": 4,
+      "case": "#67 A-y-to-x",
+      "route": "public (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 5,
+      "case": "#67 A-y-to-x",
+      "route": "public (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 6,
+      "case": "#67 A-y-to-x",
+      "route": "public (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 7,
+      "case": "#67 A-y-to-x",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 8,
+      "case": "#67 A-y-to-x",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 9,
+      "case": "#67 A-y-to-x",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 10,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "public (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 11,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "public (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 12,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "public (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 13,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 14,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 15,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "tangential_residual": true
+      }
+    },
+    {
+      "index": 16,
+      "case": "#67 seams",
+      "route": "planar (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 17,
+      "case": "#67 seams",
+      "route": "orthorhombic (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 18,
+      "case": "#67 seams",
+      "route": "triclinic (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 19,
+      "case": "#67 seams",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 20,
+      "case": "#67 seams",
+      "route": "planar (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 21,
+      "case": "#67 seams",
+      "route": "orthorhombic (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 22,
+      "case": "#67 seams",
+      "route": "triclinic (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 23,
+      "case": "#67 seams",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 24,
+      "case": "#67 coupled underflow",
+      "route": "public (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 25,
+      "case": "#67 coupled underflow",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 26,
+      "case": "#67 coupled underflow",
+      "route": "public (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 27,
+      "case": "#67 coupled underflow",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 28,
+      "case": "#67 coupled underflow",
+      "route": "public (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 29,
+      "case": "#67 coupled underflow",
+      "route": "snapshot (Python)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "half_open": true,
+        "positive_subnormal": true,
+        "ordinary_negative": true
+      }
+    },
+    {
+      "index": 30,
+      "case": "frame near_parallel",
+      "route": "public (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 31,
+      "case": "frame near_parallel",
+      "route": "snapshot (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 32,
+      "case": "frame near_parallel",
+      "route": "QR control (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 33,
+      "case": "frame identity",
+      "route": "public (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 34,
+      "case": "frame identity",
+      "route": "snapshot (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 35,
+      "case": "frame identity",
+      "route": "QR control (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 36,
+      "case": "frame right_handed",
+      "route": "public (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 37,
+      "case": "frame right_handed",
+      "route": "snapshot (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 38,
+      "case": "frame right_handed",
+      "route": "QR control (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 39,
+      "case": "frame anisotropic",
+      "route": "public (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 40,
+      "case": "frame anisotropic",
+      "route": "snapshot (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 41,
+      "case": "frame anisotropic",
+      "route": "QR control (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 42,
+      "case": "frame cubic_shear",
+      "route": "public (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 43,
+      "case": "frame cubic_shear",
+      "route": "snapshot (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 44,
+      "case": "frame cubic_shear",
+      "route": "QR control (Python/NumPy)",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "orthogonal": true,
+        "volume": true
+      }
+    },
+    {
+      "index": 45,
+      "case": "#65 native",
+      "route": "compiled 3D standard",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "physical_x": true
+      }
+    },
+    {
+      "index": 46,
+      "case": "walls and lifetime",
+      "route": "compiled 3D standard",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "walls": true,
+        "owned_source": true,
+        "unit_measure": true
+      }
+    },
+    {
+      "index": 47,
+      "case": "walls and lifetime",
+      "route": "compiled 2D standard",
+      "classification": "unchanged",
+      "inputs_equal": true,
+      "oracle_equal": true,
+      "observations_equal": true,
+      "checks": {
+        "walls": true,
+        "owned_source": true,
+        "unit_measure": true
+      }
+    }
+  ]
+}

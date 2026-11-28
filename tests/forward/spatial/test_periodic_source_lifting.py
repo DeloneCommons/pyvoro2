@@ -104,7 +104,8 @@ def test_full_local_projection_and_chart_match_fraction_oracles(
         np.testing.assert_array_equal(v[index], expected_v)
         assert tuple(n[index]) == tuple(expected_n)
         assert shifts[index].tolist() == [a+b for a, b in zip(k, expected_n)]
-    np.testing.assert_array_equal(primary, snapshot.internal_to_cart(v))
+    expected_report = (actual_frame.rotation_to_internal.T @ v.T).T + domain.origin
+    np.testing.assert_array_equal(primary, expected_report)
     np.testing.assert_array_equal(points, original)
 
 
@@ -202,17 +203,23 @@ def test_nonfinite_local_projection_refuses_without_runtime_warning():
         snapshot.remap_cart([[.75, .75, .75]])
 
 
-def test_residual_is_not_rounded_before_the_complete_dot(monkeypatch):
+@pytest.mark.parametrize('alternate_qr', [False, True])
+def test_residual_is_not_rounded_before_the_complete_dot(monkeypatch, alternate_qr):
+    if alternate_qr:
+        # An independently rounded, also A2-qualified QR pair. A projection
+        # oracle must consume the operation frame, not pin one LAPACK's bits.
+        s = 1 / np.sqrt(2.)
+        q = np.array([[0., 1., 0.], [-s, 0., -s], [-s, 0., s]])
+        monkeypatch.setattr(np.linalg, 'qr', lambda a: (q, q.T @ a))
     domain = PeriodicCell(BASE, origin=(2.**-55, 2.**-54, 2.**-56))
     snapshot = geometry3d(domain).native_periodic_snapshot()
-    point = [.75, .625, .875]
+    point = [.125, .125, .125]
     expected, _, residual = source_oracle(
         point, domain.vectors, domain.origin, snapshot.rotation_to_internal)
     prematurely_rounded = [
         float(sum(F(float(residual[i])) * F(float(row[i])) for i in range(3)))
         for row in snapshot.rotation_to_internal]
     assert expected != prematurely_rounded
-    assert expected[1] == -.25000000000000006
     seen = []
     remap = native_remap.remap_triangular
 
