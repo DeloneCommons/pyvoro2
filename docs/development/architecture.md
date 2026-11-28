@@ -409,10 +409,18 @@ Prepared primary Cartesian safety and the compiled insertion backstop are both
 required. A large reporting origin can collapse distinct local residuals and
 cause conservative prepared-view refusal; conversely, distinct reports can
 conceal an unsafe native pair, which the compiled check still refuses.
-Uninserted locate queries retain direct projection/dispatch and reporting,
-including missing-owner NaNs. F2 owns safe remote query stepping/index admission
-and any optional recovery; the generator translation guarantee does not apply
-to those queries or establish universal source/native geometry equivalence.
+Uninserted locate queries retain direct projection and, when admitted, native
+dispatch and reporting, including missing-owner NaNs. F2-A1 adds a locate-only
+C++ preflight to all six bindings: before native construction, outward binary64
+intervals and checked integer arithmetic bound query remapping, worklist/search
+indices and integer owner-image corrections for the complete batch. It reuses
+the existing constructor/extent admission and does not change generator or ghost
+preparation. Inconclusive bounds may refuse, including when a nonperiodic early
+exit cannot be established. See the
+[operation guide](../guide/operations.md#current-locate-query-restriction).
+Remote-query recovery remains separate; neither the generator translation
+guarantee nor query admission establishes universal source/native equivalence
+or accuracy, or certifies inherited lazy triclinic image creation.
 
 Candidate generation is separate from distance classification. Rectangular
 domains use primary-coordinate spatial buckets with neighbor wrapping only on

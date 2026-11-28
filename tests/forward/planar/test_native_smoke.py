@@ -224,3 +224,29 @@ def test_planar_ghost_cells_periodic_edge_shifts_smoke() -> None:
         for edge in (cells[0].get('edges') or [])
         if int(edge.get('adjacent_cell', -1)) >= 0
     )
+
+
+@pytest.mark.parametrize('mode', ['standard', 'power'])
+@pytest.mark.parametrize('positions', [False, True])
+@pytest.mark.parametrize('positive', [False, True])
+def test_planar_locate_no_snap_seams(mode, positions, positive):
+    from fractions import Fraction as F
+
+    p = np.array([[.25, .5], [.75, .5]])
+    xs = [-2.**-55]
+    if positive:
+        p[0, 0] += 2.**-41
+        xs = [0., 2.**-41]
+    owners = []
+    for x in xs:
+        distances = [min((F(x) - F(site) - image)**2
+                         for image in (-1, 0, 1)) for site in p[:, 0]]
+        assert distances[0] != distances[1]
+        owners.append([11, 17][distances.index(min(distances))])
+    kwargs = {'radii': [.125, .125]} if mode == 'power' else {}
+    result = pv2.locate(p, [[x, .5] for x in xs], ids=[11, 17], mode=mode,
+                        domain=pv2.RectangularCell(((0., 1.),) * 2),
+                        return_owner_position=positions, **kwargs)
+    assert result['found'].tolist() == [True] * len(xs)
+    assert result['owner_id'].tolist() == owners
+    assert ('owner_pos' in result) == positions

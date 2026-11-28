@@ -35,11 +35,14 @@ The [functional sequencing draft](../development/plans/functional-sequencing.md)
 records completed G0/P0 research and acceptance of the bounded F1-A foundation
 under [ADRs 0030–0034](../development/decisions/index.md): exact user lattice,
 qualified native frame, numerical remapping, source connectors and stable
-inserted-generator preparation. Remaining numerical limits are explicit;
-remote uninserted-query safety and ghost correctness are the next bounded
-priorities before choosing the production observed-contact contract and its
-necessary periodic-geometry prerequisites. Broader query extensions remain
-separate. Inverse work is currently queued after G1a, with reprioritization
+inserted-generator preparation. Remaining numerical limits are explicit.
+Bounded locate admission (F2-A1, [PR #171](https://github.com/DeloneCommons/pyvoro2/pull/171))
+has passed independent scientific/native-safety review with documentation-only
+corrections. Ghost independence and initialized identity (F2-A2,
+[#170](https://github.com/DeloneCommons/pyvoro2/issues/170)) are next after
+F2-A1 integration, before choosing the production observed-contact contract
+and its necessary periodic-geometry prerequisites. Broader query extensions
+remain separate. Inverse work is currently queued after G1a, with reprioritization
 allowed. Image-qualified observed contacts remain distinct from optional
 global assembly. This queue is **not** a mathematical dependency between all
 tracks, a release commitment or approval of a production globalization algorithm.

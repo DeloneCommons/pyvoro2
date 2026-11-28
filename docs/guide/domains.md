@@ -65,7 +65,9 @@ Notes:
 
 - Internally this uses the standard Voro++ rectangular container with per-axis periodic flags.
 - `return_face_shifts=True` is supported whenever at least one axis is periodic.
-- For non-periodic axes, query points outside the bounds are treated as out-of-domain.
+- For non-periodic axes, admitted out-of-domain locate queries return no owner.
+  Extreme queries can instead be refused by conservative
+  [query admission](operations.md#current-locate-query-restriction).
 
 Robustness note:
 
@@ -287,10 +289,13 @@ Persistent generators in `compute`, `locate` and `ghost_cells`, and inserted
 temporary ghosts, share this preparation. Both prepared Cartesian safety and
 actual native insertion safety remain mandatory: a reporting view that collapses
 distinct exact residuals can still refuse. Uninserted locate queries retain
-direct projection without generator snapping. Their remote stepping/index safety
-and optional query-chart recovery remain separate F2 work. Stable generator
-preparation does not qualify remote queries, arbitrary short translations or
-source-complete contacts. See [accepted ADR 0034](../development/decisions/0034-stable-source-lifting.md).
+direct projection without generator snapping. F2-A1 separately checks
+query-dependent native arithmetic before execution; see
+[locate admission and limitations](operations.md#current-locate-query-restriction).
+Optional remote-query recovery remains separate work. Stable generator
+preparation and bounded query admission do not guarantee arbitrary remote-query
+accuracy, arbitrary short translations or source-complete contacts. See
+[accepted ADR 0034](../development/decisions/0034-stable-source-lifting.md).
 
 These helpers are used internally (for example, in visualization wrapping and in periodic graph work),
 but they are also useful when you want to align your own data to the primary cell.
