@@ -188,8 +188,9 @@ error. It does not bound every short-direction relative error or guarantee a
 native tessellation. The same integer tuple `s` labels source and native images,
 but `L ≈ A @ Q` does not certify exact equality of their Cartesian translations
 or native insertion provenance. Numerical primary remapping below preserves
-coupled tangential remainders; source-connector snapping and phase lost before
-native projection remain separate work. See the
+coupled tangential remainders and removes exact source lifts before projection.
+Separator connectors use original source operands independently of this native
+chart. See the
 [accepted A1 contract](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
 and [accepted A2 decision](../development/decisions/0031-qualified-native-periodic-qr-frame.md).
 
@@ -245,9 +246,37 @@ repetition with unchanged epsilon: identical coordinates and zero extra shifts.
 This does not promise a fixed point after a Cartesian QR round trip or for A1
 rounded views. The convention `input ≈ primary + shifts @ lattice` includes
 final-coordinate rounding and intentional snapping, without a universal
-absolute reconstruction tolerance. Public `PeriodicCell.remap_cart` uses one
-qualified frame per call. It retains ordinary Cartesian projection arithmetic;
-remapping cannot restore phase already lost when projecting remote source lifts.
+absolute reconstruction tolerance.
+
+`PeriodicCell.remap_cart` uses one qualified frame per call. It first computes
+the exact source floor `k = floor((p-o) @ inverse(A))` and exact local Cartesian
+residual `r = p-o-k@A`. Each complete dot in `r @ Q` rounds once to nearest-even;
+the residual itself is not rounded first. The shared triangular remapper then
+returns a numerical primary point and correction `n`. Only the combined nominal
+shift `K = k+n` must fit int64. For unit rows, origin `(2**-55,0,0)` and
+`eps=0`, x=`-2**63` is admitted: `k=-2**63-1`, the local projection rounds to 1,
+and `n=1` restores `INT64_MIN`. x=`2**63` instead overflows the final shift and
+refuses, including when shifts are not requested. These are arithmetic helper
+examples, not promises of native execution for arbitrary remote input.
+
+For source translations `p' = p+t@A` represented **exactly in the supplied
+binary64 values**, the same frame and epsilon produce identical native
+submissions and `K'=K+t`, independent of batch shape or order, when both calls
+are otherwise admitted. Floating addition that already lost source bits does
+not satisfy that condition. Primary Cartesian reports use the existing
+native-to-Cartesian transform; local projection, snapping and reporting errors
+remain possible. `remap_cart` need not equal
+`internal_to_cart(remap_internal(cart_to_internal(points)))`, nor a composition
+through the separately rounded exact user helpers.
+
+Persistent generators in `compute`, `locate` and `ghost_cells`, and inserted
+temporary ghosts, share this preparation. Both prepared Cartesian safety and
+actual native insertion safety remain mandatory: a reporting view that collapses
+distinct exact residuals can still refuse. Uninserted locate queries retain
+direct projection without generator snapping. Their remote stepping/index safety
+and optional query-chart recovery remain separate F2 work. Stable generator
+preparation does not qualify remote queries, arbitrary short translations or
+source-complete contacts. See [Proposed ADR 0034](../development/decisions/0034-stable-source-lifting.md).
 
 These helpers are used internally (for example, in visualization wrapping and in periodic graph work),
 but they are also useful when you want to align your own data to the primary cell.

@@ -1,6 +1,6 @@
 # Functional research and implementation sequencing
 
-- **Status:** Draft — G0/P0 research complete; A1/A2 accepted; remaining
+- **Status:** Draft — G0/P0 research complete; A1/A2/A3-R/A3-S accepted; remaining
   implementation scopes and release gates are **not yet approved**
 - **Plan revision:** 0.3
 - **Target release:** Not fixed; candidate work for the v0.8-based v0.9
@@ -70,7 +70,7 @@ a future global-complex algorithm has an unconditional correctness guarantee.
 |---|---|---|
 | **G0 — geometry architecture research** (R-O01, P-01a) | **Completed research; direction accepted in ADR 0029.** Independent incidence-first and source-semantic prototypes establish a restricted layering and its limits. | Exit evidence archived in [#149](https://github.com/DeloneCommons/pyvoro2/issues/149); no production feature approved by G0. |
 | **P0 — contract and baseline counterexamples** | **Completed research:** vocabulary, candidate contracts and independent baseline characterization. | [#153](https://github.com/DeloneCommons/pyvoro2/issues/153) / [PR #154](https://github.com/DeloneCommons/pyvoro2/pull/154); delivery is not blanket acceptance of its candidates. |
-| **F1-A — user lattice, source coordinates and native frame** (R-L01, R-L03a) | **A1/A2 accepted**; remaining A3-R shared remapping, A3-S source connectors and realization reference, A3-P inserted-point preparation. | Approve each remaining contract in a focused issue; review composition after A3. Pure user operations remain separate from native admission. |
+| **F1-A — user lattice, source coordinates and native frame** (R-L01, R-L03a) | **A1/A2/R/S accepted**; A3-P inserted-point preparation implemented under [#166](https://github.com/DeloneCommons/pyvoro2/issues/166), pending independent review. | Review P and focused F1-A composition; no F1 closure or release approval. Pure user operations remain separate from native admission. |
 | **F1-B — private computational basis** (R-L02b) | B1 profile named search workloads and compare reducers; implement a private deterministic exact rank-3 reducer only if justified. | Accepted A1 exact core; independent of A3. R-L02b remains pending; no algorithm approved or unconditional G1a prerequisite. |
 | **F1-C — integration, evidence and G1-ready foundation** (R-L02a, R-L03b, R-T02a, R-M01b) | C1 physical ties and conditional reducer integration; C2 duplicate/insertion evidence; C3 occurrence/snapshot contracts; C4 translation-recovery disposition within G1a selection. | Relevant A interfaces; B1 only for reducer integration. Review actual changed interfaces and evidence needed by the selected G1a contract. |
 | **F2 — independent forward/query extensions** (R-Q01, R-G01a/b, R-G02a, R-M01a) | Independent ghost batches, initialized IDs, safe uninserted query handling, weight-first `locate`/`ghost_cells`, query-owner and ghost-image metadata. | Prioritize confirmed correctness defects independently; synchronize shared image/frame contracts with F1. Remote-query recovery is separately scoped; no need to wait for G1b. |
@@ -393,12 +393,11 @@ a stable API does **not** promise universal active-set convergence.
 
 ## Next explicit decisions
 
-1. **G0/P0 completed; A1/A2 accepted:** preserve their research and decision
+1. **G0/P0 completed; A1/A2/R/S accepted:** preserve their research and decision
    records, including the narrow R1 exception and unmodified P0 replay.
-2. Scope A3-R first; approve represented-period, endpoint, snapping and range
-   semantics in its issue. Then scope A3-S's source/reference bridge and
-   A3-P's inserted-point stabilization in the preferred integration order.
-   Review the integrated A3 scope without claiming all F2 queries are qualified.
+2. Review A3-P's implemented inserted-point stabilization under #166 and
+   Proposed ADR 0034, then complete the focused F1-A composition audit using
+   accepted A1/A2/R/S evidence. Do not claim all F2 queries are qualified.
 3. Independently prioritize F2 ghost-state correctness and the bounded
    locate-query safety decision, and reproduce and address confirmed I0 defects.
    Scope further F2 and I1 API work by useful contracts.
