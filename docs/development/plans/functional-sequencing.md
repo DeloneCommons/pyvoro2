@@ -1,7 +1,8 @@
 # Functional research and implementation sequencing
 
-- **Status:** Draft — G0/P0 research complete; F1-A accepted; remaining
-  implementation scopes and release gates are **not yet approved**
+- **Status:** Draft — G0/P0 research complete; F1-A accepted; bounded F2-A1
+  acceptance review complete; remaining scopes and release gates are not
+  approved by this plan
 - **Plan revision:** 0.4
 - **Target release:** Not fixed; candidate work for the v0.8-based v0.9
   development line and, when justified, later releases
@@ -74,7 +75,7 @@ a future global-complex algorithm has an unconditional correctness guarantee.
 | **F1-A — user lattice, source coordinates and native frame** (R-L01, R-L03a) | **Accepted within the selected F1-A scope**; A1/A2/R/S/P compose under ADRs 0030–0034, with final independent review and acceptance in [PR #167](https://github.com/DeloneCommons/pyvoro2/pull/167). | Preserve accepted contracts and documented numerical limits. No F1-B/C closure, universal native qualification or release approval. Pure user operations remain separate from native admission. |
 | **F1-B — private computational basis** (R-L02b) | B1 profile named search workloads and compare reducers; implement a private deterministic exact rank-3 reducer only if justified. | Accepted A1 exact core; independent of A3. R-L02b remains pending; no algorithm approved or unconditional G1a prerequisite. |
 | **F1-C — integration, evidence and G1-ready foundation** (R-L02a, R-L03b, R-T02a, R-M01b) | C1 physical ties and conditional reducer integration; C2 duplicate/insertion evidence; C3 occurrence/snapshot contracts; C4 translation-recovery disposition within G1a selection. | Relevant A interfaces; B1 only for reducer integration. Review actual changed interfaces and evidence needed by the selected G1a contract. |
-| **F2 — independent forward/query extensions** (R-Q01, R-G01a/b, R-G02a, R-M01a) | Prioritize safe uninserted query handling, independent ghost batches and initialized temporary IDs. Retain weight-first queries and query-owner/ghost-image metadata as separately scoped work. | The bounded correctness fixes precede G1a selection in the current queue, not as a mathematical prerequisite. Remote-query recovery and API extensions need not delay G1a. |
+| **F2 — independent forward/query extensions** (R-Q01, R-G01a/b, R-G02a, R-M01a) | F2-A1 bounded locate admission independently reviewed ([PR #171](https://github.com/DeloneCommons/pyvoro2/pull/171)); F2-A2 independent ghost batches and initialized temporary IDs next ([#170](https://github.com/DeloneCommons/pyvoro2/issues/170)). Retain weight-first queries and query-owner/ghost-image metadata as separately scoped work. | The bounded correctness fixes precede G1a selection in the current queue, not as a mathematical prerequisite. Remote-query recovery and API extensions need not delay G1a. |
 | **G1a — derived image-qualified adjacency** | Separately implement image-qualified contacts from observed local face/edge evidence, with bounded/complete matching for the admitted claim or honest refusal. | Select useful scope and actual F1 prerequisites, including explicit C4 disposition; approve precise 3D scope and independently review the 2D adapter. Local cells remain independently usable. |
 | **G1b — optional global periodic complex** | Candidate restricted face-first observed-complex assembly with oriented incidence/winding; no invented missing facets or zero shifts. | Requires a separate G1a→G1b admission review and explicit implementation approval; assess face cycles, reciprocal polygons, transport and V/E/F/C attachments. Contacts alone do not establish these. |
 | **I0 — inverse correctness first** (R-I05, R-I06) | Reproduce historical final-state, hard-feasibility, affine-residual and numeric-diagnostic failures on the *current* v0.8-based source, repair only confirmed defects with independent oracles. | Currently queued after G1a, with reprioritization allowed. Technically independent; necessary before expanding unstable result semantics. |
@@ -102,12 +103,17 @@ labels, not an attempt to restore the historical WP1–WP13 release schedule.
 
 The maintainer's 2026-11-28 sequencing preference is:
 
-1. Reconcile user-facing numerical limitations, accepted F1-A status and this
-   plan in a focused documentation change.
-2. Complete two separately reviewable F2 corrections: **F2-A1**, conservative
-   native admission for uninserted `locate` queries; and **F2-A2**, independent
-   ghost computation with initialized temporary native identity. Prefer A1
-   first for safety and to avoid concurrent changes to the same bindings; A2
+1. **Completed:** reconcile user-facing numerical limitations, accepted F1-A
+   status and this plan ([PR #168](https://github.com/DeloneCommons/pyvoro2/pull/168)).
+2. Complete two separately reviewable F2 corrections. **F2-A1** conservative
+   native admission for uninserted `locate` queries has passed independent
+   acceptance review, with only documentation corrections
+   ([#169](https://github.com/DeloneCommons/pyvoro2/issues/169) /
+   [PR #171](https://github.com/DeloneCommons/pyvoro2/pull/171)). The maintainer
+   accepts its bounded scope for integration subject to required CI.
+   **F2-A2** independent ghost computation with initialized temporary native
+   identity ([#170](https://github.com/DeloneCommons/pyvoro2/issues/170)) is next
+   after A1 integration. This ordering avoids concurrent binding changes; A2
    has no mathematical dependency on A1.
 3. Select the production G1a contact contract from the accepted G0 evidence
    and concrete consumers, including periodic contact graphs and realization
@@ -405,19 +411,29 @@ does not by itself establish complete periodic ghost self-image or wall
 attribution; retain explicit limitations until that metadata contract is
 selected. Query weights and richer metadata remain separate.
 
-Uninserted locate queries must not inherit generator snapping or duplicate
-insertion checks. F2-A1 scopes conservative native stepping/index admission
-across all six planar/spatial standard/power routes. Check the actual native
-arithmetic, including quotient products, remapped residual/worklist indices
-and owner-image additions; a finite input or safe first cast is insufficient.
-Reject unsupported arithmetic with a controlled error before unsafe execution,
-without selecting a new query chart or promising arbitrary remote inputs.
-Preserve the successful numerical path for admitted queries. Remote-query
-recovery and owner-position transport are conditional on a separate useful
-contract, not part of inserted-point A3-P. Preserve ordinary no-snap seam
-behavior, missing-owner sentinels, ID-only calls and nonperiodic outside-query
-semantics. A3 closure must state any open query limitations. Unrelated F2 work
-should advance without waiting for G1a/G1b.
+**F2-A1 acceptance review (2026-11-28):** [#169](https://github.com/DeloneCommons/pyvoro2/issues/169) /
+[PR #171](https://github.com/DeloneCommons/pyvoro2/pull/171), audited production
+revision `c056c9b37cbe8794c45294e77377f5c88eadf078`. Independent Pro review
+found no Blocking or Important production defect; the required follow-up is
+documentation-only. Fresh ordinary and sanitized native builds each passed
+951 focused tests (10 inapplicable skips), with no sanitizer findings. The
+maintainer accepts the bounded implementation for integration after required CI.
+
+All six planar/spatial standard/power routes conservatively establish the
+selected query-dependent remapping, quotient products, worklist/search indices
+and integer owner corrections before native execution. Admitted queries retain
+the existing numerical path and are not snapped or insertion-checked.
+An inconclusive interval can refuse an extreme later coordinate even when the
+native path would have exited outside on an earlier axis (M2). This conservative
+limitation is accepted; no exactness detector is required. Measured query-batch
+overhead (O1) is retained in the PR acceptance record; optimization is optional
+and workload-driven, not a gate. See the
+[operation guide](../../guide/operations.md#current-locate-query-restriction).
+
+Remote-query recovery and owner-position transport remain conditional on a
+separate useful contract, not part of inserted-point A3-P or F2-A1. No universal
+ownership accuracy, inherited lazy image creation, extreme-power or full native
+qualification is implied. Other F2 API work remains independent of G1a/G1b.
 
 ## Inverse development after G1a in the current queue
 
@@ -478,9 +494,10 @@ a stable API does **not** promise universal active-set convergence.
 2. Retain the local-projection refinement candidate for concrete workloads;
    select any changed rounding policy separately. Do not treat F1-A closure
    as qualification of all F2 queries or approval of source-complete contacts.
-3. Prepare and accept bounded F2-A1 query-admission and F2-A2 ghost-state/ID
-   corrections. Document unresolved caller limitations. Further F2 API and
-   remote-query recovery work are not gates for G1a selection.
+3. Integrate the independently reviewed bounded F2-A1 query-admission
+   correction after required CI, then implement and review F2-A2 ghost-state/ID
+   correction (#170). Document unresolved caller limitations. Further F2 API
+   and remote-query recovery work are not gates for G1a selection.
 4. After these corrections, select concrete G1a consumers and its production
    contract in G1a-D0. Decide B1 against named
    search workloads; C1 physical ties do not require a reducer. Select
@@ -510,3 +527,4 @@ post-1.0 research possibilities, not gates for this plan.
 | 2026-11-22 | Draft revision 0.2 ([#151](https://github.com/DeloneCommons/pyvoro2/issues/151)): post-G0 foundation-first refinement adds future P0, tentative F1-A/B/C units, mandatory C4 analysis/disposition and separate G1 admission reviews; preserves parallel tracks and all implementation/release approval boundaries. |
 | 2026-11-27 | Draft revision 0.3: record P0/A1/A2 completion, propose bounded R/S/P work and independent F2 query safety, condition reducer integration on demonstrated need, and scope C2–C4 around the selected G1a contract. Existing ADRs, safety requirements and issue-level approval remain in force; no release scope selected. |
 | 2026-11-28 | Draft revision 0.4: reconcile accepted F1-A status; prioritize bounded locate safety and ghost independence/initialized identity before G1a contract selection; retain conditional B/C implementation and mandatory C4 disposition; queue inverse work after G1a with reprioritization allowed. Clarify required local boundary evidence versus optional global assembly. Individual implementation scopes and release commitments remain separate. |
+| 2026-11-28 | F2-A1 independent acceptance review at `c056c9b3` (PR #171): no Blocking or Important production finding, documentation-only closure; retain conservative early-exit refusal and measured overhead as accepted limits. F2-A2 (#170) follows integration. No change to Draft 0.4 sequencing, other capability decisions or release scope. |

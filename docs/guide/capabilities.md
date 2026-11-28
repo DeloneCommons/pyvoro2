@@ -60,20 +60,24 @@ a performance seed and never a correctness radius, while current forward
 face/edge reconstruction controls may still bound supported reconstruction
 behavior.
 
-Two current query defects need explicit caller precautions:
+Query operations need distinct caller precautions:
 
-- Very distant finite `locate` queries can reach unguarded native integer
-  stepping/index arithmetic in both dimensions. Keep queries near the domain;
-  finiteness and generator admission do not qualify arbitrary query magnitudes.
-- A 3D `PeriodicCell` ghost batch can retain temporary periodic images between
-  queries. Separate singleton calls avoid that batch-state defect, but do not
-  initialize the temporary native ID or establish complete ghost-image labels.
+- In both dimensions, `locate` now conservatively checks the complete batch
+  for unsafe query-dependent native remapping, worklist/search indices and
+  integer owner-image corrections. A query whose arithmetic cannot be admitted
+  raises `ValueError`; admitted queries retain the existing numerical path.
+  Keep queries near the domain: finiteness and generator admission do not qualify
+  arbitrary query magnitudes or guarantee ownership accuracy.
+- A 3D `PeriodicCell` ghost batch can still retain temporary periodic images
+  between queries. Separate singleton calls avoid that batch-state defect, but
+  do not initialize the temporary native ID or establish complete ghost-image
+  labels. Both defects remain open.
 
 See the [operation guide](operations.md#current-locate-query-restriction) for
-query precautions and
-[ghost-specific restrictions](operations.md#current-ghost-batch-and-neighbor-label-restrictions).
-These are open correctness/safety work, not implemented fixes or evidence that
-every other finite input is safe.
+the bounded locate admission and remaining query precautions, and the
+[ghost-specific restrictions](operations.md#current-ghost-batch-and-neighbor-label-restrictions)
+for the current workarounds. Locate admission does not certify every inherited
+native operation, remote-query recovery or extreme-power arithmetic.
 
 The [roadmap](../project/roadmap.md) preserves these candidates without
 promising their exact issue grouping or implementation.

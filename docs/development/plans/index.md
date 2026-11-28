@@ -36,10 +36,11 @@ and maintainer approval.
 ## Draft workstreams
 
 - [Functional research and implementation sequencing](functional-sequencing.md)
-  — Draft 0.4: G0/P0 complete and the selected F1-A scope accepted;
-  bounded query correctness first, then G1a contract selection and its necessary
-  B/C prerequisites. Inverse work is queued after G1a, with reprioritization
-  allowed; G1b remains optional. **Not** an activated v0.9 release scope.
+  — Draft 0.4: G0/P0 complete, selected F1-A scope accepted, bounded F2-A1
+  locate admission independently reviewed; F2-A2 ghost correctness next after
+  integration, then G1a contract selection and its necessary B/C prerequisites.
+  Inverse work is queued after G1a, with reprioritization allowed; G1b remains
+  optional. **Not** an activated v0.9 release scope.
   [ADR 0028](../decisions/0028-upstream-voro-vendor-policy.md) governs the
   transitional Voro++ patch-triage policy.
 - [Documentation refresh](documentation-refresh.md) — **Draft** workstream with agreed initial DOC-W1–W4 (README, Zensical, navigation, landing page), an evolving intermediate backlog, and reserved DOC-W99 for the final audit. It is not an activated v0.9 release plan or gate. The [maintainer-review notebook](https://github.com/DeloneCommons/pyvoro2/tree/dev/notes/maintainer-review) holds research and candidate details.

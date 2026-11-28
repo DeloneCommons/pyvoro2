@@ -157,7 +157,8 @@ The former v0.9 attempt is historical evidence under
 selects separate local-cell, observed-contact and optional global-complex
 responsibilities; concrete production APIs and release scope remain undecided.
 The [current operation guide](https://github.com/DeloneCommons/pyvoro2/blob/dev/docs/guide/operations.md)
-records open query-safety and ghost-output restrictions on `dev`.
+describes bounded native `locate` admission and its remaining numerical
+limits, alongside still-open ghost-output restrictions on `dev`.
 The archived v0.6.3 release remains the separator-inverse manuscript baseline.
 
 Report reproducible bugs or focused proposals through

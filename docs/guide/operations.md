@@ -55,7 +55,8 @@ All inserted generators also obey native containment. On every non-periodic
 axis the valid interval is half-open: `lo <= x < hi`. Periodic axes are remapped
 to their primary interval. This applies to the persistent sites used by all
 three operations and to temporary `ghost_cells` generators. Locate queries are
-not inserted and retain their existing outside-query behavior.
+not inserted; admitted queries retain their existing outside-query behavior.
+See [query admission](#current-locate-query-restriction) for possible refusal.
 
 ## Native construction controls and rejection
 
@@ -241,12 +242,16 @@ even a representable initial block index can fail a later product or correction,
 and cancellation at large origins can invalidate a worklist index.
 
 Preflight does not snap, wrap or otherwise alter queries; admitted queries
-follow the existing native remapping and search. Ordinary seam owners, external IDs, native periodic-image
-positions and missing-owner sentinels are preserved. ID-only calls have the same
-admission boundary because the backend still assembles owner positions. A safe
-nonperiodic outside return ends that query's route; unsafe arithmetic encountered
-before that return still raises. Empty query batches retain constructor checks
-without hypothetical find-specific refusals.
+follow the existing native remapping and search. Ordinary seam owners, external
+IDs, native periodic-image positions and missing-owner sentinels are preserved.
+ID-only calls have the same admission boundary because the backend still
+assembles owner positions. A nonperiodic outside return established by the guard
+ends that query's route. If interval bounds cannot establish an earlier outside
+return, the guard may inspect a later axis and conservatively refuse an extreme
+coordinate, even when the unguarded native path would have returned no owner.
+Such a `ValueError` denotes unsupported arithmetic for the batch, not a
+missing-owner result. Empty query batches retain constructor checks without
+hypothetical find-specific refusals.
 
 Keep queries near the domain at a numerically suitable scale; do not use this
 interface for arbitrary remote coordinates. For a finite box, classify clearly
