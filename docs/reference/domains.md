@@ -50,13 +50,17 @@ translations preserve native submissions and add their coefficients to K.
 This is conditional on the supplied binary64 operands retaining the translation.
 The stable remap need not equal a literal composition of `cart_to_internal`,
 `remap_internal` and `internal_to_cart`, or a composition through rounded A1
-helpers. Those standalone helpers retain their own semantics.
+helpers. Those standalone helpers retain their own semantics. Fractionally
+local residuals can still be large in Cartesian coordinates for sheared or
+anisotropic bases. Projection rounding before reduction can lose local source
+phase and change prepared duplicate decisions even without snapping. See the
+[guide example](../guide/domains.md#backend-primary-remapping-helpers).
 
 The inserted-generator path shares this policy; native admission, both safety
 stages, source identity and inverse realization semantics remain unchanged.
 Uninserted locate queries keep direct projection and are outside this stability
 contract. See [the guide](../guide/domains.md#backend-primary-remapping-helpers)
-and [Proposed ADR 0034](../development/decisions/0034-stable-source-lifting.md).
+and [accepted ADR 0034](../development/decisions/0034-stable-source-lifting.md).
 
 ::: pyvoro2.domains
 :::

@@ -32,13 +32,13 @@ sequence is not reactivated. Historical rationale remains in
 Research candidates below do not authorize implementation.
 
 The [functional sequencing draft](../development/plans/functional-sequencing.md)
-records the completed G0/P0 research and accepted exact user-lattice and
-qualified native-frame work in [ADR 0030](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
-and [ADR 0031](../development/decisions/0031-qualified-native-periodic-qr-frame.md).
-It prioritizes focused source/remapping correctness, consumer-driven periodic
-geometry prerequisites, and independent forward/query and algebraic inverse
-work. Image-qualified observed contacts remain distinct from optional global
-assembly. This prioritization is **not** a release commitment or approval of
+records completed G0/P0 research and acceptance of the bounded F1-A foundation
+under [ADRs 0030–0034](../development/decisions/index.md): exact user lattice,
+qualified native frame, numerical remapping, source connectors and stable
+inserted-generator preparation. Remaining numerical limits are explicit;
+remote uninserted-query safety, consumer-driven periodic geometry prerequisites,
+and independent forward/query and inverse work remain separately scoped.
+Image-qualified observed contacts remain distinct from optional global assembly. This prioritization is **not** a release commitment or approval of
 a production globalization algorithm.
 [ADR 0028](../development/decisions/0028-upstream-voro-vendor-policy.md)
 defines temporary, per-defect maintenance of the vendored Voro++ while upstream

@@ -1,6 +1,6 @@
 # Functional research and implementation sequencing
 
-- **Status:** Draft — G0/P0 research complete; A1/A2/A3-R/A3-S accepted; remaining
+- **Status:** Draft — G0/P0 research complete; F1-A accepted; remaining
   implementation scopes and release gates are **not yet approved**
 - **Plan revision:** 0.3
 - **Target release:** Not fixed; candidate work for the v0.8-based v0.9
@@ -70,7 +70,7 @@ a future global-complex algorithm has an unconditional correctness guarantee.
 |---|---|---|
 | **G0 — geometry architecture research** (R-O01, P-01a) | **Completed research; direction accepted in ADR 0029.** Independent incidence-first and source-semantic prototypes establish a restricted layering and its limits. | Exit evidence archived in [#149](https://github.com/DeloneCommons/pyvoro2/issues/149); no production feature approved by G0. |
 | **P0 — contract and baseline counterexamples** | **Completed research:** vocabulary, candidate contracts and independent baseline characterization. | [#153](https://github.com/DeloneCommons/pyvoro2/issues/153) / [PR #154](https://github.com/DeloneCommons/pyvoro2/pull/154); delivery is not blanket acceptance of its candidates. |
-| **F1-A — user lattice, source coordinates and native frame** (R-L01, R-L03a) | **A1/A2/R/S accepted**; A3-P inserted-point preparation implemented under [#166](https://github.com/DeloneCommons/pyvoro2/issues/166), pending independent review. | Review P and focused F1-A composition; no F1 closure or release approval. Pure user operations remain separate from native admission. |
+| **F1-A — user lattice, source coordinates and native frame** (R-L01, R-L03a) | **Accepted within the selected F1-A scope**; A1/A2/R/S/P compose under ADRs 0030–0034, with final independent review and acceptance in [PR #167](https://github.com/DeloneCommons/pyvoro2/pull/167). | Preserve accepted contracts and documented numerical limits. No F1-B/C closure, universal native qualification or release approval. Pure user operations remain separate from native admission. |
 | **F1-B — private computational basis** (R-L02b) | B1 profile named search workloads and compare reducers; implement a private deterministic exact rank-3 reducer only if justified. | Accepted A1 exact core; independent of A3. R-L02b remains pending; no algorithm approved or unconditional G1a prerequisite. |
 | **F1-C — integration, evidence and G1-ready foundation** (R-L02a, R-L03b, R-T02a, R-M01b) | C1 physical ties and conditional reducer integration; C2 duplicate/insertion evidence; C3 occurrence/snapshot contracts; C4 translation-recovery disposition within G1a selection. | Relevant A interfaces; B1 only for reducer integration. Review actual changed interfaces and evidence needed by the selected G1a contract. |
 | **F2 — independent forward/query extensions** (R-Q01, R-G01a/b, R-G02a, R-M01a) | Independent ghost batches, initialized IDs, safe uninserted query handling, weight-first `locate`/`ghost_cells`, query-owner and ghost-image metadata. | Prioritize confirmed correctness defects independently; synchronize shared image/frame contracts with F1. Remote-query recovery is separately scoped; no need to wait for G1b. |
@@ -179,27 +179,28 @@ missing evidence means unavailable, never guessed arithmetic or a zero image.
   narrow R1 remap correction resolved seven of the 25 pre-remediation A2
   discrepancy records; neither general remapping nor source/preparation
   integration was accepted by A2.
-- **A3-R — shared numerical remapping:** replace duplicated rectangular
-  arithmetic and repeated coupled triangular reduction with a small shared
-  algorithm; retain full-row translations, well-defined half-open numerical
-  views, bounded snapping and final checked shifts. Prepare one frame per
-  public composite remap instead of the current three preparations.
-- **A3-S — source connectors and realization reference:** evaluate inferred
-  and explicit connectors using original source operands; evaluate the complete
-  fixed-shift affine expression before rounding. Ship this with the
-  necessary same-operation numerical image-label translation in the existing
-  matcher, including consistent reverse labels and measure keys. Unavailable
-  correspondence must not become a positive/negative match or drive an
-  incorrect active-set change. No new inverse model or full contact
-  certification is implied.
-- **A3-P — stable inserted-point preparation:** remove remote source lifts
-  before projection through the accepted QR frame, reuse A1 arithmetic and
-  R's remap, and keep final preparation shifts in the original row basis.
-  Cover persistent and temporarily inserted ghost generators and the
+- **A3-R — shared numerical remapping (accepted):** [ADR 0032](../decisions/0032-native-primary-remapping.md),
+  [PR #163](https://github.com/DeloneCommons/pyvoro2/pull/163). Shared exact
+  numerical reduction with full-row translations, half-open views, bounded
+  snapping, final checked shifts and one frame per composite remap.
+- **A3-S — source connectors and realization reference (accepted):** [ADR 0033](../decisions/0033-source-connectors-and-realization-reference.md),
+  [PR #165](https://github.com/DeloneCommons/pyvoro2/pull/165). Inferred and
+  explicit connectors use original source operands, with complete fixed-shift
+  affine expressions evaluated before rounding. The existing matcher transports
+  same-operation numerical image labels and measure keys consistently, including
+  reverse labels; unavailable correspondence refuses rather than producing a
+  positive/negative match or driving an incorrect active-set change. No new
+  inverse model or full contact certification is implied.
+- **A3-P — stable inserted-point preparation (accepted):** [ADR 0034](../decisions/0034-stable-source-lifting.md),
+  [#166](https://github.com/DeloneCommons/pyvoro2/issues/166) /
+  [PR #167](https://github.com/DeloneCommons/pyvoro2/pull/167). Exact source
+  lifting precedes projection through the accepted QR frame, reusing A1
+  arithmetic and R's remap with final preparation shifts in the original row
+  basis. This covers persistent generators, temporarily inserted ghosts and the
   corresponding Cartesian remap helpers. Uninserted locate-query handling
   is separate F2 work.
 
-**Design rationale and remaining decisions.** The post-A2 reassessment
+**Historical design rationale.** The post-A2 reassessment
 (2026-11-27, baseline `5649e1b8`) confirmed the remaining P0 mechanisms and
 identified three additional constraints on a proportionate solution:
 
@@ -241,8 +242,18 @@ must specify exact reproducers, their mathematical oracles, and the selected
 public numerical contract. Fix serious wrong results or justify refusal or
 mitigation; neither universal execution of finite inputs nor a new standing
 qualification framework is a goal. Preserve existing native safety and
-A1/A2 contracts. No algorithm, epsilon-policy change or new public guarantee
-is approved by this draft.
+A1/A2 contracts. The draft itself does not approve any algorithm,
+epsilon-policy change or new public guarantee; the accepted ADRs above govern
+the implemented scope.
+
+**F1-A closure (2026-11-28).** Independent review of PR #167 found no Blocking
+or Important production finding, confirmed the R1 correction and S composition,
+and reproduced all 48 P0 records unchanged and passing. The selected A1/A2/R/S/P
+scope is accepted, with the local-projection rounding limitation explicitly
+recorded in ADR 0034. Retaining exact projected operands through the reducer
+is a potential future numerical refinement, not a selected implementation or
+B1 prerequisite. F2 uninserted-query safety and ghost batch correctness, B/C
+consumer prerequisites and G1 contact/topology work remain separate.
 
 ### F1-B — deterministic internal computational basis
 
@@ -393,11 +404,13 @@ a stable API does **not** promise universal active-set convergence.
 
 ## Next explicit decisions
 
-1. **G0/P0 completed; A1/A2/R/S accepted:** preserve their research and decision
-   records, including the narrow R1 exception and unmodified P0 replay.
-2. Review A3-P's implemented inserted-point stabilization under #166 and
-   Proposed ADR 0034, then complete the focused F1-A composition audit using
-   accepted A1/A2/R/S evidence. Do not claim all F2 queries are qualified.
+1. **G0/P0 completed; F1-A accepted:** preserve research, independent audit
+   evidence and ADRs 0029–0034, including the unchanged P0 replay and the
+   confirmed local-projection rounding limitation. No further broad F1-A
+   audit or numerical redesign is a prerequisite for the separate work below.
+2. Retain the local-projection refinement candidate for concrete workloads;
+   select any changed rounding policy separately. Do not treat F1-A closure
+   as qualification of all F2 queries or approval of source-complete contacts.
 3. Independently prioritize F2 ghost-state correctness and the bounded
    locate-query safety decision, and reproduce and address confirmed I0 defects.
    Scope further F2 and I1 API work by useful contracts.

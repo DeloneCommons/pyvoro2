@@ -322,8 +322,10 @@ Q using integers, rounds once, calls the unchanged R reducer, then checks
 combined `K=k+n` at the int64 destination. It introduces no second frame,
 source rebasing, persistent operation state or magnitude-dependent fast path.
 The stable remap differs from composing separately rounded public helpers;
-its Cartesian view uses the existing reporting transform. See
-[Proposed ADR 0034](decisions/0034-stable-source-lifting.md).
+its Cartesian view uses the existing reporting transform. Fractional locality
+need not make the Cartesian residual small: projection rounding can discard
+local phase before reduction and change prepared duplicate decisions. See
+[Accepted ADR 0034](decisions/0034-stable-source-lifting.md).
 
 ### Certified periodic minimum-image geometry
 

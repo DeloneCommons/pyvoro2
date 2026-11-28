@@ -204,11 +204,12 @@ They wrap coordinates into the primary cell and optionally return the integer la
 
 Point arrays and an explicit `eps` are validated before arithmetic. `eps` must
 be finite and non-negative, and `return_shifts` must be a Python or NumPy
-Boolean. Quotient decisions, affine subtraction and snapping comparisons use
-exact values of canonical binary64 operands; only the final coordinates are
-rounded. Intermediate coefficients remain arbitrary-size integers. **Final**
-shifts must fit signed int64, even with `return_shifts=False`, or the remap
-raises `ValueError`. Outputs are owned arrays and inputs are unchanged.
+Boolean. Within the native-primary reducer, quotient decisions, affine
+subtraction and snapping comparisons use exact values of canonical binary64
+operands; only the emitted coordinates are rounded. Intermediate coefficients
+remain arbitrary-size integers. **Final** shifts must fit signed int64, even
+with `return_shifts=False`, or the remap raises `ValueError`. Outputs are
+owned arrays and inputs are unchanged.
 
 `OrthorhombicCell` and planar `RectangularCell` use the represented period
 `D = float(hi-lo)` on each periodic axis. They round the complete affine value
@@ -269,6 +270,19 @@ remain possible. `remap_cart` need not equal
 `internal_to_cart(remap_internal(cart_to_internal(points)))`, nor a composition
 through the separately rounded exact user helpers.
 
+The exact local residual is local in fractional coordinates, not necessarily
+small in Cartesian coordinates. A strongly sheared or anisotropic basis can
+produce a large residual whose projection rounding loses detail previously
+retained by direct projection, even for an identity frame and zero epsilon.
+For example, with basis rows `(1,0,0)`, `(2**20,1,0)`, `(0,0,1)`, origin zero
+and `p=(2**-35,1/2,1/2)`, the residual x is `2**19 + 2**-35`. The projection
+rounds x to `2**19` and native reduction gives zero. This is a helper-level
+example, not a claim that the corresponding native container is admissible.
+Prepared coordinates can become closer or coincide; the mandatory safety
+checks can therefore refuse even source-distinct sites. See
+[duplicate checking](../reference/duplicates.md). Native admission and
+conditioning warnings do not guarantee preservation of every source detail.
+
 Persistent generators in `compute`, `locate` and `ghost_cells`, and inserted
 temporary ghosts, share this preparation. Both prepared Cartesian safety and
 actual native insertion safety remain mandatory: a reporting view that collapses
@@ -276,7 +290,7 @@ distinct exact residuals can still refuse. Uninserted locate queries retain
 direct projection without generator snapping. Their remote stepping/index safety
 and optional query-chart recovery remain separate F2 work. Stable generator
 preparation does not qualify remote queries, arbitrary short translations or
-source-complete contacts. See [Proposed ADR 0034](../development/decisions/0034-stable-source-lifting.md).
+source-complete contacts. See [accepted ADR 0034](../development/decisions/0034-stable-source-lifting.md).
 
 These helpers are used internally (for example, in visualization wrapping and in periodic graph work),
 but they are also useful when you want to align your own data to the primary cell.

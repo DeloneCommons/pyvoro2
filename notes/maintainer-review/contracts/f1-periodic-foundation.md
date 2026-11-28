@@ -26,6 +26,20 @@ baseline evidence, not descriptions of the current tree. Consult the current
 [sequencing draft](../../../docs/development/plans/functional-sequencing.md) for
 remaining proposed work; numerical contracts still require focused approval.
 
+**2026-11-28 update — F1-A accepted:** [ADR 0032](../../../docs/development/decisions/0032-native-primary-remapping.md)
+(R), [ADR 0033](../../../docs/development/decisions/0033-source-connectors-and-realization-reference.md)
+(S) and [ADR 0034](../../../docs/development/decisions/0034-stable-source-lifting.md)
+(P) complete the selected F1-A scope. Independent R/S review reproduced the
+original P0 progression 27 → 18 → 2 → 0 discrepancy records. The final
+independent F1-A audit at `2fa9cd380c097da1cc6be61318faa2f5c6fecbc8` replayed
+the unchanged script on the integrated R/S base and P candidate: all 48
+complete records pass and match.
+See [R evidence](f1-a3-r/README.md), [S evidence](f1-a3-s/README.md) and
+[P evidence](f1-a3-p/README.md). The [local-projection refinement candidate](../potential-work/local-projection-rounding.md)
+retains the additional shear/duplicate findings. F2 query safety and ghost
+state, B/C and G1 remain separately scoped. The historical P0 body and its
+oracles below remain unchanged.
+
 ## Coordinate authorities: proposed distinctions, current inventory
 
 The inventory in this section describes the original P0 baseline.
