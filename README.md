@@ -148,10 +148,16 @@ and [power-diagram theory](https://delonecommons.github.io/pyvoro2/theory/power-
 ## Status, support, and contributing
 
 pyvoro2 is **beta**. PyPI installs the published release; the `dev` branch is
-the v0.8-based `0.9.0.dev0` reboot, preserving v0.8 numerical behavior and public
-APIs. The former v0.9 attempt is historical evidence, and future architecture
-and release scope remain undecided under
+the v0.8-based `0.9.0.dev0` reboot. It retains the published API baseline except
+for separately accepted changes, including the periodic foundation recorded in
+[ADRs 0030–0034](https://github.com/DeloneCommons/pyvoro2/blob/dev/docs/development/decisions/index.md).
+The former v0.9 attempt is historical evidence under
 [ADR 0027](https://github.com/DeloneCommons/pyvoro2/blob/dev/docs/development/decisions/0027-v0.9-reboot-from-v0.8.md).
+[ADR 0029](https://github.com/DeloneCommons/pyvoro2/blob/dev/docs/development/decisions/0029-image-qualified-geometry-and-optional-global-complex.md)
+selects separate local-cell, observed-contact and optional global-complex
+responsibilities; concrete production APIs and release scope remain undecided.
+The [current operation guide](https://github.com/DeloneCommons/pyvoro2/blob/dev/docs/guide/operations.md)
+records open query-safety and ghost-output restrictions on `dev`.
 The archived v0.6.3 release remains the separator-inverse manuscript baseline.
 
 Report reproducible bugs or focused proposals through

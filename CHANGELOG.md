@@ -73,7 +73,7 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
   controls. Check only final combined preparation shifts at int64 boundaries.
   Literal compositions of separately rounded helpers can differ; standalone
   helpers, native admission, mandatory safety and uninserted locate-query
-  semantics remain unchanged (F1-A3-P, #166; Proposed ADR 0034).
+  semantics remain unchanged (F1-A3-P, #166; accepted ADR 0034).
 
 - Separator connectors now use original source coordinates and original-basis
   image shifts. Inference preserves the certified source problem; explicit

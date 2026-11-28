@@ -124,6 +124,26 @@ conditions remain independent of exact user-lattice validity. The narrow
 following independent Pro review and R1 closure; ADR 0030 remains the accepted
 historical A1 contract.
 
+## A3 remapping, source references and stable preparation
+
+The accepted R/S/P units deliberately refine numerical behavior while retaining
+existing public signatures and result forms:
+
+| Decision | Implemented compatibility boundary |
+|---|---|
+| [ADR 0032](decisions/0032-native-primary-remapping.md) | Exact decisions on represented native-remap operands, rounded-upper endpoint handling, nonoverlapping snap bands and checked final int64 shifts, including when shifts are not returned. Some previously admitted numerical inputs now refuse. A1 exact user wrapping keeps its separate contract. |
+| [ADR 0033](decisions/0033-source-connectors-and-realization-reference.md) | Separator connectors refer to original source points and source-row shifts. Re-resolve cached observations made under the former remapped reference. Realization diagnostics transport labels through a checked same-operation numerical reference; raw cell labels retain their anchor-relative meaning. |
+| [ADR 0034](decisions/0034-stable-source-lifting.md) | Inserted `PeriodicCell` generators and Cartesian remap helpers remove exact source lifts before projection. The composite need not equal separately rounded helper calls. Exact-translation covariance is conditional on the same frame/epsilon and admission; projection, snapping and reporting limits remain. |
+
+F1-A acceptance does not promote provisional helpers, certify exact
+source/native equivalence, or qualify arbitrary uninserted `locate` queries.
+The [domain guide](../guide/domains.md#backend-primary-remapping-helpers),
+[duplicate reference](../reference/duplicates.md) and
+[operation restrictions](../guide/operations.md#current-locate-query-restriction)
+describe the current caller consequences. Future G1a reference, evidence and
+failure semantics require their own scoped decisions under this lifecycle
+policy; implementation algorithms may change while those semantics are kept.
+
 ## What counts as a breaking change
 
 Examples include:

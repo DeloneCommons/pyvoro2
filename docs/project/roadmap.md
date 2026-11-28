@@ -36,10 +36,13 @@ records completed G0/P0 research and acceptance of the bounded F1-A foundation
 under [ADRs 0030–0034](../development/decisions/index.md): exact user lattice,
 qualified native frame, numerical remapping, source connectors and stable
 inserted-generator preparation. Remaining numerical limits are explicit;
-remote uninserted-query safety, consumer-driven periodic geometry prerequisites,
-and independent forward/query and inverse work remain separately scoped.
-Image-qualified observed contacts remain distinct from optional global assembly. This prioritization is **not** a release commitment or approval of
-a production globalization algorithm.
+remote uninserted-query safety and ghost correctness are the next bounded
+priorities before choosing the production observed-contact contract and its
+necessary periodic-geometry prerequisites. Broader query extensions remain
+separate. Inverse work is currently queued after G1a, with reprioritization
+allowed. Image-qualified observed contacts remain distinct from optional
+global assembly. This queue is **not** a mathematical dependency between all
+tracks, a release commitment or approval of a production globalization algorithm.
 [ADR 0028](../development/decisions/0028-upstream-voro-vendor-policy.md)
 defines temporary, per-defect maintenance of the vendored Voro++ while upstream
 `dev` evolves; it does not authorize blanket patching or immediate migration.

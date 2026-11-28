@@ -40,16 +40,35 @@ cells = result.cells
 
 For `PeriodicCell`, the shift is expressed in the $(a,b,c)$ lattice basis.
 For `OrthorhombicCell`, it is expressed in axis-aligned lattice units. In both
-cases `(i, j, s)` means that the neighbor is the image of site `j` translated
-by the lattice shift `s`, as seen from site `i`. Its reciprocal is
-`(j, i, -s)`.
+cases the raw tuple `(i, j, s)` refers to the native cell anchors used for that
+computation. Its reciprocal in the same reference is `(j, i, -s)`.
+
+The coefficient order follows the supplied basis, but the raw shift is not
+generally a shift to apply directly to the **original caller coordinates**.
+Preparation can translate and numerically change those representatives. Keep
+raw contact labels with the result and coordinate reference that produced them.
+Separator realization diagnostics perform a separate checked, same-operation
+transport into an effective source-indexed convention; they do not rewrite raw
+cell labels or certify source/native geometry equivalence. See
+[separator fitting](inverse/separator-fitting.md) and
+[ADR 0033](../development/decisions/0033-source-connectors-and-realization-reference.md).
+
+Current face/edge image attribution uses bounded numerical reconstruction.
+Successful residual and reciprocity checks do not establish complete source
+contacts, and certified nearest-image selection for separators does not change
+that limitation. A nearest image is not necessarily the only image that has a
+face. Use the current output within its documented reconstruction limits;
+stronger observed-contact contracts remain separate development work.
 
 ## Building a periodic graph in practice
 
 Extract the requested image data directly. A missing `adjacent_shift` is an
 error in an image-aware workflow; substituting zero would invent a contact
-with the unshifted image. Negative neighbor IDs denote boundary walls and are
-excluded from the site-contact graph.
+with the unshifted image. Genuine non-periodic wall labels are excluded from
+the site-contact graph. An unexplained negative label in a periodic direction
+must not be silently interpreted as a wall or a zero-shift neighbor. The
+following recipe uses the fully periodic example above and refuses negative
+labels, since that example has no domain walls.
 
 ```python
 def contact_key(i, j, shift):
@@ -64,7 +83,7 @@ for c in cells:
     for face in c['faces']:
         j = face['adjacent_cell']
         if j < 0:
-            continue
+            raise ValueError('Unresolved neighbor in fully periodic output')
         contacts.add(contact_key(i, j, face['adjacent_shift']))
 ```
 
@@ -130,5 +149,8 @@ wrappers can inspect it optionally through their existing
 clears the analyzer-owned `orphan`, `reciprocal_missing`, and
 `reciprocal_mismatch` flags before recording current failures.
 
-This is not “proving correctness”, but it is extremely effective at catching mistakes
-in downstream graph code.
+These checks detect inconsistencies in the observed output. Even mutually
+consistent contacts and a correct total volume do not prove that every positive
+source facet was returned by Voro++. Source-semantic diagnostics and optional
+global incidence assembly are separate from these checks; see
+[capabilities and limitations](capabilities.md).

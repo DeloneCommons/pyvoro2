@@ -2,7 +2,7 @@
 
 - **Status:** Draft — G0/P0 research complete; F1-A accepted; remaining
   implementation scopes and release gates are **not yet approved**
-- **Plan revision:** 0.3
+- **Plan revision:** 0.4
 - **Target release:** Not fixed; candidate work for the v0.8-based v0.9
   development line and, when justified, later releases
 - **Base release:** published v0.8.0; historical v0.9 attempt is evidence only
@@ -18,7 +18,8 @@ contacts. The post-G0 refinement in
 scientific/mathematical correctness, long-term architectural reliability and
 avoiding rework, implementation and verification cost, then earliest G1a
 delivery. Independently useful forward/query work and algebraic inverse work
-can advance in parallel, without reconstructing the historical v0.9
+remain technically independent. The current queue below prioritizes bounded
+query corrections and G1a before inverse work, without reconstructing the historical v0.9
 qualification machinery or forcing a premature public API.
 
 Preserve experimental scope and existing compatibility boundaries. No
@@ -73,17 +74,17 @@ a future global-complex algorithm has an unconditional correctness guarantee.
 | **F1-A — user lattice, source coordinates and native frame** (R-L01, R-L03a) | **Accepted within the selected F1-A scope**; A1/A2/R/S/P compose under ADRs 0030–0034, with final independent review and acceptance in [PR #167](https://github.com/DeloneCommons/pyvoro2/pull/167). | Preserve accepted contracts and documented numerical limits. No F1-B/C closure, universal native qualification or release approval. Pure user operations remain separate from native admission. |
 | **F1-B — private computational basis** (R-L02b) | B1 profile named search workloads and compare reducers; implement a private deterministic exact rank-3 reducer only if justified. | Accepted A1 exact core; independent of A3. R-L02b remains pending; no algorithm approved or unconditional G1a prerequisite. |
 | **F1-C — integration, evidence and G1-ready foundation** (R-L02a, R-L03b, R-T02a, R-M01b) | C1 physical ties and conditional reducer integration; C2 duplicate/insertion evidence; C3 occurrence/snapshot contracts; C4 translation-recovery disposition within G1a selection. | Relevant A interfaces; B1 only for reducer integration. Review actual changed interfaces and evidence needed by the selected G1a contract. |
-| **F2 — independent forward/query extensions** (R-Q01, R-G01a/b, R-G02a, R-M01a) | Independent ghost batches, initialized IDs, safe uninserted query handling, weight-first `locate`/`ghost_cells`, query-owner and ghost-image metadata. | Prioritize confirmed correctness defects independently; synchronize shared image/frame contracts with F1. Remote-query recovery is separately scoped; no need to wait for G1b. |
+| **F2 — independent forward/query extensions** (R-Q01, R-G01a/b, R-G02a, R-M01a) | Prioritize safe uninserted query handling, independent ghost batches and initialized temporary IDs. Retain weight-first queries and query-owner/ghost-image metadata as separately scoped work. | The bounded correctness fixes precede G1a selection in the current queue, not as a mathematical prerequisite. Remote-query recovery and API extensions need not delay G1a. |
 | **G1a — derived image-qualified adjacency** | Separately implement image-qualified contacts from observed local face/edge evidence, with bounded/complete matching for the admitted claim or honest refusal. | Select useful scope and actual F1 prerequisites, including explicit C4 disposition; approve precise 3D scope and independently review the 2D adapter. Local cells remain independently usable. |
 | **G1b — optional global periodic complex** | Candidate restricted face-first observed-complex assembly with oriented incidence/winding; no invented missing facets or zero shifts. | Requires a separate G1a→G1b admission review and explicit implementation approval; assess face cycles, reciprocal polygons, transport and V/E/F/C attachments. Contacts alone do not establish these. |
-| **I0 — inverse correctness first** (R-I05, R-I06) | Reproduce historical final-state, hard-feasibility, affine-residual and numeric-diagnostic failures on the *current* v0.8-based source, repair only confirmed defects with independent oracles. | May proceed alongside G0/F1/F2; necessary before expanding unstable result semantics. |
+| **I0 — inverse correctness first** (R-I05, R-I06) | Reproduce historical final-state, hard-feasibility, affine-residual and numeric-diagnostic failures on the *current* v0.8-based source, repair only confirmed defects with independent oracles. | Currently queued after G1a, with reprioritization allowed. Technically independent; necessary before expanding unstable result semantics. |
 | **I1 — algebraic inverse model/API** (R-I01–R-I03) | Independently review observation, mismatch, hard-bound and penalty spaces; row bounds/applicability and shape-parameter candidates, with source-row identity and zero-strength semantics. | Can design independently after relevant I0 baseline review. Each model/API change needs a separate contract and tests. |
 | **I2 — realization-aware facade** (R-I04) | Design a normal high-level workflow over fitting, actual contacts/images, final-state and outer termination while retaining appropriate advanced/experimental controls. | Requires reliable G1a contact semantics and validated inverse state; does **not** require full G1b. |
 | **U — upstream Voro++ triage** (R-O02a/b, R-O03) | Compare confirmed defects against pinned upstream `dev`; consider bounded local backports only where warranted. | Parallel to other research; any native patch follows [ADR 0028](../decisions/0028-upstream-voro-vendor-policy.md) and its own approval. |
 
-**Preferred integration order for A3:** R → S → P, then a focused F1-A
-composition review. This order reduces conflicts in shared Python files; S
-does not mathematically require P, and no A3 unit requires B1.
+**Completed A3 integration:** R → S → P, followed by the accepted F1-A
+composition review. S did not mathematically require P, and no A3 unit
+required B1.
 
 **Dependencies toward G1a:** select a concrete observed-contact contract and
 implement the source/frame, search, insertion and snapshot capabilities it
@@ -96,6 +97,52 @@ G1b is optional and has a separate admission review.
 F2, I0/I1 and per-defect upstream/native triage remain independent; I2 needs
 G1a and validated inverse state, **not** G1b. These are decision and dependency
 labels, not an attempt to restore the historical WP1–WP13 release schedule.
+
+### Current priority after F1-A
+
+The maintainer's 2026-11-28 sequencing preference is:
+
+1. Reconcile user-facing numerical limitations, accepted F1-A status and this
+   plan in a focused documentation change.
+2. Complete two separately reviewable F2 corrections: **F2-A1**, conservative
+   native admission for uninserted `locate` queries; and **F2-A2**, independent
+   ghost computation with initialized temporary native identity. Prefer A1
+   first for safety and to avoid concurrent changes to the same bindings; A2
+   has no mathematical dependency on A1.
+3. Select the production G1a contact contract from the accepted G0 evidence
+   and concrete consumers, including periodic contact graphs and realization
+   diagnostics. This bounded selection step is **G1a-D0**, not another general
+   geometry-research project. Decide the reference and claim made by a contact,
+   local-occurrence/snapshot lifetime, required boundary and reciprocal checks,
+   complete candidate search or refusal, initial domain scope and migration
+   from current heuristic attribution. Record the necessary B/C work and the
+   mandatory C4 disposition in the selected implementation scope.
+4. Implement and review those prerequisites, then G1a as a useful independent
+   observed-contact capability. Schedule I0/I1 and subsequent I2 after G1a;
+   reconsider that priority when a concrete defect or consumer justifies it.
+   G1b remains separately selected, optional work.
+
+This queue does not require finishing all of F2 before G1a-D0. Weight-first
+queries, remote-query recovery and richer image metadata retain their own
+scope. It also does not make every B/C candidate a mandatory project: B1 needs
+a measured search consumer; C1 is a deliberate tie-semantics change, not a
+replacement for enumerating all legitimate contact images; C2/C3 provide the
+evidence actually required by the selected contact claim. C4 analysis and a
+reviewed disposition remain mandatory even when a general primitive is not
+implemented.
+
+Choose an adequate, durable contact contract before minimizing its
+implementation. G1a must validate the local boundary evidence on which its
+claim depends; polygon validity or reciprocal whole-face checks cannot be
+deferred merely because global assembly is optional. G1b separately adds
+global V/E/F/C identity, coherent attachments, incidence and winding. Source
+completeness is a further, optional claim under ADR 0029.
+
+The queue and these boundaries are selected now. Concrete G1a API, tolerances,
+failure/partial-result policy and algorithms are decided during G1a-D0, after
+the bounded F2 corrections in the preferred sequence. Strict refusal for an
+unestablished contact is a candidate policy; this plan does not approve a new
+result schema or finalize the behavior of an entire batch.
 
 ## G0 — required research deliverable before choosing geometry implementation
 
@@ -137,10 +184,10 @@ blanket implementation authorization. P0 was delivered through
 [PR #154](https://github.com/DeloneCommons/pyvoro2/pull/154): its
 [baseline observations and candidate contracts](https://github.com/DeloneCommons/pyvoro2/blob/dev/notes/maintainer-review/contracts/f1-periodic-foundation.md)
 are historical evidence, not the current implementation or collectively
-approved policy. A1 and A2 subsequently landed under ADRs 0030 and 0031.
-Reconcile the original P0 oracles record by record when changing A3; the
-18 remaining discrepancy records after A2 describe observations, not 18
-independent implementation tasks.
+approved policy. A1/A2/R/S/P subsequently landed under ADRs 0030–0034.
+The 18 discrepancy records remaining after A2 were historical observations,
+not 18 independent tasks; accepted F1-A preserves all 48 P0 records unchanged
+and passing.
 
 ### Three lattice representations and coordinate evidence
 
@@ -208,10 +255,10 @@ identified three additional constraints on a proportionate solution:
   ordinary rectangular input: for bounds `[-0.1, 0.2]` and x = 0.4,
   the rounded period and exact endpoint difference produce respectively
   `0.09999999999999998` and `0.1`, both contained and with shift 1.
-  R should use the existing represented period `float(hi-lo)` alone,
-  with explicit containment/refusal rules. Rounded-upper endpoint chart
-  selection (including zero epsilon), nonoverlapping snap bands and final
-  integer range checks are proposed R policies to approve in its issue.
+  This motivated R's represented period `float(hi-lo)` with explicit
+  containment/refusal rules. Rounded-upper endpoint chart selection (including
+  zero epsilon), nonoverlapping snap bands and final integer range checks
+  were subsequently accepted in ADR 0032.
   A nonoverlapping-band rule can refuse strongly anisotropic cells even
   when the frame passes A2 admission; make that compatibility effect explicit.
   A1's literal exact floors and rounded views remain unchanged.
@@ -236,8 +283,9 @@ identified three additional constraints on a proportionate solution:
   workloads; this is bounded research evidence, not a speed promise.
   Measure the actual pipeline before introducing optimization branches.
 
-The native research controls used current Python with a preserved donor
-binary and matching native source, not a fresh current build. Future issues
+Those pre-implementation native research controls used then-current Python
+with a preserved donor binary and matching native source, not a fresh build.
+They are distinct from the later independent acceptance evidence. Future issues
 must specify exact reproducers, their mathematical oracles, and the selected
 public numerical contract. Fix serious wrong results or justify refusal or
 mitigation; neither universal execution of finite inputs nor a new standing
@@ -330,33 +378,52 @@ refusal, without mandatory global reconstruction or repair of source-omitted
 facets. Define the precise initial 3D scope and independently review the 2D
 adapter; G0-P1 did not establish all 2D cases.
 
-The separate **G1a→G1b admission review** must establish simple strictly convex
-face cycles, unique complete reciprocal polygon correspondence, coherent
-integer transport and oriented V/E/F/C attachments; verified contacts alone
-do not establish these. Include G0-P1's star/self-intersection control and the
+G1a must establish any local polygon validity and reciprocal correspondence
+required by its selected observed-contact claim. The separate **G1a→G1b
+admission review** then establishes the stronger simple/strictly convex face
+scope, complete whole-face correspondences, coherent integer transport and
+oriented V/E/F/C attachments; contact labels alone do not establish these.
+Reuse relevant G1a evidence. Include G0-P1's star/self-intersection control and the
 $2^{-52}$ omitted-source-facet negative control. G1b remains an optional
 restricted face-first observed-complex capability, subject to a separate
 G1a→G1b admission review and explicit implementation approval. Its intended
 scope includes incidence and winding. A correct observed quotient is not
 complete source power geometry; source diagnostics remain separate and optional.
 
+### F2 — bounded query corrections before API extensions
+
 F2's weight-first `locate` and `ghost_cells` are valuable public API
 improvements but do not mathematically define the global complex. The existing
 R-G01a ghost-batch defect on ordinary coordinates is a high-priority independent
 correctness candidate; reproduce it with a fresh current native build before
-choosing a minimal isolation fix. Ghost-ID initialization, query weights and
-metadata remain separately scoped unless a shared correction requires them.
+accepting a minimal isolation fix. F2-A2 must also eliminate the separate
+uninitialized temporary-ID path: fresh containers alone do not initialize IDs.
+Assess the existing planar fresh-container/initialized-insertion pattern for
+the four spatial standard/power routes. Preserve public IDs, query association,
+empty-cell and numerical-preparation behavior. Initialized native identity
+does not by itself establish complete periodic ghost self-image or wall
+attribution; retain explicit limitations until that metadata contract is
+selected. Query weights and richer metadata remain separate.
 
 Uninserted locate queries must not inherit generator snapping or duplicate
-insertion checks. Scope safe native stepping/index admission first; a concrete
-unsafe dispatch path requires correction or justified refusal. Remote-query
+insertion checks. F2-A1 scopes conservative native stepping/index admission
+across all six planar/spatial standard/power routes. Check the actual native
+arithmetic, including quotient products, remapped residual/worklist indices
+and owner-image additions; a finite input or safe first cast is insufficient.
+Reject unsupported arithmetic with a controlled error before unsafe execution,
+without selecting a new query chart or promising arbitrary remote inputs.
+Preserve the successful numerical path for admitted queries. Remote-query
 recovery and owner-position transport are conditional on a separate useful
 contract, not part of inserted-point A3-P. Preserve ordinary no-snap seam
 behavior, missing-owner sentinels, ID-only calls and nonperiodic outside-query
 semantics. A3 closure must state any open query limitations. Unrelated F2 work
 should advance without waiting for G1a/G1b.
 
-## Inverse development in parallel
+## Inverse development after G1a in the current queue
+
+I0/I1 remain technically independent of G1a. Their placement after G1a is a
+revisitable priority choice, not a reason to ignore a newly confirmed serious
+inverse defect or a claim that the historical problems have been fixed.
 
 Separate **algebraic inverse contracts** (observation graph, row policies,
 penalties and final fitted state) from **geometric realization** (actual
@@ -411,15 +478,18 @@ a stable API does **not** promise universal active-set convergence.
 2. Retain the local-projection refinement candidate for concrete workloads;
    select any changed rounding policy separately. Do not treat F1-A closure
    as qualification of all F2 queries or approval of source-complete contacts.
-3. Independently prioritize F2 ghost-state correctness and the bounded
-   locate-query safety decision, and reproduce and address confirmed I0 defects.
-   Scope further F2 and I1 API work by useful contracts.
-4. Choose concrete G1a consumers and prerequisites. Decide B1 against named
+3. Prepare and accept bounded F2-A1 query-admission and F2-A2 ghost-state/ID
+   corrections. Document unresolved caller limitations. Further F2 API and
+   remote-query recovery work are not gates for G1a selection.
+4. After these corrections, select concrete G1a consumers and its production
+   contract in G1a-D0. Decide B1 against named
    search workloads; C1 physical ties do not require a reducer. Select
    necessary C2/C3 evidence and explicitly dispose of C4 before G1a admission.
    Preserve the separate G1b polygon/transport/attachment review and I2's
    dependency on G1a and validated inverse state, not G1b.
-5. **Only after feasibility and downstream needs are clearer**, choose the
+5. Queue inverse correctness/API work after G1a, with reprioritization allowed;
+   do not require optional G1b before I2.
+6. **Only after feasibility and downstream needs are clearer**, choose the
    actual v0.9 release scope, milestone, qualifications and deferred work.
 
 ## Non-goals
@@ -439,3 +509,4 @@ post-1.0 research possibilities, not gates for this plan.
 | 2026-11-22 | G0 research audited and archived in issue #149; ADR 0029 selects the layer boundary, preserving separate F1/G1a/G1b implementation gates. |
 | 2026-11-22 | Draft revision 0.2 ([#151](https://github.com/DeloneCommons/pyvoro2/issues/151)): post-G0 foundation-first refinement adds future P0, tentative F1-A/B/C units, mandatory C4 analysis/disposition and separate G1 admission reviews; preserves parallel tracks and all implementation/release approval boundaries. |
 | 2026-11-27 | Draft revision 0.3: record P0/A1/A2 completion, propose bounded R/S/P work and independent F2 query safety, condition reducer integration on demonstrated need, and scope C2–C4 around the selected G1a contract. Existing ADRs, safety requirements and issue-level approval remain in force; no release scope selected. |
+| 2026-11-28 | Draft revision 0.4: reconcile accepted F1-A status; prioritize bounded locate safety and ghost independence/initialized identity before G1a contract selection; retain conditional B/C implementation and mandatory C4 disposition; queue inverse work after G1a with reprioritization allowed. Clarify required local boundary evidence versus optional global assembly. Individual implementation scopes and release commitments remain separate. |
