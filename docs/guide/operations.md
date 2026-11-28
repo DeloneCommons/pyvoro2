@@ -9,7 +9,7 @@ questions you may ask about a set of sites. The same three verbs also exist in
 2. **Which site owns this location in space?**  
    (Assign arbitrary query points to sites.)
 3. **What would the cell of a hypothetical point be?**  
-   (Compute a “probe” cell without inserting the point.)
+   (Compute a “probe” cell by temporarily adding the point.)
 
 All operations are **stateless**: pyvoro2 creates a Voro++ container in C++, inserts the sites, performs the computation, and returns Python data structures. There is no persistent container object that you need to manage.
 
@@ -30,6 +30,7 @@ pyvoro2 intentionally does **not** rescale inputs automatically.
 If you work in very small or very large units, **rescale explicitly** before
 calling `compute`, `locate`, or `ghost_cells` (for example, multiply all
 coordinates and domain vectors by a constant).
+Scale radii by the same factor and mathematical weights by its square.
 
 You can also request an optional **Python-side** policy above the mandatory
 floor:
@@ -220,6 +221,33 @@ owner_ids = out['owner_id']
 If `return_owner_position=True`, the output also contains `owner_pos`.
 In periodic domains this position may be a **periodic image** of the generator, chosen
 consistently with the query point.
+It is a reported numerical native position, not a source-image coefficient or
+an exact reconstruction of an original input point.
+
+### Current locate-query restriction
+
+Uninserted queries follow a different path from inserted generators. In
+particular, `PeriodicCell` queries are projected directly into the native frame;
+they do not use the stable source-lifting preparation described in the
+[domain guide](domains.md#backend-primary-remapping-helpers).
+
+The current 2D and 3D wrappers check query shape and finiteness, but do not yet
+guard every native query-dependent integer conversion and index calculation.
+Very distant finite queries can therefore reach unsafe native stepping
+arithmetic. Finiteness alone is not an admission guarantee for such queries.
+Keep queries near the domain at a numerically suitable scale; do not use this
+interface for arbitrary remote coordinates. For a finite box, classify clearly
+outside queries in the application before dispatch when their magnitudes are
+extreme. There is no universal coordinate cutoff independent of the domain
+and selected block grid.
+
+For periodic queries, generate local coordinates directly when the application
+can do so without losing the intended location. Applying generator
+`remap_cart` as a generic workaround changes the query convention: its snapping
+can change ownership near a separator. It also does not supply a validated
+remote owner-position reconstruction. Safe query rejection and any subsequent
+remote-query recovery are separate work in the
+[functional plan](../development/plans/functional-sequencing.md#current-priority-after-f1-a).
 
 ## 3) `ghost_cells(...)`: compute probe (ghost) cells
 
@@ -227,7 +255,8 @@ consistently with the query point.
 
 > What would the cell of $q$ look like if $q$ were inserted as an additional site?
 
-This wraps the Voro++ routine `compute_ghost_cell`.
+The spatial wrapper uses Voro++ `compute_ghost_cell`; the planar wrapper
+computes the added site's cell in a fresh container for each query.
 
 ```python
 ghost = pyvoro2.ghost_cells(points, queries, domain=cell)
@@ -240,13 +269,51 @@ non-periodic half-open interval and be safely distinct from the persistent
 generators. An outside non-periodic ghost now raises `ValueError`; a valid
 inserted ghost may still produce an empty cell geometrically.
 
+### Current ghost-batch and neighbor-label restrictions
+
+Each query is intended to describe an independent hypothetical insertion;
+queries are not intended to compete with one another. The current 3D
+`PeriodicCell` path reuses a native container across the batch, and temporary
+periodic images can remain after an earlier query. Later cells can therefore
+have incorrect geometry, even for ordinary coordinates. Until the isolation
+fix is implemented, use separate singleton `ghost_cells` calls for this path,
+preserving the original query association and selecting the corresponding
+`ghost_radius` for each call. Singleton calls avoid this cross-query state
+defect; they are not a general geometry certificate. Planar ghost calls already
+use independent containers.
+
+There is a separate 3D temporary-ID defect: native ghost insertion does not
+initialize the added particle's ID. A singleton call does not fix this.
+Do not use raw ghost `adjacent_cell` values as a complete image-qualified
+contact graph, particularly for contacts with the ghost's own periodic images.
+The planar path initializes its temporary ID, but its legacy self-image and
+wall labels also do not provide a complete classification; its reserved
+positive marker can also coincide with a legal external generator ID. Reliable ghost
+image metadata remains separately scoped; use persistent-site `compute`
+output with the [documented contact limitations](periodic-contacts.md) when a
+site-contact graph is needed.
+
+To avoid both current 3D temporary-state and temporary-ID defects, another
+available route is a separate ordinary `compute` call per query: append that
+query to the persistent sites, assign it an unused nonnegative external ID,
+and select its cell from `output='cells', include_empty=True`. In power mode,
+append that query's radius to the persistent `radii` array. This computes all
+cells on each call and needs application-side query bookkeeping; it does not
+establish stronger periodic boundary-label or source-accuracy guarantees.
+
 ### `query` vs `site` in periodic domains
 
-For periodic domains, pyvoro2 wraps each query into the primary cell before calling Voro++.
-Therefore each record contains:
+For periodic domains, an inserted ghost is prepared in the native primary
+chart before cell computation. Each spatial (3D) record contains:
 
 - `query`: the original coordinate you supplied
-- `site`: the coordinate actually used for the computation (a wrapped periodic representative)
+- `site`: the prepared/native representative reported in Cartesian coordinates
 
-They are in the same coordinate system and differ only by an integer lattice translation.
-This wrapping makes results easier to compare and visualize.
+Both fields use Cartesian reporting coordinates, but projection, numerical
+remapping, snapping and reporting can change their difference beyond an exact
+integer lattice translation. In a triclinic domain, `site` is not the literal
+internal coordinate submitted to Voro++. See the
+[preparation limits](domains.md#backend-primary-remapping-helpers).
+Planar records currently provide `site` and `query_index` without the extra
+original-coordinate `query` field; retain the input queries when that provenance
+is needed.

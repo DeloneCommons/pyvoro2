@@ -5,7 +5,12 @@ removed in a later wrapper release, limits inherited from the backend or
 binary64 arithmetic, unsupported geometry, and architecture decisions that are
 still open. A limitation in one category does not imply a promise in another.
 
-## Supported v0.8 contracts
+## Current contracts and published baseline
+
+The current development line starts from v0.8 and includes the separately
+accepted periodic-foundation changes in
+[ADRs 0030–0034](../development/decisions/index.md). A development-version
+label alone does not extend any numerical guarantee.
 
 pyvoro2 supports bounded 3D boxes, partially or fully periodic orthorhombic 3D
 cells, fully periodic triclinic 3D cells, bounded planar boxes, and rectangular
@@ -55,6 +60,21 @@ a performance seed and never a correctness radius, while current forward
 face/edge reconstruction controls may still bound supported reconstruction
 behavior.
 
+Two current query defects need explicit caller precautions:
+
+- Very distant finite `locate` queries can reach unguarded native integer
+  stepping/index arithmetic in both dimensions. Keep queries near the domain;
+  finiteness and generator admission do not qualify arbitrary query magnitudes.
+- A 3D `PeriodicCell` ghost batch can retain temporary periodic images between
+  queries. Separate singleton calls avoid that batch-state defect, but do not
+  initialize the temporary native ID or establish complete ghost-image labels.
+
+See the [operation guide](operations.md#current-locate-query-restriction) for
+query precautions and
+[ghost-specific restrictions](operations.md#current-ghost-batch-and-neighbor-label-restrictions).
+These are open correctness/safety work, not implemented fixes or evidence that
+every other finite input is safe.
+
 The [roadmap](../project/roadmap.md) preserves these candidates without
 promising their exact issue grouping or implementation.
 
@@ -91,13 +111,16 @@ architectural relationship, or pre-1.0 inclusion; see
 
 ## Open architecture decisions
 
-The v0.8 repository currently builds one distribution containing both forward
+The repository currently builds one distribution containing both forward
 native extensions and the inverse Python layer, and it vendors the upstream
 Voro++ sources with a bounded accepted robustness fix. Those are current facts,
 not permanent governance decisions.
 
-[ADR 0027](../development/decisions/0027-v0.9-reboot-from-v0.8.md) leaves
-future geometry architecture and release scope undecided. Permanent package
+[ADR 0029](../development/decisions/0029-image-qualified-geometry-and-optional-global-complex.md)
+selects independent local cells, image-qualified observed contacts and optional
+global assembly. Concrete production contracts and release scope remain
+undecided under [ADR 0027](../development/decisions/0027-v0.9-reboot-from-v0.8.md).
+Permanent package
 and backend policies, including distribution boundaries and treatment of
 functional Voro++ forks, also require separate maintainer decisions.
 

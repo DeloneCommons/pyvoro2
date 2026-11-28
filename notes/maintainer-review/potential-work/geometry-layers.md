@@ -15,7 +15,7 @@ The **separator-observation graph** is separate: its nodes are sites and its edg
 ## Intended separation
 
 - Raw/local cells must remain usable if adjacency construction or globalization fails.
-- Globalization is a **downstream-required capability**, but need not run on every `compute` call.
+- Globalization is an optional capability for consumers that need global incidence or winding; it is not required by every contact graph or realization workflow. [ADR 0029](../../../docs/development/decisions/0029-image-qualified-geometry-and-optional-global-complex.md) keeps G1a contacts independently usable from G1b assembly.
 - Periodic adjacency must distinguish multiple images of the same site; an unordered site pair alone is insufficient.
 - Global vertex identity, coordinate closeness, and face incidence are different assertions. Preserve raw geometry and label any repair/approximation.
 - First assess how much the current `TessellationResult` and normalization functions already provide; do not invent a second core API.
