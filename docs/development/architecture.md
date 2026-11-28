@@ -351,6 +351,24 @@ unwrapped Cartesian distance only for optional user-threshold diagnostics.
 ADR 0012 fixes the exact problem, proof box, tie rule, and resource/cache
 policy.
 
+Separator connector construction passes original source endpoints to the exact
+image kernel and evaluates explicit fixed-shift affine differences once before
+rounding. Native preparation is not a source-geometry prerequisite. Canonical
+separator distances continue to derive from the rounded connector.
+
+Spatial and planar `compute` share private workers with a narrow matching entry.
+Only periodic calls through that entry capture `_internal.realization_reference`
+evidence from the
+actual invocation: submitted coordinates, nominal preparation coefficients,
+represented native lattice, stored native anchors and their presence mask.
+Capture precedes synthetic empty records, external IDs and Cartesian reporting.
+The matcher uses exact relative lattice membership and wide coefficient
+transport to convert its boundary maps and measure keys; raw cell labels remain
+unchanged. Correspondence failure propagates through existing active-state
+boundaries. This neither changes face/edge attribution nor establishes full
+native/source contact certification; see
+[Accepted ADR 0033](decisions/0033-source-connectors-and-realization-reference.md).
+
 ### Central generator preparation and duplicate safety
 
 The private shared module `_internal.generator_preparation` is the single

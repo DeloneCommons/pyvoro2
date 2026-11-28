@@ -41,6 +41,7 @@ Each record has a status:
 
 - [0031 — Qualified native periodic QR frame with both handedness signs](0031-qualified-native-periodic-qr-frame.md)
 - [0032 — Exact arithmetic for numerical native-primary remapping](0032-native-primary-remapping.md)
+- [0033 — Original-source connectors and numerical realization image reference](0033-source-connectors-and-realization-reference.md)
 
 Numbers 0018–0026 belong to the protected historical v0.9 attempt and are not
 adopted here. ADR 0027 supersedes ADR 0017's future sequence without reviving

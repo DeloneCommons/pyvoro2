@@ -603,6 +603,14 @@ scientifically meaningful and should remain visible in the result.
 
 ## Periodic image bookkeeping
 
+A row-basis lattice \(A\) and original source sites define the connector
+\(\delta^*=p_j-p_i+sA\), with integer row coefficient \(s\). Numerical
+separator geometry uses its componentwise rounded view \(\delta\), then
+\(d^2=\delta\cdot\delta\) and \(d=\sqrt{d^2}\). Exact image selection compares
+\(\|\delta^*\|^2\); that exact key and the squared norm of the rounded view
+can differ. Snapping source coordinates before choosing an image changes the
+mathematical problem, including a unique minimizer near a half-period tie.
+
 A periodic observation refers to one selected image of the second site. The
 realization layer should therefore distinguish four outcomes:
 
@@ -614,6 +622,27 @@ realization layer should therefore distinguish four outcomes:
 Silently replacing the requested image by the nearest or currently realized
 image changes the observation. Such a change may be offered as an explicit
 repair strategy, but not as a hidden fallback.
+
+Numerical preparation introduces another reference. Let \(v_i\) denote
+submitted native coordinates, \(K_i\) preparation coefficients in source row
+order, \(L\) the actual represented native lattice, and \(a_i\) stored native
+anchors from the same operation. The effective family
+\(E_i=v_i+K_iL\) need not equal source Cartesian geometry. When the relative
+difference satisfies
+
+\[
+(v_j-v_i)-(a_j-a_i)=hL,\qquad h\in\mathbb Z^d,
+\]
+
+an observed anchor-relative label \(c\) corresponds to
+\(s_{\mathrm{eff}}=c-K_j+K_i-h\), because
+\(E_j-E_i+s_{\mathrm{eff}}L=a_j-a_i+cL\). For rectangular or lower triangular
+\(L\), exact divisibility and reverse-axis substitution decide membership;
+tolerance-based nearest-integer attribution is unnecessary. Missing evidence or
+nonmembership prevents the comparison rather than proving another image.
+Reversal negates every relative coefficient. This convention aligns the labels
+of observed numerical contacts; it does not prove source-facet completeness,
+exact weight equivalence, or the history of native insertion.
 
 ## Connector visibility and clearance
 

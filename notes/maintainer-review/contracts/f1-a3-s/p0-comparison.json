@@ -1,0 +1,498 @@
+{
+  "baseline_revision": "c7b66f59ca6d887a80df6406c5876945e8d4b8a2",
+  "candidate_revision": "2e93a6695795dc12cb323cbeb5319400941acf84",
+  "candidate_worktree_clean": true,
+  "tracked_baseline": "../f1-a3-r/p0-candidate.json",
+  "baseline_cases_equal_tracked_baseline": true,
+  "characterization_sha256": "f0b989c718895a98d275ff70b2edc5a78f3d4da882779975dc7fa025cee4c51e",
+  "record_count": 48,
+  "changed_records": [
+    0,
+    1
+  ],
+  "all_other_records_identical": true,
+  "all_inputs_oracles_preserved": true,
+  "all_previously_passing_predicates_preserved": true,
+  "records": [
+    {
+      "record": 0,
+      "case": "#60",
+      "route": "Python separator consumer (OrthorhombicCell)",
+      "changed": true,
+      "baseline_failing": [
+        "source_shift",
+        "source_delta"
+      ],
+      "candidate_failing": []
+    },
+    {
+      "record": 1,
+      "case": "#60",
+      "route": "Python separator consumer (PeriodicCell)",
+      "changed": true,
+      "baseline_failing": [
+        "source_shift",
+        "source_delta"
+      ],
+      "candidate_failing": []
+    },
+    {
+      "record": 2,
+      "case": "#65",
+      "route": "public (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 3,
+      "case": "#65",
+      "route": "detached snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 4,
+      "case": "#67 A-y-to-x",
+      "route": "public (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 5,
+      "case": "#67 A-y-to-x",
+      "route": "public (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 6,
+      "case": "#67 A-y-to-x",
+      "route": "public (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 7,
+      "case": "#67 A-y-to-x",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 8,
+      "case": "#67 A-y-to-x",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 9,
+      "case": "#67 A-y-to-x",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 10,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "public (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 11,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "public (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 12,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "public (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 13,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 14,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 15,
+      "case": "#67 B-z-to-y-to-x",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 16,
+      "case": "#67 seams",
+      "route": "planar (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 17,
+      "case": "#67 seams",
+      "route": "orthorhombic (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 18,
+      "case": "#67 seams",
+      "route": "triclinic (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 19,
+      "case": "#67 seams",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 20,
+      "case": "#67 seams",
+      "route": "planar (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 21,
+      "case": "#67 seams",
+      "route": "orthorhombic (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 22,
+      "case": "#67 seams",
+      "route": "triclinic (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 23,
+      "case": "#67 seams",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 24,
+      "case": "#67 coupled underflow",
+      "route": "public (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 25,
+      "case": "#67 coupled underflow",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 26,
+      "case": "#67 coupled underflow",
+      "route": "public (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 27,
+      "case": "#67 coupled underflow",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 28,
+      "case": "#67 coupled underflow",
+      "route": "public (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 29,
+      "case": "#67 coupled underflow",
+      "route": "snapshot (Python)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 30,
+      "case": "frame near_parallel",
+      "route": "public (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 31,
+      "case": "frame near_parallel",
+      "route": "snapshot (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 32,
+      "case": "frame near_parallel",
+      "route": "QR control (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 33,
+      "case": "frame identity",
+      "route": "public (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 34,
+      "case": "frame identity",
+      "route": "snapshot (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 35,
+      "case": "frame identity",
+      "route": "QR control (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 36,
+      "case": "frame right_handed",
+      "route": "public (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 37,
+      "case": "frame right_handed",
+      "route": "snapshot (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 38,
+      "case": "frame right_handed",
+      "route": "QR control (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 39,
+      "case": "frame anisotropic",
+      "route": "public (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 40,
+      "case": "frame anisotropic",
+      "route": "snapshot (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 41,
+      "case": "frame anisotropic",
+      "route": "QR control (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 42,
+      "case": "frame cubic_shear",
+      "route": "public (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 43,
+      "case": "frame cubic_shear",
+      "route": "snapshot (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 44,
+      "case": "frame cubic_shear",
+      "route": "QR control (Python/NumPy)",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 45,
+      "case": "#65 native",
+      "route": "compiled 3D standard",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 46,
+      "case": "walls and lifetime",
+      "route": "compiled 3D standard",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    },
+    {
+      "record": 47,
+      "case": "walls and lifetime",
+      "route": "compiled 2D standard",
+      "changed": false,
+      "baseline_failing": [],
+      "candidate_failing": []
+    }
+  ],
+  "changed_values": [
+    {
+      "record": 0,
+      "baseline": {
+        "shift": [
+          [
+            -1,
+            0,
+            0
+          ]
+        ],
+        "delta": [
+          [
+            "-0x1.0000000000000p-1",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ]
+      },
+      "candidate": {
+        "shift": [
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        "delta": [
+          [
+            "0x1.fffffffffe000p-2",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ]
+      },
+      "oracle": {
+        "unique_shift": [
+          0,
+          0,
+          0
+        ],
+        "dx": "1099511627775/2199023255552",
+        "squared_gap": "1/1099511627776"
+      }
+    },
+    {
+      "record": 1,
+      "baseline": {
+        "shift": [
+          [
+            -1,
+            0,
+            0
+          ]
+        ],
+        "delta": [
+          [
+            "-0x1.0000000000000p-1",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ]
+      },
+      "candidate": {
+        "shift": [
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        "delta": [
+          [
+            "0x1.fffffffffe000p-2",
+            "0x0.0p+0",
+            "0x0.0p+0"
+          ]
+        ]
+      },
+      "oracle": {
+        "unique_shift": [
+          0,
+          0,
+          0
+        ],
+        "dx": "1099511627775/2199023255552",
+        "squared_gap": "1/1099511627776"
+      }
+    }
+  ]
+}

@@ -231,6 +231,7 @@ def _scan_persistent_policy(
     duplicate_threshold: float,
     duplicate_wrap: bool,
     duplicate_max_pairs: int,
+    warning_stacklevel: int,
 ) -> None:
     periodic_geometry = geometry if geometry.has_any_periodic_axis else None
     mandatory = scan_close_pairs(
@@ -288,7 +289,7 @@ def _scan_persistent_policy(
         operation=prepared.operation,
     )
     if duplicate_check == 'warn':
-        warnings.warn(message, RuntimeWarning, stacklevel=4)
+        warnings.warn(message, RuntimeWarning, stacklevel=warning_stacklevel)
         return
     _raise_duplicate_error(
         scan=optional,
@@ -314,6 +315,7 @@ def prepare_generators(
     duplicate_max_pairs: object,
     periodic_snapshot=None,
     reserve_ghost_id: bool = False,
+    warning_stacklevel: int = 4,
 ) -> PreparedGenerators:
     """Validate, remap, contain, de-duplicate, and assign native IDs."""
 
@@ -388,6 +390,7 @@ def prepare_generators(
         duplicate_threshold=threshold,
         duplicate_wrap=wrap,
         duplicate_max_pairs=max_pairs,
+        warning_stacklevel=warning_stacklevel,
     )
     return prepared
 

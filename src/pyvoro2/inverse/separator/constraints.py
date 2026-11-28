@@ -27,7 +27,7 @@ from ..._internal.validation import (
     require_string_choice,
     require_string_tuple,
 )
-from ..._internal.periodic_images import MinimumImageBatch
+from ..._internal.periodic_images import MinimumImageBatch, fixed_shift_displacements
 from ..._internal.spatial.domain_geometry import geometry3d
 from ...domains import Box as Box3D, OrthorhombicCell, PeriodicCell
 from ..._internal.planar.domain_geometry import geometry2d
@@ -483,7 +483,8 @@ def resolve_separator_observations(
     Args:
         points: Site coordinates with shape ``(n, d)`` where ``d`` is currently
             supported for planar (2D) and spatial (3D) workflows.
-        constraints: Raw constraint tuples ``(i, j, value[, shift])``.
+        constraints: Raw constraint tuples ``(i, j, value[, shift])``. Shifts
+            apply to the original source site ``j`` in the original row basis.
         measurement: Whether ``value`` is interpreted as a normalized coordinate
             on the connector line or as an absolute position from the first
             site. Fractions outside ``[0, 1]`` are valid unless the fitting model
@@ -499,6 +500,12 @@ def resolve_separator_observations(
             nearest-image inference. It cannot change a successful result.
         confidence: Optional non-negative per-constraint weights.
         allow_empty: Allow zero constraints and return an empty resolved object.
+
+    Periodic connectors are the once-rounded exact-binary64 expression
+    ``p_j - p_i + shift @ A`` on original source operands. Inference uses the
+    certified nearest-image kernel on those same operands, independently of
+    native remapping/admission. ``distance2`` derives from the rounded
+    displacement, not the exact image-search squared-distance key.
     """
 
     measurement = require_string_choice(
@@ -685,9 +692,8 @@ def _derive_connector_geometry(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, tuple[str, ...]]:
     """Resolve shifts and derive canonical connector geometry from a source."""
 
-    pts2 = _maybe_remap_points(points, domain)
     shifts_used, warnings, inferred_geometry = _resolve_constraint_shifts(
-        pts2,
+        points,
         i_idx,
         j_idx,
         shifts,
@@ -697,35 +703,22 @@ def _derive_connector_geometry(
         image_search=image_search,
     )
     m = int(i_idx.shape[0])
-    dim = int(pts2.shape[1])
-    if inferred_geometry is None:
-        shift_cart = shift_to_cart(shifts_used, domain)
+    dim = int(points.shape[1])
+    geom = _geometry_for_dim(dim, domain)
+    if not geom.has_any_periodic_axis:
         with np.errstate(all='ignore'):
-            endpoint = pts2[j_idx] + shift_cart
-        _require_finite_connector_geometry(endpoint, stage='endpoint translation')
-        with np.errstate(all='ignore'):
-            delta = endpoint - pts2[i_idx]
+            delta = points[j_idx] - points[i_idx]
     else:
-        missing = ~shift_given
         delta = np.empty((m, dim), dtype=np.float64)
         if np.any(shift_given):
-            explicit_shift_cart = shift_to_cart(
+            delta[shift_given] = fixed_shift_displacements(
+                points[i_idx[shift_given]],
+                points[j_idx[shift_given]],
                 shifts_used[shift_given],
-                domain,
+                lattice_vectors=geom.lattice_vectors_cart,
             )
-            with np.errstate(all='ignore'):
-                explicit_endpoint = (
-                    pts2[j_idx[shift_given]] + explicit_shift_cart
-                )
-            _require_finite_connector_geometry(
-                explicit_endpoint,
-                stage='explicit endpoint translation',
-            )
-            with np.errstate(all='ignore'):
-                delta[shift_given] = (
-                    explicit_endpoint - pts2[i_idx[shift_given]]
-                )
-        delta[missing] = inferred_geometry.displacement
+        if inferred_geometry is not None:
+            delta[~shift_given] = inferred_geometry.displacement
     _require_finite_connector_geometry(delta, stage='coordinate difference')
 
     distance, distance2 = _derive_distances_from_delta(delta)

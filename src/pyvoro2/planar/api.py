@@ -8,6 +8,8 @@ import warnings
 
 import numpy as np
 
+from .._internal.realization_reference import RealizationReference, capture_reference
+
 from .._internal.cell_output import add_empty_cells_inplace, remap_ids_inplace
 from .._internal.inputs import (
     coerce_native_block_parameters,
@@ -109,7 +111,9 @@ def _require_core2d():
     return _core2d
 
 
-def _warn_if_scale_suspicious(*, pts: np.ndarray, domain: Domain2D) -> None:
+def _warn_if_scale_suspicious(
+    *, pts: np.ndarray, domain: Domain2D, stacklevel: int = 3,
+) -> None:
     """Warn if the planar coordinate scale is likely to be problematic."""
 
     if pts.size == 0:
@@ -129,7 +133,7 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, domain: Domain2D) -> None:
             'tolerances. Consider rescaling your coordinates before calling '
             'pyvoro2.planar.',
             RuntimeWarning,
-            stacklevel=3,
+            stacklevel=stacklevel,
         )
     elif length_scale > 1e9:
         warnings.warn(
@@ -137,7 +141,7 @@ def _warn_if_scale_suspicious(*, pts: np.ndarray, domain: Domain2D) -> None:
             f'(L≈{length_scale:.3g}). Floating-point precision may be poor at '
             'this scale; consider rescaling your coordinates.',
             RuntimeWarning,
-            stacklevel=3,
+            stacklevel=stacklevel,
         )
 
 
@@ -324,10 +328,90 @@ def compute(
     its threshold/wrap options control only diagnostics above that floor.
     """
 
+    result, _ = _compute(
+        points,
+        domain=domain,
+        ids=ids,
+        duplicate_check=duplicate_check,
+        duplicate_threshold=duplicate_threshold,
+        duplicate_wrap=duplicate_wrap,
+        duplicate_max_pairs=duplicate_max_pairs,
+        block_size=block_size,
+        blocks=blocks,
+        init_mem=init_mem,
+        mode=mode,
+        weights=weights,
+        radii=radii,
+        return_vertices=return_vertices,
+        return_adjacency=return_adjacency,
+        return_edges=return_edges,
+        return_edge_shifts=return_edge_shifts,
+        edge_shift_search=edge_shift_search,
+        include_empty=include_empty,
+        validate_edge_shifts=validate_edge_shifts,
+        repair_edge_shifts=repair_edge_shifts,
+        edge_shift_tol=edge_shift_tol,
+        return_diagnostics=return_diagnostics,
+        output=output,
+        normalize=normalize,
+        normalization_tol=normalization_tol,
+        tessellation_check=tessellation_check,
+        tessellation_require_reciprocity=tessellation_require_reciprocity,
+        tessellation_area_tol_rel=tessellation_area_tol_rel,
+        tessellation_area_tol_abs=tessellation_area_tol_abs,
+        tessellation_line_offset_tol=tessellation_line_offset_tol,
+        tessellation_line_angle_tol=tessellation_line_angle_tol,
+    )
+    return result
+
+
+def _compute_for_matching(points, **kwargs):
+    """Compute once and retain only the private realization reference."""
+    return _compute(points, _capture_reference=True, **kwargs)
+
+
+def _compute(
+    points: Sequence[Sequence[float]] | np.ndarray,
+    *,
+    domain: Domain2D,
+    ids: Sequence[int] | None = None,
+    duplicate_check: Literal['off', 'warn', 'raise'] = 'off',
+    duplicate_threshold: float = 1e-5,
+    duplicate_wrap: bool = True,
+    duplicate_max_pairs: int = 10,
+    block_size: float | None = None,
+    blocks: tuple[int, int] | None = None,
+    init_mem: int = 8,
+    mode: Literal['standard', 'power'] = 'standard',
+    weights: Sequence[float] | np.ndarray | None = None,
+    radii: Sequence[float] | np.ndarray | None = None,
+    return_vertices: bool = True,
+    return_adjacency: bool = True,
+    return_edges: bool = True,
+    return_edge_shifts: bool = False,
+    edge_shift_search: int = 2,
+    include_empty: bool = False,
+    validate_edge_shifts: bool = True,
+    repair_edge_shifts: bool = False,
+    edge_shift_tol: float | None = None,
+    return_diagnostics: bool = False,
+    output: Literal['result', 'cells'] = _DEFAULT_OUTPUT,
+    normalize: Literal['none', 'vertices', 'topology'] = 'none',
+    normalization_tol: float | None = None,
+    tessellation_check: Literal['none', 'diagnose', 'warn', 'raise'] = 'none',
+    tessellation_require_reciprocity: bool | None = None,
+    tessellation_area_tol_rel: float = 1e-8,
+    tessellation_area_tol_abs: float = 1e-12,
+    tessellation_line_offset_tol: float | None = None,
+    tessellation_line_angle_tol: float | None = None,
+    _capture_reference: bool = False,
+) -> tuple[Any, RealizationReference | None]:
+
     resolved_output, normalize = _resolve_compute_output(
         output=output,
         normalize=normalize,
     )
+    reference = None
     mode = validate_forward_mode(mode)  # type: ignore[assignment]
     duplicate_check = validate_duplicate_check_mode(  # type: ignore[assignment]
         duplicate_check
@@ -441,13 +525,14 @@ def compute(
         duplicate_threshold=duplicate_threshold_value,
         duplicate_wrap=duplicate_wrap_value,
         duplicate_max_pairs=duplicate_max_pairs_value,
+        warning_stacklevel=5,
     )
     pts = prepared.input_points_cart
     pts_native = prepared.native_points
     ids_internal = prepared.internal_ids
     ids_user = prepared.external_ids if ids is not None else None
     rr = prepared.backend_radii
-    _warn_if_scale_suspicious(pts=pts, domain=domain)
+    _warn_if_scale_suspicious(pts=pts, domain=domain, stacklevel=4)
     nx, ny = geom.resolve_block_counts(
         n_sites=n,
         blocks=blocks_value,
@@ -523,20 +608,25 @@ def compute(
             init_mem_value,
             opts,
         )
-        validate_compute_internal_ids(cells, n=n, mode=mode)
-        if include_empty_value:
-            add_empty_cells_inplace(
-                cells,
-                n=n,
-                sites=prepared.primary_points_cart,
-                opts=opts,
-                measure_key='area',
-                boundary_key='edges',
-            )
     else:
         raise ValueError(f'unknown mode: {mode}')
-    if mode == 'standard':
-        validate_compute_internal_ids(cells, n=n, mode=mode)
+    validate_compute_internal_ids(cells, n=n, mode=mode)
+
+    if _capture_reference and periodic:
+        reference = capture_reference(
+            prepared, cells,
+            lattice=np.diag([hi - lo for lo, hi in bounds]),
+        )
+
+    if mode == 'power' and include_empty_value:
+        add_empty_cells_inplace(
+            cells,
+            n=n,
+            sites=prepared.primary_points_cart,
+            opts=opts,
+            measure_key='area',
+            boundary_key='edges',
+        )
 
     if internal_return_edge_shifts:
         _add_periodic_edge_shifts_inplace(
@@ -589,7 +679,7 @@ def compute(
                 )
                 if tessellation_check == 'raise':
                     raise TessellationError(msg, diag)
-                warnings.warn(msg, stacklevel=2)
+                warnings.warn(msg, stacklevel=3)
 
     normalized_vertices = None
     normalized_topology = None
@@ -617,7 +707,7 @@ def compute(
         keep_edge_shifts=user_return_edge_shifts,
     )
 
-    return _finish_compute_output(
+    result = _finish_compute_output(
         output=resolved_output,
         return_diagnostics=return_diagnostics_value,
         domain=domain,
@@ -632,6 +722,7 @@ def compute(
         boundaries_available=user_return_edges,
         periodic_shifts_available=user_return_edge_shifts,
     )
+    return result, reference
 
 
 def locate(
