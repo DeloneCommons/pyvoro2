@@ -367,7 +367,7 @@ transport to convert its boundary maps and measure keys; raw cell labels remain
 unchanged. Correspondence failure propagates through existing active-state
 boundaries. This neither changes face/edge attribution nor establishes full
 native/source contact certification; see
-[Proposed ADR 0033](decisions/0033-source-connectors-and-realization-reference.md).
+[Accepted ADR 0033](decisions/0033-source-connectors-and-realization-reference.md).
 
 ### Central generator preparation and duplicate safety
 

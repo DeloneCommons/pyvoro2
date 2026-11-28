@@ -1,8 +1,12 @@
 # 0033 — Original-source connectors and numerical realization image reference
 
-- **Status:** Proposed — implementation submitted for maintainer review
+- **Status:** Accepted — maintainer-approved after combined independent R/S
+  acceptance audit and documentation corrections
 - **Date:** 2026-11-28
 - **Scope:** F1-A3-S, following integrated A3-R and accepted ADR 0032
+- **Implementation:** [PR #165](https://github.com/DeloneCommons/pyvoro2/pull/165)
+- **Independently reviewed HEAD:** `140d4f8258b017e8b5691209a8eaf99c14f9427e`;
+  [six required CI jobs successful on the reviewed implementation](https://github.com/DeloneCommons/pyvoro2/actions/runs/46084590317)
 - **Related:** [sequencing Draft 0.3](../plans/functional-sequencing.md),
   [ADR 0012](0012-certified-periodic-image-geometry.md),
   [ADR 0013](0013-central-generator-preparation-and-backend-safety.md),
@@ -26,7 +30,7 @@ changes stored native anchors. Exact relative correspondence is sufficient for
 the existing numerical family; complete insertion-history reconstruction is
 unnecessary for this task.
 
-## Decision proposed
+## Decision
 
 1. Use original canonical binary64 endpoints and original user row basis for
    `delta = RN(p_j - p_i + s @ A)`. Inferred rows consume the existing complete
@@ -65,8 +69,13 @@ unnecessary for this task.
    retain their existing anchor-relative `adjacent_shift` values.
 6. Missing required periodic labels/anchors, nonintegral correspondence or an
    inactive-axis mismatch raise `ValueError` with pair/reason details, never a
-   fabricated zero or same/other-image classification. A non-observed pair or
-   genuinely empty endpoint needs no fabricated evidence. Nonperiodic contacts
+   fabricated zero or same/other-image classification. An observed pair here
+   means any non-wall pair in the complete boundary maps after existing
+   face/edge attribution, not just a requested observation. The matcher validates
+   and transports these maps before selecting requested rows, including when
+   `unaccounted_pair_check='none'`; an incompatible unrequested pair therefore
+   refuses the call. A pair absent from the maps needs no anchor evidence, and
+   synthetic empty records supply no genuine anchors. Nonperiodic contacts
    retain zero-shift behavior. Existing active iteration and accepted-state
    boundaries naturally propagate this refusal without a rollback framework
    or changes to ADR 0015's unrelated unavailable-fit handling.
@@ -112,5 +121,16 @@ Independent Fraction/analytic source and membership tests, compiled translated
 2D/3D controls, refusal propagation through both active-state boundaries,
 immutable operation capture, unchanged public signatures, record-level replay of
 the original P0 and the default suite are required. See the
-[implementation evidence](https://github.com/DeloneCommons/pyvoro2/blob/fix/f1-a3-s-source-connectors/notes/maintainer-review/contracts/f1-a3-s/README.md).
-Maintainer acceptance and integrated R/S review remain separate from local checks.
+[implementation evidence](https://github.com/DeloneCommons/pyvoro2/blob/140d4f8258b017e8b5691209a8eaf99c14f9427e/notes/maintainer-review/contracts/f1-a3-s/README.md).
+
+The combined independent R/S audit (2026-11-28) found no Blocking or Important
+production defect. A fresh current native build passed 940 focused repository
+tests, 93 additional source/identity cases and independent arithmetic and
+geometric controls, including sheared/signed bases. All 64 configurations in a
+bounded ordinary-use matching survey succeeded. Independent replays of the
+unchanged P0 script reproduced 27 → 18 → 2 → 0 discrepancy records, preserving
+original oracles and previously passing predicates. The audit required only
+documentation corrections (durable evidence link and complete-map refusal
+scope); the migration example was optional. This decision accepts the bounded
+R/S implementation, not A3-P, integrated F1-A qualification, source-complete
+contacts or release readiness.

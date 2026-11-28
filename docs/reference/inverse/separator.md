@@ -70,8 +70,15 @@ retain their anchor-relative `adjacent_shift`, so their labels can differ from
 `realized_shifts`. Unavailable anchors, missing required periodic labels,
 nonintegral relative correspondence and inactive-axis mismatches raise controlled
 `ValueError` with pair/reason detail; they do not produce a negative or other-image
-classification. Nonperiodic contacts retain legitimate zero labels. Unobserved
-pairs and genuinely empty endpoints do not require fabricated readback.
+classification. The complete non-wall boundary maps after existing attribution
+are validated and transported before requested-row selection, even with
+`unaccounted_pair_check='none'`. An incompatible unrequested pair can therefore
+refuse the call. Nonperiodic contacts retain legitimate zero labels. A pair
+absent from the maps needs no anchor evidence.
+
+If only another image is realized, `boundary_measure` (when requested) uses the
+first sorted realized shift's measure; it is not the measure of the absent
+requested image.
 
 This exact coefficient transport does not certify native insertion history,
 source/native Cartesian or weight equivalence, face/edge attribution, or contact

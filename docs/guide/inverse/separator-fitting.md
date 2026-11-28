@@ -243,6 +243,14 @@ above; old primary-relative coefficients are not silently translated. Copying,
 replacement, subsetting and same-version pickle preserve inferred status and
 exact source association, but do not migrate old geometry.
 
+For example, with unit period and original x coordinates `(1/8, 3+3/8)`,
+reusing an old primary-relative explicit shift `0` gives a connector of length
+`3.25`, not the short connector of length `0.25`. Use source shift `-3` to
+request the latter. If the exact relation `p_i = u_i + K_i @ A` between original
+and primary sites is independently known, an old primary-relative shift `c`
+converts as `s = c - K_j + K_i`. Nominal native preparation shifts alone do not
+establish that relation when snapping or projection rounding changes coordinates.
+
 Every valid object has source-independent row IDs and an ordered
 observation-set fingerprint. Row identity includes the complete canonical row
 model but not warnings. Subsetting retains row IDs and input indices, duplicate
@@ -844,7 +852,9 @@ This returns purely geometric diagnostics:
 - whether only some **other** image is realized,
 - whether one of the endpoint cells is empty,
 - an optional boundary measure of the matched boundary
-  (**face area** in 3D, **edge length** in 2D),
+  (**face area** in 3D, **edge length** in 2D); if the requested image is
+  absent but another is realized, this is the measure of the first sorted
+  realized shift, not the measure of the absent requested boundary,
 - any realized unordered site pairs that were absent from the candidate set,
   exposed through `unaccounted_pairs`,
 - and optional tessellation-wide diagnostics.
@@ -877,10 +887,13 @@ native lattice and genuine stored anchors from the same compute invocation.
 It checks relative anchor correspondence exactly before translating labels and
 measure keys. If an observed comparison lacks a required periodic label or
 genuine anchor, or correspondence is nonintegral or incompatible with an
-inactive axis, it raises `ValueError` with pair/reason details. Absence of a
-boundary or a genuinely empty endpoint needs no invented anchor. The active-set
-consumer propagates this failure before making decisions from that comparison
-or publishing a final accepted result.
+inactive axis, it raises `ValueError` with pair/reason details. All non-wall
+pairs in the complete boundary maps after existing face/edge attribution are
+checked before selecting requested rows, even with `unaccounted_pair_check='none'`.
+An incompatible unrequested pair can therefore refuse the call. A pair absent
+from the maps needs no anchor evidence. The active-set consumer propagates this
+failure before making decisions from that comparison or publishing a final
+accepted result.
 
 The existing face/edge attribution algorithms and their wall/unknown-label
 limitations still apply. Consistent labels do not prove source/native Cartesian

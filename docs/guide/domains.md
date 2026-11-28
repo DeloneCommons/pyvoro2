@@ -213,8 +213,11 @@ raises `ValueError`. Outputs are owned arrays and inputs are unchanged.
 `D = float(hi-lo)` on each periodic axis. They round the complete affine value
 `lo + remainder`, then require the result in the declared interval `[lo,hi)`.
 Inactive axes are unchanged. For bounds `[-0.1,0.2]`, x=0.4 maps to
-`0.09999999999999998` with shift 1. A represented period incompatible with a
-contained numerical representative raises `ValueError`: for `[2**-54,1]`,
+`0.09999999999999998` with shift 1. In the same interval, x=0.2 with `eps=0`
+raises `ValueError`: the rounded representative equals excluded `hi` but is
+below exact `lo + D`. Default epsilon instead maps it to `lo` with shift 1.
+A represented period incompatible with a contained numerical representative
+raises `ValueError`: for `[2**-54,1]`,
 x=1 refuses with `eps=0`, but maps to the lower endpoint with shift 1 at
 `eps=1e-12`. The chart gap at x=-1 in `[-2**60,-1]` also refuses at zero epsilon.
 
