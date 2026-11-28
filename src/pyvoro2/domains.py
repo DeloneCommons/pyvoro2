@@ -16,6 +16,7 @@ import numpy as np
 
 from ._internal import exact_user_basis, native_remap
 from ._internal.native_periodic_frame import prepare_native_periodic_frame
+from ._internal.native_periodic_preparation import prepare_periodic_points
 from ._internal.inputs import (
     coerce_finite_matrix,
     coerce_finite_vector,
@@ -463,13 +464,21 @@ class PeriodicCell:
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Remap Cartesian points into the primary cell.
 
-        Uses one qualified native frame for Cartesian projection, numerical
-        primary remapping and reporting. See :meth:`remap_internal` for snapping
-        and final int64 range rules, including when shifts are not requested.
-        This differs from exact user-parallelepiped :meth:`wrap_cart`.
-        Projection retains ordinary binary64 arithmetic; remote source lifts
-        can lose phase before remapping, and Cartesian round trips need not be
-        fixed points.
+        Uses one qualified native frame. First compute the exact source lift
+        ``k = floor((p-o) @ inverse(A))`` and local residual ``r = p-o-k@A``.
+        Project the exact residual through the represented frame, rounding each
+        complete dot once to nearest-even. Apply :meth:`remap_internal`'s chart
+        to this local projection and combine its shift n with k before checking
+        final int64 range, even when shifts are not requested.
+
+        Exactly represented source-lattice translations preserve the native
+        submission with the same frame and epsilon; their coefficients add to
+        the nominal shift k+n. This cannot recover bits already lost by caller
+        arithmetic. Reporting uses the existing native-to-Cartesian transform.
+        The result need not equal a composition of separately rounded public
+        converters or be a fixed point after a Cartesian round trip. It differs
+        from exact user-parallelepiped :meth:`wrap_cart` and does not certify
+        exact source/native equivalence. Native admission and safety remain.
 
         Args:
             points: Cartesian coordinates, shape (n, 3).
@@ -482,14 +491,10 @@ class PeriodicCell:
         frame = prepare_native_periodic_frame(self.vectors)
         r = frame.rotation_to_internal
         origin = np.asarray(self.origin, dtype=float)
-        # Retain the standalone projection arithmetic, using this one frame.
-        with np.errstate(over='ignore', invalid='ignore'):
-            internal = (r @ (pts - origin[None, :]).T).T
-        if not np.all(np.isfinite(internal)):
-            raise ValueError('points produce non-finite internal coordinates')
-        primary, shifts = native_remap.remap_triangular(internal, frame.params, epsilon)
+        primary, shifts = prepare_periodic_points(
+            pts, self.vectors, self.origin, r, frame.params, epsilon)
         with np.errstate(over='ignore', invalid='ignore'):
             result = (r.T @ primary.T).T + origin[None, :]
         if not np.all(np.isfinite(result)):
             raise ValueError('points_internal produce non-finite coordinates')
-        return native_remap.materialize_remap(result, shifts, expose)
+        return (result, shifts) if expose else result

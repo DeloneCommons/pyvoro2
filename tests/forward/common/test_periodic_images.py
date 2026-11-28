@@ -889,7 +889,21 @@ def test_periodic_duplicate_pair_distance_uses_certified_minimum_image() -> None
 
     assert len(pairs) == 1
     assert (pairs[0].i, pairs[0].j) == (0, 1)
-    assert pairs[0].distance == math.sqrt(0.23935148791850697)
+    # duplicate_check measures the prepared Cartesian view. For this identity
+    # frame, exact source k_x=-2 gives u_x=RN(p_x+2), then R subtracts 2.
+    # The specified local projection changes this coordinate by 6.6e-17;
+    # evaluate that view independently, not through the production remapper.
+    prepared_x = Fraction(float(Fraction(points[1, 0]) + 2)) - 2
+    delta = [prepared_x - Fraction(points[0, 0]) + Fraction(1, 2),
+             Fraction(points[1, 1]) - Fraction(points[0, 1]) - 1,
+             Fraction(points[1, 2]) - Fraction(points[0, 2]) - 1]
+    # Norm < 1/2 forces y,z image coefficients -1 and then x coefficient 2;
+    # every alternative has a component of magnitude > 1/2.
+    expected_squared = sum(value * value for value in delta)
+    assert expected_squared < Fraction(1, 4)
+    assert pairs[0].distance == math.sqrt(float(expected_squared))
+    assert pairs[0].distance == pytest.approx(
+        math.sqrt(0.23935148791850697), rel=0, abs=2e-16)
 
 
 def test_planar_periodic_duplicate_distance_uses_shared_primitive() -> None:

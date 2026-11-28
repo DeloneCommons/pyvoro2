@@ -40,5 +40,27 @@ rectangular representative raise `ValueError`; admissible anisotropic frames
 can therefore refuse default remapping. See the [remapping guide](../guide/domains.md#backend-primary-remapping-helpers)
 for examples, fixed-point scope and the distinct A1 contract.
 
+`PeriodicCell.remap_cart` removes the exact source lift before projecting the
+exact local Cartesian residual through its one accepted frame. It rounds each
+complete dot once, applies the shared native chart, and checks only the combined
+source/native shift `K=k+n` at the legacy int64 boundary, including unreturned
+shifts. It uses the existing Cartesian reporting transform and finite-view
+checks. With the same frame and epsilon, admitted exactly represented source
+translations preserve native submissions and add their coefficients to K.
+This is conditional on the supplied binary64 operands retaining the translation.
+The stable remap need not equal a literal composition of `cart_to_internal`,
+`remap_internal` and `internal_to_cart`, or a composition through rounded A1
+helpers. Those standalone helpers retain their own semantics. Fractionally
+local residuals can still be large in Cartesian coordinates for sheared or
+anisotropic bases. Projection rounding before reduction can lose local source
+phase and change prepared duplicate decisions even without snapping. See the
+[guide example](../guide/domains.md#backend-primary-remapping-helpers).
+
+The inserted-generator path shares this policy; native admission, both safety
+stages, source identity and inverse realization semantics remain unchanged.
+Uninserted locate queries keep direct projection and are outside this stability
+contract. See [the guide](../guide/domains.md#backend-primary-remapping-helpers)
+and [accepted ADR 0034](../development/decisions/0034-stable-source-lifting.md).
+
 ::: pyvoro2.domains
 :::

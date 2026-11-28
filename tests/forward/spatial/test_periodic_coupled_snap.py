@@ -171,3 +171,85 @@ def test_integer_lattice_independent_ghost_has_analytic_volume(a, count):
         # x=1/4 and x=1/2. The two ghost images must not compete with each other.
         # The two bisectors are separated by (1/2-1/4)/2 = 1/8, area=1.
         assert cell['volume'] == pytest.approx(1/8, rel=0, abs=2e-12)
+
+
+@pytest.mark.parametrize('lift', [-2**48, 0, 7, 2**50])
+@pytest.mark.parametrize('kind', ['standard', 'weights', 'radii'])
+def test_source_lift_preserves_r1_volumes_and_actual_submissions(
+    monkeypatch, lift, kind,
+):
+    import pyvoro2.api as api
+
+    points = POINTS.copy()
+    points[1] += lift * REPORTED[0]
+    for j in range(3):
+        assert F(points[1, j]) == F(POINTS[1, j]) + lift * F(REPORTED[0, j])
+    native = api._require_core()
+    name = ('compute_periodic_standard' if kind == 'standard'
+            else 'compute_periodic_power')
+    compute = getattr(native, name)
+    prepare = api.prepare_generators
+    calls, preparations = [], []
+
+    def capture(*args):
+        calls.append(args[0].copy())
+        return compute(*args)
+
+    def capture_preparation(*args, **kwargs):
+        result = prepare(*args, **kwargs)
+        preparations.append(result)
+        return result
+
+    monkeypatch.setattr(native, name, capture)
+    monkeypatch.setattr(api, 'prepare_generators', capture_preparation)
+    domain = pv.PeriodicCell(REPORTED, origin=ORIGIN)
+    for source in (POINTS, points):
+        cells = pv.compute(source, domain=domain, ids=IDS, output='cells',
+                           **power_options(kind))
+        assert {c['id']: c['volume'] for c in cells} == pytest.approx(
+            slab_oracle(kind), rel=0, abs=2e-12)
+    assert len(calls) == len(preparations) == 2
+    np.testing.assert_array_equal(calls[0], calls[1])
+    np.testing.assert_array_equal(calls[1], preparations[1].native_points)
+    np.testing.assert_array_equal(preparations[1].input_points_cart, points)
+    np.testing.assert_array_equal(preparations[1].external_ids, IDS)
+    np.testing.assert_array_equal(
+        preparations[1].remap_shifts - preparations[0].remap_shifts,
+        [[0, 0, 0], [lift, 0, 0], [0, 0, 0]])
+
+
+@pytest.mark.parametrize('lift', [0, 7, 2**50])
+def test_source_lift_r1_bounded_owners_and_singleton_ghost(monkeypatch, lift):
+    import pyvoro2.api as api
+
+    domain = pv.PeriodicCell(REPORTED, origin=ORIGIN)
+    points = POINTS.copy()
+    points[1] += lift * REPORTED[0]
+    # Independent exact periodic distances: at each original site its owner has
+    # distance zero and every competing site has strictly positive distance.
+    located = pv.locate(points, POINTS, domain=domain, ids=IDS,
+                        return_owner_position=True)
+    assert located['found'].tolist() == [True] * 3
+    assert located['owner_id'].tolist() == IDS
+    np.testing.assert_allclose(located['owner_pos'], POINTS, rtol=0, atol=32e-12)
+
+    ghost = api._require_core().ghost_periodic_standard
+    calls = []
+
+    def capture(*args):
+        calls.append((args[0].copy(), args[-1].copy()))
+        return ghost(*args)
+
+    monkeypatch.setattr(api._require_core(), 'ghost_periodic_standard', capture)
+    query = ORIGIN + [9/32, .5, .5]
+    for translation in (0, 2**50):
+        translated = query + translation * REPORTED[0]
+        assert all(F(translated[j]) == F(query[j]) + translation * F(REPORTED[0, j])
+                   for j in range(3))
+        cells = pv.ghost_cells(points, [translated], domain=domain, ids=IDS)
+        assert len(cells) == 1
+        assert cells[0]['volume'] == pytest.approx(1/8, rel=0, abs=2e-12)
+        assert cells[0]['query_index'] == 0
+        np.testing.assert_array_equal(cells[0]['query'], translated)
+    np.testing.assert_array_equal(calls[0][0], calls[1][0])
+    np.testing.assert_array_equal(calls[0][1], calls[1][1])

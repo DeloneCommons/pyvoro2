@@ -36,7 +36,7 @@ and maintainer approval.
 ## Draft workstreams
 
 - [Functional research and implementation sequencing](functional-sequencing.md)
-  — Draft 0.3: G0/P0 complete and A1/A2 accepted; focused A3-R/S/P work,
+  — Draft 0.3: G0/P0 complete and the selected F1-A scope accepted;
   consumer-driven B/C prerequisites for G1a, separate optional G1b, and
   independent query and inverse tracks. **Not** an activated v0.9 release scope.
   [ADR 0028](../decisions/0028-upstream-voro-vendor-policy.md) governs the

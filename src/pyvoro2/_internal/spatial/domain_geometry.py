@@ -9,6 +9,7 @@ import numpy as np
 
 from ...domains import Box, OrthorhombicCell, PeriodicCell
 from ..native_periodic_frame import prepare_native_periodic_frame
+from ..native_periodic_preparation import prepare_periodic_points
 from .. import native_remap
 from ..inputs import (
     coerce_finite_matrix,
@@ -127,22 +128,16 @@ class _NativePeriodicSnapshot:
         return_shifts: bool = False,
         eps: float | None = None,
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
-        """Remap Cartesian points through the prepared periodic geometry."""
-
-        points_internal = self.cart_to_internal(points)
-        if return_shifts:
-            remapped, shifts = self.remap_internal(
-                points_internal,
-                return_shifts=True,
-                eps=eps,
-            )
-            return self.internal_to_cart(remapped), shifts
-        remapped = self.remap_internal(
-            points_internal,
-            return_shifts=False,
-            eps=eps,
-        )
-        return self.internal_to_cart(remapped)
+        """Lift sources locally before projection through this operation frame."""
+        pts, expose, epsilon = native_remap.validate_remap_inputs(
+            points, dim=3, return_shifts=return_shifts, eps=eps)
+        primary, shifts = prepare_periodic_points(
+            pts, self.vectors, self.origin, self.rotation_to_internal,
+            self.params, epsilon)
+        with np.errstate(over='ignore', invalid='ignore'):
+            result = self.internal_to_cart(primary)
+        result = coerce_point_array(result, name='primary Cartesian points', dim=3)
+        return (result, shifts) if expose else result
 
 
 @dataclass(frozen=True, slots=True)

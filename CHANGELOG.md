@@ -66,6 +66,15 @@ The format is based on *Keep a Changelog*, and this project follows *Semantic Ve
 
 ### Fixed
 
+- Stabilize `PeriodicCell` Cartesian remapping and inserted generators by
+  removing exact source-lattice lifts before a once-rounded local projection.
+  Admitted exactly represented translations preserve native submissions with
+  the same frame/epsilon, including remote R1 volume, owner and singleton-ghost
+  controls. Check only final combined preparation shifts at int64 boundaries.
+  Literal compositions of separately rounded helpers can differ; standalone
+  helpers, native admission, mandatory safety and uninserted locate-query
+  semantics remain unchanged (F1-A3-P, #166; Proposed ADR 0034).
+
 - Separator connectors now use original source coordinates and original-basis
   image shifts. Inference preserves the certified source problem; explicit
   affine displacements round once, avoiding endpoint and large-shift rounding

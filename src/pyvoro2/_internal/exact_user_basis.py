@@ -44,12 +44,12 @@ def determinant_sign(vectors) -> int:
 
 
 @lru_cache(maxsize=128)
-def _inverse_basis(vectors):
-    """Exact A inverse by integer cofactors; prepared only for inverse maps."""
+def _adjugate_basis(vectors):
+    """Immutable integer cofactors shared by source solves and local lifting."""
     matrix, denominator, determinant = _integer_basis(vectors)
     if determinant == 0:
         raise ValueError('cell vectors are exactly singular')
-    inverse = []
+    adjugate = []
     for i in range(3):
         row = []
         for j in range(3):
@@ -58,9 +58,45 @@ def _inverse_basis(vectors):
                      for r in range(3) if r != j]
             cofactor = (-1)**(i + j) * (
                 minor[0][0] * minor[1][1] - minor[0][1] * minor[1][0])
-            row.append(Fraction(denominator * cofactor, determinant))
-        inverse.append(tuple(row))
-    return tuple(inverse)
+            row.append(cofactor)
+        adjugate.append(tuple(row))
+    return tuple(adjugate)
+
+
+@lru_cache(maxsize=128)
+def _inverse_basis(vectors):
+    """Exact A inverse by integer cofactors; prepared only for inverse maps."""
+    _, denominator, determinant = _integer_basis(vectors)
+    return tuple(tuple(Fraction(denominator * c, determinant) for c in row)
+                 for row in _adjugate_basis(vectors))
+
+
+def local_residuals(points, vectors, origin):
+    """Yield exact local Cartesian numerators, denominator and wide source lift.
+
+    For each canonical point, k=floor((p-o) A^-1), r=p-o-k A. Retain r as
+    integers over one dyadic denominator: rounding it before projection loses
+    the once-rounded local-dot contract. No native frame or int64 limit here.
+    """
+    key = tuple(tuple(float(v) for v in row) for row in vectors)
+    matrix, basis_denominator, determinant = _integer_basis(key)
+    adjugate = _adjugate_basis(key)
+    offsets = tuple(float(v).as_integer_ratio() for v in origin)
+    constant_denominator = max(basis_denominator, *(d for _, d in offsets))
+    for point in points:
+        ratios = tuple(float(v).as_integer_ratio() for v in point)
+        denominator = max(constant_denominator, *(d for _, d in ratios))
+        delta = [n * (denominator // d) - o * (denominator // od)
+                 for (n, d), (o, od) in zip(ratios, offsets)]
+        # Python // handles either determinant sign, with no floating inverse.
+        shift = tuple(sum(delta[i] * adjugate[i][j] for i in range(3))
+                      * basis_denominator // (denominator * determinant)
+                      for j in range(3))
+        scale = denominator // basis_denominator
+        residual = tuple(delta[j] - scale * sum(shift[i] * matrix[i][j]
+                                                for i in range(3))
+                         for j in range(3))
+        yield residual, denominator, shift
 
 
 def _fraction_rows(rows):

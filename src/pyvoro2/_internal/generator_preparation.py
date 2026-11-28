@@ -24,6 +24,7 @@ from .inputs import (
     validate_duplicate_check_mode,
     validate_duplicate_options,
 )
+from .native_periodic_preparation import prepare_periodic_points
 
 
 BACKEND_SAFETY_DISTANCE_SQUARED = 1e-10
@@ -81,19 +82,16 @@ def _prepare_coordinates(
             raise ValueError(
                 'triclinic generator preparation requires one periodic snapshot'
             )
-        with np.errstate(over='ignore', invalid='ignore'):
-            internal = periodic_snapshot.cart_to_internal(input_points)
-        internal = coerce_point_array(internal, name=name, dim=dim)
-        primary_internal, shifts = periodic_snapshot.remap_internal(
-            internal,
-            return_shifts=True,
-        )
+        primary_internal, shifts = prepare_periodic_points(
+            input_points, periodic_snapshot.vectors, periodic_snapshot.origin,
+            periodic_snapshot.rotation_to_internal, periodic_snapshot.params)
         native_points = coerce_point_array(
             primary_internal,
             name=f'primary {name}',
             dim=dim,
         )
-        primary_cart = periodic_snapshot.internal_to_cart(native_points)
+        with np.errstate(over='ignore', invalid='ignore'):
+            primary_cart = periodic_snapshot.internal_to_cart(native_points)
         primary_cart = coerce_point_array(
             primary_cart,
             name=f'primary Cartesian {name}',

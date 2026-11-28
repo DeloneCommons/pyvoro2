@@ -313,6 +313,20 @@ records the numerical chart, represented rectangular period, nonoverlapping
 epsilon neighborhoods and narrow supersession of ADR 0011's intermediate range
 checks. A1 exact user operations, A2 QR and internal NaN reporting remain distinct.
 
+`_internal.native_periodic_preparation` coordinates stable source lifting for
+Cartesian remap and inserted triclinic generators. A narrow iterator in
+`exact_user_basis` shares A1's bounded immutable integer basis/cofactor data and
+returns `k=floor((p-o)@inverse(A))` and exact dyadic residual `r=p-o-k@A`.
+The coordinator evaluates each complete dot with the operation's represented
+Q using integers, rounds once, calls the unchanged R reducer, then checks
+combined `K=k+n` at the int64 destination. It introduces no second frame,
+source rebasing, persistent operation state or magnitude-dependent fast path.
+The stable remap differs from composing separately rounded public helpers;
+its Cartesian view uses the existing reporting transform. Fractional locality
+need not make the Cartesian residual small: projection rounding can discard
+local phase before reduction and change prepared duplicate decisions. See
+[Accepted ADR 0034](decisions/0034-stable-source-lifting.md).
+
 ### Certified periodic minimum-image geometry
 
 The dimension-neutral private module `_internal.periodic_images` is the one
@@ -378,7 +392,10 @@ snapshot of input and primary Cartesian coordinates, primary native
 coordinates, remap shifts, internal and external IDs, radii, and operation/domain
 metadata. Box points are not wrapped; rectangular/orthorhombic periodic axes
 use their domain remapper; a triclinic operation reuses one validated periodic
-snapshot for Cartesian/internal conversion and coupled remapping.
+snapshot for exact local source lifting, once-rounded projection and shared
+native remapping. Original coordinates, IDs, radii and snapshot fields remain;
+`remap_shifts` stores the final nominal K. S captures the resulting v/K with
+that same operation's L and actual anchors, without changing its inverse model.
 
 Non-periodic inserted coordinates satisfy `lo <= x < hi`; triclinic native
 coordinates satisfy `[0, bx) × [0, by) × [0, bz)`. Locate queries are not
@@ -387,6 +404,15 @@ the fixed squared floor `1e-10` inclusively and the R4 exact key for periodic
 classification. Public duplicate modes and thresholds control only strict
 safe-above-floor diagnostics. External IDs remain Python provenance; native
 storage uses `0..n-1`.
+
+Prepared primary Cartesian safety and the compiled insertion backstop are both
+required. A large reporting origin can collapse distinct local residuals and
+cause conservative prepared-view refusal; conversely, distinct reports can
+conceal an unsafe native pair, which the compiled check still refuses.
+Uninserted locate queries retain direct projection/dispatch and reporting,
+including missing-owner NaNs. F2 owns safe remote query stepping/index admission
+and any optional recovery; the generator translation guarantee does not apply
+to those queries or establish universal source/native geometry equivalence.
 
 Candidate generation is separate from distance classification. Rectangular
 domains use primary-coordinate spatial buckets with neighbor wrapping only on

@@ -9,6 +9,7 @@ Only substantial new or materially expanded scientific/engineering investigation
 | [`native-allocation-failure.md`](native-allocation-failure.md) | `std::bad_alloc` constructor/growth ownership defects and ANSI C++-compatible upstream reproducer/patch workflow; tracked as R-O02b. |
 | [`geometry-output-presets.md`](geometry-output-presets.md) | Optional output ergonomics separate from historic metadata/certification work. |
 | [`native-performance.md`](native-performance.md) | Read-only contexts, 2D ghost batches and grid-locate hypotheses, distinct from old Fraction optimization. |
+| [`local-projection-rounding.md`](local-projection-rounding.md) | Independently observed local-phase loss before the native reducer; exact projected-operand reduction candidate under R-L03a. |
 
 The former `global-topology.md` repeated historical [R-O01](../../../docs/development/reboot/requirements-inventory.md#r-o01) in most respects; its ChemVoro motivation is now summarized in [the register](../review-register.md) and expanded independently in `geometry-layers.md`. The former `development-qualification-boundaries.md` largely restated accepted [ADR 0027](../../../docs/development/decisions/0027-v0.9-reboot-from-v0.8.md) and R-E03/PA-003; its extra local-test boundary question is preserved in the register. Both removed notes remain recoverable from Git history.
 

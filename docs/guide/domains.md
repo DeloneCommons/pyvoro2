@@ -188,8 +188,9 @@ error. It does not bound every short-direction relative error or guarantee a
 native tessellation. The same integer tuple `s` labels source and native images,
 but `L ≈ A @ Q` does not certify exact equality of their Cartesian translations
 or native insertion provenance. Numerical primary remapping below preserves
-coupled tangential remainders; source-connector snapping and phase lost before
-native projection remain separate work. See the
+coupled tangential remainders and removes exact source lifts before projection.
+Separator connectors use original source operands independently of this native
+chart. See the
 [accepted A1 contract](../development/decisions/0030-exact-user-lattice-and-native-admission.md)
 and [accepted A2 decision](../development/decisions/0031-qualified-native-periodic-qr-frame.md).
 
@@ -203,11 +204,12 @@ They wrap coordinates into the primary cell and optionally return the integer la
 
 Point arrays and an explicit `eps` are validated before arithmetic. `eps` must
 be finite and non-negative, and `return_shifts` must be a Python or NumPy
-Boolean. Quotient decisions, affine subtraction and snapping comparisons use
-exact values of canonical binary64 operands; only the final coordinates are
-rounded. Intermediate coefficients remain arbitrary-size integers. **Final**
-shifts must fit signed int64, even with `return_shifts=False`, or the remap
-raises `ValueError`. Outputs are owned arrays and inputs are unchanged.
+Boolean. Within the native-primary reducer, quotient decisions, affine
+subtraction and snapping comparisons use exact values of canonical binary64
+operands; only the emitted coordinates are rounded. Intermediate coefficients
+remain arbitrary-size integers. **Final** shifts must fit signed int64, even
+with `return_shifts=False`, or the remap raises `ValueError`. Outputs are
+owned arrays and inputs are unchanged.
 
 `OrthorhombicCell` and planar `RectangularCell` use the represented period
 `D = float(hi-lo)` on each periodic axis. They round the complete affine value
@@ -245,9 +247,50 @@ repetition with unchanged epsilon: identical coordinates and zero extra shifts.
 This does not promise a fixed point after a Cartesian QR round trip or for A1
 rounded views. The convention `input ≈ primary + shifts @ lattice` includes
 final-coordinate rounding and intentional snapping, without a universal
-absolute reconstruction tolerance. Public `PeriodicCell.remap_cart` uses one
-qualified frame per call. It retains ordinary Cartesian projection arithmetic;
-remapping cannot restore phase already lost when projecting remote source lifts.
+absolute reconstruction tolerance.
+
+`PeriodicCell.remap_cart` uses one qualified frame per call. It first computes
+the exact source floor `k = floor((p-o) @ inverse(A))` and exact local Cartesian
+residual `r = p-o-k@A`. Each complete dot in `r @ Q` rounds once to nearest-even;
+the residual itself is not rounded first. The shared triangular remapper then
+returns a numerical primary point and correction `n`. Only the combined nominal
+shift `K = k+n` must fit int64. For unit rows, origin `(2**-55,0,0)` and
+`eps=0`, x=`-2**63` is admitted: `k=-2**63-1`, the local projection rounds to 1,
+and `n=1` restores `INT64_MIN`. x=`2**63` instead overflows the final shift and
+refuses, including when shifts are not requested. These are arithmetic helper
+examples, not promises of native execution for arbitrary remote input.
+
+For source translations `p' = p+t@A` represented **exactly in the supplied
+binary64 values**, the same frame and epsilon produce identical native
+submissions and `K'=K+t`, independent of batch shape or order, when both calls
+are otherwise admitted. Floating addition that already lost source bits does
+not satisfy that condition. Primary Cartesian reports use the existing
+native-to-Cartesian transform; local projection, snapping and reporting errors
+remain possible. `remap_cart` need not equal
+`internal_to_cart(remap_internal(cart_to_internal(points)))`, nor a composition
+through the separately rounded exact user helpers.
+
+The exact local residual is local in fractional coordinates, not necessarily
+small in Cartesian coordinates. A strongly sheared or anisotropic basis can
+produce a large residual whose projection rounding loses detail previously
+retained by direct projection, even for an identity frame and zero epsilon.
+For example, with basis rows `(1,0,0)`, `(2**20,1,0)`, `(0,0,1)`, origin zero
+and `p=(2**-35,1/2,1/2)`, the residual x is `2**19 + 2**-35`. The projection
+rounds x to `2**19` and native reduction gives zero. This is a helper-level
+example, not a claim that the corresponding native container is admissible.
+Prepared coordinates can become closer or coincide; the mandatory safety
+checks can therefore refuse even source-distinct sites. See
+[duplicate checking](../reference/duplicates.md). Native admission and
+conditioning warnings do not guarantee preservation of every source detail.
+
+Persistent generators in `compute`, `locate` and `ghost_cells`, and inserted
+temporary ghosts, share this preparation. Both prepared Cartesian safety and
+actual native insertion safety remain mandatory: a reporting view that collapses
+distinct exact residuals can still refuse. Uninserted locate queries retain
+direct projection without generator snapping. Their remote stepping/index safety
+and optional query-chart recovery remain separate F2 work. Stable generator
+preparation does not qualify remote queries, arbitrary short translations or
+source-complete contacts. See [accepted ADR 0034](../development/decisions/0034-stable-source-lifting.md).
 
 These helpers are used internally (for example, in visualization wrapping and in periodic graph work),
 but they are also useful when you want to align your own data to the primary cell.
